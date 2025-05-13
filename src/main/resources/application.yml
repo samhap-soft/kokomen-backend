@@ -1,4 +1,13 @@
 spring:
+  jpa:
+    open-in-view: false
+
+---
+# local profile
+spring:
+  config:
+    activate:
+      on-profile: local
   datasource:
     url: jdbc:mysql://kokomen-mysql:3306/kokomen-local
     username: root
@@ -9,4 +18,17 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: create-drop
-    open-in-view: false
+
+---
+# dev profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
