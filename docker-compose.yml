@@ -1,0 +1,21 @@
+services:
+  kokomen-app:
+    build: .
+    ports:
+      - 8080:8080
+    depends_on:
+      kokomen-mysql:
+        condition: service_healthy
+  kokomen-mysql:
+    image: mysql:8.4.5
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: kokomen-local
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping" ]
+      interval: 5s
+      retries: 10
