@@ -8,6 +8,7 @@ class KokomenApplicationTests {
 
 	@Test
 	void contextLoads() {
+		throw new IllegalStateException();
 	}
 
 }
