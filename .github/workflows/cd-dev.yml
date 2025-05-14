@@ -58,4 +58,6 @@ jobs:
             -e SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL_DEV }} \
             -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }} \
             -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }} \
-            -p 80:8080 -d samhap/kokomen:dev
+            --network backend-net \
+            --name kokomen-dev-server \
+            -p 8080:8080 -d samhap/kokomen:dev
