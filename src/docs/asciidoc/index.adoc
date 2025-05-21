@@ -1,0 +1,17 @@
+= Kokomen API Guide
+:doctype: book
+:icons: font
+:toc: left
+:toc-title: Table of Contents
+:toclevels: 2
+:source-highlighter: highlightjs
+:sectlinks:
+:sectnums:
+
+== 카테고리
+
+=== 카테고리 목록 조회
+
+include::build/generated-snippets/category/http-request.adoc[]
+include::build/generated-snippets/category/http-response.adoc[]
+include::build/generated-snippets/category/response-fields.adoc[]
