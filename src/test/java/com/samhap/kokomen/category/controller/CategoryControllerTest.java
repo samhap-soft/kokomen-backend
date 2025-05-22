@@ -33,24 +33,19 @@ class CategoryControllerTest {
 
     @BeforeEach
     void setUp(WebApplicationContext context, RestDocumentationContextProvider restDocumentation) {
+        var uriPreprocessor = modifyUris()
+                .scheme("https")
+                .host("api.dev.kokomen.kr")
+                .removePort();
+
+        var headerPreprocessor = modifyHeaders().remove(HttpHeaders.CONTENT_LENGTH);
+
         this.mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .alwaysDo(print())
-                .apply(documentationConfiguration(restDocumentation)
-                        .operationPreprocessors()
-                        .withRequestDefaults(
-                                modifyUris()
-                                        .scheme("https")
-                                        .host("api.dev.kokomen.kr")
-                                        .removePort(),
-                                prettyPrint(),
-                                modifyHeaders().remove(HttpHeaders.CONTENT_LENGTH)
-                        )
-                        .withResponseDefaults(
-                                prettyPrint(),
-                                modifyHeaders().remove(HttpHeaders.CONTENT_LENGTH)
-                        )
-                )
-                .build();
+                .apply(documentationConfiguration(restDocumentation).operationPreprocessors()
+                        .withRequestDefaults(uriPreprocessor, prettyPrint(), headerPreprocessor)
+                        .withResponseDefaults(prettyPrint(), headerPreprocessor)
+                ).build();
     }
 
     @Test
@@ -73,8 +68,6 @@ class CategoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(expectedJson))
                 .andDo(document("category",
-                        responseFields(
-                                fieldWithPath("categories").type(ARRAY).description("카테고리 목록")
-                        )));
+                        responseFields(fieldWithPath("categories").type(ARRAY).description("카테고리 목록"))));
     }
 }
