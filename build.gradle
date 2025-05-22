@@ -49,6 +49,7 @@ tasks.named('test') {
 }
 
 asciidoctor {
+    attributes 'snippetsDir': snippetsDir
     inputs.dir snippetsDir
     dependsOn test
 }

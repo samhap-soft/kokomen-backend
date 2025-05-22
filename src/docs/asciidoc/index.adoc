@@ -12,6 +12,6 @@
 
 === 카테고리 목록 조회
 
-include::build/generated-snippets/category/http-request.adoc[]
-include::build/generated-snippets/category/http-response.adoc[]
-include::build/generated-snippets/category/response-fields.adoc[]
+include::{snippetsDir}/category/http-request.adoc[]
+include::{snippetsDir}/category/http-response.adoc[]
+include::{snippetsDir}/category/response-fields.adoc[]
