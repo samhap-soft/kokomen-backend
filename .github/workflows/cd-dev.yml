@@ -41,7 +41,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [self-hosted, dev]
+    runs-on: [ self-hosted, dev ]
 
     steps:
       - name: Docker Image pull
@@ -51,13 +51,14 @@ jobs:
         run: |
           sudo docker ps -q --filter "ancestor=samhap/kokomen:dev" | xargs -r docker stop
           sudo docker ps -a -q --filter "ancestor=samhap/kokomen:dev" | xargs -r docker rm
-      
+
       - name: Docker run
         run: |
           sudo docker run --rm -e SPRING_PROFILES_ACTIVE=dev \
             -e SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL_DEV }} \
             -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }} \
             -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }} \
+            -e OPEN_AI_API_KEY=${{ secrets.OPEN_AI_API_KEY }} \
             --network backend-net \
             --name kokomen-dev-server \
             -p 8080:8080 -d samhap/kokomen:dev
