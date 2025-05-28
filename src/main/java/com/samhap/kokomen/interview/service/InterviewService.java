@@ -20,8 +20,10 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -164,7 +166,14 @@ public class InterviewService {
         );
 
         answerRepository.save(lastAnswer);
-        interview.feedbackTotal(gptEndResponse.totalFeedback());
+        answers.add(lastAnswer);
+        int totalScore = answers.stream()
+                .map(answer -> answer.getAnswerRank().getScore())
+                .reduce(0, Integer::sum);
+        interview.evaluate(gptEndResponse.totalFeedback(), totalScore);
+        Member member = memberRepository.findById(memberAuth.memberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.updateScore(totalScore);
 
         return Optional.empty();
     }
@@ -178,6 +187,27 @@ public class InterviewService {
 
         messages.add(new Message("assistant", lastQuestion.getContent()));
         messages.add(new Message("user", answerRequest.answer()));
+    }
+
+    @Transactional(readOnly = true)
+    public InterviewTotalResponse findTotalFeedbacks(
+            Long interviewId,
+            MemberAuth memberAuth
+    ) {
+        Interview interview = interviewRepository.findById(interviewId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인터뷰입니다."));
+
+        Member member = memberRepository.findById(memberAuth.memberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        answers.sort(Comparator.comparing(Answer::getId));
+
+        List<FeedbackResponse> feedbackResponses = answers.stream()
+                .map(FeedbackResponse::from)
+                .toList();
+
+        return InterviewTotalResponse.of(feedbackResponses, interview, member);
     }
 }
 

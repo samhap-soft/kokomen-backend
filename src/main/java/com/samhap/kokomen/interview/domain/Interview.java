@@ -31,11 +31,15 @@ public class Interview extends BaseEntity {
     @Column(name = "total_feedback", length = 2_000)
     private String totalFeedback;
 
+    @Column(name = "total_score")
+    private Integer totalScore;
+
     public Interview(Member member) {
         this.member = member;
     }
 
-    public void feedbackTotal(String totalFeedback) {
+    public void evaluate(String totalFeedback, Integer totalScore) {
         this.totalFeedback = totalFeedback;
+        this.totalScore = totalScore;
     }
 }
