@@ -33,6 +33,47 @@ import org.springframework.http.MediaType;
 class InterviewControllerTest extends BaseControllerTest {
 
     @Test
+    void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
+        // given
+        Member member = memberRepository.save(new Member("NAK"));
+        String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
+        RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion(rootQuestionContent));
+
+        String requestJson = """
+                {
+                  "categories": ["OPERATING_SYSTEM"]
+                }
+                """;
+
+        String responseJson = """
+                {
+                	"interview_id": 1,
+                	"question_id": 1,
+                	"root_question": "%s"
+                }
+                """.formatted(rootQuestionContent);
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/interviews")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-startInterview",
+                        requestFields(
+                                fieldWithPath("categories").description("인터뷰 카테고리 목록")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 질문 ID"),
+                                fieldWithPath("root_question").description("루트 질문 내용")
+                        )
+                ));
+    }
+
+    @Test
     void 인터뷰_답변을_전달하면_인터뷰에_대한_평가를_받고_다음_질문을_응답한다() throws Exception {
         // given
         Member member = memberRepository.save(new Member("NAK"));
@@ -52,7 +93,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                  "nextQuestion": "%s"
+                  "next_question": "%s"
                 }
                 """.formatted(nextQuestion);
 
@@ -76,19 +117,24 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(post(
-                        "/api/v1/interviews/{interviewId}/questions/{questionId}/answers", interview.getId(), question2.getId())
+                        "/api/v1/interviews/{interview_id}/questions/{question_id}/answers", interview.getId(),
+                        question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview",
+                .andDo(document("interview-proceedInterview",
                         pathParameters(
-                                parameterWithName("interviewId").description("인터뷰 ID"),
-                                parameterWithName("questionId").description("질문 ID")
+                                parameterWithName("interview_id").description("인터뷰 ID"),
+                                parameterWithName("question_id").description("질문 ID")
                         ),
-                        requestFields(fieldWithPath("answer").description("사용자가 작성한 답변")),
-                        responseFields(fieldWithPath("nextQuestion").description("다음 질문"))
+                        requestFields(
+                                fieldWithPath("answer").description("사용자가 작성한 답변")
+                        ),
+                        responseFields(
+                                fieldWithPath("next_question").description("다음 질문")
+                        )
                 ));
     }
 }
