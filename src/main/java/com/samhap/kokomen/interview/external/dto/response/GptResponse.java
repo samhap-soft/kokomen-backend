@@ -6,12 +6,21 @@ public record GptResponse(
         List<Choice> choices
 ) {
 
-    public GptAnswerResponse toGptAnswerResponse() {
+    public GptProceedResponse toGptProceedResponse() {
         return choices.get(0)
                 .message()
                 .toolCalls()
                 .get(0)
                 .function()
-                .toGptAnswerResponse();
+                .toGptProceedResponse();
+    }
+
+    public GptEndResponse toGptEndResponse() {
+        return choices.get(0)
+                .message()
+                .toolCalls()
+                .get(0)
+                .function()
+                .toGptEndResponse();
     }
 }
