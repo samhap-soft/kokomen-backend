@@ -32,7 +32,7 @@ class CategoryControllerTest extends BaseControllerTest {
         mockMvc.perform(get("/api/v1/categories"))
                 .andExpect(status().isOk())
                 .andExpect(content().json(expectedJson))
-                .andDo(document("category",
+                .andDo(document("category-findCategories",
                         responseFields(fieldWithPath("categories").type(ARRAY).description("카테고리 목록"))));
     }
 }
