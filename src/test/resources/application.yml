@@ -11,3 +11,5 @@ spring:
   h2:
     console:
       enabled: true
+open-ai:
+  api-key: test_api_key

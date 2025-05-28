@@ -3,6 +3,9 @@ services:
     build: .
     ports:
       - 8080:8080
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
     depends_on:
       kokomen-mysql:
         condition: service_healthy
@@ -11,8 +14,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: kokomen-local
-    volumes:
-      - ./mysql_data:/var/lib/mysql
+      TZ: Asia/Seoul
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci"
+      ]
+    #    volumes:
+    #      - ./mysql_data:/var/lib/mysql
     ports:
       - 3306:3306
     healthcheck:
