@@ -5,8 +5,10 @@ import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,8 +37,15 @@ public class InterviewController {
             @PathVariable Long questionId,
             @RequestBody AnswerRequest answerRequest
     ) {
-        return interviewService.proceedInterview(interviewId, questionId, answerRequest, null)
+        return interviewService.proceedInterview(interviewId, questionId, answerRequest, new MemberAuth(1L))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/{interviewId}/result")
+    public ResponseEntity<InterviewTotalResponse> findTotalFeedbacks(
+            @PathVariable Long interviewId
+    ) {
+        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, new MemberAuth(1L)));
     }
 }

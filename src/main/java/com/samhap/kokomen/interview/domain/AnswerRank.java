@@ -1,5 +1,8 @@
 package com.samhap.kokomen.interview.domain;
 
+import lombok.Getter;
+
+@Getter
 public enum AnswerRank {
     A(20),
     B(10),
@@ -13,5 +16,4 @@ public enum AnswerRank {
     AnswerRank(int score) {
         this.score = score;
     }
-
 }

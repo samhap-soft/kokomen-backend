@@ -12,23 +12,39 @@ public record GptRequest(
         ToolChoice toolChoice
 ) {
 
-    public static GptRequest createGptRequest(List<Message> messages) {
-        return new GptRequest("gpt-4o-mini", messages, createTools(), createToolChoice());
+    public static GptRequest createProceedGptRequest(List<Message> messages) {
+        return new GptRequest("gpt-4o-mini", messages, createProceedTools(), createProceedToolChoice());
     }
 
-    private static List<Tool> createTools() {
-        return List.of(new Tool("function", new GptFunction("generate_feedback", createParams())));
+    public static GptRequest createEndGptRequest(List<Message> messages) {
+        return new GptRequest("gpt-4o-mini", messages, createEndTools(), createEndToolChoice());
     }
 
-    private static GptFunctionParameters createParams() {
+    private static List<Tool> createProceedTools() {
+        return List.of(new Tool("function", new GptFunction("generate_feedback", createProceedParams())));
+    }
+
+    private static List<Tool> createEndTools() {
+        return List.of(new Tool("function", new GptFunction("generate_total_feedback", createEndParams())));
+    }
+
+    private static GptFunctionParameters createProceedParams() {
         return new GptFunctionParameters(
                 "object",
-                createProperties(),
+                createProceedProperties(),
                 List.of("rank", "feedback", "next_question")
         );
     }
 
-    private static Map<String, FunctionParamProperty> createProperties() {
+    private static GptFunctionParameters createEndParams() {
+        return new GptFunctionParameters(
+                "object",
+                createEndProperties(),
+                List.of("rank", "feedback", "total_feedback")
+        );
+    }
+
+    private static Map<String, FunctionParamProperty> createProceedProperties() {
         return Map.of(
                 "rank", new FunctionParamProperty("string"),
                 "feedback", new FunctionParamProperty("string"),
@@ -36,7 +52,19 @@ public record GptRequest(
         );
     }
 
-    private static ToolChoice createToolChoice() {
+    private static Map<String, FunctionParamProperty> createEndProperties() {
+        return Map.of(
+                "rank", new FunctionParamProperty("string"),
+                "feedback", new FunctionParamProperty("string"),
+                "total_feedback", new FunctionParamProperty("string")
+        );
+    }
+
+    private static ToolChoice createProceedToolChoice() {
         return new ToolChoice("function", new ToolChoiceFunction("generate_feedback"));
+    }
+
+    private static ToolChoice createEndToolChoice() {
+        return new ToolChoice("function", new ToolChoiceFunction("generate_total_feedback"));
     }
 }

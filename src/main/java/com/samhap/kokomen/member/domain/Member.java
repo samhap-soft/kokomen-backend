@@ -7,8 +7,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 public class Member extends BaseEntity {
@@ -21,7 +23,15 @@ public class Member extends BaseEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "score", nullable = false)
+    private Integer score;
+
     public Member(String name) {
         this.name = name;
+        this.score = 0;
+    }
+
+    public void updateScore(Integer updateAmount) {
+        this.score += updateAmount;
     }
 }
