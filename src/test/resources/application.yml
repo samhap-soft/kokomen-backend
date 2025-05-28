@@ -11,5 +11,7 @@ spring:
   h2:
     console:
       enabled: true
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 open-ai:
   api-key: test_api_key

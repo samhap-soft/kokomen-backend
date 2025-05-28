@@ -30,4 +30,9 @@ public class InterviewCategory {
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
     private Category category;
+
+    public InterviewCategory(Interview interview, Category category) {
+        this.interview = interview;
+        this.category = category;
+    }
 }

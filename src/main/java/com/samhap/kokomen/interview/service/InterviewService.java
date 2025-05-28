@@ -1,24 +1,34 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewCategory;
 import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.request.Message;
 import com.samhap.kokomen.interview.external.dto.response.GptAnswerResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewCategoryRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.InterviewRequest;
+import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +39,36 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewService {
 
     private static final int MAX_QUESTION_COUNT = 3;
+    private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
     private final GptClient gptClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
+    private final MemberRepository memberRepository;
+    private final InterviewCategoryRepository interviewCategoryRepository;
+    private final RootQuestionRepository rootQuestionRepository;
+
+    @Transactional
+    public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
+        List<Category> categories = interviewRequest.categories();
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("카테고리가 없습니다.");
+        }
+
+        Member member = memberRepository.findById(memberAuth.memberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        Interview interview = interviewRepository.save(new Interview(member));
+        categories.forEach(category -> interviewCategoryRepository.save(new InterviewCategory(interview, category)));
+
+        Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
+        RootQuestion rootQuestion = rootQuestionRepository.findById(rootQuestionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 루트 질문입니다."));
+
+        Question question = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
+
+        return new InterviewResponse(interview.getId(), question.getId(), rootQuestion.getContent());
+    }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional

@@ -1,6 +1,8 @@
 spring:
   jpa:
     open-in-view: false
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
