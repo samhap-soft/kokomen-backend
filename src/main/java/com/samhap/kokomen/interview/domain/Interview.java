@@ -28,7 +28,14 @@ public class Interview extends BaseEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @Column(name = "total_feedback", length = 2_000)
+    private String totalFeedback;
+
     public Interview(Member member) {
         this.member = member;
+    }
+
+    public void feedbackTotal(String totalFeedback) {
+        this.totalFeedback = totalFeedback;
     }
 }

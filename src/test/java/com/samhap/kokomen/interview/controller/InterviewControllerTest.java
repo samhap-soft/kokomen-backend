@@ -20,8 +20,8 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.response.Choice;
-import com.samhap.kokomen.interview.external.dto.response.GptAnswerResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptFunctionCall;
+import com.samhap.kokomen.interview.external.dto.response.GptProceedResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.Message;
 import com.samhap.kokomen.interview.external.dto.response.ToolCall;
@@ -97,7 +97,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 }
                 """.formatted(nextQuestion);
 
-        GptAnswerResponse gptAnswerResponse = new GptAnswerResponse(
+        GptProceedResponse gptProceedResponse = new GptProceedResponse(
                 AnswerRank.D.name(),
                 "똑바로 대답하세요.",
                 nextQuestion
@@ -109,7 +109,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 new Message(
                                         List.of(new ToolCall(new GptFunctionCall(
                                                 "generate_feedback",
-                                                objectMapper.writeValueAsString(gptAnswerResponse)
+                                                objectMapper.writeValueAsString(gptProceedResponse)
                                         )))
                                 )
                         ))
