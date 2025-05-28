@@ -18,13 +18,17 @@ import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
+// TODO: 루트 질문 가져올 때 AtomicLong 이용해서 순서대로 하나씩 가져오기
 public class InterviewService {
+
+    private static final int MAX_QUESTION_COUNT = 3;
 
     private final GptClient gptClient;
     private final InterviewRepository interviewRepository;
@@ -33,7 +37,7 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional
-    public NextQuestionResponse proceedInterview(
+    public Optional<NextQuestionResponse> proceedInterview(
             Long interviewId,
             Long questionId,
             AnswerRequest answerRequest,
@@ -97,9 +101,14 @@ public class InterviewService {
         );
 
         answerRepository.save(lastAnswer);
+
+        if (questions.size() >= MAX_QUESTION_COUNT) {
+            return Optional.empty();
+        }
+
         questionRepository.save(nextQuestion);
 
-        return new NextQuestionResponse(nextQuestion.getContent());
+        return Optional.of(new NextQuestionResponse(nextQuestion.getContent()));
     }
 }
 
