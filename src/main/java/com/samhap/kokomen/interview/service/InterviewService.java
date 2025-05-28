@@ -135,7 +135,7 @@ public class InterviewService {
             answerRepository.save(lastAnswer);
             questionRepository.save(nextQuestion);
 
-            return Optional.of(new NextQuestionResponse(nextQuestion.getContent()));
+            return Optional.of(NextQuestionResponse.createFollowingQuestionResponse(nextQuestion));
         }
 
         messages.add(
