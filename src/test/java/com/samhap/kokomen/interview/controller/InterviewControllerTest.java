@@ -94,7 +94,9 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                  "next_question": "%s"
+                  "question_id": 3,
+                  "question": "%s",
+                  "is_root": false
                 }
                 """.formatted(nextQuestion);
 
@@ -134,7 +136,9 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("answer").description("사용자가 작성한 답변")
                         ),
                         responseFields(
-                                fieldWithPath("next_question").description("다음 질문")
+                                fieldWithPath("question_id").description("다음 질문 id"),
+                                fieldWithPath("question").description("다음 질문 내용"),
+                                fieldWithPath("is_root").description("루트 질문 여부")
                         )
                 ));
     }

@@ -112,7 +112,7 @@ public class InterviewService {
                                             D: 질문의 요지는 제대로 파악했지만, 논리적으로 모두 틀린 경우. 예를 들어 객체지향에서 다형성, 캡슐화, 상속, 추상화에 대해 설명했지만 모두 틀린 경우.
                                             F: 전혀 다른 대답을했거나, 논리적으로 완전히 틀렸거나, 대답 자체를 안한 경우. 예를 들어 객체지향의 특징에 대해 설명하라 했지만 자바 예외처리에 대해 설명한 경우.
                                             또한 코멘트로도 피드백을 주는데, 최대한 자세하게 코멘트해줘.
-                                            그와 동시에 꼬리 질문을 next_question 필드에 줘.
+                                            그와 동시에 꼬리 질문을 next_question 필드에 줘. 이 때 이전에 한 질문은 중복해서 주지 말아줘.
                             """)
             );
             addMessages(answerRequest, answers, messages, lastQuestion);
@@ -135,7 +135,7 @@ public class InterviewService {
             answerRepository.save(lastAnswer);
             questionRepository.save(nextQuestion);
 
-            return Optional.of(new NextQuestionResponse(nextQuestion.getContent()));
+            return Optional.of(NextQuestionResponse.createFollowingQuestionResponse(nextQuestion));
         }
 
         messages.add(
