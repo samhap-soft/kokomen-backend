@@ -43,11 +43,14 @@ public abstract class BaseControllerTest {
     protected RootQuestionRepository rootQuestionRepository;
     @Autowired
     protected ObjectMapper objectMapper;
+    @Autowired
+    private H2DatabaseCleaner h2DatabaseCleaner;
     @MockitoBean
     protected GptClient gptClient;
 
     @BeforeEach
     void setUp(WebApplicationContext context, RestDocumentationContextProvider restDocumentation) {
+        h2DatabaseCleaner.executeTruncate();
         var uriPreprocessor = modifyUris()
                 .scheme("https")
                 .host("api.dev.kokomen.kr")
