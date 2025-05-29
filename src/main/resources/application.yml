@@ -22,7 +22,8 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: create-drop
-
+cors:
+  allowed-origins: http://localhost:8080
 
 ---
 # dev profile
@@ -37,3 +38,5 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+cors:
+  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr
