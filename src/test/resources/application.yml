@@ -15,3 +15,6 @@ spring:
     property-naming-strategy: SNAKE_CASE
 open-ai:
   api-key: test_api_key
+
+cors:
+  allowed-origins: http://localhost:8080
