@@ -212,6 +212,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer").description("답변 내용"),
                                 fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
                                 fieldWithPath("user_prev_score").description("이전 사용자 점수"),

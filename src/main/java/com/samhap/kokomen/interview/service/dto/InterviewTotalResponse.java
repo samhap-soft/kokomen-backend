@@ -6,6 +6,7 @@ import java.util.List;
 
 public record InterviewTotalResponse(
         List<FeedbackResponse> feedbacks,
+        String totalFeedback,
         Integer totalScore,
         Integer userCurScore,
         Integer userPrevScore,
@@ -20,6 +21,7 @@ public record InterviewTotalResponse(
     ) {
         return new InterviewTotalResponse(
                 feedbacks,
+                interview.getTotalFeedback(),
                 interview.getTotalScore(),
                 member.getScore(),
                 member.getScore() - interview.getTotalScore(),
