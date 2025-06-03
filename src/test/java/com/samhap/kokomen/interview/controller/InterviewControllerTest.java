@@ -148,17 +148,18 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰에_대한_최종_결과를_조회한다() throws Exception {
         // given
         Member member = memberRepository.save(new Member("NAK"));
+        member.addScore(100);
         Interview interview = interviewRepository.save(new Interview(member));
         RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion("자바의 특징은 무엇인가요?"));
         Question question1 = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
         Answer answer1 = answerRepository.save(new Answer(question1, "자바는 객체지향 프로그래밍 언어입니다.", AnswerRank.C, "부족합니다."));
         Question question2 = questionRepository.save(new Question(interview, rootQuestion, "객체지향의 특징을 설명해주세요."));
-        Answer answer2 = answerRepository.save(new Answer(question2, "객체가 각자 책임집니다.", AnswerRank.C, "부족합니다."));
+        Answer answer2 = answerRepository.save(new Answer(question2, "객체가 각자 책임집니다.", AnswerRank.D, "부족합니다."));
         Question question3 = questionRepository.save(new Question(interview, rootQuestion, "객체는 무엇인가요?"));
-        Answer answer3 = answerRepository.save(new Answer(question3, "클래스의 인스턴스 입니다.", AnswerRank.C, "부족합니다."));
-        interview.evaluate("제대로 좀 공부 해라.", 10);
+        Answer answer3 = answerRepository.save(new Answer(question3, "클래스의 인스턴스 입니다.", AnswerRank.F, "부족합니다."));
+        interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
-        member.updateScore(10);
+        member.addScore(-30);
         memberRepository.save(member);
 
         String responseJson = """
@@ -177,7 +178,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_id": 2,
                 			"question": "객체지향의 특징을 설명해주세요.",
                 			"answer": "객체가 각자 책임집니다.",
-                			"answer_rank": "C",
+                			"answer_rank": "D",
                 			"answer_feedback": "부족합니다."
                 		},
                 		{
@@ -185,13 +186,13 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_id": 3,
                 			"question": "객체는 무엇인가요?",
                 			"answer": "클래스의 인스턴스 입니다.",
-                			"answer_rank": "C",
+                			"answer_rank": "F",
                 			"answer_feedback": "부족합니다."
                 		}
                 	],
-                	"total_score": 10,
-                	"user_cur_score": 10,
-                	"user_prev_score": 0,
+                	"total_score": -30,
+                	"user_cur_score": 70,
+                	"user_prev_score": 100,
                 	"user_prev_rank": "BRONZE",
                 	"user_cur_rank": "BRONZE"
                 }

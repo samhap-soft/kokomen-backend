@@ -122,7 +122,7 @@ public class InterviewService {
         GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
-        member.updateScore(totalScore);
+        member.addScore(totalScore);
     }
 
     @Transactional(readOnly = true)
