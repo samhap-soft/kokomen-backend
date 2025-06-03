@@ -31,13 +31,13 @@ public class InterviewController {
     }
 
     // TODO: MemberAuth를 활용해서 인터뷰를 진행하는 유저의 정보를 가져와야 함
-    @PostMapping("/{interviewId}/questions/{questionId}/answers")
+    @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
     public ResponseEntity<?> proceedInterview(
             @PathVariable Long interviewId,
-            @PathVariable Long questionId,
+            @PathVariable Long curQuestionId,
             @RequestBody AnswerRequest answerRequest
     ) {
-        return interviewService.proceedInterview(interviewId, questionId, answerRequest, new MemberAuth(1L))
+        return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, new MemberAuth(1L))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

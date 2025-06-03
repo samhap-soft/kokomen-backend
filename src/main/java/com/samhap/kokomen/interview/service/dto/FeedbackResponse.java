@@ -2,6 +2,8 @@ package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
+import java.util.Comparator;
+import java.util.List;
 
 public record FeedbackResponse(
         Long questionId,
@@ -11,9 +13,8 @@ public record FeedbackResponse(
         AnswerRank answerRank,
         String answerFeedback
 ) {
-
-    public static FeedbackResponse from(Answer answer) {
-        return new FeedbackResponse(
+    public FeedbackResponse(Answer answer) {
+        this(
                 answer.getQuestion().getId(),
                 answer.getId(),
                 answer.getQuestion().getContent(),
@@ -21,5 +22,12 @@ public record FeedbackResponse(
                 answer.getAnswerRank(),
                 answer.getFeedback()
         );
+    }
+
+    public static List<FeedbackResponse> from(List<Answer> answers) {
+        return answers.stream()
+                .map(FeedbackResponse::new)
+                .sorted(Comparator.comparing(FeedbackResponse::questionId))
+                .toList();
     }
 }
