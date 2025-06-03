@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -12,10 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewCategory;
 import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
@@ -83,54 +82,34 @@ public class InterviewService {
     @Transactional
     public Optional<NextQuestionResponse> proceedInterview(
             Long interviewId,
-            Long questionId,
+            Long curQuestionId,
             AnswerRequest answerRequest,
             MemberAuth memberAuth
     ) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
-        List<Question> questions = readSortedQuestions(interview);
-        Question curQuestion = readCurrentQuestion(questions, questionId);
-        List<Answer> prevAnswers = readSortedAnswers(questions);
-        String curAnswerContent = answerRequest.answer();
-        GptResponse gptResponse = gptClient.requestToGpt(prevAnswers, curQuestion, curAnswerContent);
-        Answer curAnswer = saveCurrentAnswer(curQuestion, curAnswerContent, gptResponse);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
+        GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
 
-        if (gptClient.isProceedRequest(prevAnswers)) {
-            Question next = saveNextQuestion(gptResponse, interview, curQuestion);
-            return Optional.of(NextQuestionResponse.createFollowingQuestionResponse(next));
+        if (questionAndAnswers.isProceedRequest()) {
+            Question nextQuestion = saveNextQuestion(gptResponse, interview, questionAndAnswers.readCurQuestion());
+            return Optional.of(NextQuestionResponse.createFollowingQuestionResponse(nextQuestion));
         }
 
-        evaluateInterview(interview, curAnswer, prevAnswers, gptResponse, member);
+        evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
         return Optional.empty();
     }
 
-    private List<Question> readSortedQuestions(Interview interview) {
+    private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
         List<Question> questions = questionRepository.findByInterview(interview);
-        if (questions.isEmpty()) {
-            throw new IllegalStateException("인터뷰에 질문이 없습니다.");
-        }
-        questions.sort(Comparator.comparing(Question::getId));
-        return questions;
+        List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
+        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId);
     }
 
-    private Question readCurrentQuestion(List<Question> questions, Long questionId) {
-        Question curQuestion = questions.get(questions.size() - 1);
-        if (!curQuestion.getId().equals(questionId)) {
-            throw new IllegalArgumentException("마지막 질문이 아닙니다. 마지막 질문: " + curQuestion.getContent());
-        }
-        return curQuestion;
-    }
-
-    private Answer saveCurrentAnswer(Question curQuestion, String curAnswerContent, GptResponse gptResponse) {
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
         GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
-        Answer answer = new Answer(
-                curQuestion,
-                curAnswerContent,
-                AnswerRank.valueOf(feedback.rank()),
-                feedback.feedback()
-        );
-        return answerRepository.save(answer);
+        return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
     private Question saveNextQuestion(GptResponse gptResponse, Interview interview, Question curQuestion) {
@@ -139,16 +118,12 @@ public class InterviewService {
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(Interview interview, Answer curAnswer, List<Answer> prevAnswers, GptResponse gptResponse, Member member) {
+    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, GptResponse gptResponse, Member member) {
         GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
-        int totalScore = prevAnswers.stream()
-                .map(answer -> answer.getAnswerRank().getScore())
-                .reduce(curAnswer.getAnswerRank().getScore(), Integer::sum);
-
+        int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
         member.updateScore(totalScore);
     }
-
 
     @Transactional(readOnly = true)
     public InterviewTotalResponse findTotalFeedbacks(
@@ -157,7 +132,7 @@ public class InterviewService {
     ) {
         Interview interview = readInterview(interviewId);
         Member member = readMember(memberAuth);
-        List<Answer> answers = readSortedAnswers(questionRepository.findByInterview(interview));
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
 
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
@@ -172,14 +147,5 @@ public class InterviewService {
     private Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인터뷰입니다."));
-    }
-
-    private List<Answer> readSortedAnswers(List<Question> questions) {
-        List<Answer> answers = answerRepository.findByQuestionIn(questions);
-        if (answers.isEmpty()) {
-            throw new IllegalStateException("인터뷰에 답변이 없습니다.");
-        }
-        answers.sort(Comparator.comparing(Answer::getId));
-        return answers;
     }
 }

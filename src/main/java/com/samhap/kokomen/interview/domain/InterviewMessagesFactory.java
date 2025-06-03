@@ -36,29 +36,29 @@ public final class InterviewMessagesFactory {
                             이때 최대한 자세하게 해줘. 최대 2000자인데, 이 지원자가 전체적으로 어느 부분이 부족했는지, 어떻게 보완하면 좋을지 알려줘.
             """;
 
-    public static List<Message> createProceedMessages(List<Answer> prevAnswers, Question curQuestion, String curAnswer) {
+    public static List<Message> createProceedMessages(QuestionAndAnswers questionAndAnswers) {
         List<Message> messages = new ArrayList<>();
         messages.add(new Message("system", PROCEED_SYSTEM_MESSAGE));
-        addMessages(prevAnswers, curQuestion, curAnswer, messages);
+        addMessages(questionAndAnswers, messages);
 
         return messages;
     }
 
-    public static List<Message> createEndMessages(List<Answer> prevAnswers, Question curQuestion, String curAnswer) {
+    public static List<Message> createEndMessages(QuestionAndAnswers questionAndAnswers) {
         List<Message> messages = new ArrayList<>();
         messages.add(new Message("system", END_SYSTEM_MESSAGE));
-        addMessages(prevAnswers, curQuestion, curAnswer, messages);
+        addMessages(questionAndAnswers, messages);
 
         return messages;
     }
 
-    private static void addMessages(List<Answer> prevAnswers, Question curQuestion, String curAnswer, List<Message> messages) {
-        prevAnswers.forEach(answer -> {
+    private static void addMessages(QuestionAndAnswers questionAndAnswers, List<Message> messages) {
+        questionAndAnswers.getPrevAnswers().forEach(answer -> {
             messages.add(new Message("assistant", answer.getQuestion().getContent()));
             messages.add(new Message("user", answer.getContent()));
         });
 
-        messages.add(new Message("assistant", curQuestion.getContent()));
-        messages.add(new Message("user", curAnswer));
+        messages.add(new Message("assistant", questionAndAnswers.readCurQuestion().getContent()));
+        messages.add(new Message("user", questionAndAnswers.getCurAnswerContent()));
     }
 }

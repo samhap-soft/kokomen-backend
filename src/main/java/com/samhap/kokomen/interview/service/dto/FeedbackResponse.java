@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service.dto;
 
+import java.util.Comparator;
 import java.util.List;
 
 import com.samhap.kokomen.interview.domain.Answer;
@@ -27,6 +28,7 @@ public record FeedbackResponse(
     public static List<FeedbackResponse> from(List<Answer> answers) {
         return answers.stream()
                 .map(FeedbackResponse::new)
+                .sorted(Comparator.comparing(FeedbackResponse::questionId))
                 .toList();
     }
 }

@@ -107,7 +107,7 @@ class InterviewControllerTest extends BaseControllerTest {
                   "next_question": "%s"
                 }
                 """.formatted(nextQuestion);
-        when(gptClient.requestToGpt(any(), any(), any()))
+        when(gptClient.requestToGpt(any()))
                 .thenReturn(new GptResponse(
                         List.of(new Choice(
                                 new Message(
@@ -118,8 +118,6 @@ class InterviewControllerTest extends BaseControllerTest {
                                 )
                         ))
                 ));
-        when(gptClient.isProceedRequest(any()))
-                .thenReturn(true);
 
         // when & then
         mockMvc.perform(post(
