@@ -1,5 +1,14 @@
 package com.samhap.kokomen.interview.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.Answer;
@@ -27,14 +36,8 @@ import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -59,21 +62,26 @@ public class InterviewService {
             throw new IllegalArgumentException("카테고리가 없습니다.");
         }
 
-        Member member = memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        Member member = findMember(memberAuth);
         Interview interview = interviewRepository.save(new Interview(member));
         categories.forEach(category -> interviewCategoryRepository.save(new InterviewCategory(interview, category)));
 
-        Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
-        RootQuestion rootQuestion = rootQuestionRepository.findById(rootQuestionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 루트 질문입니다."));
+        RootQuestion rootQuestion = findRandomRootQuestion();
 
         Question question = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
 
-        return new InterviewResponse(interview.getId(), question.getId(), rootQuestion.getContent());
+        return new InterviewResponse(interview, question);
+    }
+
+    private RootQuestion findRandomRootQuestion() {
+        Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
+
+        return rootQuestionRepository.findById(rootQuestionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 루트 질문입니다."));
     }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
+
     @Transactional
     public Optional<NextQuestionResponse> proceedInterview(
             Long interviewId,
@@ -171,8 +179,7 @@ public class InterviewService {
                 .map(answer -> answer.getAnswerRank().getScore())
                 .reduce(0, Integer::sum);
         interview.evaluate(gptEndResponse.totalFeedback(), totalScore);
-        Member member = memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        Member member = findMember(memberAuth);
         member.updateScore(totalScore);
 
         return Optional.empty();
@@ -197,8 +204,7 @@ public class InterviewService {
         Interview interview = interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인터뷰입니다."));
 
-        Member member = memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        Member member = findMember(memberAuth);
 
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         answers.sort(Comparator.comparing(Answer::getId));
@@ -209,8 +215,9 @@ public class InterviewService {
 
         return InterviewTotalResponse.of(feedbackResponses, interview, member);
     }
+
+    private Member findMember(MemberAuth memberAuth) {
+        return memberRepository.findById(memberAuth.memberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+    }
 }
-
-
-
-
