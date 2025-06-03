@@ -55,23 +55,28 @@ public class InterviewService {
 
     @Transactional
     public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        List<Category> categories = interviewRequest.categories();
-        if (categories.isEmpty()) {
-            throw new IllegalArgumentException("카테고리가 없습니다.");
-        }
+        List<Category> categories = readCategories(interviewRequest);
 
         Member member = readMember(memberAuth);
         Interview interview = interviewRepository.save(new Interview(member));
         categories.forEach(category -> interviewCategoryRepository.save(new InterviewCategory(interview, category)));
 
-        RootQuestion rootQuestion = findRandomRootQuestion();
+        RootQuestion rootQuestion = readRandomRootQuestion();
 
         Question question = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
 
         return new InterviewResponse(interview, question);
     }
 
-    private RootQuestion findRandomRootQuestion() {
+    private List<Category> readCategories(InterviewRequest interviewRequest) {
+        List<Category> categories = interviewRequest.categories();
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("카테고리가 없습니다.");
+        }
+        return categories;
+    }
+
+    private RootQuestion readRandomRootQuestion() {
         Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
 
         return rootQuestionRepository.findById(rootQuestionId)
