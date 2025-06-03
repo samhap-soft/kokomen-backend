@@ -2,25 +2,37 @@ package com.samhap.kokomen.interview.external.dto.response;
 
 import java.util.List;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public record GptResponse(
         List<Choice> choices
 ) {
 
-    public GptProceedResponse toGptProceedResponse() {
+    public GptFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
                 .get(0)
                 .function()
-                .toGptProceedResponse();
+                .extractGptFeedbackResponse(objectMapper);
     }
 
-    public GptEndResponse toGptEndResponse() {
+    public GptNextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
                 .get(0)
                 .function()
-                .toGptEndResponse();
+                .extractGptNextQuestionResponse(objectMapper);
     }
+
+    public GptTotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
+        return choices.get(0)
+                .message()
+                .toolCalls()
+                .get(0)
+                .function()
+                .extractGptTotalFeedbackResponse(objectMapper);
+    }
+
 }

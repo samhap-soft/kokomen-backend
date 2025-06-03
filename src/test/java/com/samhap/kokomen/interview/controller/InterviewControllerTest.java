@@ -13,23 +13,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.response.Choice;
 import com.samhap.kokomen.interview.external.dto.response.GptFunctionCall;
-import com.samhap.kokomen.interview.external.dto.response.GptProceedResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.Message;
 import com.samhap.kokomen.interview.external.dto.response.ToolCall;
 import com.samhap.kokomen.member.domain.Member;
-import java.util.List;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 
 class InterviewControllerTest extends BaseControllerTest {
 
@@ -100,23 +100,26 @@ class InterviewControllerTest extends BaseControllerTest {
                 }
                 """.formatted(nextQuestion);
 
-        GptProceedResponse gptProceedResponse = new GptProceedResponse(
-                AnswerRank.D.name(),
-                "똑바로 대답하세요.",
-                nextQuestion
-        );
-
-        when(gptClient.requestToGpt(any(GptRequest.class)))
+        String arguments = """
+                {
+                  "rank": "D",
+                  "feedback": "똑바로 대답하세요.",
+                  "next_question": "%s"
+                }
+                """.formatted(nextQuestion);
+        when(gptClient.requestToGpt(any(), any(), any()))
                 .thenReturn(new GptResponse(
                         List.of(new Choice(
                                 new Message(
                                         List.of(new ToolCall(new GptFunctionCall(
                                                 "generate_feedback",
-                                                objectMapper.writeValueAsString(gptProceedResponse)
+                                                arguments
                                         )))
                                 )
                         ))
                 ));
+        when(gptClient.isProceedRequest(any()))
+                .thenReturn(true);
 
         // when & then
         mockMvc.perform(post(
