@@ -13,11 +13,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
@@ -30,6 +25,9 @@ import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.Message;
 import com.samhap.kokomen.interview.external.dto.response.ToolCall;
 import com.samhap.kokomen.member.domain.Member;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 
 class InterviewControllerTest extends BaseControllerTest {
 

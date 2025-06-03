@@ -1,12 +1,5 @@
 package com.samhap.kokomen.interview.service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -34,8 +27,12 @@ import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -85,12 +82,7 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional
-    public Optional<NextQuestionResponse> proceedInterview(
-            Long interviewId,
-            Long curQuestionId,
-            AnswerRequest answerRequest,
-            MemberAuth memberAuth
-    ) {
+    public Optional<NextQuestionResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
@@ -131,10 +123,7 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewTotalResponse findTotalFeedbacks(
-            Long interviewId,
-            MemberAuth memberAuth
-    ) {
+    public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
         Member member = readMember(memberAuth);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));

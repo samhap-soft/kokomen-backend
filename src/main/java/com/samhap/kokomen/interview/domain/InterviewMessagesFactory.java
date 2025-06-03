@@ -1,9 +1,8 @@
 package com.samhap.kokomen.interview.domain;
 
+import com.samhap.kokomen.interview.external.dto.request.Message;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.samhap.kokomen.interview.external.dto.request.Message;
 
 public final class InterviewMessagesFactory {
 

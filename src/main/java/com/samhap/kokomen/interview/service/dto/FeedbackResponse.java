@@ -1,10 +1,9 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import java.util.Comparator;
-import java.util.List;
-
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
+import java.util.Comparator;
+import java.util.List;
 
 public record FeedbackResponse(
         Long questionId,

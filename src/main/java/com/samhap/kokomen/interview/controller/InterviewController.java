@@ -1,5 +1,12 @@
 package com.samhap.kokomen.interview.controller;
 
+import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.interview.service.InterviewService;
+import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.InterviewRequest;
+import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -7,15 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.samhap.kokomen.global.dto.MemberAuth;
-import com.samhap.kokomen.interview.service.InterviewService;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
-
-import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/interviews")

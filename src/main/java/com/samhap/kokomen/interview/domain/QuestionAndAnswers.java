@@ -1,11 +1,9 @@
 package com.samhap.kokomen.interview.domain;
 
+import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-
 import lombok.Getter;
 
 @Getter
