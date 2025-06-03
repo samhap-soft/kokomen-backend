@@ -31,7 +31,7 @@ public class Member extends BaseEntity {
         this.score = 0;
     }
 
-    public void updateScore(Integer updateAmount) {
-        this.score += updateAmount;
+    public void addScore(Integer addendScore) {
+        this.score += addendScore;
     }
 }
