@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -12,13 +13,8 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
-@DataJpaTest
-class AnswerRepositoryTest {
+class AnswerRepositoryTest extends BaseTest {
 
     @Autowired
     private AnswerRepository answerRepository;

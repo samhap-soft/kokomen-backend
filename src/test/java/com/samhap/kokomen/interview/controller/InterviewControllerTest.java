@@ -24,12 +24,29 @@ import com.samhap.kokomen.interview.external.dto.response.GptFunctionCall;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.Message;
 import com.samhap.kokomen.interview.external.dto.response.ToolCall;
+import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 class InterviewControllerTest extends BaseControllerTest {
+
+    @Autowired
+    protected AnswerRepository answerRepository;
+    @Autowired
+    protected InterviewRepository interviewRepository;
+    @Autowired
+    protected QuestionRepository questionRepository;
+    @Autowired
+    protected MemberRepository memberRepository;
+    @Autowired
+    protected RootQuestionRepository rootQuestionRepository;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {

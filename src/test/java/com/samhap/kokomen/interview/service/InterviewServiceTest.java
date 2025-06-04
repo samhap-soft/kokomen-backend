@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -14,10 +15,8 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class InterviewServiceTest {
+class InterviewServiceTest extends BaseTest {
 
     @Autowired
     private InterviewService interviewService;
