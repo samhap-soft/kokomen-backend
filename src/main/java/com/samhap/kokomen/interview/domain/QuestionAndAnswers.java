@@ -30,7 +30,7 @@ public class QuestionAndAnswers {
     private void validateCurQuestion(Long curQuestionId) {
         Question curQuestion = readCurQuestion();
         if (!curQuestion.getId().equals(curQuestionId)) {
-            throw new IllegalArgumentException("현재 질문이 아닙니다. 현재 질문: " + curQuestion.getContent());
+            throw new IllegalArgumentException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
         }
     }
 
