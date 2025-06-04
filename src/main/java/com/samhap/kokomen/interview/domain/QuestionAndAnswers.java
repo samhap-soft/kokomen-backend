@@ -24,7 +24,21 @@ public class QuestionAndAnswers {
                 .toList();
         this.curAnswerContent = curAnswerContent;
 
+        validateInterviewProceed();
+        validateQuestionsAndAnswersSize();
         validateCurQuestion(curQuestionId);
+    }
+
+    private void validateInterviewProceed() {
+        if (prevAnswers.size() == MAX_QUESTION_COUNT) {
+            throw new IllegalArgumentException("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
+        }
+    }
+
+    private void validateQuestionsAndAnswersSize() {
+        if (questions.size() != prevAnswers.size() + 1) {
+            throw new IllegalArgumentException("질문과 답변의 개수가 일치하지 않습니다.");
+        }
     }
 
     private void validateCurQuestion(Long curQuestionId) {
