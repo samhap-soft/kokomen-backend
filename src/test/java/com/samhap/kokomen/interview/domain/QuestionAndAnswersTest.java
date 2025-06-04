@@ -100,7 +100,9 @@ class QuestionAndAnswersTest {
     void 생성자_성공_테스트() {
         // given
         List<Question> questions = IntStream.rangeClosed(1, 3)
-                .mapToObj(i -> QuestionFixtureBuilder.builder().id((long) i).build())
+                .mapToObj(i -> QuestionFixtureBuilder.builder()
+                        .id((long) i)
+                        .build())
                 .toList();
 
         List<Answer> answers = IntStream.rangeClosed(1, 2)
@@ -130,4 +132,37 @@ class QuestionAndAnswersTest {
                         .containsExactly(1L, 2L)
         );
     }
+
+    @Test
+    void 전체_점수_계산_테스트() {
+        // given
+        List<Question> questions = IntStream.rangeClosed(1, 3)
+                .mapToObj(i -> QuestionFixtureBuilder.builder()
+                        .id((long) i)
+                        .build())
+                .toList();
+
+        List<Answer> answers = IntStream.rangeClosed(1, 2)
+                .mapToObj(i -> AnswerFixtureBuilder.builder()
+                        .question(questions.get(i - 1))
+                        .id((long) i)
+                        .answerRank(AnswerRank.B)
+                        .build())
+                .toList();
+
+        String curAnswerContent = "현재 답변";
+
+        // when
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(
+                questions,
+                answers,
+                curAnswerContent,
+                questions.get(questions.size() - 1).getId()
+        );
+
+        // then
+        assertThat(questionAndAnswers.calculateTotalScore(AnswerRank.A.getScore()))
+                .isEqualTo(AnswerRank.B.getScore() * 2 + AnswerRank.A.getScore());
+    }
+
 }
