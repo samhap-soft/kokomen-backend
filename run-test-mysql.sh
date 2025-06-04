@@ -2,7 +2,7 @@
 
 if ! docker ps --format '{{.Names}}' | grep -q '^test-mysql$'; then
   echo "test-mysql 컨테이너가 실행 중이 아닙니다. docker-compose -f test.yml up -d 로 시작합니다..."
-  docker-compose -f test.yml up -d
+  docker compose -f test.yml up -d
 else
   echo "test-mysql 컨테이너가 이미 실행 중입니다."
 fi
