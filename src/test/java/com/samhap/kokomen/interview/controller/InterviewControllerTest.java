@@ -14,22 +14,35 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.response.Choice;
-import com.samhap.kokomen.interview.external.dto.response.GptFunctionCall;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.Message;
-import com.samhap.kokomen.interview.external.dto.response.ToolCall;
+import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
-import java.util.List;
+import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 class InterviewControllerTest extends BaseControllerTest {
+
+    @Autowired
+    protected AnswerRepository answerRepository;
+    @Autowired
+    protected InterviewRepository interviewRepository;
+    @Autowired
+    protected QuestionRepository questionRepository;
+    @Autowired
+    protected MemberRepository memberRepository;
+    @Autowired
+    protected RootQuestionRepository rootQuestionRepository;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
@@ -83,6 +96,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         Question question2 = questionRepository.save(new Question(interview, rootQuestion, "객체지향의 특징을 설명해주세요."));
         String nextQuestion = "절차지향 프로그래밍이 뭔가요?";
+        AnswerRank curAnswerRank = AnswerRank.D;
 
         String requestJson = """
                 {
@@ -92,30 +106,18 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                  "question_id": 3,
-                  "question": "%s",
+                  "cur_answer_rank": "%s",
+                  "next_question_id": 3,
+                  "next_question": "%s",
                   "is_root": false
                 }
-                """.formatted(nextQuestion);
+                """.formatted(curAnswerRank, nextQuestion);
 
-        String arguments = """
-                {
-                  "rank": "D",
-                  "feedback": "똑바로 대답하세요.",
-                  "next_question": "%s"
-                }
-                """.formatted(nextQuestion);
-        when(gptClient.requestToGpt(any()))
-                .thenReturn(new GptResponse(
-                        List.of(new Choice(
-                                new Message(
-                                        List.of(new ToolCall(new GptFunctionCall(
-                                                "generate_feedback",
-                                                arguments
-                                        )))
-                                )
-                        ))
-                ));
+        GptResponse gptResponse = GptResponseFixtureBuilder.builder()
+                .answerRank(curAnswerRank)
+                .nextQuestion(nextQuestion)
+                .buildProceed();
+        when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
 
         // when & then
         mockMvc.perform(post(
@@ -135,8 +137,9 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("answer").description("사용자가 작성한 답변")
                         ),
                         responseFields(
-                                fieldWithPath("question_id").description("다음 질문 id"),
-                                fieldWithPath("question").description("다음 질문 내용"),
+                                fieldWithPath("cur_answer_rank").description("현재 답변 랭크"),
+                                fieldWithPath("next_question_id").description("다음 질문 id"),
+                                fieldWithPath("next_question").description("다음 질문 내용"),
                                 fieldWithPath("is_root").description("루트 질문 여부")
                         )
                 ));

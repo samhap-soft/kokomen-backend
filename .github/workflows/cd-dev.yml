@@ -24,6 +24,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Grant execute permission for run-test-mysql.sh
+        run: chmod +x run-test-mysql.sh
+
+      - name: Start MySQL for testing
+        run: ./run-test-mysql.sh
+
       - name: Build with Gradle
         run: ./gradlew build
 

@@ -9,7 +9,7 @@ public final class InterviewMessagesFactory {
     private InterviewMessagesFactory() {
     }
 
-    private static final String PROCEED_SYSTEM_MESSAGE = """
+    protected static final String PROCEED_SYSTEM_MESSAGE = """
                             너는 면접관이야. 존댓말로 대답해줘.
                             질문과 답변을 전달해주면, 맨 마지막 답변에 대해서만 feedback 필드에 피드백을 줘.
                             이 때 피드백은 각 답변에 대해 랭크를 매겨줘야 하는데, A+~F 대학 학점 중 하나로 매겨서 rank 필드에 줘. 기준은 다음과 같아.
@@ -21,7 +21,7 @@ public final class InterviewMessagesFactory {
                             또한 코멘트로도 피드백을 주는데, 최대한 자세하게 코멘트해줘.
                             그와 동시에 꼬리 질문을 next_question 필드에 줘. 이 때 이전에 한 질문은 중복해서 주지 말아줘.
             """;
-    private static final String END_SYSTEM_MESSAGE = """
+    protected static final String END_SYSTEM_MESSAGE = """
                             너는 면접관이야. 존댓말로 대답해줘.
                             질문과 답변을 전달해주면, 맨 마지막 답변에 대해서만 feedback 필드에 피드백을 줘.
                             이 때 피드백은 각 답변에 대해 랭크를 매겨줘야 하는데, A+~F 대학 학점 중 하나로 매겨서 rank 필드에 줘. 기준은 다음과 같아.
