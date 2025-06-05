@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import java.util.List;
@@ -36,7 +37,7 @@ class QuestionAndAnswersTest {
                 answers,
                 curAnswerContent,
                 questions.get(questions.size() - 2).getId()
-        )).isInstanceOf(IllegalArgumentException.class)
+        )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("현재 질문이 아닙니다. 현재 질문 id: " + questions.get(1).getId());
     }
 
@@ -64,7 +65,7 @@ class QuestionAndAnswersTest {
                 answers,
                 curAnswerContent,
                 questions.get(questions.size() - 1).getId()
-        )).isInstanceOf(IllegalArgumentException.class)
+        )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
     }
 
@@ -92,7 +93,7 @@ class QuestionAndAnswersTest {
                 answers,
                 curAnswerContent,
                 questions.get(questions.size() - 1).getId()
-        )).isInstanceOf(IllegalArgumentException.class)
+        )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("질문과 답변의 개수가 일치하지 않습니다.");
     }
 
