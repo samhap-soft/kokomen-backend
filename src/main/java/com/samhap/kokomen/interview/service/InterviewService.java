@@ -73,6 +73,7 @@ public class InterviewService {
         return categories;
     }
 
+    // TODO: 랜덤 생성 로직 전략 패턴으로 추상화
     private RootQuestion readRandomRootQuestion() {
         Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
 
