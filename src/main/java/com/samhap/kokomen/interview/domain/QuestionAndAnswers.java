@@ -1,7 +1,6 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lombok.Getter;
@@ -15,20 +14,37 @@ public class QuestionAndAnswers {
     private final List<Answer> prevAnswers;
     private final String curAnswerContent;
 
+    // TODO: 생성자에서 예외가 발생하더라도 객체는 힙에 남아있는지 실험해보기
     public QuestionAndAnswers(List<Question> questions, List<Answer> prevAnswers, String curAnswerContent, Long curQuestionId) {
-        questions.sort(Comparator.comparing(Question::getId));
-        prevAnswers.sort(Comparator.comparing(Answer::getId));
-        validateCurQuestion(questions, curQuestionId);
-
-        this.questions = new ArrayList<>(questions);
-        this.prevAnswers = new ArrayList<>(prevAnswers);
+        this.questions = questions.stream()
+                .sorted(Comparator.comparing(Question::getId))
+                .toList();
+        this.prevAnswers = prevAnswers.stream()
+                .sorted(Comparator.comparing(Answer::getId))
+                .toList();
         this.curAnswerContent = curAnswerContent;
+
+        validateInterviewProceed();
+        validateQuestionsAndAnswersSize();
+        validateCurQuestion(curQuestionId);
     }
 
-    private void validateCurQuestion(List<Question> questions, Long curQuestionId) {
-        Question curQuestion = questions.get(questions.size() - 1);
+    private void validateInterviewProceed() {
+        if (prevAnswers.size() == MAX_QUESTION_COUNT) {
+            throw new IllegalArgumentException("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
+        }
+    }
+
+    private void validateQuestionsAndAnswersSize() {
+        if (questions.size() != prevAnswers.size() + 1) {
+            throw new IllegalArgumentException("질문과 답변의 개수가 일치하지 않습니다.");
+        }
+    }
+
+    private void validateCurQuestion(Long curQuestionId) {
+        Question curQuestion = readCurQuestion();
         if (!curQuestion.getId().equals(curQuestionId)) {
-            throw new IllegalArgumentException("현재 질문이 아닙니다. 현재 질문: " + curQuestion.getContent());
+            throw new IllegalArgumentException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
         }
     }
 

@@ -21,10 +21,10 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
-import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -73,6 +73,7 @@ public class InterviewService {
         return categories;
     }
 
+    // TODO: 랜덤 생성 로직 전략 패턴으로 추상화
     private RootQuestion readRandomRootQuestion() {
         Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
 
@@ -82,7 +83,7 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional
-    public Optional<NextQuestionResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+    public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
@@ -91,7 +92,7 @@ public class InterviewService {
 
         if (questionAndAnswers.isProceedRequest()) {
             Question nextQuestion = saveNextQuestion(gptResponse, interview, questionAndAnswers.readCurQuestion());
-            return Optional.of(NextQuestionResponse.createFollowingQuestionResponse(nextQuestion));
+            return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
         evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
