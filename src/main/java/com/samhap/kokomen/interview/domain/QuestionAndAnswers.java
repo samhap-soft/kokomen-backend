@@ -38,7 +38,7 @@ public class QuestionAndAnswers {
 
     private void validateQuestionsAndAnswersSize() {
         if (questions.size() != prevAnswers.size() + 1) {
-            throw new BadRequestException("질문과 답변의 개수가 일치하지 않습니다.");
+            throw new IllegalArgumentException("질문과 답변의 개수가 일치하지 않습니다.");
         }
     }
 

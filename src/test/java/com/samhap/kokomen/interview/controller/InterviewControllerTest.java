@@ -14,7 +14,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
+import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -88,13 +93,13 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 인터뷰_답변을_전달하면_인터뷰에_대한_평가를_받고_다음_질문을_응답한다() throws Exception {
         // given
-        Member member = memberRepository.save(new Member("NAK"));
-        Interview interview = interviewRepository.save(new Interview(member));
-        RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion("자바의 특징은 무엇인가요?"));
-        Question question1 = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
-        answerRepository.save(new Answer(question1, "자바는 객체지향 프로그래밍 언어입니다.", AnswerRank.C, "부족합니다."));
-
-        Question question2 = questionRepository.save(new Question(interview, rootQuestion, "객체지향의 특징을 설명해주세요."));
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).rootQuestion(rootQuestion).build());
         String nextQuestion = "절차지향 프로그래밍이 뭔가요?";
         AnswerRank curAnswerRank = AnswerRank.D;
 

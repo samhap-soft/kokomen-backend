@@ -125,6 +125,7 @@ public class InterviewService {
         member.addScore(totalScore);
     }
 
+    // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
