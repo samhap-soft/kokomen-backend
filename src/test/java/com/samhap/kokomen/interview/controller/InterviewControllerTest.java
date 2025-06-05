@@ -100,6 +100,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         Question question2 = questionRepository.save(new Question(interview, rootQuestion, "객체지향의 특징을 설명해주세요."));
         String nextQuestion = "절차지향 프로그래밍이 뭔가요?";
+        AnswerRank curAnswerRank = AnswerRank.D;
 
         String requestJson = """
                 {
@@ -109,19 +110,20 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                  "question_id": 3,
-                  "question": "%s",
+                  "cur_answer_rank": "%s",
+                  "next_question_id": 3,
+                  "next_question": "%s",
                   "is_root": false
                 }
-                """.formatted(nextQuestion);
+                """.formatted(curAnswerRank, nextQuestion);
 
         String arguments = """
                 {
-                  "rank": "D",
+                  "rank": "%s",
                   "feedback": "똑바로 대답하세요.",
                   "next_question": "%s"
                 }
-                """.formatted(nextQuestion);
+                """.formatted(curAnswerRank, nextQuestion);
         when(gptClient.requestToGpt(any()))
                 .thenReturn(new GptResponse(
                         List.of(new Choice(
@@ -152,8 +154,9 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("answer").description("사용자가 작성한 답변")
                         ),
                         responseFields(
-                                fieldWithPath("question_id").description("다음 질문 id"),
-                                fieldWithPath("question").description("다음 질문 내용"),
+                                fieldWithPath("cur_answer_rank").description("현재 답변 랭크"),
+                                fieldWithPath("next_question_id").description("다음 질문 id"),
+                                fieldWithPath("next_question").description("다음 질문 내용"),
                                 fieldWithPath("is_root").description("루트 질문 여부")
                         )
                 ));

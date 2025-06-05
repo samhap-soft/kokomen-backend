@@ -23,7 +23,7 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
-import com.samhap.kokomen.interview.service.dto.NextQuestionResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Optional;
@@ -53,15 +53,17 @@ class InterviewServiceTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().rootQuestion(rootQuestion).build());
         String nextQuestion = "스레드 안전하다는 것은 무엇인가요?";
+        AnswerRank curAnswerRank = AnswerRank.A;
         GptResponse gptResponse = GptResponseFixtureBuilder.builder()
+                .answerRank(curAnswerRank)
                 .nextQuestion(nextQuestion)
                 .buildProceed();
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
 
-        NextQuestionResponse expected = new NextQuestionResponse(question.getId() + 1, nextQuestion, false);
+        InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1, nextQuestion, false);
 
         // when
-        Optional<NextQuestionResponse> actual = interviewService.proceedInterview(
+        Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
                 interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then
@@ -91,7 +93,7 @@ class InterviewServiceTest extends BaseTest {
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
 
         // when
-        Optional<NextQuestionResponse> actual = interviewService.proceedInterview(
+        Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
                 interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then
