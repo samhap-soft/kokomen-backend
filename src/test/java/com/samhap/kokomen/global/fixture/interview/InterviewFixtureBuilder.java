@@ -2,12 +2,17 @@ package com.samhap.kokomen.global.fixture.interview;
 
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
 
 public class InterviewFixtureBuilder {
 
+    private static final int DEFAULT_MAX_QUESTION_COUNT = 3;
+
     private Long id;
     private Member member;
+    private RootQuestion rootQuestion;
+    private Integer maxQuestionCount;
     private String totalFeedback;
     private Integer totalScore;
 
@@ -25,6 +30,16 @@ public class InterviewFixtureBuilder {
         return this;
     }
 
+    public InterviewFixtureBuilder rootQuestion(RootQuestion rootQuestion) {
+        this.rootQuestion = rootQuestion;
+        return this;
+    }
+
+    public InterviewFixtureBuilder maxQuestionCount(Integer maxQuestionCount) {
+        this.maxQuestionCount = maxQuestionCount;
+        return this;
+    }
+
     public InterviewFixtureBuilder totalFeedback(String totalFeedback) {
         this.totalFeedback = totalFeedback;
         return this;
@@ -39,6 +54,8 @@ public class InterviewFixtureBuilder {
         return new Interview(
                 id,
                 member != null ? member : defaultMember(),
+                rootQuestion != null ? rootQuestion : defaultRootQuestion(),
+                maxQuestionCount != null ? maxQuestionCount : DEFAULT_MAX_QUESTION_COUNT,
                 totalFeedback,
                 totalScore
         );
@@ -46,6 +63,12 @@ public class InterviewFixtureBuilder {
 
     private static Member defaultMember() {
         return MemberFixtureBuilder.builder()
+                .id(1L)
+                .build();
+    }
+
+    private static RootQuestion defaultRootQuestion() {
+        return RootQuestionFixtureBuilder.builder()
                 .id(1L)
                 .build();
     }

@@ -7,16 +7,14 @@ import com.samhap.kokomen.interview.domain.Question;
 public record InterviewProceedResponse(
         AnswerRank curAnswerRank,
         Long nextQuestionId,
-        String nextQuestion,
-        boolean isRoot
+        String nextQuestion
 ) {
 
     public static InterviewProceedResponse createFollowingQuestionResponse(Answer curAnswer, Question nextQuestion) {
         return new InterviewProceedResponse(
                 curAnswer.getAnswerRank(),
                 nextQuestion.getId(),
-                nextQuestion.getContent(),
-                false
+                nextQuestion.getContent()
         );
     }
 }

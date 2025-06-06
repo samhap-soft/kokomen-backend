@@ -1,13 +1,11 @@
 package com.samhap.kokomen.interview.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewCategory;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -17,7 +15,6 @@ import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionRespons
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
-import com.samhap.kokomen.interview.repository.InterviewCategoryRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -48,31 +45,17 @@ public class InterviewService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
-    private final InterviewCategoryRepository interviewCategoryRepository;
     private final RootQuestionRepository rootQuestionRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        List<Category> categories = readCategories(interviewRequest);
-
         Member member = readMember(memberAuth);
-        Interview interview = interviewRepository.save(new Interview(member));
-        categories.forEach(category -> interviewCategoryRepository.save(new InterviewCategory(interview, category)));
-
         RootQuestion rootQuestion = readRandomRootQuestion();
-
-        Question question = questionRepository.save(new Question(interview, rootQuestion, rootQuestion.getContent()));
+        Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
+        Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
         return new InterviewResponse(interview, question);
-    }
-
-    private List<Category> readCategories(InterviewRequest interviewRequest) {
-        List<Category> categories = interviewRequest.categories();
-        if (categories.isEmpty()) {
-            throw new BadRequestException("카테고리가 없습니다.");
-        }
-        return categories;
     }
 
     // TODO: 랜덤 생성 로직 전략 패턴으로 추상화
@@ -93,7 +76,7 @@ public class InterviewService {
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview, questionAndAnswers.readCurQuestion());
+            Question nextQuestion = saveNextQuestion(gptResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
@@ -104,7 +87,7 @@ public class InterviewService {
     private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
         List<Question> questions = questionRepository.findByInterview(interview);
         List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
-        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId);
+        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview.getMaxQuestionCount());
     }
 
     private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
@@ -112,9 +95,9 @@ public class InterviewService {
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview, Question curQuestion) {
+    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
         GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, curQuestion.getRootQuestion(), gptNextQuestionResponse.nextQuestion());
+        Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
@@ -128,8 +111,8 @@ public class InterviewService {
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
-        Interview interview = readInterview(interviewId);
         Member member = readMember(memberAuth);
+        Interview interview = readInterview(interviewId);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
 
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);

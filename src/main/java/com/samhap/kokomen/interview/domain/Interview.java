@@ -30,14 +30,23 @@ public class Interview extends BaseEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "root_question_id", nullable = false)
+    private RootQuestion rootQuestion;
+
+    @Column(name = "max_question_count", nullable = false)
+    private Integer maxQuestionCount;
+
     @Column(name = "total_feedback", length = 2_000)
     private String totalFeedback;
 
     @Column(name = "total_score")
     private Integer totalScore;
 
-    public Interview(Member member) {
+    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
         this.member = member;
+        this.rootQuestion = rootQuestion;
+        this.maxQuestionCount = maxQuestionCount;
     }
 
     public void evaluate(String totalFeedback, Integer totalScore) {

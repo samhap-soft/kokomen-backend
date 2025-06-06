@@ -33,7 +33,7 @@ class InterviewMessagesFactoryTest {
         List<Answer> prevAnswers = List.of(answer);
         String curAnswerContent = "현재 답변";
 
-        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId());
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), 3);
 
         List<Message> expectedMessages = List.of(
                 new Message("system", InterviewMessagesFactory.PROCEED_SYSTEM_MESSAGE),
@@ -73,7 +73,7 @@ class InterviewMessagesFactoryTest {
         List<Answer> prevAnswers = List.of(answer);
         String curAnswerContent = "현재 답변";
 
-        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId());
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), 3);
 
         List<Message> expectedMessages = List.of(
                 new Message("system", InterviewMessagesFactory.END_SYSTEM_MESSAGE),

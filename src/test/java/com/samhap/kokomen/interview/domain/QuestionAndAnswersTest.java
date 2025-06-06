@@ -36,7 +36,8 @@ class QuestionAndAnswersTest {
                 questions,
                 answers,
                 curAnswerContent,
-                questions.get(questions.size() - 2).getId()
+                questions.get(questions.size() - 2).getId(),
+                3
         )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("현재 질문이 아닙니다. 현재 질문 id: " + questions.get(1).getId());
     }
@@ -64,7 +65,8 @@ class QuestionAndAnswersTest {
                 questions,
                 answers,
                 curAnswerContent,
-                questions.get(questions.size() - 1).getId()
+                questions.get(questions.size() - 1).getId(),
+                3
         )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
     }
@@ -92,7 +94,8 @@ class QuestionAndAnswersTest {
                 questions,
                 answers,
                 curAnswerContent,
-                questions.get(questions.size() - 1).getId()
+                questions.get(questions.size() - 1).getId(),
+                3
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("질문과 답변의 개수가 일치하지 않습니다.");
     }
@@ -120,7 +123,8 @@ class QuestionAndAnswersTest {
                 questions,
                 answers,
                 curAnswerContent,
-                questions.get(questions.size() - 1).getId()
+                questions.get(questions.size() - 1).getId(),
+                3
         );
 
         // then
@@ -158,7 +162,8 @@ class QuestionAndAnswersTest {
                 questions,
                 answers,
                 curAnswerContent,
-                questions.get(questions.size() - 1).getId()
+                questions.get(questions.size() - 1).getId(),
+                3
         );
 
         // then
