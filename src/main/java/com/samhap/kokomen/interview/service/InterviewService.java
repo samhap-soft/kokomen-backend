@@ -3,6 +3,8 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewCategory;
@@ -68,7 +70,7 @@ public class InterviewService {
     private List<Category> readCategories(InterviewRequest interviewRequest) {
         List<Category> categories = interviewRequest.categories();
         if (categories.isEmpty()) {
-            throw new IllegalArgumentException("카테고리가 없습니다.");
+            throw new BadRequestException("카테고리가 없습니다.");
         }
         return categories;
     }
@@ -78,7 +80,7 @@ public class InterviewService {
         Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
 
         return rootQuestionRepository.findById(rootQuestionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 루트 질문입니다."));
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 루트 질문입니다."));
     }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
@@ -123,6 +125,7 @@ public class InterviewService {
         member.addScore(totalScore);
     }
 
+    // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
@@ -136,11 +139,11 @@ public class InterviewService {
 
     private Member readMember(MemberAuth memberAuth) {
         return memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
     private Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인터뷰입니다."));
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
 }

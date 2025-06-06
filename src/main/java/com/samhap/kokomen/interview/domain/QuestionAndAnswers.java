@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.domain;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
 import java.util.Comparator;
 import java.util.List;
@@ -31,7 +32,7 @@ public class QuestionAndAnswers {
 
     private void validateInterviewProceed() {
         if (prevAnswers.size() == MAX_QUESTION_COUNT) {
-            throw new IllegalArgumentException("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
+            throw new BadRequestException("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
         }
     }
 
@@ -44,7 +45,7 @@ public class QuestionAndAnswers {
     private void validateCurQuestion(Long curQuestionId) {
         Question curQuestion = readCurQuestion();
         if (!curQuestion.getId().equals(curQuestionId)) {
-            throw new IllegalArgumentException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
+            throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
         }
     }
 
