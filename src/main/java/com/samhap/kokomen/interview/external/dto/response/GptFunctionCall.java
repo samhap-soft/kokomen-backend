@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.GptApiException;
 
 public record GptFunctionCall(
         String name,
@@ -11,7 +12,7 @@ public record GptFunctionCall(
         try {
             return objectMapper.readValue(arguments, GptFeedbackResponse.class);
         } catch (Exception e) {
-            throw new IllegalArgumentException("GPT 응답 파싱 실패", e);
+            throw new GptApiException("GPT 응답 파싱 실패", e);
         }
     }
 
@@ -19,7 +20,7 @@ public record GptFunctionCall(
         try {
             return objectMapper.readValue(arguments, GptNextQuestionResponse.class);
         } catch (Exception e) {
-            throw new IllegalArgumentException("GPT 응답 파싱 실패", e);
+            throw new GptApiException("GPT 응답 파싱 실패", e);
         }
     }
 
@@ -27,7 +28,7 @@ public record GptFunctionCall(
         try {
             return objectMapper.readValue(arguments, GptTotalFeedbackResponse.class);
         } catch (Exception e) {
-            throw new IllegalArgumentException("GPT 응답 파싱 실패", e);
+            throw new GptApiException("GPT 응답 파싱 실패", e);
         }
     }
 }
