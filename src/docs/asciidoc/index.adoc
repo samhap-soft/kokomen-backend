@@ -26,6 +26,11 @@ include::{snippetsDir}/interview-startInterview/http-response.adoc[]
 include::{snippetsDir}/interview-startInterview/response-fields.adoc[]
 include::{snippetsDir}/interview-startInterview/curl-request.adoc[]
 
+==== 인터뷰 시작 예외 1
+
+include::{snippetsDir}/interview-startInterview-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-exception1/http-response.adoc[]
+
 === 인터뷰 진행
 
 include::{snippetsDir}/interview-proceedInterview/http-request.adoc[]

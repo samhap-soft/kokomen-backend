@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.DocsTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
@@ -19,6 +20,7 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.stream.Stream;
@@ -44,6 +46,28 @@ public class InterviewDocsTest extends DocsTest {
     private AnswerRepository answerRepository;
 
     // TODO: 로그인 기능 붙이면, 회원 못 찾을 때 발생하는 예외도 문서화
+    @MethodSource("provideStartInterviewExceptionCase")
+    @ParameterizedTest
+    void 인터뷰_시작_예외_문서화(int maxQuestionCount, int docsNo) throws Exception {
+        // given
+        memberRepository.save(MemberFixtureBuilder.builder().build());
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/interviews")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new InterviewRequest(Category.OPERATING_SYSTEM, maxQuestionCount)))
+                )
+                .andDo(document("interview-startInterview-exception" + docsNo));
+    }
+
+    private static Stream<Arguments> provideStartInterviewExceptionCase() {
+        return Stream.of(
+                Arguments.of(2, 1) // maxQuestionCount가 유효하지 않은 경우
+        );
+    }
+
     @MethodSource("provideProceedInterviewExceptionCase")
     @ParameterizedTest
     void 인터뷰_진행_예외_문서화(Long interviewId, Long questionId, int docsNo) throws Exception {
@@ -51,8 +75,7 @@ public class InterviewDocsTest extends DocsTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview proceedInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question proceedQuestion1 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(proceedInterview).content(rootQuestion.getContent()).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(proceedInterview).content(rootQuestion.getContent()).build());
         Interview endInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question endQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion1).build());
