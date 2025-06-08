@@ -12,12 +12,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 public class Interview extends BaseEntity {
@@ -47,11 +45,18 @@ public class Interview extends BaseEntity {
     @Column(name = "total_score")
     private Integer totalScore;
 
-    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
+    public Interview(Long id, Member member, RootQuestion rootQuestion, Integer maxQuestionCount, String totalFeedback, Integer totalScore) {
         validateMaxQuestionCount(maxQuestionCount);
+        this.id = id;
         this.member = member;
         this.rootQuestion = rootQuestion;
         this.maxQuestionCount = maxQuestionCount;
+        this.totalFeedback = totalFeedback;
+        this.totalScore = totalScore;
+    }
+
+    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
+        this(null, member, rootQuestion, maxQuestionCount, null, null);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
