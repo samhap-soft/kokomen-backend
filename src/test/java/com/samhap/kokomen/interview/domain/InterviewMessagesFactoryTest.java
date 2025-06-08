@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.interview.external.dto.request.Message;
 import java.util.List;
@@ -13,6 +14,9 @@ class InterviewMessagesFactoryTest {
     @Test
     void 인터뷰_진행을_위해_GPT에게_보낼_메시지를_생성할_수_있다() {
         // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .build();
+
         Question question1 = QuestionFixtureBuilder.builder()
                 .id(1L)
                 .content("첫 번째 질문")
@@ -33,7 +37,7 @@ class InterviewMessagesFactoryTest {
         List<Answer> prevAnswers = List.of(answer);
         String curAnswerContent = "현재 답변";
 
-        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), 3);
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<Message> expectedMessages = List.of(
                 new Message("system", InterviewMessagesFactory.PROCEED_SYSTEM_MESSAGE),
@@ -53,6 +57,9 @@ class InterviewMessagesFactoryTest {
     @Test
     void 인터뷰_종료를_위해_GPT에게_보낼_메시지를_생성할_수_있다() {
         // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .build();
+
         Question question1 = QuestionFixtureBuilder.builder()
                 .id(1L)
                 .content("첫 번째 질문")
@@ -73,7 +80,7 @@ class InterviewMessagesFactoryTest {
         List<Answer> prevAnswers = List.of(answer);
         String curAnswerContent = "현재 답변";
 
-        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), 3);
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<Message> expectedMessages = List.of(
                 new Message("system", InterviewMessagesFactory.END_SYSTEM_MESSAGE),

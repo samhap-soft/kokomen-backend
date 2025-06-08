@@ -12,10 +12,10 @@ public class QuestionAndAnswers {
     private final List<Question> questions;
     private final List<Answer> prevAnswers;
     private final String curAnswerContent;
-    private final int maxQuestionCount;
+    private final Interview interview;
 
     // TODO: 생성자에서 예외가 발생하더라도 객체는 힙에 남아있는지 실험해보기
-    public QuestionAndAnswers(List<Question> questions, List<Answer> prevAnswers, String curAnswerContent, Long curQuestionId, int maxQuestionCount) {
+    public QuestionAndAnswers(List<Question> questions, List<Answer> prevAnswers, String curAnswerContent, Long curQuestionId, Interview interview) {
         this.questions = questions.stream()
                 .sorted(Comparator.comparing(Question::getId))
                 .toList();
@@ -23,15 +23,15 @@ public class QuestionAndAnswers {
                 .sorted(Comparator.comparing(Answer::getId))
                 .toList();
         this.curAnswerContent = curAnswerContent;
-        this.maxQuestionCount = maxQuestionCount;
+        this.interview = interview;
 
-        validateInterviewProceed(maxQuestionCount);
+        validateInterviewProceed();
         validateQuestionsAndAnswersSize();
         validateCurQuestion(curQuestionId);
     }
 
-    private void validateInterviewProceed(int maxQuestionCount) {
-        if (prevAnswers.size() == maxQuestionCount) {
+    private void validateInterviewProceed() {
+        if (prevAnswers.size() == interview.getMaxQuestionCount()) {
             throw new BadRequestException("인터뷰가 종료되었습니다. 더 이상 답변 받을 수 없습니다.");
         }
     }
@@ -63,7 +63,7 @@ public class QuestionAndAnswers {
     }
 
     public boolean isProceedRequest() {
-        return questions.size() < maxQuestionCount;
+        return questions.size() < interview.getMaxQuestionCount();
     }
 
     public int calculateTotalScore(int curAnswerScore) {

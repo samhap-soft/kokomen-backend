@@ -87,7 +87,7 @@ public class InterviewService {
     private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
         List<Question> questions = questionRepository.findByInterview(interview);
         List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
-        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview.getMaxQuestionCount());
+        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
     private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {

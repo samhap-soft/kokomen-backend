@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.member.domain.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 public class Interview extends BaseEntity {
+
+    public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
+    public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 10;
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,9 +48,16 @@ public class Interview extends BaseEntity {
     private Integer totalScore;
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
+        validateMaxQuestionCount(maxQuestionCount);
         this.member = member;
         this.rootQuestion = rootQuestion;
         this.maxQuestionCount = maxQuestionCount;
+    }
+
+    private void validateMaxQuestionCount(Integer maxQuestionCount) {
+        if (maxQuestionCount < MIN_ALLOWED_MAX_QUESTION_COUNT || maxQuestionCount > MAX_ALLOWED_MAX_QUESTION_COUNT) {
+            throw new BadRequestException("최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT + " 이하이어야 합니다.");
+        }
     }
 
     public void evaluate(String totalFeedback, Integer totalScore) {

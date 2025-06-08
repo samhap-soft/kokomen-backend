@@ -7,8 +7,6 @@ import com.samhap.kokomen.member.domain.Member;
 
 public class InterviewFixtureBuilder {
 
-    private static final int DEFAULT_MAX_QUESTION_COUNT = 3;
-
     private Long id;
     private Member member;
     private RootQuestion rootQuestion;
@@ -55,7 +53,7 @@ public class InterviewFixtureBuilder {
                 id,
                 member != null ? member : defaultMember(),
                 rootQuestion != null ? rootQuestion : defaultRootQuestion(),
-                maxQuestionCount != null ? maxQuestionCount : DEFAULT_MAX_QUESTION_COUNT,
+                maxQuestionCount != null ? maxQuestionCount : Interview.MIN_ALLOWED_MAX_QUESTION_COUNT,
                 totalFeedback,
                 totalScore
         );
