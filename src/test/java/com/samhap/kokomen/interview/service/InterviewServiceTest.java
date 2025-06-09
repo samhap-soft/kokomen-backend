@@ -49,9 +49,9 @@ class InterviewServiceTest extends BaseTest {
     void 인터뷰를_진행할_때_마지막_답변이_아니면_다음_꼬리_질문과_현재_답변에_대한_피드백을_응답한다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Question question = questionRepository.save(QuestionFixtureBuilder.builder().rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().build());
         String nextQuestion = "스레드 안전하다는 것은 무엇인가요?";
         AnswerRank curAnswerRank = AnswerRank.A;
         GptResponse gptResponse = GptResponseFixtureBuilder.builder()
@@ -60,7 +60,7 @@ class InterviewServiceTest extends BaseTest {
                 .buildProceed();
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
 
-        InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1, nextQuestion, false);
+        InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1, nextQuestion);
 
         // when
         Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
@@ -78,11 +78,11 @@ class InterviewServiceTest extends BaseTest {
         // given
         AnswerRank answerRank = AnswerRank.B;
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().rootQuestion(rootQuestion).build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().rootQuestion(rootQuestion).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(answerRank).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(answerRank).build());
         String totalFeedback = "스레드 안전하다는 것은 무엇인가요?";

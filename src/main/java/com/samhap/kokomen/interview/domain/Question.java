@@ -29,16 +29,11 @@ public class Question extends BaseEntity {
     @JoinColumn(name = "interview_id", nullable = false)
     private Interview interview;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "root_question_id", nullable = false)
-    private RootQuestion rootQuestion;
-
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
 
-    public Question(Interview interview, RootQuestion rootQuestion, String content) {
+    public Question(Interview interview, String content) {
         this.interview = interview;
-        this.rootQuestion = rootQuestion;
         this.content = content;
     }
 }

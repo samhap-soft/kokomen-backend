@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// TODO: request DTO 변환 시 API 스펙에 맞지 않게 요청이 오면 적절한 예외메시지가 나가도록 처리
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/interviews")
 @RestController
