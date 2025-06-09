@@ -23,7 +23,6 @@ import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -49,24 +48,23 @@ public class InterviewDocsTest extends DocsTest {
     // TODO: 로그인 기능 붙이면, 회원 못 찾을 때 발생하는 예외도 문서화
     @MethodSource("provideStartInterviewExceptionCase")
     @ParameterizedTest
-    void 인터뷰_생성_예외_문서화(List<Category> categories, int docsNo) throws Exception {
+    void 인터뷰_시작_예외_문서화(int maxQuestionCount, int docsNo) throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
-        RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion(rootQuestionContent));
+        memberRepository.save(MemberFixtureBuilder.builder().build());
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
         // when & then
         mockMvc.perform(post(
                         "/api/v1/interviews")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new InterviewRequest(categories)))
+                        .content(objectMapper.writeValueAsString(new InterviewRequest(Category.OPERATING_SYSTEM, maxQuestionCount)))
                 )
                 .andDo(document("interview-startInterview-exception" + docsNo));
     }
 
     private static Stream<Arguments> provideStartInterviewExceptionCase() {
         return Stream.of(
-                Arguments.of(List.of(), 1) // 존재하지 않는 카테고리
+                Arguments.of(2, 1) // maxQuestionCount가 유효하지 않은 경우
         );
     }
 
@@ -74,21 +72,16 @@ public class InterviewDocsTest extends DocsTest {
     @ParameterizedTest
     void 인터뷰_진행_예외_문서화(Long interviewId, Long questionId, int docsNo) throws Exception {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview proceedInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
-        Question proceedQuestion1 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(proceedInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
-
-        Interview endInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
-        Question endQuestion1 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview proceedInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(proceedInterview).content(rootQuestion.getContent()).build());
+        Interview endInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question endQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion1).build());
-        Question endQuestion2 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        Question endQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion2).build());
-        Question endQuestion3 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        Question endQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion3).build());
 
         // when & then
@@ -112,17 +105,14 @@ public class InterviewDocsTest extends DocsTest {
     @ParameterizedTest
     void 인터뷰_최종_결과_조회_예외_문서화(Long interviewId, int docsNo) throws Exception {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview endInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).build());
-        Question endQuestion1 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview endInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question endQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion1).build());
-        Question endQuestion2 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        Question endQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion2).build());
-        Question endQuestion3 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(endInterview).rootQuestion(rootQuestion).content(rootQuestion.getContent()).build());
+        Question endQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(endInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion3).build());
 
         // when & then
