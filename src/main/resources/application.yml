@@ -6,6 +6,22 @@ spring:
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
+management:
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
+
 ---
 # local profile
 spring:
