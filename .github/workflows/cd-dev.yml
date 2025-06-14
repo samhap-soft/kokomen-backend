@@ -1,12 +1,8 @@
 name: CD DEV
 
 on:
-  pull_request:
-    branches:
-      - develop
-#on:
-#  push:
-#    branches: develop
+  push:
+    branches: develop
 
 jobs:
   build:
