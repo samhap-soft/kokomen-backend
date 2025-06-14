@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 공통 Appender 정의 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}</url>
+        </http>
+        <labels>
+            app=Kokomen
+            host=${HOSTNAME}
+        </labels>
+        <structuredMetadata>
+            level=%level
+            thread=%thread
+        </structuredMetadata>
+
+        <message class="com.github.loki4j.logback.JsonLayout"/>
+        <readMarkers>true</readMarkers>
+    </appender>
+
+    <!-- local 환경: 콘솔만 사용 -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- dev 환경: Loki만 사용 -->
+    <springProfile name="dev">
+        <property name="LOKI_URL" value="http://loki:3100/loki/api/v1/push"/>
+        <root level="INFO">
+            <appender-ref ref="LOKI"/>
+        </root>
+    </springProfile>
+</configuration>
