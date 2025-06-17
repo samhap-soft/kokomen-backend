@@ -12,12 +12,14 @@ public record GptRequest(
         ToolChoice toolChoice
 ) {
 
+    private static final String GPT_MODEL = "gpt-4.1-mini";
+
     public static GptRequest createProceedGptRequest(List<Message> messages) {
-        return new GptRequest("gpt-4o-mini", messages, createProceedTools(), createProceedToolChoice());
+        return new GptRequest(GPT_MODEL, messages, createProceedTools(), createProceedToolChoice());
     }
 
     public static GptRequest createEndGptRequest(List<Message> messages) {
-        return new GptRequest("gpt-4o-mini", messages, createEndTools(), createEndToolChoice());
+        return new GptRequest(GPT_MODEL, messages, createEndTools(), createEndToolChoice());
     }
 
     private static List<Tool> createProceedTools() {
