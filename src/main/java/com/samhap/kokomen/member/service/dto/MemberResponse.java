@@ -1,4 +1,4 @@
-package com.samhap.kokomen.auth.external.dto;
+package com.samhap.kokomen.member.service.dto;
 
 import com.samhap.kokomen.member.domain.Member;
 

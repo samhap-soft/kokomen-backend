@@ -1,7 +1,7 @@
 package com.samhap.kokomen.auth.controller;
 
-import com.samhap.kokomen.auth.external.dto.MemberResponse;
 import com.samhap.kokomen.auth.service.AuthService;
+import com.samhap.kokomen.member.service.dto.MemberResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.net.URI;
