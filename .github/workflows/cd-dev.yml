@@ -64,6 +64,8 @@ jobs:
             -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }} \
             -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }} \
             -e OPEN_AI_API_KEY=${{ secrets.OPEN_AI_API_KEY }} \
+            -e KAKAO_CLIENT_ID_DEV=${{ secrets.KAKAO_CLIENT_ID_DEV }} \
+            -e KAKAO_CLIENT_SECRET_DEV=${{ secrets.KAKAO_CLIENT_SECRET_DEV }} \
             --network backend-net \
             --name kokomen-dev-server \
             -p 8080:8080 -d samhap/kokomen:dev
