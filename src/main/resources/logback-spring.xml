@@ -40,4 +40,11 @@
             <appender-ref ref="LOKI"/>
         </root>
     </springProfile>
+
+    <!-- test 환경: 콘솔만 사용 -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 </configuration>
