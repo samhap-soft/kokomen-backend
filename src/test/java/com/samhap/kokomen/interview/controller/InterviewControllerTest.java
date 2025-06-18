@@ -2,6 +2,8 @@ package com.samhap.kokomen.interview.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
@@ -79,11 +81,15 @@ class InterviewControllerTest extends BaseControllerTest {
                         "/api/v1/interviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
                 .andDo(document("interview-startInterview",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수")
@@ -136,6 +142,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
@@ -144,6 +151,9 @@ class InterviewControllerTest extends BaseControllerTest {
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID"),
                                 parameterWithName("question_id").description("질문 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
                                 fieldWithPath("answer").description("사용자가 작성한 답변")
@@ -216,12 +226,18 @@ class InterviewControllerTest extends BaseControllerTest {
                 """;
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", interview.getId()).session(session))
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/result", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
                 .andDo(document("interview-findTotalFeedbacks",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
                                 fieldWithPath("feedbacks").description("피드백 목록"),
