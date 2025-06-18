@@ -38,6 +38,12 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: create-drop
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    redirect-uri: http://localhost:8080/api/v1/auth/kakao-login/redirect
+    client-secret: ${KAKAO_CLIENT_SECRET}
+  frontend-uri: http://localhost:8080
 cors:
   allowed-origins: http://localhost:8080
 
@@ -54,5 +60,11 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_DEV}
+    redirect-uri: https://api-dev.kokomen.kr/api/v1/auth/kakao-login/redirect
+    client-secret: ${KAKAO_CLIENT_SECRET_DEV}
+  frontend-uri: https://kokomen.kr
 cors:
   allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr
