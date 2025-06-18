@@ -10,6 +10,13 @@ open-ai:
 cors:
   allowed-origins: http://localhost:8080
 
+oauth:
+  kakao:
+    client-id: test_client_id
+    redirect-uri: https://api-dev.kokomen.kr/api/v1/auth/kakao-login/redirect
+    client-secret: test_client_secret
+  frontend-uri: https://kokomen.kr
+
 ---
 # test
 spring:

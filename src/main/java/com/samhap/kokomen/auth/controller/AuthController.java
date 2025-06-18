@@ -42,6 +42,7 @@ public class AuthController {
                 .build();
     }
 
+    // TODO: 이 API에서 에러가 발생해도 프론트엔드로 리디렉션이 되도록 수정 필요
     @GetMapping("/kakao-login/redirect")
     public ResponseEntity<Void> kakaoLoginRedirect(
             @RequestParam String code,

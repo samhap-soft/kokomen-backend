@@ -17,6 +17,14 @@ include::{snippetsDir}/category-findCategories/http-response.adoc[]
 include::{snippetsDir}/category-findCategories/response-fields.adoc[]
 include::{snippetsDir}/category-findCategories/curl-request.adoc[]
 
+== 인증/인가
+
+=== 카카오 로그인 페이지 리다이렉트 요청
+
+include::{snippetsDir}/auth-kakaoLogin/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
+
 == 인터뷰
 
 === 인터뷰 시작
