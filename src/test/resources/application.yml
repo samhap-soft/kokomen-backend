@@ -13,7 +13,7 @@ cors:
 oauth:
   kakao:
     client-id: test_client_id
-    redirect-uri: https://api-dev.kokomen.kr/api/v1/auth/kakao-login/redirect
+    redirect-uri: https://kokomen.kr/login/callback
     client-secret: test_client_secret
   frontend-uri: https://kokomen.kr
 
