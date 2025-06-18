@@ -3,6 +3,17 @@ spring:
     open-in-view: false
   jackson:
     property-naming-strategy: SNAKE_CASE
+server:
+  servlet:
+    session:
+      timeout: 24h
+      cookie:
+        name: JSESSIONID
+        path: /
+        secure: true
+        http-only: true
+        same-site: lax
+        max-age: 86400
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
@@ -41,7 +52,7 @@ spring:
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
-    redirect-uri: http://localhost:8080/api/v1/auth/kakao-login/redirect
+    redirect-uri: http://localhost:8080/login/callback
     client-secret: ${KAKAO_CLIENT_SECRET}
   frontend-uri: http://localhost:8080
 cors:
@@ -63,7 +74,7 @@ spring:
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
-    redirect-uri: https://api-dev.kokomen.kr/api/v1/auth/kakao-login/redirect
+    redirect-uri: https://kokomen.kr/login/callback
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
   frontend-uri: https://kokomen.kr
 cors:
