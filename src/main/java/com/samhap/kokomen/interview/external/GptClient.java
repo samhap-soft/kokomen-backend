@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.external;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
@@ -7,6 +8,7 @@ import com.samhap.kokomen.interview.external.dto.request.Message;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -20,10 +22,15 @@ public class GptClient {
 
     public GptClient(
             RestClient.Builder builder,
+            ObjectMapper objectMapper,
             @Value("${open-ai.api-key}") String gptApiKey
     ) {
         this.restClient = builder
                 .baseUrl("https://api.openai.com")
+                .messageConverters(converters -> {
+                    converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
+                    converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
+                })
                 .build();
         this.gptApiKey = gptApiKey;
     }
