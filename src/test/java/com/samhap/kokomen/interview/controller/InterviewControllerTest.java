@@ -2,6 +2,8 @@ package com.samhap.kokomen.interview.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
@@ -35,6 +37,7 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 
 class InterviewControllerTest extends BaseControllerTest {
 
@@ -53,6 +56,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
         String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content(rootQuestionContent).build());
 
@@ -76,10 +81,15 @@ class InterviewControllerTest extends BaseControllerTest {
                         "/api/v1/interviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
                 .andDo(document("interview-startInterview",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수")
@@ -96,6 +106,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰_답변을_전달하면_인터뷰에_대한_평가를_받고_다음_질문을_응답한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
@@ -130,6 +142,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
@@ -137,6 +151,9 @@ class InterviewControllerTest extends BaseControllerTest {
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID"),
                                 parameterWithName("question_id").description("질문 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
                                 fieldWithPath("answer").description("사용자가 작성한 답변")
@@ -153,6 +170,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰에_대한_최종_결과를_조회한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
         member.addScore(100);
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
@@ -207,12 +226,18 @@ class InterviewControllerTest extends BaseControllerTest {
                 """;
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", interview.getId()))
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/result", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
                 .andDo(document("interview-findTotalFeedbacks",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
                                 fieldWithPath("feedbacks").description("피드백 목록"),

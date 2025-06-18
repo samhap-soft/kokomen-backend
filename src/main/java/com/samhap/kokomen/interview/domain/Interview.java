@@ -65,6 +65,10 @@ public class Interview extends BaseEntity {
         }
     }
 
+    public boolean isInterviewee(Member member) {
+        return this.member.getId().equals(member.getId());
+    }
+
     public void evaluate(String totalFeedback, Integer totalScore) {
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;

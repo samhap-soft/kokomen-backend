@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -71,6 +72,7 @@ public class InterviewService {
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
@@ -113,6 +115,7 @@ public class InterviewService {
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
 
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
@@ -128,5 +131,11 @@ public class InterviewService {
     private Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
+    }
+
+    private void validateInterviewee(Interview interview, Member member) {
+        if (!interview.isInterviewee(member)) {
+            throw new ForbiddenException("인터뷰를 생성한 회원만 인터뷰를 진행할 수 있습니다.");
+        }
     }
 }

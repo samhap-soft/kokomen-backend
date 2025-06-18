@@ -25,28 +25,29 @@ public class InterviewController {
 
     @PostMapping
     public ResponseEntity<InterviewResponse> startInterview(
-            @RequestBody InterviewRequest interviewRequest
+            @RequestBody InterviewRequest interviewRequest,
+            MemberAuth memberAuth
     ) {
-        // TODO: MemberAuth를 활용해서 인터뷰를 시작하는 유저의 정보를 가져와야 함
-        return ResponseEntity.ok(interviewService.startInterview(interviewRequest, new MemberAuth(1L)));
+        return ResponseEntity.ok(interviewService.startInterview(interviewRequest, memberAuth));
     }
 
-    // TODO: MemberAuth를 활용해서 인터뷰를 진행하는 유저의 정보를 가져와야 함
     @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
     public ResponseEntity<?> proceedInterview(
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
-            @RequestBody AnswerRequest answerRequest
+            @RequestBody AnswerRequest answerRequest,
+            MemberAuth memberAuth
     ) {
-        return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, new MemberAuth(1L))
+        return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @GetMapping("/{interviewId}/result")
     public ResponseEntity<InterviewTotalResponse> findTotalFeedbacks(
-            @PathVariable Long interviewId
+            @PathVariable Long interviewId,
+            MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, new MemberAuth(1L)));
+        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, memberAuth));
     }
 }
