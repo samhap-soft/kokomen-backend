@@ -22,14 +22,18 @@ public class Member extends BaseEntity {
     @Id
     private Long id;
 
-    @Column(name = "name", nullable = false)
-    private String name;
+    @Column(name = "kakao_id", nullable = false, unique = true)
+    private Long kakaoId;
+
+    @Column(name = "nickname", nullable = false)
+    private String nickname;
 
     @Column(name = "score", nullable = false)
     private Integer score;
 
-    public Member(String name) {
-        this.name = name;
+    public Member(Long kakaoId, String nickname) {
+        this.kakaoId = kakaoId;
+        this.nickname = nickname;
         this.score = 0;
     }
 

@@ -12,6 +12,8 @@ services:
       - 8080:8080
     environment:
       SPRING_PROFILES_ACTIVE: local
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
     depends_on:
       kokomen-mysql:
