@@ -17,12 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Slf4j
 @Profile("local")
-@Component
+//@Component
 public class TestDataInitializer {
 
     private final MemberRepository memberRepository;
