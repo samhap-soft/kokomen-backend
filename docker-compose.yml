@@ -3,6 +3,7 @@ version: '3.8'
 volumes:
   grafana:
   prom:
+  kokomen_local_mysql_data:
 
 services:
   # ✅ Spring Boot App
@@ -36,8 +37,10 @@ services:
       ]
     ports:
       - 3306:3306
+    volumes:
+      - kokomen_local_mysql_data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD", "mysql", "-u", "root", "-proot", "-e", "SELECT 1" ]
       interval: 5s
       retries: 10
 
