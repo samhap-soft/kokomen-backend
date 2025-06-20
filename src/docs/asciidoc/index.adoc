@@ -22,12 +22,14 @@ include::{snippetsDir}/category-findCategories/curl-request.adoc[]
 === 카카오 로그인 페이지 리다이렉트 요청
 
 include::{snippetsDir}/auth-redirectKakaoLoginPage/http-request.adoc[]
+include::{snippetsDir}/auth-redirectKakaoLoginPage/query-parameters.adoc[]
 include::{snippetsDir}/auth-redirectKakaoLoginPage/http-response.adoc[]
 include::{snippetsDir}/auth-redirectKakaoLoginPage/curl-request.adoc[]
 
 === 카카오 인가코드로 로그인 요청
 
 include::{snippetsDir}/auth-kakaoLogin/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/request-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
