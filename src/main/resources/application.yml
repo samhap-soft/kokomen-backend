@@ -24,22 +24,6 @@ server:
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
-management:
-  endpoint:
-    health:
-      show-components: always
-      access: read_only
-    info:
-      access: read_only
-    metrics:
-      access: read_only
-    prometheus:
-      access: read_only
-  endpoints:
-    web:
-      exposure:
-        include: prometheus, info, health, metrics
-
 ---
 # local profile
 spring:
@@ -62,6 +46,21 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET}
 cors:
   allowed-origins: http://localhost:8080
+management:
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
 
 ---
 # dev profile
@@ -81,4 +80,22 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr
+  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr # TODO: 개발환경 uri로 변경
+management:
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
