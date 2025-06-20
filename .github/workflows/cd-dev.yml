@@ -67,7 +67,6 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git fetch origin feature/#50
           git checkout feature/#50
           git sparse-checkout set docker
           git pull origin feature/#50
@@ -83,4 +82,4 @@ jobs:
           KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
         run: |
           cd kokomen-backend/docker/dev
-          sudo docker compose -f docker-compose-dev.yml up -d
+          sudo -E docker compose -f docker-compose-dev.yml up -d
