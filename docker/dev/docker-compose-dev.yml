@@ -1,0 +1,163 @@
+services:
+  kokomen-dev-server:
+    image: samhap/kokomen:dev
+    container_name: kokomen-dev-server
+    restart: on-failure:3
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./app/logs:/logs
+    environment:
+      HOSTNAME: ${HOSTNAME}
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_DEV}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME_DEV}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
+      KAKAO_CLIENT_ID_DEV: ${KAKAO_CLIENT_ID_DEV}
+      KAKAO_CLIENT_SECRET_DEV: ${KAKAO_CLIENT_SECRET_DEV}
+
+  nginx:
+    image: nginx:1.28.0
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs:/var/log/nginx
+      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
+      - /home/ubuntu/data/certbot/www:/var/www/certbot
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
+      - /home/ubuntu/data/certbot/www:/var/www/certbot
+    restart: unless-stopped
+
+  kokomen-mysql-dev:
+    image: mysql:8.4.5
+    environment:
+      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
+      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
+      MYSQL_DATABASE: kokomen-dev
+      TZ: Asia/Seoul
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci"
+      ]
+    volumes:
+      - ./mysql/mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    restart: always
+
+  loki:
+    image: grafana/loki
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - 3100:3100
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki:/loki
+
+  promtail:
+    image: grafana/promtail
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
+      - ./app/logs:/logs/app
+      - /promtail/promtail-positions.yaml:/tmp/positions.yaml
+    command:
+      - "-config.file=/etc/promtail/promtail.yaml"
+    restart: unless-stopped
+
+  node:
+    image: prom/node-exporter
+    container_name: node
+    restart: unless-stopped
+    pid: host
+    ports:
+      - 9100:9100
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro'
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/prometheus
+    ports:
+      - 9090:9090
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        cat <<EOF > /prometheus/prometheus.yml
+        scrape_configs:
+          - job_name: 'app'
+            metrics_path: '/actuator/prometheus'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['kokomen-dev-server:8081']
+
+          - job_name: 'node'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['node:9100']
+        EOF
+        /bin/prometheus
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - ./grafana:/var/lib/grafana
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    ports:
+      - 3000:3000
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          orgId: 1
+          url: http://prometheus:9090
+          basicAuth: false
+          isDefault: false
+          editable: false
+        EOF
+        /run.sh
