@@ -56,8 +56,8 @@ services:
         "--collation-server=utf8mb4_general_ci"
       ]
     volumes:
-      - ./mysql/mysql_data:/var/lib/mysql
-      - ./mysql/init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+      - mysql-init:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     restart: always
@@ -70,7 +70,7 @@ services:
       - 3100:3100
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./loki:/loki
+      - loki:/loki
 
   promtail:
     image: grafana/promtail
@@ -78,7 +78,7 @@ services:
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
-      - /promtail/promtail-positions.yaml:/tmp/positions.yaml
+      - promtail-tmp:/tmp
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
     restart: unless-stopped
@@ -100,7 +100,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ./prometheus:/prometheus
+      - prometheus:/prometheus
     ports:
       - 9090:9090
     entrypoint:
@@ -127,7 +127,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     volumes:
-      - ./grafana:/var/lib/grafana
+      - grafana:/var/lib/grafana
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -161,3 +161,11 @@ services:
           editable: false
         EOF
         /run.sh
+
+volumes:
+  promtail-tmp:
+  mysql-data:
+  mysql-init:
+  loki:
+  prometheus:
+  grafana:
