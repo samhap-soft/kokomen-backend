@@ -78,7 +78,7 @@ services:
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
-      - promtail-tmp:/tmp/positions.yaml
+      - promtail-tmp:/tmp
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
     restart: unless-stopped
