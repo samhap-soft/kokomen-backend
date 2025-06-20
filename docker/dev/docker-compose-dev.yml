@@ -78,7 +78,7 @@ services:
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
-      - ./promtail/promtail-positions.yaml:/tmp/positions.yaml
+      - promtail-tmp:/tmp/positions.yaml
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
     restart: unless-stopped
@@ -163,6 +163,7 @@ services:
         /run.sh
 
 volumes:
+  promtail-tmp:
   mysql-data:
   mysql-init:
   loki:
