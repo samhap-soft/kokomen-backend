@@ -82,5 +82,6 @@ jobs:
           KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
           MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }}
         run: |
+          export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/dev
           sudo -E docker compose -f docker-compose-dev.yml up -d
