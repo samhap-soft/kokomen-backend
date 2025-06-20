@@ -1,6 +1,7 @@
 package com.samhap.kokomen.auth.controller;
 
 import com.samhap.kokomen.auth.service.AuthService;
+import com.samhap.kokomen.auth.service.dto.KakaoLoginRequest;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,32 +22,32 @@ public class AuthController {
 
     private final AuthService authService;
     private final String clientId;
-    private final String redirectUri;
 
     public AuthController(
             AuthService authService,
-            @Value("${oauth.kakao.client-id}") String clientId,
-            @Value("${oauth.kakao.redirect-uri}") String redirectUri
+            @Value("${oauth.kakao.client-id}") String clientId
     ) {
         this.authService = authService;
         this.clientId = clientId;
-        this.redirectUri = redirectUri;
     }
 
     @GetMapping("/kakao-login")
-    public ResponseEntity<Void> redirectKakaoLoginPage() {
+    public ResponseEntity<Void> redirectKakaoLoginPage(
+            @RequestParam String redirectUri,
+            @RequestParam String state
+    ) {
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(
-                        URI.create("https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s".formatted(clientId, redirectUri)))
+                .location(URI.create("https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
+                        .formatted(clientId, redirectUri, state)))
                 .build();
     }
 
     @PostMapping("/kakao-login")
     public ResponseEntity<MemberResponse> kakaoLogin(
-            @RequestParam String code,
+            @RequestBody KakaoLoginRequest kakaoLoginRequest,
             HttpServletRequest request
     ) {
-        MemberResponse memberResponse = authService.kakaoLogin(code);
+        MemberResponse memberResponse = authService.kakaoLogin(kakaoLoginRequest);
 
         HttpSession session = request.getSession(true);
         session.setAttribute("MEMBER_ID", memberResponse.id());

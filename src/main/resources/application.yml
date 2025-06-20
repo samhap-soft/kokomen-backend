@@ -59,9 +59,7 @@ spring:
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
-    redirect-uri: http://localhost:8080/login/callback
     client-secret: ${KAKAO_CLIENT_SECRET}
-  frontend-uri: http://localhost:8080
 cors:
   allowed-origins: http://localhost:8080
 
@@ -81,8 +79,6 @@ spring:
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
-    redirect-uri: https://kokomen.kr/login/callback
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
-  frontend-uri: https://kokomen.kr
 cors:
   allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr

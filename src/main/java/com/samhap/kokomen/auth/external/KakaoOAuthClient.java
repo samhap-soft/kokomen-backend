@@ -17,14 +17,12 @@ public class KakaoOAuthClient {
 
     private final RestClient restClient;
     private final String clientId;
-    private final String redirectUri;
     private final String clientSecret;
 
     public KakaoOAuthClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${oauth.kakao.client-id}") String clientId,
-            @Value("${oauth.kakao.redirect-uri}") String redirectUri,
             @Value("${oauth.kakao.client-secret}") String clientSecret
     ) {
         this.restClient = builder
@@ -34,15 +32,14 @@ public class KakaoOAuthClient {
                 })
                 .build();
         this.clientId = clientId;
-        this.redirectUri = redirectUri;
         this.clientSecret = clientSecret;
     }
 
-    public KakaoUserInfoResponse requestKakaoUserInfo(String code) {
-        return requestKakaoUserInfo(requestKakaoToken(code));
+    public KakaoUserInfoResponse requestKakaoUserInfo(String code, String redirectUri) {
+        return requestKakaoUserInfo(requestKakaoToken(code, redirectUri));
     }
 
-    private KakaoTokenResponse requestKakaoToken(String code) {
+    private KakaoTokenResponse requestKakaoToken(String code, String redirectUri) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
         formData.add("client_id", clientId);
