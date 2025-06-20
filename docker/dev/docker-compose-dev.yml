@@ -56,8 +56,8 @@ services:
         "--collation-server=utf8mb4_general_ci"
       ]
     volumes:
-      - mysql/mysql_data:/var/lib/mysql
-      - mysql/init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+      - mysql-init:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     restart: always
@@ -163,7 +163,8 @@ services:
         /run.sh
 
 volumes:
-  mysql:
+  mysql-data:
+  mysql-init:
   loki:
   prometheus:
   grafana:
