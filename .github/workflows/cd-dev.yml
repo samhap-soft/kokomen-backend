@@ -1,12 +1,8 @@
 name: CD DEV
 
-#on:
-#  push:
-#    branches: develop
-
 on:
-  pull_request:
-    branches: [ develop ]
+  push:
+    branches: develop
 
 jobs:
   build:
@@ -57,19 +53,15 @@ jobs:
       - name: Docker Image pull
         run: sudo docker pull samhap/kokomen:dev
 
-      - name: Stop existing container
-        run: |
-          sudo docker rm -f kokomen-dev-server
-
       - name: pull docker compose yaml files
         working-directory: /home/ubuntu
         run: |
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git checkout feature/#50
+          git checkout main
           git sparse-checkout set docker
-          git pull origin feature/#50
+          git pull origin main
 
       - name: Docker run
         working-directory: /home/ubuntu
