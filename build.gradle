@@ -36,6 +36,8 @@ dependencies {
     implementation 'com.github.loki4j:loki-logback-appender:2.0.0'
     implementation 'org.flywaydb:flyway-core:11.9.1'
     implementation 'org.flywaydb:flyway-mysql:11.9.1'
+    implementation 'ch.qos.logback.contrib:logback-json-classic:0.1.5'
+    implementation 'ch.qos.logback.contrib:logback-jackson:0.1.5'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
