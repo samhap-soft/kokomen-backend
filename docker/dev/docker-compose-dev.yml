@@ -6,7 +6,10 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+    volumes:
+      - ./app/logs:/logs
     environment:
+      HOSTNAME: ${HOSTNAME}
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_DEV}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME_DEV}
@@ -67,7 +70,18 @@ services:
       - 3100:3100
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - loki:/loki
+      - ./loki:/loki
+
+  promtail:
+    image: grafana/promtail
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
+      - ./app/logs:/logs/app
+      - /promtail/promtail-positions.yaml:/tmp/positions.yaml
+    command:
+      - "-config.file=/etc/promtail/promtail.yaml"
+    restart: unless-stopped
 
   node:
     image: prom/node-exporter
@@ -81,12 +95,12 @@ services:
     volumes:
       - '/:/host:ro'
 
-  prom:
+  prometheus:
     image: prom/prometheus
-    container_name: prom
+    container_name: prometheus
     restart: unless-stopped
     volumes:
-      - prom:/prometheus
+      - ./prometheus:/prometheus
     ports:
       - 9090:9090
     entrypoint:
@@ -113,7 +127,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     volumes:
-      - grafana:/var/lib/grafana
+      - ./grafana:/var/lib/grafana
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -141,7 +155,7 @@ services:
           type: prometheus
           access: proxy
           orgId: 1
-          url: http://prom:9090
+          url: http://prometheus:9090
           basicAuth: false
           isDefault: false
           editable: false
