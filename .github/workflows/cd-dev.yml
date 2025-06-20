@@ -53,6 +53,12 @@ jobs:
       - name: Docker Image pull
         run: sudo docker pull samhap/kokomen:dev
 
+      - name: Stop existing container
+        run: sudo docker rm -f kokomen-dev-server
+
+      - name: Docker Image prune
+        run: sudo docker image prune -f -a
+
       - name: pull docker compose yaml files
         working-directory: /home/ubuntu
         run: |
