@@ -66,6 +66,7 @@ jobs:
           sudo docker rm -f kokomen-dev-server
 
       - name: pull docker compose yaml files
+        working-directory: /home/ubuntu
         run: |
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
@@ -75,6 +76,7 @@ jobs:
           git sparse-checkout set docker
 
       - name: Docker run
+        working-directory: /home/ubuntu
         run: |
-          cd docker/dev
+          cd kokomen-backend/docker/dev
           sudo docker compose -f docker-compose-dev.yml up -d
