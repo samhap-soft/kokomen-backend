@@ -80,6 +80,7 @@ jobs:
           OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
           KAKAO_CLIENT_ID_DEV: ${{ secrets.KAKAO_CLIENT_ID_DEV }}
           KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
+          MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }}
         run: |
           cd kokomen-backend/docker/dev
           sudo -E docker compose -f docker-compose-dev.yml up -d
