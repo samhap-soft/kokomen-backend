@@ -70,6 +70,7 @@ jobs:
           git fetch origin feature/#50
           git checkout feature/#50
           git sparse-checkout set docker
+          git pull origin feature/#50
 
       - name: Docker run
         working-directory: /home/ubuntu
