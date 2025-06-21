@@ -80,7 +80,7 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr # TODO: 개발환경 uri로 변경
+  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr, http://kokomen.kr:3000 # TODO: 개발환경 uri로 변경
 server:
   servlet:
     session:
