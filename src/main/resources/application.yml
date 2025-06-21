@@ -21,7 +21,6 @@ server:
         http-only: true
         same-site: lax
         max-age: 86400
-        domain: .kokomen.kr
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
@@ -82,6 +81,11 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
   allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr # TODO: 개발환경 uri로 변경
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
 management:
   server:
     port: 8081
