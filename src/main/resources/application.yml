@@ -21,6 +21,7 @@ server:
         http-only: true
         same-site: lax
         max-age: 86400
+        domain: .kokomen.kr
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 
