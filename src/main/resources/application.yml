@@ -25,6 +25,24 @@ server:
         max-age: 86400
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
+management:
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
 
 ---
 # local profile
@@ -52,21 +70,6 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET}
 cors:
   allowed-origins: http://localhost:8080
-management:
-  endpoint:
-    health:
-      show-components: always
-      access: read_only
-    info:
-      access: read_only
-    metrics:
-      access: read_only
-    prometheus:
-      access: read_only
-  endpoints:
-    web:
-      exposure:
-        include: prometheus, info, health, metrics
 
 ---
 # dev profile
@@ -75,6 +78,9 @@ spring:
     activate:
       on-profile: dev
   datasource:
+    url: ${SPRING_DATASOURCE_URL_DEV}
+    username: ${SPRING_DATASOURCE_USERNAME_DEV}
+    password: ${SPRING_DATASOURCE_PASSWORD_DEV}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     database: mysql
@@ -96,21 +102,35 @@ server:
     session:
       cookie:
         domain: kokomen.kr
-management:
-  server:
-    port: 8081
-    address: 0.0.0.0
-  endpoint:
-    health:
-      show-components: always
-      access: read_only
-    info:
-      access: read_only
-    metrics:
-      access: read_only
-    prometheus:
-      access: read_only
-  endpoints:
-    web:
-      exposure:
-        include: prometheus, info, health, metrics
+
+---
+# prod profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_PROD}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS_CLUSTER_ENDPOINT}
+      port: 6379
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
