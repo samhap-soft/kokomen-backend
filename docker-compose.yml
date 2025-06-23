@@ -4,6 +4,7 @@ volumes:
   grafana:
   prom:
   kokomen_local_mysql_data:
+  kokomen-local-redis-data:
 
 services:
   # ✅ Spring Boot App
@@ -43,6 +44,14 @@ services:
       test: [ "CMD", "mysql", "-u", "root", "-proot", "-e", "SELECT 1" ]
       interval: 5s
       retries: 10
+
+  # ✅ Redis
+  kokomen-redis:
+    image: valkey/valkey:8.0
+    ports:
+      - 6379:6379
+    volumes:
+      - kokomen-local-redis-data:/data
 
 #  로컬에서 모니터링 테스트가 필요할 때만 주석 해제
 #  # ✅ Loki
