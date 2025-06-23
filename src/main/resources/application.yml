@@ -10,6 +10,8 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     clean-disabled: true
+  session:
+    store-type: redis
 server:
   servlet:
     session:
@@ -40,6 +42,10 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: validate
+  data:
+    redis:
+      host: kokomen-redis
+      port: 6379
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
@@ -75,6 +81,10 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+  data:
+    redis:
+      host: kokomen-redis-dev
+      port: 6379
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
