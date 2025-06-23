@@ -81,6 +81,10 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+  data:
+    redis:
+      host: kokomen-redis-dev
+      port: 6379
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}

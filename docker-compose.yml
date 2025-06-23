@@ -47,7 +47,7 @@ services:
 
   # ✅ Redis
   kokomen-redis:
-    image: valkey/valkey:8.0
+    image: valkey/valkey:8.0.1
     ports:
       - 6379:6379
     volumes:
