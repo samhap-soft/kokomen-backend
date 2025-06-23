@@ -1,8 +1,8 @@
 name: CD PROD
 
 on:
-  pull_request:
-    branches: [ develop ] # TODO: push main으로 변경
+  push:
+    branches: [ main ]
 
 jobs:
   build:
@@ -69,9 +69,9 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git checkout feature/#54
+          git checkout main
           git sparse-checkout set docker
-          git pull origin feature/#54
+          git pull origin main
 
       - name: Docker run
         working-directory: /home/ubuntu
