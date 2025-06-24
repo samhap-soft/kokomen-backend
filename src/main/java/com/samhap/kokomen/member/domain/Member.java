@@ -31,13 +31,21 @@ public class Member extends BaseEntity {
     @Column(name = "score", nullable = false)
     private Integer score;
 
+    @Column(name = "free_token_count", nullable = false)
+    private Integer freeTokenCount;
+
     public Member(Long kakaoId, String nickname) {
         this.kakaoId = kakaoId;
         this.nickname = nickname;
         this.score = 0;
+        this.freeTokenCount = 10; // TODO: @Scheduled에서 상수 선언하고 가져다 쓰기
     }
 
     public void addScore(Integer addendScore) {
         this.score += addendScore;
+    }
+
+    public boolean hasEnoughTokenCount(int maxQuestionCount) {
+        return this.freeTokenCount >= maxQuestionCount;
     }
 }

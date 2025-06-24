@@ -6,8 +6,9 @@ public class MemberFixtureBuilder {
 
     private Long id;
     private Long kakaoId;
-    private String name;
+    private String nickname;
     private Integer score;
+    private Integer freeTokenCount;
 
     public static MemberFixtureBuilder builder() {
         return new MemberFixtureBuilder();
@@ -18,8 +19,13 @@ public class MemberFixtureBuilder {
         return this;
     }
 
-    public MemberFixtureBuilder name(String name) {
-        this.name = name;
+    public MemberFixtureBuilder kakaoId(Long kakaoId) {
+        this.kakaoId = kakaoId;
+        return this;
+    }
+
+    public MemberFixtureBuilder nickname(String nickname) {
+        this.nickname = nickname;
         return this;
     }
 
@@ -28,17 +34,19 @@ public class MemberFixtureBuilder {
         return this;
     }
 
-    public MemberFixtureBuilder kakaoId(Long kakaoId) {
-        this.kakaoId = kakaoId;
+    public MemberFixtureBuilder freeTokenCount(Integer freeTokenCount) {
+        this.freeTokenCount = freeTokenCount;
         return this;
     }
+
 
     public Member build() {
         return new Member(
                 id,
                 kakaoId != null ? kakaoId : 1L,
-                name != null ? name : "오상훈",
-                score != null ? score : 0
+                nickname != null ? nickname : "오상훈",
+                score != null ? score : 0,
+                freeTokenCount != null ? freeTokenCount : 10
         );
     }
 }
