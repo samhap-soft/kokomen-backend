@@ -19,14 +19,14 @@ scrape_configs:
             timestamp: timestamp
             logger: logger
             thread: thread
-            profile: profile
+            message: message
       - labels:
           app:
           host:
           level:
-          timestamp:
-          logger:
-          thread:
-          profile:
+      - template:
+          source: enhanced_message
+          template: |
+            [{{.timestamp}}] [{{.logger}}] [{{.thread}}] {{.message}}
       - output:
-          source: message
+          source: enhanced_message
