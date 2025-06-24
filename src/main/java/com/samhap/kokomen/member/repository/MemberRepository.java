@@ -13,4 +13,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Modifying
     @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m = :member AND m.freeTokenCount > 0")
     int decreaseFreeTokenCount(Member member);
+
+    @Modifying
+    @Query("UPDATE Member m SET m.freeTokenCount = :dailyFreeTokenCount")
+    int rechargeDailyFreeToken(int dailyFreeTokenCount);
 }

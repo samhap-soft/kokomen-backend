@@ -52,4 +52,21 @@ class MemberRepositoryTest extends BaseTest {
                 () -> assertThat(affectedRows).isEqualTo(0)
         );
     }
+
+    @Test
+    void daily_free_token_count를_재충전한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(0).build());
+
+        // when
+        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
+        int affectedRows = memberRepository.rechargeDailyFreeToken(Member.DAILY_FREE_TOKEN_COUNT);
+        transactionManager.commit(status);
+
+        // then
+        assertAll(
+                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(Member.DAILY_FREE_TOKEN_COUNT),
+                () -> assertThat(affectedRows).isEqualTo(1)
+        );
+    }
 }
