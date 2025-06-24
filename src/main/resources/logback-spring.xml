@@ -44,7 +44,6 @@
                 <customFieldNames>
                     <app>app</app>
                     <host>host</host>
-                    <profile>SPRING_PROFILES_ACTIVE</profile>
                 </customFieldNames>
             </layout>
         </encoder>
