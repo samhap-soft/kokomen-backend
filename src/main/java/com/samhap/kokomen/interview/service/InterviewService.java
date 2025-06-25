@@ -52,11 +52,18 @@ public class InterviewService {
     @Transactional
     public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
+        validateEnoughTokenCount(member, interviewRequest);
         RootQuestion rootQuestion = readRandomRootQuestion();
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
         Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
         return new InterviewResponse(interview, question);
+    }
+
+    private void validateEnoughTokenCount(Member member, InterviewRequest interviewRequest) {
+        if (!member.hasEnoughTokenCount(interviewRequest.maxQuestionCount())) {
+            throw new BadRequestException("생성하려는 인터뷰의 최대 질문 수가 회원이 가진 토큰 개수를 초과합니다.");
+        }
     }
 
     // TODO: 랜덤 생성 로직 전략 패턴으로 추상화
@@ -74,6 +81,7 @@ public class InterviewService {
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
+        decreaseTokenCount(member);
         GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
 
@@ -84,6 +92,13 @@ public class InterviewService {
 
         evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
         return Optional.empty();
+    }
+
+    private void decreaseTokenCount(Member member) {
+        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
+        if (affectedRows == 0) {
+            throw new BadRequestException("회원의 토큰 개수가 부족해 인터뷰를 더 이상 진행할 수 없습니다.");
+        }
     }
 
     private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
