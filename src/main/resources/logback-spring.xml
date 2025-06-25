@@ -32,21 +32,8 @@
             <fileNamePattern>./logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
-        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
-                <timestampFormat>yyyy-MM-dd HH:mm:ss.SSS</timestampFormat>
-                <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter"/>
-                <includeContextName>false</includeContextName>
-                <includeLevel>true</includeLevel>
-                <includeThreadName>true</includeThreadName>
-                <includeLoggerName>true</includeLoggerName>
-                <includeFormattedMessage>true</includeFormattedMessage>
-                <customFieldNames>
-                    <app>app</app>
-                    <host>host</host>
-                    <profile>SPRING_PROFILES_ACTIVE</profile>
-                </customFieldNames>
-            </layout>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
