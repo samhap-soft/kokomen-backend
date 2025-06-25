@@ -33,6 +33,14 @@ include::{snippetsDir}/auth-kakaoLogin/request-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
+== 멤버
+
+=== 멤버 프로필 조회
+
+include::{snippetsDir}/member-findMyProfile/http-request.adoc[]
+include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
+include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
+
 == 인터뷰
 
 === 인터뷰 시작
