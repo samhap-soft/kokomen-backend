@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 @Entity
 public class Member extends BaseEntity {
 
+    public static final int DAILY_FREE_TOKEN_COUNT = 10;
+
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
@@ -31,13 +33,21 @@ public class Member extends BaseEntity {
     @Column(name = "score", nullable = false)
     private Integer score;
 
+    @Column(name = "free_token_count", nullable = false)
+    private Integer freeTokenCount;
+
     public Member(Long kakaoId, String nickname) {
         this.kakaoId = kakaoId;
         this.nickname = nickname;
         this.score = 0;
+        this.freeTokenCount = DAILY_FREE_TOKEN_COUNT;
     }
 
     public void addScore(Integer addendScore) {
         this.score += addendScore;
+    }
+
+    public boolean hasEnoughTokenCount(int maxQuestionCount) {
+        return this.freeTokenCount >= maxQuestionCount;
     }
 }
