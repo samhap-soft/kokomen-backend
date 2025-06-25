@@ -9,6 +9,8 @@ services:
     volumes:
       - ./app/logs:/logs
     environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       HOSTNAME: ${HOSTNAME}
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL_PROD: ${SPRING_DATASOURCE_URL_PROD}
@@ -28,6 +30,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/logs:/var/log/nginx
     restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
 
 #  node:
 #    image: prom/node-exporter

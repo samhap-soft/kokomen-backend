@@ -65,6 +65,7 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
+          git fetch origin develop
           git checkout develop
           git sparse-checkout set docker
           git pull origin develop
