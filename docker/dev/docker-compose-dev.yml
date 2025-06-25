@@ -88,6 +88,8 @@ services:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
       - promtail-tmp:/tmp
+    environment:
+      - HOSTNAME=${HOSTNAME}
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
     restart: unless-stopped

@@ -1,3 +1,6 @@
+server:
+  http_listen_port: 9080
+
 positions:
   filename: /tmp/positions.yaml
 
@@ -9,24 +12,6 @@ scrape_configs:
     static_configs:
       - labels:
           job: kokomen-app
+          app: kokomen
+          host: ${HOSTNAME}
           __path__: /logs/app/app.log
-    pipeline_stages:
-      - json:
-          expressions:
-            app: app
-            host: host
-            level: level
-            timestamp: timestamp
-            logger: logger
-            thread: thread
-            message: message
-      - labels:
-          app:
-          host:
-          level:
-      - template:
-          source: enhanced_message
-          template: |
-            [{{.timestamp}}] [{{.logger}}] [{{.thread}}] {{.message}}
-      - output:
-          source: enhanced_message
