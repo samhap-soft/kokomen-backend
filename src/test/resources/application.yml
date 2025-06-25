@@ -28,7 +28,7 @@ spring:
     password: root
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
     show-sql: true
     database-platform: org.hibernate.dialect.MySQL8Dialect
 
@@ -45,6 +45,6 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     show-sql: true
     database-platform: org.hibernate.dialect.H2Dialect
