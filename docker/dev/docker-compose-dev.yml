@@ -9,6 +9,8 @@ services:
     volumes:
       - ./app/logs:/logs
     environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       HOSTNAME: ${HOSTNAME}
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL_DEV: ${SPRING_DATASOURCE_URL_DEV}
@@ -21,14 +23,6 @@ services:
   kokomen-mysql-dev:
     image: mysql:8.4.5
     container_name: kokomen-mysql-dev
-    environment:
-      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
-      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
-      MYSQL_DATABASE: kokomen-dev
-      TZ: Asia/Seoul
-      LANG: C.UTF-8
-      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
     command:
       [
         "mysqld",
@@ -41,6 +35,14 @@ services:
     ports:
       - 3306:3306
     restart: always
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
+      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
+      MYSQL_DATABASE: kokomen-dev
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
 
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
@@ -49,6 +51,8 @@ services:
       - 6379:6379
     volumes:
       - kokomen-redis-data:/data
+    environment:
+      TZ: Asia/Seoul
 
   nginx:
     image: nginx:1.28.0
@@ -62,6 +66,8 @@ services:
       - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
       - /home/ubuntu/data/certbot/www:/var/www/certbot
     restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
 
   certbot:
     image: certbot/certbot
@@ -70,6 +76,8 @@ services:
       - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
       - /home/ubuntu/data/certbot/www:/var/www/certbot
     restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
 
   loki:
     image: grafana/loki
@@ -80,6 +88,8 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki:/loki
+    environment:
+      TZ: Asia/Seoul
 
   promtail:
     image: grafana/promtail
@@ -88,11 +98,12 @@ services:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
       - promtail-tmp:/tmp
-    environment:
-      - HOSTNAME=${HOSTNAME}
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
     restart: unless-stopped
+    environment:
+      HOSTNAME: ${HOSTNAME}
+      TZ: Asia/Seoul
 
   node:
     image: prom/node-exporter
@@ -105,6 +116,8 @@ services:
       - '--path.rootfs=/host'
     volumes:
       - '/:/host:ro'
+    environment:
+      TZ: Asia/Seoul
 
   prometheus:
     image: prom/prometheus
@@ -132,6 +145,8 @@ services:
               - targets: ['node:9100']
         EOF
         /bin/prometheus
+    environment:
+      TZ: Asia/Seoul
 
   grafana:
     image: grafana/grafana
@@ -140,8 +155,9 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      TZ: Asia/Seoul
     ports:
       - 3000:3000
     entrypoint:
