@@ -24,6 +24,7 @@ import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -50,14 +51,14 @@ public class InterviewService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
+    public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         validateEnoughTokenCount(member, interviewRequest);
         RootQuestion rootQuestion = readRandomRootQuestion();
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
         Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
-        return new InterviewResponse(interview, question);
+        return new InterviewStartResponse(interview, question);
     }
 
     private void validateEnoughTokenCount(Member member, InterviewRequest interviewRequest) {
@@ -138,6 +139,21 @@ public class InterviewService {
         return InterviewTotalResponse.of(feedbackResponses, interview, member);
     }
 
+    // TODO: 일급 컬렉션으로 묶어서 로직 캡슐화하기
+    public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth);
+        Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
+        List<Question> questions = questionRepository.findByInterviewOrderById(interview);
+        List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
+
+        if (interview.isInProgress()) {
+            return InterviewResponse.createInProgress(interview, questions, answers);
+        }
+
+        return InterviewResponse.createFinished(interview, questions, answers);
+    }
+
     private Member readMember(MemberAuth memberAuth) {
         return memberRepository.findById(memberAuth.memberId())
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
@@ -150,7 +166,7 @@ public class InterviewService {
 
     private void validateInterviewee(Interview interview, Member member) {
         if (!interview.isInterviewee(member)) {
-            throw new ForbiddenException("인터뷰를 생성한 회원만 인터뷰를 진행할 수 있습니다.");
+            throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
         }
     }
 }
