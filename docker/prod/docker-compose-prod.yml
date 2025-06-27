@@ -33,28 +33,34 @@ services:
     environment:
       TZ: Asia/Seoul
 
-#  node:
-#    image: prom/node-exporter
-#    container_name: node
-#    restart: unless-stopped
-#    pid: host
-#    ports:
-#      - 9100:9100
-#    command:
-#      - '--path.rootfs=/host'
-#    volumes:
-#      - '/:/host:ro'
-#
-#  promtail:
-#    image: grafana/promtail
-#    container_name: promtail
-#    volumes:
-#      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
-#      - ./app/logs:/logs/app
-#      - promtail-tmp:/tmp
-#    command:
-#      - "-config.file=/etc/promtail/promtail.yaml"
-#    restart: unless-stopped
-#
-#volumes:
-#  promtail-tmp:
+  node:
+    image: prom/node-exporter
+    container_name: node
+    restart: unless-stopped
+    pid: host
+    ports:
+      - 9100:9100
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro'
+    environment:
+      TZ: Asia/Seoul
+
+  promtail:
+    image: grafana/promtail
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
+      - ./app/logs:/logs/app
+      - promtail-tmp:/tmp
+    command:
+      - "-config.file=/etc/promtail/promtail.yaml"
+      - "-config.expand-env=true"
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+      HOSTNAME: ${HOSTNAME}
+
+volumes:
+  promtail-tmp:
