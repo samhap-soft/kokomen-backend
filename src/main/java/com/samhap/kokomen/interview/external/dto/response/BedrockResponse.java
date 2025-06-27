@@ -11,7 +11,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, GptFeedbackResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패", e);
+            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
@@ -19,7 +19,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, GptNextQuestionResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패", e);
+            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
@@ -27,7 +27,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, GptTotalFeedbackResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패", e);
+            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
-} 
+}

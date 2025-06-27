@@ -83,7 +83,6 @@ public class InterviewService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
 
-        // BedrockClient 사용 (GptClient 대신)
         BedrockResponse bedrockResponse = bedrockClient.requestToBedrock(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, bedrockResponse);
 
