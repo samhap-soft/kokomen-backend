@@ -51,6 +51,13 @@
         </root>
     </springProfile>
 
+    <!-- prod 환경: FILE 저장 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
     <!-- test 환경: 콘솔만 사용 -->
     <springProfile name="test">
         <root level="INFO">

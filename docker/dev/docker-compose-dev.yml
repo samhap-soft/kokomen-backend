@@ -100,10 +100,11 @@ services:
       - promtail-tmp:/tmp
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
+      - "-config.expand-env=true"
     restart: unless-stopped
     environment:
-      HOSTNAME: ${HOSTNAME}
       TZ: Asia/Seoul
+      HOSTNAME: ${HOSTNAME}
 
   node:
     image: prom/node-exporter
