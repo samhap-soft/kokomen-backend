@@ -25,6 +25,7 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
@@ -253,6 +254,143 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("user_prev_score").description("이전 사용자 점수"),
                                 fieldWithPath("user_prev_rank").description("이전 사용자 랭크"),
                                 fieldWithPath("user_cur_rank").description("현재 사용자 랭크")
+                        )
+                ));
+    }
+
+    @Test
+    void 진행중인_인터뷰_상태를_확인한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("현재 새로운 질문").build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String responseJson = """
+                {
+                	"interview_state": "IN_PROGRESS",
+                	"cur_question_id": %d,
+                	"question": "%s",
+                	"cur_question_count": %d,
+                	"max_question_count": %d,
+                	"prev_questions_and_answers": [
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		}
+                	]
+                }
+                """.formatted(
+                question2.getId(), question2.getContent(), 2, interview.getMaxQuestionCount(),
+                question1.getId(), question1.getContent(), answer1.getId(), answer1.getContent());
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findInterview-inProgress",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_state").description("인터뷰 상태"),
+                                fieldWithPath("cur_question_id").description("현재 질문 ID"),
+                                fieldWithPath("question").description("현재 질문 내용"),
+                                fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
+                                fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
+                                fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
+                                fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
+                                fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
+                        )
+                ));
+    }
+
+    // TODO: 이거 완성하자.
+    @Test
+    void 종료된_인터뷰_상태를_확인한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member).rootQuestion(rootQuestion).maxQuestionCount(3).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("두번째 질문").build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).content("두번째 답변").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("세번째 질문").build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).content("세번째 답변").build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String responseJson = """
+                {
+                	"interview_state": "FINISHED",
+                	"cur_question_count": %d,
+                	"max_question_count": %d,
+                	"prev_questions_and_answers": [
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		},
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		},
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		}
+                	]
+                }
+                """.formatted(
+                interview.getMaxQuestionCount(), interview.getMaxQuestionCount(),
+                question1.getId(), question1.getContent(), answer1.getId(), answer1.getContent(),
+                question2.getId(), question2.getContent(), answer2.getId(), answer2.getContent(),
+                question3.getId(), question3.getContent(), answer3.getId(), answer3.getContent());
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findInterview-finished",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_state").description("인터뷰 상태"),
+                                fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
+                                fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
+                                fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
+                                fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
+                                fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
                         )
                 ));
     }

@@ -1,0 +1,5 @@
+ALTER TABLE interview
+    ADD COLUMN interview_state ENUM('IN_PROGRESS', 'FINISHED') NOT NULL DEFAULT 'FINISHED';
+
+ALTER TABLE interview
+    ALTER COLUMN interview_state DROP DEFAULT;

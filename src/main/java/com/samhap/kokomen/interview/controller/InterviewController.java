@@ -5,6 +5,7 @@ import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class InterviewController {
     private final InterviewService interviewService;
 
     @PostMapping
-    public ResponseEntity<InterviewResponse> startInterview(
+    public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody InterviewRequest interviewRequest,
             MemberAuth memberAuth
     ) {
@@ -49,5 +50,13 @@ public class InterviewController {
             MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, memberAuth));
+    }
+
+    @GetMapping("/{interviewId}")
+    public ResponseEntity<InterviewResponse> findInterview(
+            @PathVariable Long interviewId,
+            MemberAuth memberAuth
+    ) {
+        return ResponseEntity.ok(interviewService.findInterview(interviewId, memberAuth));
     }
 }
