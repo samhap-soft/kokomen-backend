@@ -10,6 +10,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.requestF
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -35,6 +36,7 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -319,7 +321,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 ));
     }
 
-    // TODO: 이거 완성하자.
     @Test
     void 종료된_인터뷰_상태를_확인한다() throws Exception {
         // given
@@ -391,6 +392,84 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
                                 fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
                                 fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 자신의_면접_목록을_조회한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
+        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
+
+        Interview interview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).content(rootQuestion1.getContent()).build());
+
+        // interview2는 완료
+        Interview interview2 = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).content(rootQuestion2.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        String responseJson = """
+                [
+                	{
+                		"interview_id": %d,
+                		"interview_state": "%s",
+                		"interview_category": "%s",
+                		"created_at": "%s",
+                		"root_question": "%s",
+                		"max_question_count": %d,
+                		"cur_answer_count": %d
+                	},
+                	{
+                		"interview_id": %d,
+                		"interview_state": "%s",
+                		"interview_category": "%s",
+                		"created_at": "%s",
+                		"root_question": "%s",
+                		"max_question_count": %d,
+                		"cur_answer_count": %d,
+                		"score": %s
+                	}
+                ]
+                """.formatted(
+                interview1.getId(), interview1.getInterviewState(), interview1.getRootQuestion().getCategory(),
+                interview1.getCreatedAt().toString(), interview1.getRootQuestion().getContent(), interview1.getMaxQuestionCount(), 0,
+                interview2.getId(), interview2.getInterviewState(), interview2.getRootQuestion().getCategory(),
+                interview2.getCreatedAt().toString(), interview2.getRootQuestion().getContent(), interview2.getMaxQuestionCount(), 3, interview2.getTotalScore()
+        );
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/me")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findMyInterviews",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("state").description("면접 상태 쿼리 파라미터 " + Arrays.asList(InterviewState.values()) + " (nullable)").optional()
+                        ),
+                        responseFields(
+                                fieldWithPath("[].interview_id").description("면접 ID"),
+                                fieldWithPath("[].interview_state").description("면접 상태 " + Arrays.asList(InterviewState.values())),
+                                fieldWithPath("[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("[].created_at").description("생성 시간"),
+                                fieldWithPath("[].root_question").description("루트 질문"),
+                                fieldWithPath("[].max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
+                                fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
