@@ -406,17 +406,16 @@ class InterviewControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
         RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
 
-        Interview interview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
-        questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).content(rootQuestion1.getContent()).build());
+        Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
 
-        // interview2는 완료
-        Interview interview2 = interviewRepository.save(InterviewFixtureBuilder.builder()
+        Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).content(rootQuestion2.getContent()).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).content(rootQuestion2.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
 
         String responseJson = """
@@ -442,10 +441,12 @@ class InterviewControllerTest extends BaseControllerTest {
                 	}
                 ]
                 """.formatted(
-                interview2.getId(), interview2.getInterviewState(), interview2.getRootQuestion().getCategory(), interview2.getCreatedAt().toString(),
-                interview2.getRootQuestion().getContent(), interview2.getMaxQuestionCount(), 3, interview2.getTotalScore(),
-                interview1.getId(), interview1.getInterviewState(), interview1.getRootQuestion().getCategory(), interview1.getCreatedAt().toString(),
-                interview1.getRootQuestion().getContent(), interview1.getMaxQuestionCount(), 0
+                finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
+                finishedInterview.getCreatedAt(),
+                finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
+                inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
+                inProgressInterview.getCreatedAt(),
+                inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0
         );
 
         // when & then
