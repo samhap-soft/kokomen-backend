@@ -6,26 +6,25 @@ public record BedrockResponse(
         String content
 ) {
 
-    // TODO: GPT와 Bedrock이 통합적으로 사용할 수 있는 이름으로 변경. 예를 들어 InterviewXXX
-    public GptFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
+    public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(content, GptFeedbackResponse.class);
+            return objectMapper.readValue(content, AnswerFeedbackResponse.class);
         } catch (Exception e) {
             throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
-    public GptNextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
+    public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(content, GptNextQuestionResponse.class);
+            return objectMapper.readValue(content, NextQuestionResponse.class);
         } catch (Exception e) {
             throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
-    public GptTotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
+    public TotalFeedbackResponse extractTotalFeedbackResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(content, GptTotalFeedbackResponse.class);
+            return objectMapper.readValue(content, TotalFeedbackResponse.class);
         } catch (Exception e) {
             throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }

@@ -7,7 +7,7 @@ public record GptResponse(
         List<Choice> choices
 ) {
 
-    public GptFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
+    public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
@@ -16,7 +16,7 @@ public record GptResponse(
                 .extractGptFeedbackResponse(objectMapper);
     }
 
-    public GptNextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
+    public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
@@ -25,7 +25,7 @@ public record GptResponse(
                 .extractGptNextQuestionResponse(objectMapper);
     }
 
-    public GptTotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
+    public TotalFeedbackResponse extractTotalFeedbackResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
