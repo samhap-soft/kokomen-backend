@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public record BedrockResponse(
         String content
-) {
+) implements LLMResponse {
 
+    @Override
     public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
         try {
             return objectMapper.readValue(content, AnswerFeedbackResponse.class);
@@ -14,6 +15,7 @@ public record BedrockResponse(
         }
     }
 
+    @Override
     public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
         try {
             return objectMapper.readValue(content, NextQuestionResponse.class);
@@ -22,6 +24,7 @@ public record BedrockResponse(
         }
     }
 
+    @Override
     public TotalFeedbackResponse extractTotalFeedbackResponse(ObjectMapper objectMapper) {
         try {
             return objectMapper.readValue(content, TotalFeedbackResponse.class);

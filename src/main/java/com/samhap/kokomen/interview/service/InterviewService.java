@@ -12,7 +12,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
+import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
@@ -83,15 +83,15 @@ public class InterviewService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
 
-        BedrockResponse bedrockResponse = bedrockClient.requestToBedrock(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, bedrockResponse);
+        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(bedrockResponse, interview);
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
-        evaluateInterview(interview, questionAndAnswers, curAnswer, bedrockResponse, member);
+        evaluateInterview(interview, questionAndAnswers, curAnswer, llmResponse, member);
         return Optional.empty();
     }
 
@@ -108,20 +108,19 @@ public class InterviewService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, BedrockResponse bedrockResponse) {
-        AnswerFeedbackResponse feedback = bedrockResponse.extractAnswerFeedbackResponse(objectMapper);
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LLMResponse llmResponse) {
+        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
-    private Question saveNextQuestion(BedrockResponse bedrockResponse, Interview interview) {
-        NextQuestionResponse nextQuestionResponse = bedrockResponse.extractNextQuestionResponse(objectMapper);
+    private Question saveNextQuestion(LLMResponse llmResponse, Interview interview) {
+        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
         Question next = new Question(interview, nextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, BedrockResponse bedrockResponse,
-                                   Member member) {
-        TotalFeedbackResponse totalFeedbackResponse = bedrockResponse.extractTotalFeedbackResponse(objectMapper);
+    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, LLMResponse llmResponse, Member member) {
+        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
