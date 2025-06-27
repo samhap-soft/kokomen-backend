@@ -51,6 +51,7 @@ public final class InterviewMessagesFactory {
 
     public static List<software.amazon.awssdk.services.bedrockruntime.model.Message> createBedrockMessages(QuestionAndAnswers questionAndAnswers) {
         List<software.amazon.awssdk.services.bedrockruntime.model.Message> messages = new ArrayList<>();
+        messages.add(createBedrockMessage("user", "면접을 시작합니다."));
         addBedrockMessages(questionAndAnswers, messages);
         return messages;
     }
