@@ -10,10 +10,10 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.interview.external.BedrockClient;
+import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -41,7 +41,7 @@ public class InterviewService {
 
     private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
-    private final GptClient gptClient;
+    private final BedrockClient bedrockClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -82,15 +82,17 @@ public class InterviewService {
         validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
-        GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
+
+        // BedrockClient 사용 (GptClient 대신)
+        BedrockResponse bedrockResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, bedrockResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview);
+            Question nextQuestion = saveNextQuestion(bedrockResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
-        evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
+        evaluateInterview(interview, questionAndAnswers, curAnswer, bedrockResponse, member);
         return Optional.empty();
     }
 
@@ -107,19 +109,20 @@ public class InterviewService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
-        GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, BedrockResponse bedrockResponse) {
+        GptFeedbackResponse feedback = bedrockResponse.extractGptFeedbackResponse(objectMapper);
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
-        GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
+    private Question saveNextQuestion(BedrockResponse bedrockResponse, Interview interview) {
+        GptNextQuestionResponse gptNextQuestionResponse = bedrockResponse.extractGptNextQuestionResponse(objectMapper);
         Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, GptResponse gptResponse, Member member) {
-        GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
+    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, BedrockResponse bedrockResponse,
+                                   Member member) {
+        GptTotalFeedbackResponse gptTotalFeedbackResponse = bedrockResponse.extractGptTotalFeedbackResponse(objectMapper);
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
