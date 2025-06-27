@@ -428,7 +428,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"created_at": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"cur_answer_count": %d
+                		"cur_answer_count": %d,
+                		"score": %s
                 	},
                 	{
                 		"interview_id": %d,
@@ -437,19 +438,21 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"created_at": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"cur_answer_count": %d,
-                		"score": %s
+                		"cur_answer_count": %d
                 	}
                 ]
                 """.formatted(
-                interview1.getId(), interview1.getInterviewState(), interview1.getRootQuestion().getCategory(),
-                interview1.getCreatedAt().toString(), interview1.getRootQuestion().getContent(), interview1.getMaxQuestionCount(), 0,
-                interview2.getId(), interview2.getInterviewState(), interview2.getRootQuestion().getCategory(),
-                interview2.getCreatedAt().toString(), interview2.getRootQuestion().getContent(), interview2.getMaxQuestionCount(), 3, interview2.getTotalScore()
+                interview2.getId(), interview2.getInterviewState(), interview2.getRootQuestion().getCategory(), interview2.getCreatedAt().toString(),
+                interview2.getRootQuestion().getContent(), interview2.getMaxQuestionCount(), 3, interview2.getTotalScore(),
+                interview1.getId(), interview1.getInterviewState(), interview1.getRootQuestion().getCategory(), interview1.getCreatedAt().toString(),
+                interview1.getRootQuestion().getContent(), interview1.getMaxQuestionCount(), 0
         );
 
         // when & then
         mockMvc.perform(get("/api/v1/interviews/me")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sort", "id,desc")
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
@@ -459,7 +462,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         queryParameters(
-                                parameterWithName("state").description("면접 상태 쿼리 파라미터 " + Arrays.asList(InterviewState.values()) + " (nullable)").optional()
+                                parameterWithName("state").description("면접 상태 쿼리 파라미터 " + Arrays.asList(InterviewState.values()) + " (선택사항)").optional(),
+                                parameterWithName("page").description("페이지 번호 (기본값: 0)"),
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)"),
+                                parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
                         ),
                         responseFields(
                                 fieldWithPath("[].interview_id").description("면접 ID"),

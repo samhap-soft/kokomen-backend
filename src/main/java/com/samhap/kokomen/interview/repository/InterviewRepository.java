@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
-    List<Interview> findByMemberOrderById(Member member, Pageable pageable);
+    List<Interview> findByMember(Member member, Pageable pageable);
 
-    List<Interview> findByMemberAndInterviewStateOrderById(Member member, InterviewState interviewState, Pageable pageable);
+    List<Interview> findByMemberAndInterviewState(Member member, InterviewState interviewState, Pageable pageable);
 }

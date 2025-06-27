@@ -171,9 +171,9 @@ public class InterviewService {
     // TODO: 동적 쿼리 개선하기
     private List<Interview> findInterviews(Member member, InterviewState state, Pageable pageable) {
         if (state == null) {
-            return interviewRepository.findByMemberOrderById(member, pageable);
+            return interviewRepository.findByMember(member, pageable);
         }
-        return interviewRepository.findByMemberAndInterviewStateOrderById(member, state, pageable);
+        return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
     }
 
     private int countCurAnswers(Interview interview) {
