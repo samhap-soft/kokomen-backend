@@ -4,6 +4,7 @@ import com.samhap.kokomen.interview.external.dto.request.Message;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 
 public final class InterviewMessagesFactory {
 
@@ -36,16 +37,20 @@ public final class InterviewMessagesFactory {
         messages.add(new Message("user", questionAndAnswers.getCurAnswerContent()));
     }
 
-    public static List<software.amazon.awssdk.services.bedrockruntime.model.Message> createBedrockProceedMessages(QuestionAndAnswers questionAndAnswers) {
-        List<software.amazon.awssdk.services.bedrockruntime.model.Message> messages = new ArrayList<>();
-        messages.add(createBedrockMessage("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE));
-        addBedrockMessages(questionAndAnswers, messages);
-        return messages;
+    public static SystemContentBlock createBedrockProceedSystemMessage() {
+        return SystemContentBlock.builder()
+                .text(GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE)
+                .build();
     }
 
-    public static List<software.amazon.awssdk.services.bedrockruntime.model.Message> createBedrockEndMessages(QuestionAndAnswers questionAndAnswers) {
+    public static SystemContentBlock createBedrockEndSystemMessage() {
+        return SystemContentBlock.builder()
+                .text(GptSystemMessageConstant.END_SYSTEM_MESSAGE)
+                .build();
+    }
+
+    public static List<software.amazon.awssdk.services.bedrockruntime.model.Message> createBedrockMessages(QuestionAndAnswers questionAndAnswers) {
         List<software.amazon.awssdk.services.bedrockruntime.model.Message> messages = new ArrayList<>();
-        messages.add(createBedrockMessage("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE));
         addBedrockMessages(questionAndAnswers, messages);
         return messages;
     }

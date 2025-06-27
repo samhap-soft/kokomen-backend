@@ -20,23 +20,26 @@ public class BedrockClient {
     private final BedrockRuntimeClient bedrockRuntimeClient;
 
     public BedrockResponse requestToBedrock(QuestionAndAnswers questionAndAnswers) {
-        List<Message> bedrockMessages = createBedrockMessages(questionAndAnswers);
-
-        ConverseRequest converseRequest = ConverseRequest.builder()
-                .modelId(MODEL_ID)
-                .messages(bedrockMessages)
-                .build();
-
+        ConverseRequest converseRequest = createConverseRequest(questionAndAnswers);
         ConverseResponse converseResponse = bedrockRuntimeClient.converse(converseRequest);
 
         String content = converseResponse.output().message().content().get(0).text();
         return new BedrockResponse(content);
     }
 
-    private List<Message> createBedrockMessages(QuestionAndAnswers questionAndAnswers) {
+    private ConverseRequest createConverseRequest(QuestionAndAnswers questionAndAnswers) {
+        List<Message> messages = InterviewMessagesFactory.createBedrockMessages(questionAndAnswers);
+
+        ConverseRequest.Builder builder = ConverseRequest.builder()
+                .modelId(MODEL_ID)
+                .messages(messages);
+
         if (questionAndAnswers.isProceedRequest()) {
-            return InterviewMessagesFactory.createBedrockProceedMessages(questionAndAnswers);
+            builder.system(InterviewMessagesFactory.createBedrockProceedSystemMessage());
+            return builder.build();
         }
-        return InterviewMessagesFactory.createBedrockEndMessages(questionAndAnswers);
+
+        builder.system(InterviewMessagesFactory.createBedrockEndSystemMessage());
+        return builder.build();
     }
-} 
+}
