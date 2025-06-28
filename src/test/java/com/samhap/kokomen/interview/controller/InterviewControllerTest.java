@@ -308,8 +308,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
-                                fieldWithPath("cur_question_id").description("현재 질문 ID"),
-                                fieldWithPath("cur_question").description("현재 질문 내용"),
+                                fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question").description("현재 질문 내용 (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
