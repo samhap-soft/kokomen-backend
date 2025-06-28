@@ -11,6 +11,7 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
+import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
@@ -41,6 +42,7 @@ public class InterviewService {
 
     private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
+    private final GptClient gptClient;
     private final BedrockClient bedrockClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
@@ -83,7 +85,7 @@ public class InterviewService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
 
-        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+        LLMResponse llmResponse = gptClient.requestToGpt(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
