@@ -324,11 +324,11 @@ class InterviewControllerTest extends BaseControllerTest {
     void 종료된_인터뷰_상태를_확인한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("첫번째 질문").build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member).rootQuestion(rootQuestion).maxQuestionCount(3).interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
-        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).content("첫번째 답변").build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("두번째 질문").build());
         Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).content("두번째 답변").build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("세번째 질문").build());
