@@ -15,7 +15,15 @@ public record InterviewResponse(
         Integer maxQuestionCount
 ) {
 
-    public static InterviewResponse createInProgress(Interview interview, List<Question> questions, List<Answer> answers) {
+    public static InterviewResponse of(Interview interview, List<Question> questions, List<Answer> answers) {
+        if (interview.isInProgress()) {
+            return createInProgress(interview, questions, answers);
+        }
+
+        return createFinished(interview, questions, answers);
+    }
+
+    private static InterviewResponse createInProgress(Interview interview, List<Question> questions, List<Answer> answers) {
         Question curQuestion = questions.get(questions.size() - 1);
         return new InterviewResponse(
                 interview.getInterviewState(),
@@ -27,7 +35,7 @@ public record InterviewResponse(
         );
     }
 
-    public static InterviewResponse createFinished(Interview interview, List<Question> questions, List<Answer> answers) {
+    private static InterviewResponse createFinished(Interview interview, List<Question> questions, List<Answer> answers) {
         return new InterviewResponse(
                 interview.getInterviewState(),
                 createPrevQuestionAndAnswers(answers),
