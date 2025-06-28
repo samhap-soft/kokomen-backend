@@ -3,6 +3,7 @@ spring:
     lazy-initialization: true
   jackson:
     property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
 
 open-ai:
   api-key: test_api_key

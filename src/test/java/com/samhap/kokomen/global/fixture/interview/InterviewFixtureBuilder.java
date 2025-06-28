@@ -2,6 +2,7 @@ package com.samhap.kokomen.global.fixture.interview;
 
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
 
@@ -11,6 +12,7 @@ public class InterviewFixtureBuilder {
     private Member member;
     private RootQuestion rootQuestion;
     private Integer maxQuestionCount;
+    private InterviewState interviewState;
     private String totalFeedback;
     private Integer totalScore;
 
@@ -38,6 +40,11 @@ public class InterviewFixtureBuilder {
         return this;
     }
 
+    public InterviewFixtureBuilder interviewState(InterviewState interviewState) {
+        this.interviewState = interviewState;
+        return this;
+    }
+
     public InterviewFixtureBuilder totalFeedback(String totalFeedback) {
         this.totalFeedback = totalFeedback;
         return this;
@@ -54,6 +61,7 @@ public class InterviewFixtureBuilder {
                 member != null ? member : defaultMember(),
                 rootQuestion != null ? rootQuestion : defaultRootQuestion(),
                 maxQuestionCount != null ? maxQuestionCount : Interview.MIN_ALLOWED_MAX_QUESTION_COUNT,
+                interviewState != null ? interviewState : InterviewState.IN_PROGRESS,
                 totalFeedback,
                 totalScore
         );

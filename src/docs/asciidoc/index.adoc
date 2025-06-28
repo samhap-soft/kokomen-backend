@@ -78,6 +78,18 @@ include::{snippetsDir}/interview-proceedInterview-exception2/http-response.adoc[
 include::{snippetsDir}/interview-proceedInterview-exception3/http-request.adoc[]
 include::{snippetsDir}/interview-proceedInterview-exception3/http-response.adoc[]
 
+=== 인터뷰 조회
+
+include::{snippetsDir}/interview-findInterview-inProgress/http-request.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/path-parameters.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/response-fields.adoc[]
+
+==== 인터뷰 조회 응답 - 진행 중
+include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
+
+==== 인터뷰 조회 응답 - 완료
+include::{snippetsDir}/interview-findInterview-finished/http-response.adoc[]
+
 === 인터뷰 최종 결과 조회
 
 include::{snippetsDir}/interview-findTotalFeedbacks/http-request.adoc[]
