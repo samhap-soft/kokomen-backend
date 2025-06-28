@@ -10,9 +10,11 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.requestF
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.global.BaseControllerTest;
@@ -35,6 +37,7 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -306,8 +309,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
-                                fieldWithPath("cur_question_id").description("현재 질문 ID"),
-                                fieldWithPath("cur_question").description("현재 질문 내용"),
+                                fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question").description("현재 질문 내용 (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
@@ -319,7 +322,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 ));
     }
 
-    // TODO: 이거 완성하자.
     @Test
     void 종료된_인터뷰_상태를_확인한다() throws Exception {
         // given
@@ -391,6 +393,89 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
                                 fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
                                 fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 자신의_면접_목록을_조회한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
+        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
+
+        Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
+
+        Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).content(rootQuestion2.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        String responseJson = """
+                [
+                	{
+                		"interview_id": %d,
+                		"interview_state": "%s",
+                		"interview_category": "%s",
+                		"root_question": "%s",
+                		"max_question_count": %d,
+                		"cur_answer_count": %d,
+                		"score": %s
+                	},
+                	{
+                		"interview_id": %d,
+                		"interview_state": "%s",
+                		"interview_category": "%s",
+                		"root_question": "%s",
+                		"max_question_count": %d,
+                		"cur_answer_count": %d
+                	}
+                ]
+                """.formatted(
+                finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
+                finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
+                inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
+                inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0
+        );
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/me")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sort", "id,desc")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andExpect(jsonPath("$[0].created_at").exists())
+                .andExpect(jsonPath("$[1].created_at").exists())
+                .andDo(document("interview-findMyInterviews",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("state").description("면접 상태 쿼리 파라미터 " + Arrays.asList(InterviewState.values()) + " (선택사항)").optional(),
+                                parameterWithName("page").description("페이지 번호 (기본값: 0)"),
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)"),
+                                parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
+                        ),
+                        responseFields(
+                                fieldWithPath("[].interview_id").description("면접 ID"),
+                                fieldWithPath("[].interview_state").description("면접 상태 " + Arrays.asList(InterviewState.values())),
+                                fieldWithPath("[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("[].created_at").description("생성 시간"),
+                                fieldWithPath("[].root_question").description("루트 질문"),
+                                fieldWithPath("[].max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
+                                fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
