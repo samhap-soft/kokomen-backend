@@ -142,7 +142,6 @@ public class InterviewService {
         return InterviewTotalResponse.of(feedbackResponses, interview, member);
     }
 
-    // TODO: 일급 컬렉션으로 묶어서 로직 캡슐화하기
     @Transactional(readOnly = true)
     public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
@@ -151,11 +150,7 @@ public class InterviewService {
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 
-        if (interview.isInProgress()) {
-            return InterviewResponse.createInProgress(interview, questions, answers);
-        }
-
-        return InterviewResponse.createFinished(interview, questions, answers);
+        return InterviewResponse.of(interview, questions, answers);
     }
 
     @Transactional(readOnly = true)
