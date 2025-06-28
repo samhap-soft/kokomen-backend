@@ -14,9 +14,9 @@ import static org.springframework.restdocs.request.RequestDocumentation.queryPar
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
@@ -55,8 +55,6 @@ class InterviewControllerTest extends BaseControllerTest {
     protected MemberRepository memberRepository;
     @Autowired
     protected RootQuestionRepository rootQuestionRepository;
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
@@ -427,7 +425,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_id": %d,
                 		"interview_state": "%s",
                 		"interview_category": "%s",
-                		"created_at": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
                 		"cur_answer_count": %d,
@@ -437,7 +434,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_id": %d,
                 		"interview_state": "%s",
                 		"interview_category": "%s",
-                		"created_at": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
                 		"cur_answer_count": %d
@@ -445,10 +441,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 ]
                 """.formatted(
                 finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
-                objectMapper.writeValueAsString(finishedInterview.getCreatedAt()).replaceAll("\"", ""),
                 finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
                 inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
-                objectMapper.writeValueAsString(inProgressInterview.getCreatedAt()).replaceAll("\"", ""),
                 inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0
         );
 
@@ -461,6 +455,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
+                .andExpect(jsonPath("$[0].created_at").exists())
+                .andExpect(jsonPath("$[1].created_at").exists())
                 .andDo(document("interview-findMyInterviews",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
