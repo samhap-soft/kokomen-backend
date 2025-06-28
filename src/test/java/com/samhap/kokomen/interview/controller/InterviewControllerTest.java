@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
@@ -54,6 +55,8 @@ class InterviewControllerTest extends BaseControllerTest {
     protected MemberRepository memberRepository;
     @Autowired
     protected RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
@@ -442,10 +445,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 ]
                 """.formatted(
                 finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
-                finishedInterview.getCreatedAt(),
+                objectMapper.writeValueAsString(finishedInterview.getCreatedAt()).replaceAll("\"", ""),
                 finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
                 inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
-                inProgressInterview.getCreatedAt(),
+                objectMapper.writeValueAsString(inProgressInterview.getCreatedAt()).replaceAll("\"", ""),
                 inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0
         );
 
