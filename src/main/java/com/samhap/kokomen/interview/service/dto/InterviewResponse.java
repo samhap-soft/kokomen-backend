@@ -10,7 +10,7 @@ public record InterviewResponse(
         InterviewState interviewState,
         List<QuestionAndAnswerResponse> prevQuestionsAndAnswers,
         Long curQuestionId,
-        String question,
+        String curQuestion,
         Integer curQuestionCount,
         Integer maxQuestionCount
 ) {

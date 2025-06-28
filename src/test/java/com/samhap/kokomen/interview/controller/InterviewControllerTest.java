@@ -274,7 +274,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                 	"interview_state": "IN_PROGRESS",
                 	"cur_question_id": %d,
-                	"question": "%s",
+                	"cur_question": "%s",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"prev_questions_and_answers": [
@@ -307,7 +307,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_question_id").description("현재 질문 ID"),
-                                fieldWithPath("question").description("현재 질문 내용"),
+                                fieldWithPath("cur_question").description("현재 질문 내용"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
