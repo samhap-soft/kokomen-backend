@@ -276,7 +276,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                 	"interview_state": "IN_PROGRESS",
                 	"cur_question_id": %d,
-                	"question": "%s",
+                	"cur_question": "%s",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"prev_questions_and_answers": [
@@ -309,7 +309,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_question_id").description("현재 질문 ID"),
-                                fieldWithPath("question").description("현재 질문 내용"),
+                                fieldWithPath("cur_question").description("현재 질문 내용"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
@@ -325,11 +325,11 @@ class InterviewControllerTest extends BaseControllerTest {
     void 종료된_인터뷰_상태를_확인한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("첫번째 질문").build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member).rootQuestion(rootQuestion).maxQuestionCount(3).interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
-        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).content("첫번째 답변").build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("두번째 질문").build());
         Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).content("두번째 답변").build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("세번째 질문").build());
