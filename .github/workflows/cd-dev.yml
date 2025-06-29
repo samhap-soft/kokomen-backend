@@ -1,10 +1,7 @@
 name: CD DEV
 
-#on:
-#  push:
-#    branches: [ develop ]
 on:
-  pull_request:
+  push:
     branches: [ develop ]
 
 jobs:
@@ -62,26 +59,16 @@ jobs:
       - name: Docker Image prune
         run: sudo docker image prune -f -a
 
-      #      - name: pull docker compose yaml files
-      #        working-directory: /home/ubuntu
-      #        run: |
-      #          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
-      #          cd kokomen-backend
-      #          git sparse-checkout init --cone
-      #          git fetch origin develop
-      #          git checkout develop
-      #          git sparse-checkout set docker
-      #          git pull origin develop
       - name: pull docker compose yaml files
         working-directory: /home/ubuntu
         run: |
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git fetch origin feature/#78
-          git checkout feature/#78
+          git fetch origin develop
+          git checkout develop
           git sparse-checkout set docker
-          git pull origin feature/#78
+          git pull origin develop
 
       - name: Docker run
         working-directory: /home/ubuntu
