@@ -88,6 +88,12 @@ public class InterviewProceedService {
         return Optional.empty();
     }
 
+    @Transactional
+    public void compensateMemberToken(MemberAuth memberAuth) {
+        Member member = readMember(memberAuth);
+        member.addFreeTokenCount(1);
+    }
+
     private Member readMember(MemberAuth memberAuth) {
         return memberRepository.findById(memberAuth.memberId())
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));

@@ -50,4 +50,8 @@ public class Member extends BaseEntity {
     public boolean hasEnoughTokenCount(int maxQuestionCount) {
         return this.freeTokenCount >= maxQuestionCount;
     }
+
+    public void addFreeTokenCount(int count) {
+        this.freeTokenCount += count;
+    }
 }

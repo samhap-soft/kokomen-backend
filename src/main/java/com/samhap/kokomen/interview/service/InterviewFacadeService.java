@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
+import com.samhap.kokomen.global.exception.GptApiException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -77,8 +78,13 @@ public class InterviewFacadeService {
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         QuestionAndAnswers questionAndAnswers = interviewProceedService.prepareInterviewProceed(interviewId, curQuestionId, answerRequest, memberAuth);
-        GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-        return interviewProceedService.saveInterviewProceedResult(interviewId, questionAndAnswers, gptResponse, memberAuth);
+        try {
+            GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
+            return interviewProceedService.saveInterviewProceedResult(interviewId, questionAndAnswers, gptResponse, memberAuth);
+        } catch (GptApiException e) {
+            interviewProceedService.compensateMemberToken(memberAuth);
+            throw e;
+        }
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
