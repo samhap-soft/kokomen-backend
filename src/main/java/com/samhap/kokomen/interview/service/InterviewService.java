@@ -85,7 +85,7 @@ public class InterviewService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
 
-        LLMResponse llmResponse = gptClient.requestToGpt(questionAndAnswers);
+        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
