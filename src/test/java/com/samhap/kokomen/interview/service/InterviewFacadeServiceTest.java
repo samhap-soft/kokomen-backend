@@ -30,10 +30,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class InterviewServiceTest extends BaseTest {
+class InterviewFacadeServiceTest extends BaseTest {
 
     @Autowired
-    private InterviewService interviewService;
+    private InterviewFacadeService interviewFacadeService;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
@@ -63,7 +63,7 @@ class InterviewServiceTest extends BaseTest {
         InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1, nextQuestion);
 
         // when
-        Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
+        Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
                 interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then
@@ -93,7 +93,7 @@ class InterviewServiceTest extends BaseTest {
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
 
         // when
-        Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
+        Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
                 interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then

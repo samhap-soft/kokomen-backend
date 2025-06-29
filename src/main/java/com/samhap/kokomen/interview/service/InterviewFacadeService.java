@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
@@ -12,10 +11,7 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -41,17 +37,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Service
 // TODO: 루트 질문 가져올 때 AtomicLong 이용해서 순서대로 하나씩 가져오기
-public class InterviewService {
+public class InterviewFacadeService {
 
     private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
     private final GptClient gptClient;
+    private final InterviewProceedService interviewProceedService;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
-    private final ObjectMapper objectMapper;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -79,54 +75,10 @@ public class InterviewService {
     }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
-    @Transactional
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
-        Interview interview = readInterview(interviewId);
-        validateInterviewee(interview, member);
-        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
-        decreaseTokenCount(member);
+        QuestionAndAnswers questionAndAnswers = interviewProceedService.prepareInterviewProceed(interviewId, curQuestionId, answerRequest, memberAuth);
         GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
-
-        if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview);
-            return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
-        }
-
-        evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
-        return Optional.empty();
-    }
-
-    private void decreaseTokenCount(Member member) {
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
-        if (affectedRows == 0) {
-            throw new BadRequestException("회원의 토큰 개수가 부족해 인터뷰를 더 이상 진행할 수 없습니다.");
-        }
-    }
-
-    private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
-        List<Question> questions = questionRepository.findByInterview(interview);
-        List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
-        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
-    }
-
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
-        GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
-        return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
-    }
-
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
-        GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
-        return questionRepository.save(next);
-    }
-
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, GptResponse gptResponse, Member member) {
-        GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
-        int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
-        member.addScore(totalScore);
+        return interviewProceedService.saveInterviewProceedResult(interviewId, questionAndAnswers, gptResponse, memberAuth);
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기

@@ -2,7 +2,7 @@ package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.service.InterviewService;
+import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
@@ -29,14 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InterviewController {
 
-    private final InterviewService interviewService;
+    private final InterviewFacadeService interviewFacadeService;
 
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody InterviewRequest interviewRequest,
             MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.startInterview(interviewRequest, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.startInterview(interviewRequest, memberAuth));
     }
 
     @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
@@ -46,7 +46,7 @@ public class InterviewController {
             @RequestBody AnswerRequest answerRequest,
             MemberAuth memberAuth
     ) {
-        return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
+        return interviewFacadeService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
@@ -56,7 +56,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.findTotalFeedbacks(interviewId, memberAuth));
     }
 
     @GetMapping("/{interviewId}")
@@ -64,7 +64,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findInterview(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.findInterview(interviewId, memberAuth));
     }
 
     @GetMapping("/me")
@@ -73,6 +73,6 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
+        return ResponseEntity.ok(interviewFacadeService.findMyInterviews(memberAuth, state, pageable));
     }
 }
