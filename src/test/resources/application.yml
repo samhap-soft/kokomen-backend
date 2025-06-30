@@ -4,6 +4,10 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
+  data:
+    redis:
+      host: test-redis
+      port: 16379
 
 open-ai:
   api-key: test_api_key
