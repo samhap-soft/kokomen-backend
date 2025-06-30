@@ -73,9 +73,7 @@ public class InterviewProceedService {
             GptResponse gptResponse,
             MemberAuth memberAuth
     ) {
-        Interview interview = interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인터뷰입니다."));
-
+        Interview interview = readInterview(interviewId);
         Member member = readMember(memberAuth);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
 

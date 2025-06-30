@@ -3,7 +3,6 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
-import com.samhap.kokomen.global.exception.GptApiException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -81,7 +80,7 @@ public class InterviewFacadeService {
         try {
             GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
             return interviewProceedService.saveInterviewProceedResult(interviewId, questionAndAnswers, gptResponse, memberAuth);
-        } catch (GptApiException e) {
+        } catch (Exception e) {
             interviewProceedService.compensateMemberToken(memberAuth);
             throw e;
         }
