@@ -31,6 +31,7 @@ include::{snippetsDir}/auth-redirectKakaoLoginPage/curl-request.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/request-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
 == 멤버
@@ -39,6 +40,7 @@ include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
 include::{snippetsDir}/member-findMyProfile/http-request.adoc[]
 include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
+include::{snippetsDir}/member-findMyProfile/response-fields.adoc[]
 include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
 
 == 인터뷰
@@ -46,6 +48,7 @@ include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
 === 인터뷰 시작
 
 include::{snippetsDir}/interview-startInterview/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview/request-fields.adoc[]
 include::{snippetsDir}/interview-startInterview/http-response.adoc[]
 include::{snippetsDir}/interview-startInterview/response-fields.adoc[]
 include::{snippetsDir}/interview-startInterview/curl-request.adoc[]
@@ -58,6 +61,7 @@ include::{snippetsDir}/interview-startInterview-exception1/http-response.adoc[]
 === 인터뷰 진행
 
 include::{snippetsDir}/interview-proceedInterview/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview/request-fields.adoc[]
 include::{snippetsDir}/interview-proceedInterview/path-parameters.adoc[]
 include::{snippetsDir}/interview-proceedInterview/http-response.adoc[]
 include::{snippetsDir}/interview-proceedInterview/response-fields.adoc[]
@@ -77,6 +81,29 @@ include::{snippetsDir}/interview-proceedInterview-exception2/http-response.adoc[
 
 include::{snippetsDir}/interview-proceedInterview-exception3/http-request.adoc[]
 include::{snippetsDir}/interview-proceedInterview-exception3/http-response.adoc[]
+
+=== 인터뷰 조회
+
+include::{snippetsDir}/interview-findInterview-inProgress/http-request.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/path-parameters.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/response-fields.adoc[]
+include::{snippetsDir}/interview-findInterview-inProgress/curl-request.adoc[]
+
+==== 인터뷰 조회 응답 - 진행 중
+include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
+
+==== 인터뷰 조회 응답 - 완료
+include::{snippetsDir}/interview-findInterview-finished/http-response.adoc[]
+
+=== 자신의 인터뷰 목록 조회
+
+include::{snippetsDir}/interview-findMyInterviews/http-request.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/query-parameters.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/http-response.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/curl-request.adoc[]
+
 
 === 인터뷰 최종 결과 조회
 

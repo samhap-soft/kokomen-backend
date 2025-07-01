@@ -1,11 +1,8 @@
 package com.samhap.kokomen.interview.domain;
 
-import com.samhap.kokomen.interview.external.dto.request.GptMessage;
+import com.samhap.kokomen.interview.external.dto.request.Message;
 import java.util.ArrayList;
 import java.util.List;
-import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.Message;
-import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 
 public final class InterviewMessagesFactory {
 

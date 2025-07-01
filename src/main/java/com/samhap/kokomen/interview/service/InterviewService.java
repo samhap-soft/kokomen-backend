@@ -7,6 +7,7 @@ import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -25,13 +26,16 @@ import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
+import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,14 +56,14 @@ public class InterviewService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
+    public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         validateEnoughTokenCount(member, interviewRequest);
         RootQuestion rootQuestion = readRandomRootQuestion();
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
         Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
-        return new InterviewResponse(interview, question);
+        return new InterviewStartResponse(interview, question);
     }
 
     private void validateEnoughTokenCount(Member member, InterviewRequest interviewRequest) {
@@ -141,6 +145,45 @@ public class InterviewService {
         return InterviewTotalResponse.of(feedbackResponses, interview, member);
     }
 
+    @Transactional(readOnly = true)
+    public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth);
+        Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
+        List<Question> questions = questionRepository.findByInterviewOrderById(interview);
+        List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
+
+        return InterviewResponse.of(interview, questions, answers);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyInterviewResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+        Member member = readMember(memberAuth);
+        List<Interview> interviews = findInterviews(member, state, pageable);
+
+        return interviews.stream()
+                .map(interview -> new MyInterviewResponse(interview, countCurAnswers(interview)))
+                .toList();
+    }
+
+    // TODO: 동적 쿼리 개선하기
+    private List<Interview> findInterviews(Member member, InterviewState state, Pageable pageable) {
+        if (state == null) {
+            return interviewRepository.findByMember(member, pageable);
+        }
+        return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
+    }
+
+    private int countCurAnswers(Interview interview) {
+        int qurQuestionCount = questionRepository.countByInterview(interview);
+
+        // TODO: 해당 로직 적절한 도메인에 부여하기
+        if (interview.isInProgress()) {
+            return qurQuestionCount - 1;
+        }
+        return qurQuestionCount;
+    }
+
     private Member readMember(MemberAuth memberAuth) {
         return memberRepository.findById(memberAuth.memberId())
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
@@ -153,7 +196,7 @@ public class InterviewService {
 
     private void validateInterviewee(Interview interview, Member member) {
         if (!interview.isInterviewee(member)) {
-            throw new ForbiddenException("인터뷰를 생성한 회원만 인터뷰를 진행할 수 있습니다.");
+            throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
         }
     }
 }
