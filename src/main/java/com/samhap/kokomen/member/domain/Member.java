@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Entity
 public class Member extends BaseEntity {
 
-    public static final int DAILY_FREE_TOKEN_COUNT = 10;
+    public static final int DAILY_FREE_TOKEN_COUNT = 20;
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
