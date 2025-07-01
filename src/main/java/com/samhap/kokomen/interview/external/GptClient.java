@@ -3,8 +3,8 @@ package com.samhap.kokomen.interview.external;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
-import com.samhap.kokomen.interview.external.dto.request.Message;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -59,10 +59,10 @@ public class GptClient {
 
     private GptRequest createGptRequest(QuestionAndAnswers questionAndAnswers) {
         if (questionAndAnswers.isProceedRequest()) {
-            List<Message> messages = InterviewMessagesFactory.createProceedMessages(questionAndAnswers);
-            return GptRequest.createProceedGptRequest(messages);
+            List<GptMessage> gptMessages = InterviewMessagesFactory.createGptProceedMessages(questionAndAnswers);
+            return GptRequest.createProceedGptRequest(gptMessages);
         }
-        List<Message> messages = InterviewMessagesFactory.createEndMessages(questionAndAnswers);
-        return GptRequest.createEndGptRequest(messages);
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
+        return GptRequest.createEndGptRequest(gptMessages);
     }
 }
