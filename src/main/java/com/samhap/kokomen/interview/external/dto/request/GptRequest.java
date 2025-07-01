@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.external.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
@@ -8,16 +7,17 @@ public record GptRequest(
         String model,
         List<Message> messages,
         List<Tool> tools,
-        @JsonProperty("tool_choice")
         ToolChoice toolChoice
 ) {
 
+    private static final String GPT_MODEL = "gpt-4.1-mini";
+
     public static GptRequest createProceedGptRequest(List<Message> messages) {
-        return new GptRequest("gpt-4o-mini", messages, createProceedTools(), createProceedToolChoice());
+        return new GptRequest(GPT_MODEL, messages, createProceedTools(), createProceedToolChoice());
     }
 
     public static GptRequest createEndGptRequest(List<Message> messages) {
-        return new GptRequest("gpt-4o-mini", messages, createEndTools(), createEndToolChoice());
+        return new GptRequest(GPT_MODEL, messages, createEndTools(), createEndToolChoice());
     }
 
     private static List<Tool> createProceedTools() {

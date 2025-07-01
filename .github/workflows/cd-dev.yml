@@ -2,7 +2,7 @@ name: CD DEV
 
 on:
   push:
-    branches: develop
+    branches: [ develop ]
 
 jobs:
   build:
@@ -54,16 +54,33 @@ jobs:
         run: sudo docker pull samhap/kokomen:dev
 
       - name: Stop existing container
+        run: sudo docker rm -f kokomen-dev-server
+
+      - name: Docker Image prune
+        run: sudo docker image prune -f -a
+
+      - name: pull docker compose yaml files
+        working-directory: /home/ubuntu
         run: |
-          sudo docker rm -f kokomen-dev-server
+          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
+          cd kokomen-backend
+          git sparse-checkout init --cone
+          git fetch origin develop
+          git checkout develop
+          git sparse-checkout set docker
+          git pull origin develop
 
       - name: Docker run
+        working-directory: /home/ubuntu
+        env:
+          SPRING_DATASOURCE_URL_DEV: ${{ secrets.SPRING_DATASOURCE_URL_DEV }}
+          SPRING_DATASOURCE_USERNAME_DEV: ${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }}
+          SPRING_DATASOURCE_PASSWORD_DEV: ${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }}
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+          KAKAO_CLIENT_ID_DEV: ${{ secrets.KAKAO_CLIENT_ID_DEV }}
+          KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
+          MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }}
         run: |
-          sudo docker run -e SPRING_PROFILES_ACTIVE=dev \
-            -e SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL_DEV }} \
-            -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }} \
-            -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }} \
-            -e OPEN_AI_API_KEY=${{ secrets.OPEN_AI_API_KEY }} \
-            --network backend-net \
-            --name kokomen-dev-server \
-            -p 8080:8080 -d samhap/kokomen:dev
+          export HOSTNAME=$(hostname)
+          cd kokomen-backend/docker/dev
+          sudo -E docker compose -f docker-compose-dev.yml up -d

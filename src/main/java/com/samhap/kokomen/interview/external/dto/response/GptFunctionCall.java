@@ -8,25 +8,25 @@ public record GptFunctionCall(
         String arguments
 ) {
 
-    public GptFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
+    public AnswerFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(arguments, GptFeedbackResponse.class);
+            return objectMapper.readValue(arguments, AnswerFeedbackResponse.class);
         } catch (Exception e) {
             throw new GptApiException("GPT 응답 파싱 실패", e);
         }
     }
 
-    public GptNextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
+    public NextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(arguments, GptNextQuestionResponse.class);
+            return objectMapper.readValue(arguments, NextQuestionResponse.class);
         } catch (Exception e) {
             throw new GptApiException("GPT 응답 파싱 실패", e);
         }
     }
 
-    public GptTotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
+    public TotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(arguments, GptTotalFeedbackResponse.class);
+            return objectMapper.readValue(arguments, TotalFeedbackResponse.class);
         } catch (Exception e) {
             throw new GptApiException("GPT 응답 파싱 실패", e);
         }

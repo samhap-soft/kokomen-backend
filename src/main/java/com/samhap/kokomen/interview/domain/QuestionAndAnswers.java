@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import java.util.Comparator;
 import java.util.List;
 import lombok.Getter;
@@ -49,7 +49,7 @@ public class QuestionAndAnswers {
         }
     }
 
-    public Answer createCurAnswer(GptFeedbackResponse feedback) {
+    public Answer createCurAnswer(AnswerFeedbackResponse feedback) {
         return new Answer(
                 readCurQuestion(),
                 curAnswerContent,

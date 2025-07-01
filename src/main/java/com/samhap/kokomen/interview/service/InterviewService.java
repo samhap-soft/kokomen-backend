@@ -3,17 +3,19 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
+import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
+import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -23,12 +25,15 @@ import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
+import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +45,7 @@ public class InterviewService {
     private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 10;
 
     private final GptClient gptClient;
+    private final BedrockClient bedrockClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -48,13 +54,20 @@ public class InterviewService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public InterviewResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
+    public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
+        validateEnoughTokenCount(member, interviewRequest);
         RootQuestion rootQuestion = readRandomRootQuestion(member, interviewRequest);
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
         Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
-        return new InterviewResponse(interview, question);
+        return new InterviewStartResponse(interview, question);
+    }
+
+    private void validateEnoughTokenCount(Member member, InterviewRequest interviewRequest) {
+        if (!member.hasEnoughTokenCount(interviewRequest.maxQuestionCount())) {
+            throw new BadRequestException("생성하려는 인터뷰의 최대 질문 수가 회원이 가진 토큰 개수를 초과합니다.");
+        }
     }
 
     private RootQuestion readRandomRootQuestion(Member member, InterviewRequest interviewRequest) {
@@ -72,17 +85,27 @@ public class InterviewService {
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
-        GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
+        decreaseTokenCount(member);
+
+        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview);
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
-        evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
+        evaluateInterview(interview, questionAndAnswers, curAnswer, llmResponse, member);
         return Optional.empty();
+    }
+
+    private void decreaseTokenCount(Member member) {
+        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
+        if (affectedRows == 0) {
+            throw new BadRequestException("회원의 토큰 개수가 부족해 인터뷰를 더 이상 진행할 수 없습니다.");
+        }
     }
 
     private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
@@ -91,21 +114,21 @@ public class InterviewService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
-        GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LLMResponse llmResponse) {
+        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
-        GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
+    private Question saveNextQuestion(LLMResponse llmResponse, Interview interview) {
+        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
+        Question next = new Question(interview, nextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, GptResponse gptResponse, Member member) {
-        GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
+    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, LLMResponse llmResponse, Member member) {
+        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
+        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
     }
 
@@ -114,11 +137,51 @@ public class InterviewService {
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
 
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
         return InterviewTotalResponse.of(feedbackResponses, interview, member);
+    }
+
+    @Transactional(readOnly = true)
+    public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth);
+        Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
+        List<Question> questions = questionRepository.findByInterviewOrderById(interview);
+        List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
+
+        return InterviewResponse.of(interview, questions, answers);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyInterviewResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+        Member member = readMember(memberAuth);
+        List<Interview> interviews = findInterviews(member, state, pageable);
+
+        return interviews.stream()
+                .map(interview -> new MyInterviewResponse(interview, countCurAnswers(interview)))
+                .toList();
+    }
+
+    // TODO: 동적 쿼리 개선하기
+    private List<Interview> findInterviews(Member member, InterviewState state, Pageable pageable) {
+        if (state == null) {
+            return interviewRepository.findByMember(member, pageable);
+        }
+        return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
+    }
+
+    private int countCurAnswers(Interview interview) {
+        int qurQuestionCount = questionRepository.countByInterview(interview);
+
+        // TODO: 해당 로직 적절한 도메인에 부여하기
+        if (interview.isInProgress()) {
+            return qurQuestionCount - 1;
+        }
+        return qurQuestionCount;
     }
 
     private Member readMember(MemberAuth memberAuth) {
@@ -129,5 +192,11 @@ public class InterviewService {
     private Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
+    }
+
+    private void validateInterviewee(Interview interview, Member member) {
+        if (!interview.isInterviewee(member)) {
+            throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
+        }
     }
 }

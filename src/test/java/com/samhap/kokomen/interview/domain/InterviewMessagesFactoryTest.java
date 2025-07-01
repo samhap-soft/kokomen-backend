@@ -40,7 +40,7 @@ class InterviewMessagesFactoryTest {
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<Message> expectedMessages = List.of(
-                new Message("system", InterviewMessagesFactory.PROCEED_SYSTEM_MESSAGE),
+                new Message("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE),
                 new Message("assistant", "첫 번째 질문"),
                 new Message("user", "첫 번째 답변"),
                 new Message("assistant", "두 번째 질문"),
@@ -83,7 +83,7 @@ class InterviewMessagesFactoryTest {
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<Message> expectedMessages = List.of(
-                new Message("system", InterviewMessagesFactory.END_SYSTEM_MESSAGE),
+                new Message("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE),
                 new Message("assistant", "첫 번째 질문"),
                 new Message("user", "첫 번째 답변"),
                 new Message("assistant", "두 번째 질문"),
