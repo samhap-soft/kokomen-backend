@@ -89,6 +89,7 @@ public class Interview extends BaseEntity {
     }
 
     public void evaluate(String totalFeedback, Integer totalScore) {
+        this.interviewState = InterviewState.FINISHED;
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;
     }
