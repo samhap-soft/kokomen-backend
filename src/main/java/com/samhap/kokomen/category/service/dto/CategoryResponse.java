@@ -1,9 +1,19 @@
 package com.samhap.kokomen.category.service.dto;
 
 import com.samhap.kokomen.category.domain.Category;
-import java.util.List;
 
 public record CategoryResponse(
-        List<Category> categories
+        String key,
+        String title,
+        String description,
+        String imageUrl
 ) {
+    public CategoryResponse(Category category) {
+        this(
+                category.name(),
+                category.getTitle(),
+                category.getDescription(),
+                category.getImageUrl()
+        );
+    }
 }
