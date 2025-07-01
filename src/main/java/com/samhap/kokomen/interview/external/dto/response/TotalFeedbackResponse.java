@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
-public record GptTotalFeedbackResponse(
+public record TotalFeedbackResponse(
         String totalFeedback
 ) {
 }
