@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
-import com.samhap.kokomen.interview.external.dto.request.Message;
+import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -39,19 +39,19 @@ class InterviewMessagesFactoryTest {
 
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
-        List<Message> expectedMessages = List.of(
-                new Message("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE),
-                new Message("assistant", "첫 번째 질문"),
-                new Message("user", "첫 번째 답변"),
-                new Message("assistant", "두 번째 질문"),
-                new Message("user", "현재 답변")
+        List<GptMessage> expectedGptMessages = List.of(
+                new GptMessage("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE),
+                new GptMessage("assistant", "첫 번째 질문"),
+                new GptMessage("user", "첫 번째 답변"),
+                new GptMessage("assistant", "두 번째 질문"),
+                new GptMessage("user", "현재 답변")
         );
 
         // when
-        List<Message> messages = InterviewMessagesFactory.createProceedMessages(questionAndAnswers);
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptProceedMessages(questionAndAnswers);
 
         // then
-        assertThat(messages).isEqualTo(expectedMessages);
+        assertThat(gptMessages).isEqualTo(expectedGptMessages);
     }
 
     @Test
@@ -82,18 +82,18 @@ class InterviewMessagesFactoryTest {
 
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
-        List<Message> expectedMessages = List.of(
-                new Message("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE),
-                new Message("assistant", "첫 번째 질문"),
-                new Message("user", "첫 번째 답변"),
-                new Message("assistant", "두 번째 질문"),
-                new Message("user", "현재 답변")
+        List<GptMessage> expectedGptMessages = List.of(
+                new GptMessage("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE),
+                new GptMessage("assistant", "첫 번째 질문"),
+                new GptMessage("user", "첫 번째 답변"),
+                new GptMessage("assistant", "두 번째 질문"),
+                new GptMessage("user", "현재 답변")
         );
 
         // when
-        List<Message> messages = InterviewMessagesFactory.createEndMessages(questionAndAnswers);
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
 
         // then
-        assertThat(messages).isEqualTo(expectedMessages);
+        assertThat(gptMessages).isEqualTo(expectedGptMessages);
     }
 }

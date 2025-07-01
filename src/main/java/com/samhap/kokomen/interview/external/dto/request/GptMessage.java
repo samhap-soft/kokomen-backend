@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.external.dto.request;
 
-public record Message(
+public record GptMessage(
         String role,
         String content
 ) {
