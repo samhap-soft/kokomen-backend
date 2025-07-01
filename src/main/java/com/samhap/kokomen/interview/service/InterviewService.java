@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
+import com.samhap.kokomen.global.service.RedisDistributedLockService;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
@@ -26,6 +27,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -37,17 +39,18 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Service
 // TODO: 루트 질문 가져올 때 AtomicLong 이용해서 순서대로 하나씩 가져오기
-public class InterviewFacadeService {
+public class InterviewService {
 
     private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
     private final GptClient gptClient;
-    private final InterviewProceedService interviewProceedService;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
+    private final RedisDistributedLockService redisDistributedLockService;
+    private final InterviewAnswerResponseService interviewAnswerResponseService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -76,14 +79,40 @@ public class InterviewFacadeService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        QuestionAndAnswers questionAndAnswers = interviewProceedService.prepareInterviewProceed(interviewId, curQuestionId, answerRequest, memberAuth);
+        String lockKey = "interview:proceed" + memberAuth.memberId();
+        acquireLock(lockKey);
+
+        Member member = readMember(memberAuth);
+        validateHasToken(member);
+        Interview interview = readInterview(interviewId);
+        validateInterviewee(interview, member);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
+
         try {
             GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-            return interviewProceedService.saveInterviewProceedResult(interviewId, questionAndAnswers, gptResponse, memberAuth);
-        } catch (Exception e) {
-            interviewProceedService.compensateMemberToken(memberAuth);
-            throw e;
+            return interviewAnswerResponseService.handleGptResponse(member.getId(), questionAndAnswers, gptResponse, interview.getId());
+        } finally {
+            redisDistributedLockService.releaseLock(lockKey);
         }
+    }
+
+    private void acquireLock(String lockKey) {
+        boolean lockAcquired = redisDistributedLockService.acquireLock(lockKey, Duration.ofSeconds(30));
+        if (!lockAcquired) {
+            throw new BadRequestException("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
+        }
+    }
+
+    private static void validateHasToken(Member member) {
+        if (!member.hasEnoughTokenCount(1)) {
+            throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+        }
+    }
+
+    private QuestionAndAnswers createQuestionAndAnswers(Long curQuestionId, AnswerRequest answerRequest, Interview interview) {
+        List<Question> questions = questionRepository.findByInterview(interview);
+        List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
+        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
