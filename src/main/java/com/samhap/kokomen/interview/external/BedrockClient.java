@@ -18,18 +18,18 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 @Component
 public class BedrockClient {
 
-    private static final String INFERENCE_PROFILE_ID = "apac.anthropic.claude-3-sonnet-20240229-v1:0";
+    private static final String INFERENCE_PROFILE_ID = "apac.anthropic.claude-sonnet-4-20250514-v1:0";
 
     private final BedrockRuntimeClient bedrockRuntimeClient;
 
     public BedrockResponse requestToBedrock(QuestionAndAnswers questionAndAnswers) {
         ConverseRequest converseRequest = createConverseRequest(questionAndAnswers);
-        
+
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
-        
+
         ConverseResponse converseResponse = bedrockRuntimeClient.converse(converseRequest);
-        
+
         stopWatch.stop();
         log.info("Bedrock API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());
 
