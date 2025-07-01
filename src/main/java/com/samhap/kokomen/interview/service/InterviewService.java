@@ -86,8 +86,8 @@ public class InterviewService {
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
-        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
 
         LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
