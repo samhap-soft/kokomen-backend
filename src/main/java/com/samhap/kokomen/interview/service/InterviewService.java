@@ -7,6 +7,7 @@ import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -39,10 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-// TODO: 루트 질문 가져올 때 AtomicLong 이용해서 순서대로 하나씩 가져오기
 public class InterviewService {
 
-    private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 10;
+    private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
 
     private final GptClient gptClient;
     private final BedrockClient bedrockClient;
