@@ -7,11 +7,14 @@ import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.request.Message;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StopWatch;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 public class GptClient {
 
@@ -38,12 +41,20 @@ public class GptClient {
     public GptResponse requestToGpt(QuestionAndAnswers questionAndAnswers) {
         GptRequest gptRequest = createGptRequest(questionAndAnswers);
 
-        return restClient.post()
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+
+        GptResponse gptResponse = restClient.post()
                 .uri(GPT_API_URL)
                 .header("Authorization", "Bearer " + gptApiKey)
                 .body(gptRequest)
                 .retrieve()
                 .body(GptResponse.class);
+
+        stopWatch.stop();
+        log.info("GPT API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());
+
+        return gptResponse;
     }
 
     private GptRequest createGptRequest(QuestionAndAnswers questionAndAnswers) {

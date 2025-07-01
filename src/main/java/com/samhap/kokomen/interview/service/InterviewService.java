@@ -11,11 +11,12 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
+import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
+import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -46,6 +47,7 @@ public class InterviewService {
     private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
 
     private final GptClient gptClient;
+    private final BedrockClient bedrockClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -86,15 +88,16 @@ public class InterviewService {
         validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
         decreaseTokenCount(member);
-        GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
+
+        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
 
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview);
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
 
-        evaluateInterview(interview, questionAndAnswers, curAnswer, gptResponse, member);
+        evaluateInterview(interview, questionAndAnswers, curAnswer, llmResponse, member);
         return Optional.empty();
     }
 
@@ -111,21 +114,21 @@ public class InterviewService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
-        GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LLMResponse llmResponse) {
+        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
-        GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
+    private Question saveNextQuestion(LLMResponse llmResponse, Interview interview) {
+        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
+        Question next = new Question(interview, nextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, GptResponse gptResponse, Member member) {
-        GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
+    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, LLMResponse llmResponse, Member member) {
+        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
+        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
     }
 

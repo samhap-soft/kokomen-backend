@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
-public record GptNextQuestionResponse(
+public record NextQuestionResponse(
         String nextQuestion
 ) {
 }

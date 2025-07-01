@@ -5,9 +5,10 @@ import java.util.List;
 
 public record GptResponse(
         List<Choice> choices
-) {
+) implements LLMResponse {
 
-    public GptFeedbackResponse extractGptFeedbackResponse(ObjectMapper objectMapper) {
+    @Override
+    public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
@@ -16,7 +17,8 @@ public record GptResponse(
                 .extractGptFeedbackResponse(objectMapper);
     }
 
-    public GptNextQuestionResponse extractGptNextQuestionResponse(ObjectMapper objectMapper) {
+    @Override
+    public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
@@ -25,7 +27,8 @@ public record GptResponse(
                 .extractGptNextQuestionResponse(objectMapper);
     }
 
-    public GptTotalFeedbackResponse extractGptTotalFeedbackResponse(ObjectMapper objectMapper) {
+    @Override
+    public TotalFeedbackResponse extractTotalFeedbackResponse(ObjectMapper objectMapper) {
         return choices.get(0)
                 .message()
                 .toolCalls()
@@ -33,5 +36,4 @@ public record GptResponse(
                 .function()
                 .extractGptTotalFeedbackResponse(objectMapper);
     }
-
 }
