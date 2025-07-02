@@ -1,10 +1,7 @@
 name: CD PROD
 
-#on:
-#  push:
-#    branches: [ main ]
 on:
-  pull_request:
+  push:
     branches: [ main ]
 
 jobs:
