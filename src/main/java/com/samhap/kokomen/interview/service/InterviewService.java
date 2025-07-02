@@ -83,10 +83,11 @@ public class InterviewService {
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        decreaseTokenCount(memberAuth.memberId());
         Member member = readMember(memberAuth);
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
-        decreaseTokenCount(member);
+        member = readMember(memberAuth);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
 
         LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
@@ -101,8 +102,8 @@ public class InterviewService {
         return Optional.empty();
     }
 
-    private void decreaseTokenCount(Member member) {
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
+    private void decreaseTokenCount(Long memberId) {
+        int affectedRows = memberRepository.decreaseFreeTokenCount(memberId);
         if (affectedRows == 0) {
             throw new BadRequestException("회원의 토큰 개수가 부족해 인터뷰를 더 이상 진행할 수 없습니다.");
         }
