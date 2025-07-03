@@ -77,7 +77,8 @@ class InterviewServiceTest extends BaseTest {
         // then
         assertAll(
                 () -> assertThat(actual).contains(expected),
-                () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue()
+                () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue(),
+                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
         );
     }
 
@@ -117,7 +118,8 @@ class InterviewServiceTest extends BaseTest {
                 () -> assertThat(questionRepository.existsById(question3.getId() + 1)).isFalse(),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalFeedback()).isEqualTo(totalFeedback),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalScore()).isEqualTo(answerRank.getScore() * 3),
-                () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3)
+                () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3),
+                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
         );
     }
 }
