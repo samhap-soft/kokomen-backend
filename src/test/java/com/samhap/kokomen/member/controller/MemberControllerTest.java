@@ -96,4 +96,36 @@ class MemberControllerTest extends BaseControllerTest {
         Member updatedMember = memberRepository.findById(member.getId()).orElseThrow();
         assertThat(updatedMember.getNickname()).isEqualTo(newNickname);
     }
+
+    @Test
+    void 닉네임이_공백이면_변경에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String invalidNickname = "  ";
+        String requestJson = """
+                {
+                  "nickname": "%s"
+                }
+                """.formatted(invalidNickname);
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/members/me/profile/nickname")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andDo(document("member-updateNickname-error",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("nickname").description("변경할 닉네임")
+                        )
+                ));
+    }
 }

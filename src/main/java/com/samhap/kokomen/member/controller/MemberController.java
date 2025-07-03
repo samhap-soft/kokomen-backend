@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.NicknameRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +29,7 @@ public class MemberController {
 
     @PatchMapping("/me/profile/nickname")
     public ResponseEntity<Void> updateMyNickname(
-            @RequestBody NicknameRequest nicknameRequest,
+            @Valid @RequestBody NicknameRequest nicknameRequest,
             MemberAuth memberAuth
     ) {
         memberService.updateNickname(memberAuth, nicknameRequest);
