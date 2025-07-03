@@ -1,0 +1,2 @@
+ALTER TABLE member
+    ADD COLUMN free_token_count INTEGER NOT NULL DEFAULT 10;
