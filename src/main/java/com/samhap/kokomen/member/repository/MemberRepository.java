@@ -11,8 +11,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByKakaoId(Long kakaoId);
 
     @Modifying
-    @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m = :member AND m.freeTokenCount > 0")
-    int decreaseFreeTokenCount(Member member);
+    @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m.id = :memberId AND m.freeTokenCount > 0")
+    int decreaseFreeTokenCount(Long memberId);
 
     @Modifying
     @Query("UPDATE Member m SET m.freeTokenCount = :dailyFreeTokenCount")
