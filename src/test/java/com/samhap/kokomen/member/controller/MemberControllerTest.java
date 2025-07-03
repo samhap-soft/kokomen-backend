@@ -38,9 +38,10 @@ class MemberControllerTest extends BaseControllerTest {
                     "id": %d,
                     "nickname": %s,
                     "score": %d,
-                    "token_count": %d
+                    "token_count": %d,
+                    "profile_completed": %s
                 }
-                """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getFreeTokenCount());
+                """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getFreeTokenCount(), member.getProfileCompleted());
 
         // when & then
         mockMvc.perform(get("/api/v1/members/me/profile")
@@ -57,13 +58,14 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("id").description("회원 id"),
                                 fieldWithPath("nickname").description("회원 닉네임"),
                                 fieldWithPath("score").description("현재 회원 점수"),
-                                fieldWithPath("token_count").description("현재 회원 토큰 개수")
+                                fieldWithPath("token_count").description("현재 회원 토큰 개수"),
+                                fieldWithPath("profile_completed").description("프로필 완성 여부")
                         )
                 ));
     }
 
     @Test
-    void 닉네임을_변경한다() throws Exception {
+    void 프로필을_변경한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -77,14 +79,14 @@ class MemberControllerTest extends BaseControllerTest {
                 """.formatted(newNickname);
 
         // when & then
-        mockMvc.perform(patch("/api/v1/members/me/profile/nickname")
+        mockMvc.perform(patch("/api/v1/members/me/profile")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andDo(document("member-updateNickname",
+                .andDo(document("member-updateProfile",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -98,7 +100,7 @@ class MemberControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 닉네임이_공백이면_변경에_실패한다() throws Exception {
+    void 닉네임이_공백이면_프로필_변경에_실패한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -112,14 +114,14 @@ class MemberControllerTest extends BaseControllerTest {
                 """.formatted(invalidNickname);
 
         // when & then
-        mockMvc.perform(patch("/api/v1/members/me/profile/nickname")
+        mockMvc.perform(patch("/api/v1/members/me/profile")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isBadRequest())
-                .andDo(document("member-updateNickname-error",
+                .andDo(document("member-updateProfile-error",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),

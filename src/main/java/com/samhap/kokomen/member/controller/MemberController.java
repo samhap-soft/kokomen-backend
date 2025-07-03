@@ -3,7 +3,7 @@ package com.samhap.kokomen.member.controller;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
-import com.samhap.kokomen.member.service.dto.NicknameRequest;
+import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +27,12 @@ public class MemberController {
         return ResponseEntity.ok(memberService.findMember(memberAuth));
     }
 
-    @PatchMapping("/me/profile/nickname")
-    public ResponseEntity<Void> updateMyNickname(
-            @Valid @RequestBody NicknameRequest nicknameRequest,
+    @PatchMapping("/me/profile")
+    public ResponseEntity<Void> updateProfile(
+            @Valid @RequestBody ProfileUpdateRequest profileUpdateRequest,
             MemberAuth memberAuth
     ) {
-        memberService.updateNickname(memberAuth, nicknameRequest);
+        memberService.updateProfile(memberAuth, profileUpdateRequest);
         return ResponseEntity.ok().build();
     }
 }

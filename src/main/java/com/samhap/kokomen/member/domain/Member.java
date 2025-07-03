@@ -36,11 +36,15 @@ public class Member extends BaseEntity {
     @Column(name = "free_token_count", nullable = false)
     private Integer freeTokenCount;
 
+    @Column(name = "profile_completed", nullable = false)
+    private Boolean profileCompleted;
+
     public Member(Long kakaoId, String nickname) {
         this.kakaoId = kakaoId;
         this.nickname = nickname;
         this.score = 0;
         this.freeTokenCount = DAILY_FREE_TOKEN_COUNT;
+        this.profileCompleted = false;
     }
 
     public void addScore(Integer addendScore) {
@@ -51,7 +55,8 @@ public class Member extends BaseEntity {
         return this.freeTokenCount >= maxQuestionCount;
     }
 
-    public void updateNickname(String nickname) {
+    public void updateProfile(String nickname) {
+        this.profileCompleted = true;
         this.nickname = nickname;
     }
 }
