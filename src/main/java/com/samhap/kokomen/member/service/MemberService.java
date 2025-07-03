@@ -6,6 +6,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
+import com.samhap.kokomen.member.service.dto.NicknameRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,9 +26,19 @@ public class MemberService {
     }
 
     public MyProfileResponse findMember(MemberAuth memberAuth) {
-        Member member = memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+        Member member = readMember(memberAuth);
 
         return new MyProfileResponse(member);
+    }
+
+    @Transactional
+    public void updateNickname(MemberAuth memberAuth, NicknameRequest nicknameRequest) {
+        Member member = readMember(memberAuth);
+        member.updateNickname(nicknameRequest.nickname());
+    }
+
+    private Member readMember(MemberAuth memberAuth) {
+        return memberRepository.findById(memberAuth.memberId())
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 }

@@ -3,9 +3,12 @@ package com.samhap.kokomen.member.controller;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
+import com.samhap.kokomen.member.service.dto.NicknameRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,5 +24,14 @@ public class MemberController {
             MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(memberService.findMember(memberAuth));
+    }
+
+    @PatchMapping("/me/profile/nickname")
+    public ResponseEntity<Void> updateMyNickname(
+            @RequestBody NicknameRequest nicknameRequest,
+            MemberAuth memberAuth
+    ) {
+        memberService.updateNickname(memberAuth, nicknameRequest);
+        return ResponseEntity.ok().build();
     }
 }
