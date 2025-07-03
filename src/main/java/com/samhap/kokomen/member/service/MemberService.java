@@ -6,7 +6,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
-import com.samhap.kokomen.member.service.dto.NicknameRequest;
+import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,9 +32,9 @@ public class MemberService {
     }
 
     @Transactional
-    public void updateNickname(MemberAuth memberAuth, NicknameRequest nicknameRequest) {
+    public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
         Member member = readMember(memberAuth);
-        member.updateNickname(nicknameRequest.nickname());
+        member.updateProfile(profileUpdateRequest.nickname());
     }
 
     private Member readMember(MemberAuth memberAuth) {
