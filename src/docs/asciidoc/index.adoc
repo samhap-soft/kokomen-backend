@@ -43,19 +43,19 @@ include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
 include::{snippetsDir}/member-findMyProfile/response-fields.adoc[]
 include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
 
-=== 멤버 닉네임 변경
+=== 멤버 프로필 변경
 
-include::{snippetsDir}/member-updateNickname/http-request.adoc[]
-include::{snippetsDir}/member-updateNickname/request-fields.adoc[]
-include::{snippetsDir}/member-updateNickname/http-response.adoc[]
-include::{snippetsDir}/member-updateNickname/curl-request.adoc[]
+include::{snippetsDir}/member-updateProfile/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile/curl-request.adoc[]
 
-=== 멤버 닉네임 변경 예외
+=== 멤버 프로필 변경 예외
 
-include::{snippetsDir}/member-updateNickname-error/http-request.adoc[]
-include::{snippetsDir}/member-updateNickname-error/request-fields.adoc[]
-include::{snippetsDir}/member-updateNickname-error/http-response.adoc[]
-include::{snippetsDir}/member-updateNickname-error/curl-request.adoc[]
+include::{snippetsDir}/member-updateProfile-error/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile-error/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile-error/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
 
 == 인터뷰
 

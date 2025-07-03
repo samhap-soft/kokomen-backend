@@ -77,14 +77,14 @@ class MemberControllerTest extends BaseControllerTest {
                 """.formatted(newNickname);
 
         // when & then
-        mockMvc.perform(patch("/api/v1/members/me/profile/nickname")
+        mockMvc.perform(patch("/api/v1/members/me/profile")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andDo(document("member-updateNickname",
+                .andDo(document("member-updateProfile",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -112,14 +112,14 @@ class MemberControllerTest extends BaseControllerTest {
                 """.formatted(invalidNickname);
 
         // when & then
-        mockMvc.perform(patch("/api/v1/members/me/profile/nickname")
+        mockMvc.perform(patch("/api/v1/members/me/profile")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isBadRequest())
-                .andDo(document("member-updateNickname-error",
+                .andDo(document("member-updateProfile-error",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
