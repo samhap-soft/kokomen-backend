@@ -26,7 +26,7 @@ class MemberRepositoryTest extends BaseTest {
 
         // when
         TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
+        int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
         transactionManager.commit(status);
 
         // then
@@ -43,7 +43,7 @@ class MemberRepositoryTest extends BaseTest {
 
         // when
         TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member);
+        int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
         transactionManager.commit(status);
 
         // then
