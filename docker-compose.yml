@@ -1,21 +1,144 @@
+version: '3.8'
+
+volumes:
+  grafana:
+  prom:
+  kokomen_local_mysql_data:
+  kokomen-local-redis-data:
+
 services:
+  # ✅ Spring Boot App
   kokomen-app:
     build: .
     ports:
       - 8080:8080
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
     depends_on:
       kokomen-mysql:
         condition: service_healthy
+
+  # ✅ MySQL
   kokomen-mysql:
     image: mysql:8.4.5
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: kokomen-local
-    volumes:
-      - ./mysql_data:/var/lib/mysql
+      TZ: Asia/Seoul
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci"
+      ]
     ports:
       - 3306:3306
+    volumes:
+      - kokomen_local_mysql_data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping" ]
+      test: [ "CMD", "mysql", "-u", "root", "-proot", "-e", "SELECT 1" ]
       interval: 5s
       retries: 10
+
+  # ✅ Redis
+  kokomen-redis:
+    image: valkey/valkey:8.0.1
+    ports:
+      - 6379:6379
+    volumes:
+      - kokomen-local-redis-data:/data
+
+#  로컬에서 모니터링 테스트가 필요할 때만 주석 해제
+#  # ✅ Loki
+#  loki:
+#    image: grafana/loki
+#    restart: unless-stopped
+#    ports:
+#      - 3100:3100
+#    command: -config.file=/etc/loki/local-config.yaml
+#
+#  # ✅ Node Exporter
+#  node:
+#    image: prom/node-exporter
+#    restart: unless-stopped
+#    pid: host
+#    ports:
+#      - 9100:9100
+#    command:
+#      - '--path.rootfs=/host'
+#    volumes:
+#      - '/:/host:ro'
+#
+#  # ✅ Prometheus
+#  prom:
+#    image: prom/prometheus
+#    restart: unless-stopped
+#    volumes:
+#      - prom:/prometheus
+#    ports:
+#      - 9090:9090
+#    depends_on:
+#      - node
+#    entrypoint:
+#      - sh
+#      - -euc
+#      - |
+#        cat <<EOF > /prometheus/prometheus.yml
+#        scrape_configs:
+#          - job_name: 'app'
+#            metrics_path: '/actuator/prometheus'
+#            scrape_interval: 15s
+#            static_configs:
+#              - targets: ['host.docker.internal:8080']
+#
+#          - job_name: 'node'
+#            scrape_interval: 15s
+#            static_configs:
+#              - targets: ['node:9100']
+#        EOF
+#        /bin/prometheus
+#
+#  # ✅ Grafana
+#  grafana:
+#    image: grafana/grafana
+#    restart: unless-stopped
+#    volumes:
+#      - grafana:/var/lib/grafana
+#    environment:
+#      - GF_AUTH_ANONYMOUS_ENABLED=true
+#      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+#    ports:
+#      - 3000:3000
+#    entrypoint:
+#      - sh
+#      - -euc
+#      - |
+#        mkdir -p /etc/grafana/provisioning/datasources
+#        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+#        apiVersion: 1
+#        datasources:
+#        - name: Loki
+#          type: loki
+#          access: proxy
+#          orgId: 1
+#          url: http://loki:3100
+#          basicAuth: false
+#          isDefault: true
+#          version: 1
+#          editable: false
+#
+#        - name: Prometheus
+#          type: prometheus
+#          access: proxy
+#          orgId: 1
+#          url: http://prom:9090
+#          basicAuth: false
+#          isDefault: false
+#          editable: false
+#        EOF
+#        /run.sh
