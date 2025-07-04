@@ -5,7 +5,7 @@ import java.util.List;
 
 public record GptResponse(
         List<Choice> choices
-) implements LLMResponse {
+) implements LlmResponse {
 
     @Override
     public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {

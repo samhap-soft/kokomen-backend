@@ -7,10 +7,10 @@ import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
-import com.samhap.kokomen.interview.external.dto.response.GptFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptNextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptTotalFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
+import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
+import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -36,18 +36,18 @@ public class InterviewAnswerResponseService {
     public Optional<InterviewProceedResponse> handleGptResponse(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
-            GptResponse gptResponse,
+            LlmResponse llmResponse,
             Long interviewId
     ) {
         Member member = readMember(memberId);
         member.useToken();
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, gptResponse);
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         Interview interview = readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(gptResponse, interview);
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
             return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
         }
-        evaluateInterview(questionAndAnswers, curAnswer, interview, gptResponse, member);
+        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
         return Optional.empty();
     }
 
@@ -56,8 +56,8 @@ public class InterviewAnswerResponseService {
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, GptResponse gptResponse) {
-        GptFeedbackResponse feedback = gptResponse.extractGptFeedbackResponse(objectMapper);
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
+        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
         return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
     }
 
@@ -66,16 +66,16 @@ public class InterviewAnswerResponseService {
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
 
-    private Question saveNextQuestion(GptResponse gptResponse, Interview interview) {
-        GptNextQuestionResponse gptNextQuestionResponse = gptResponse.extractGptNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, gptNextQuestionResponse.nextQuestion());
+    private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
+        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
+        Question next = new Question(interview, nextQuestionResponse.nextQuestion());
         return questionRepository.save(next);
     }
 
-    private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview, GptResponse gptResponse, Member member) {
+    private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview, LlmResponse llmResponse, Member member) {
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        GptTotalFeedbackResponse gptTotalFeedbackResponse = gptResponse.extractGptTotalFeedbackResponse(objectMapper);
-        interview.evaluate(gptTotalFeedbackResponse.totalFeedback(), totalScore);
+        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
+        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
     }
 }

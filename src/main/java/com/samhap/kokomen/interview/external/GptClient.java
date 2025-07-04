@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.samhap.kokomen.global.exception.GptApiException;
+import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
@@ -55,9 +55,9 @@ public class GptClient {
                     .retrieve()
                     .body(GptResponse.class);
         } catch (RestClientResponseException e) {
-            throw new GptApiException("GPT API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
+            throw new LlmApiException("GPT API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
         } catch (Exception e) {
-            throw new GptApiException("GPT API 호출 중 예상치 못한 오류가 발생했습니다.", e);
+            throw new LlmApiException("GPT API 호출 중 예상치 못한 오류가 발생했습니다.", e);
         }
         stopWatch.stop();
         log.info("GPT API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());

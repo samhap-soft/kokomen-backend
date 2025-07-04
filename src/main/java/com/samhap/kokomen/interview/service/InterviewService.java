@@ -13,10 +13,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
-import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -94,8 +91,8 @@ public class InterviewService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
 
         try {
-            GptResponse gptResponse = gptClient.requestToGpt(questionAndAnswers);
-            return interviewAnswerResponseService.handleGptResponse(member.getId(), questionAndAnswers, gptResponse, interview.getId());
+            LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+            return interviewAnswerResponseService.handleGptResponse(member.getId(), questionAndAnswers, llmResponse, interview.getId());
         } finally {
             redisDistributedLockService.releaseLock(lockKey);
         }
