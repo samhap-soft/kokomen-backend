@@ -21,8 +21,12 @@ public abstract class BaseTest {
     @Autowired
     private MySQLDatabaseCleaner mySQLDatabaseCleaner;
 
+    @Autowired
+    private RedisCleaner redisCleaner;
+
     @BeforeEach
     void baseTestSetUp() {
         mySQLDatabaseCleaner.executeTruncate();
+        redisCleaner.clearAllRedisData();
     }
 }
