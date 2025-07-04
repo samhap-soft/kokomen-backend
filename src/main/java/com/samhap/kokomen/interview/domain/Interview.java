@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
-    public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 10;
+    public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)

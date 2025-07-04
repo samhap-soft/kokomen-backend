@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity
 public class Member extends BaseEntity {
 
-    public static final int DAILY_FREE_TOKEN_COUNT = 10;
+    public static final int DAILY_FREE_TOKEN_COUNT = 20;
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,11 +37,15 @@ public class Member extends BaseEntity {
     @Column(name = "free_token_count", nullable = false)
     private Integer freeTokenCount;
 
+    @Column(name = "profile_completed", nullable = false)
+    private Boolean profileCompleted;
+
     public Member(Long kakaoId, String nickname) {
         this.kakaoId = kakaoId;
         this.nickname = nickname;
         this.score = 0;
         this.freeTokenCount = DAILY_FREE_TOKEN_COUNT;
+        this.profileCompleted = false;
     }
 
     public void addScore(Integer addendScore) {
@@ -61,5 +65,10 @@ public class Member extends BaseEntity {
             throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
         }
         freeTokenCount--;
+    }
+
+    public void updateProfile(String nickname) {
+        this.profileCompleted = true;
+        this.nickname = nickname;
     }
 }

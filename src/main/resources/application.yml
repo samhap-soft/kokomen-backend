@@ -97,7 +97,7 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: http://localhost:3000, https://kokomen.kr, https://www.kokomen.kr, https://kokomen.kr:3000 # TODO: 개발환경 uri로 변경
+  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000
 server:
   servlet:
     session:
@@ -122,8 +122,9 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      host: ${REDIS_CLUSTER_ENDPOINT}
-      port: 6379
+      cluster:
+        nodes:
+          - ${REDIS_CLUSTER_ENDPOINT}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}

@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
@@ -30,6 +31,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -139,6 +141,12 @@ class InterviewControllerTest extends BaseControllerTest {
                 .nextQuestion(nextQuestion)
                 .buildProceed();
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+        
+        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
+                .answerRank(curAnswerRank)
+                .nextQuestion(nextQuestion)
+                .buildProceed();
+        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
 
         // when & then
         mockMvc.perform(post(

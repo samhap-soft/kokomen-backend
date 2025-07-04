@@ -5,19 +5,19 @@ import java.util.Map;
 
 public record GptRequest(
         String model,
-        List<Message> messages,
+        List<GptMessage> gptMessages,
         List<Tool> tools,
         ToolChoice toolChoice
 ) {
 
     private static final String GPT_MODEL = "gpt-4.1-mini";
 
-    public static GptRequest createProceedGptRequest(List<Message> messages) {
-        return new GptRequest(GPT_MODEL, messages, createProceedTools(), createProceedToolChoice());
+    public static GptRequest createProceedGptRequest(List<GptMessage> gptMessages) {
+        return new GptRequest(GPT_MODEL, gptMessages, createProceedTools(), createProceedToolChoice());
     }
 
-    public static GptRequest createEndGptRequest(List<Message> messages) {
-        return new GptRequest(GPT_MODEL, messages, createEndTools(), createEndToolChoice());
+    public static GptRequest createEndGptRequest(List<GptMessage> gptMessages) {
+        return new GptRequest(GPT_MODEL, gptMessages, createEndTools(), createEndToolChoice());
     }
 
     private static List<Tool> createProceedTools() {

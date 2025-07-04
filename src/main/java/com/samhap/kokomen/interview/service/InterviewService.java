@@ -11,8 +11,12 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
+import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
+import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -30,7 +34,6 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,12 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-// TODO: 루트 질문 가져올 때 AtomicLong 이용해서 순서대로 하나씩 가져오기
 public class InterviewService {
 
-    private static final AtomicLong rootQuestionIdGenerator = new AtomicLong(1);
+    private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
 
     private final GptClient gptClient;
+    private final BedrockClient bedrockClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -56,7 +59,7 @@ public class InterviewService {
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
         validateEnoughTokenCount(member, interviewRequest);
-        RootQuestion rootQuestion = readRandomRootQuestion();
+        RootQuestion rootQuestion = readRandomRootQuestion(member, interviewRequest);
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
         Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
 
@@ -69,12 +72,14 @@ public class InterviewService {
         }
     }
 
-    // TODO: 랜덤 생성 로직 전략 패턴으로 추상화
-    private RootQuestion readRandomRootQuestion() {
-        Long rootQuestionId = (rootQuestionIdGenerator.getAndIncrement()) % rootQuestionRepository.count() + 1;
+    private RootQuestion readRandomRootQuestion(Member member, InterviewRequest interviewRequest) {
+        String category = interviewRequest.category().name();
 
-        return rootQuestionRepository.findById(rootQuestionId)
-                .orElseThrow(() -> new IllegalStateException("존재하지 않는 루트 질문입니다."));
+        return rootQuestionRepository.findRandomByCategoryExcludingRecent(
+                member.getId(),
+                category,
+                EXCLUDED_RECENT_ROOT_QUESTION_COUNT
+        ).orElseThrow(() -> new IllegalStateException("루트 질문 갯수가 부족합니다. category = " + category));
     }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서

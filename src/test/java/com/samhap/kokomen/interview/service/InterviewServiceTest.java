@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
@@ -17,6 +18,7 @@ import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -54,11 +56,17 @@ class InterviewServiceTest extends BaseTest {
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().build());
         String nextQuestion = "스레드 안전하다는 것은 무엇인가요?";
         AnswerRank curAnswerRank = AnswerRank.A;
+
         GptResponse gptResponse = GptResponseFixtureBuilder.builder()
                 .answerRank(curAnswerRank)
                 .nextQuestion(nextQuestion)
                 .buildProceed();
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
+                .answerRank(curAnswerRank)
+                .nextQuestion(nextQuestion)
+                .buildProceed();
+        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
 
         InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1, nextQuestion);
 
@@ -69,7 +77,8 @@ class InterviewServiceTest extends BaseTest {
         // then
         assertAll(
                 () -> assertThat(actual).contains(expected),
-                () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue()
+                () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue(),
+                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
         );
     }
 
@@ -86,11 +95,18 @@ class InterviewServiceTest extends BaseTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(answerRank).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(answerRank).build());
         String totalFeedback = "스레드 안전하다는 것은 무엇인가요?";
+
         GptResponse gptResponse = GptResponseFixtureBuilder.builder()
                 .totalFeedback(totalFeedback)
                 .answerRank(answerRank)
                 .buildEnd();
         when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+
+        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
+                .totalFeedback(totalFeedback)
+                .answerRank(answerRank)
+                .buildEnd();
+        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
 
         // when
         Optional<InterviewProceedResponse> actual = interviewService.proceedInterview(
@@ -102,7 +118,8 @@ class InterviewServiceTest extends BaseTest {
                 () -> assertThat(questionRepository.existsById(question3.getId() + 1)).isFalse(),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalFeedback()).isEqualTo(totalFeedback),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalScore()).isEqualTo(answerRank.getScore() * 3),
-                () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3)
+                () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3),
+                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
         );
     }
 }
