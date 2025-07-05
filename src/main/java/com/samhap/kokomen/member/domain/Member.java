@@ -1,6 +1,7 @@
 package com.samhap.kokomen.member.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -51,8 +52,19 @@ public class Member extends BaseEntity {
         this.score += addendScore;
     }
 
-    public boolean hasEnoughTokenCount(int maxQuestionCount) {
-        return this.freeTokenCount >= maxQuestionCount;
+    public boolean hasEnoughTokenCount(int tokenCount) {
+        return this.freeTokenCount >= tokenCount;
+    }
+
+    public void addFreeTokenCount(int count) {
+        this.freeTokenCount += count;
+    }
+
+    public void useToken() {
+        if (freeTokenCount <= 0) {
+            throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+        }
+        freeTokenCount--;
     }
 
     public void updateProfile(String nickname) {

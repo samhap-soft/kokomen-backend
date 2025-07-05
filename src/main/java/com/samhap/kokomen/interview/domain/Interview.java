@@ -105,8 +105,12 @@ public class Interview extends BaseEntity {
     }
 
     public void evaluate(String totalFeedback, Integer totalScore) {
-        this.interviewState = InterviewState.FINISHED;
-        this.totalFeedback = totalFeedback;
-        this.totalScore = totalScore;
+        if (isInProgress()) {
+            this.interviewState = InterviewState.FINISHED;
+            this.totalFeedback = totalFeedback;
+            this.totalScore = totalScore;
+            return;
+        }
+        throw new BadRequestException("이미 종료된 인터뷰입니다.");
     }
 }

@@ -40,9 +40,9 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(message));
     }
 
-    @ExceptionHandler(GptApiException.class)
-    public ResponseEntity<ErrorResponse> handleGptApiException(GptApiException e) {
-        log.warn("GptApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
+    @ExceptionHandler(LlmApiException.class)
+    public ResponseEntity<ErrorResponse> handleLlmApiException(LlmApiException e) {
+        log.warn("LlmApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
         return ResponseEntity.status(e.getHttpStatusCode())
                 .body(new ErrorResponse(e.getMessage()));
     }
