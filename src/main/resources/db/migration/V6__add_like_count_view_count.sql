@@ -5,7 +5,7 @@ CREATE TABLE interview_like
     interview_id BIGINT NOT NULL,
     created_at   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP (6),
     PRIMARY KEY (id),
-    UNIQUE KEY uk_interview_like_interview_member (interview_id, member_id),
+    CONSTRAINT uk_interview_like_interview_member UNIQUE (interview_id, member_id),
     CONSTRAINT fk_interview_like_member FOREIGN KEY (member_id) REFERENCES member (id),
     CONSTRAINT fk_interview_like_interview FOREIGN KEY (interview_id) REFERENCES interview (id)
 );
@@ -17,7 +17,7 @@ CREATE TABLE answer_like
     answer_id  BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP (6),
     PRIMARY KEY (id),
-    UNIQUE KEY uk_answer_like_answer_memeber (answer_id, member_id),
+    CONSTRAINT uk_answer_like_answer_member UNIQUE (answer_id, member_id),
     CONSTRAINT fk_answer_like_member FOREIGN KEY (member_id) REFERENCES member (id),
     CONSTRAINT fk_answer_like_answer FOREIGN KEY (answer_id) REFERENCES answer (id)
 );
