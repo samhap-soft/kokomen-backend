@@ -7,13 +7,20 @@ import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.docu
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
@@ -24,7 +31,11 @@ import org.springframework.mock.web.MockHttpSession;
 class MemberControllerTest extends BaseControllerTest {
 
     @Autowired
-    protected MemberRepository memberRepository;
+    private MemberRepository memberRepository;
+    @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private InterviewRepository interviewRepository;
 
     @Test
     void 자신의_정보를_조회한다() throws Exception {
@@ -127,6 +138,38 @@ class MemberControllerTest extends BaseControllerTest {
                         ),
                         requestFields(
                                 fieldWithPath("nickname").description("변경할 닉네임")
+                        )
+                ));
+    }
+
+    @Test
+    void 랭킹_조회에_성공한다() throws Exception {
+        // given
+        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).kakaoId(1L).build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("200점 회원").score(200).kakaoId(2L).build());
+        Member member3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("300점 회원").score(300).kakaoId(3L).build());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).build());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/members/ranking")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andDo(document("member-findRanking",
+                        queryParameters(
+                                parameterWithName("page").description("페이지 번호 (0부터 시작)"),
+                                parameterWithName("size").description("한 페이지 크기")
+                        ),
+                        responseFields(
+                                fieldWithPath("[].id").description("회원 ID"),
+                                fieldWithPath("[].nickname").description("회원 닉네임"),
+                                fieldWithPath("[].score").description("회원 점수"),
+                                fieldWithPath("[].interview_count").description("회원의 인터뷰 수")
                         )
                 ));
     }
