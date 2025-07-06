@@ -155,11 +155,29 @@ class MemberControllerTest extends BaseControllerTest {
         interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).build());
         interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).build());
 
+        String responseJson = """
+                [
+                  {
+                    "id": %d,
+                    "nickname": "300점 회원",
+                    "score": 300,
+                    "interview_count": 2
+                  },
+                  {
+                    "id": %d,
+                    "nickname": "200점 회원",
+                    "score": 200,
+                    "interview_count": 1
+                  }
+                ]
+                """.formatted(member3.getId(), member2.getId());
+
         // when & then
         mockMvc.perform(get("/api/v1/members/ranking")
                         .param("page", "0")
                         .param("size", "2"))
                 .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
                 .andDo(document("member-findRanking",
                         queryParameters(
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)"),

@@ -41,7 +41,9 @@ public class MemberService {
     }
 
     public List<RankingResponse> findRanking(Pageable pageable) {
-        return memberRepository.findRankings(pageable);
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
     }
 
     private Member readMember(MemberAuth memberAuth) {

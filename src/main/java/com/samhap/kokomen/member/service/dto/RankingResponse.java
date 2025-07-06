@@ -1,6 +1,6 @@
 package com.samhap.kokomen.member.service.dto;
 
-import com.samhap.kokomen.member.domain.Member;
+import java.util.List;
 
 public record RankingResponse(
         Long id,
@@ -8,7 +8,18 @@ public record RankingResponse(
         Integer score,
         Integer interviewCount
 ) {
-    public RankingResponse(Member member, Long interviewCount) {
-        this(member.getId(), member.getNickname(), member.getScore(), interviewCount.intValue());
+    public RankingResponse(RankingProjection rankingProjection) {
+        this(
+                rankingProjection.getId(),
+                rankingProjection.getNickname(),
+                rankingProjection.getScore(),
+                rankingProjection.getInterviewCount().intValue()
+        );
+    }
+
+    public static List<RankingResponse> createRankingResponses(List<RankingProjection> rankingProjections) {
+        return rankingProjections.stream()
+                .map(RankingResponse::new)
+                .toList();
     }
 }
