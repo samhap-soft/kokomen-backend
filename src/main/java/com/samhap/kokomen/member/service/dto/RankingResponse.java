@@ -6,14 +6,14 @@ public record RankingResponse(
         Long id,
         String nickname,
         Integer score,
-        Integer interviewCount
+        Integer finishedInterviewCount
 ) {
     public RankingResponse(RankingProjection rankingProjection) {
         this(
                 rankingProjection.getId(),
                 rankingProjection.getNickname(),
                 rankingProjection.getScore(),
-                rankingProjection.getInterviewCount().intValue()
+                rankingProjection.getFinishedInterviewCount().intValue()
         );
     }
 

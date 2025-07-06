@@ -26,14 +26,15 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                     m.id AS id,
                     m.nickname AS nickname,
                     m.score AS score,
-                    COUNT(i.id) AS interviewCount
+                    COUNT(i.id) AS finishedInterviewCount
                 FROM (
                     SELECT id, nickname, score
                     FROM member
                     ORDER BY score DESC
                     LIMIT :limit OFFSET :offset
                 ) m
-                LEFT JOIN interview i ON i.member_id = m.id
+                LEFT JOIN interview i
+                    ON i.member_id = m.id AND i.interview_state = 'FINISHED'
                 GROUP BY m.id, m.nickname, m.score
                 ORDER BY m.score DESC
             """, nativeQuery = true)

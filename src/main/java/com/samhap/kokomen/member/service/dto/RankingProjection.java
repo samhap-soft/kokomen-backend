@@ -7,5 +7,5 @@ public interface RankingProjection {
 
     Integer getScore();
 
-    Long getInterviewCount();
+    Long getFinishedInterviewCount();
 }

@@ -18,6 +18,7 @@ import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -151,9 +152,9 @@ class MemberControllerTest extends BaseControllerTest {
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
 
         String responseJson = """
                 [
@@ -161,13 +162,13 @@ class MemberControllerTest extends BaseControllerTest {
                     "id": %d,
                     "nickname": "300점 회원",
                     "score": 300,
-                    "interview_count": 2
+                    "finished_interview_count": 2
                   },
                   {
                     "id": %d,
                     "nickname": "200점 회원",
                     "score": 200,
-                    "interview_count": 1
+                    "finished_interview_count": 1
                   }
                 ]
                 """.formatted(member3.getId(), member2.getId());
@@ -187,7 +188,7 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].id").description("회원 ID"),
                                 fieldWithPath("[].nickname").description("회원 닉네임"),
                                 fieldWithPath("[].score").description("회원 점수"),
-                                fieldWithPath("[].interview_count").description("회원의 인터뷰 수")
+                                fieldWithPath("[].finished_interview_count").description("회원의 완료한 인터뷰 수")
                         )
                 ));
     }
