@@ -20,6 +20,6 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     void increaseLikeCount(Long interviewId);
 
     @Modifying
-    @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId and i.likeCount > 0")
+    @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
     void decreaseLikeCount(Long interviewId);
 }
