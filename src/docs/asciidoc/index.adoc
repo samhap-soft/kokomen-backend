@@ -43,6 +43,20 @@ include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
 include::{snippetsDir}/member-findMyProfile/response-fields.adoc[]
 include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
 
+=== 멤버 프로필 변경
+
+include::{snippetsDir}/member-updateProfile/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile/curl-request.adoc[]
+
+=== 멤버 프로필 변경 예외
+
+include::{snippetsDir}/member-updateProfile-error/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile-error/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile-error/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
+
 == 인터뷰
 
 === 인터뷰 시작
@@ -91,9 +105,11 @@ include::{snippetsDir}/interview-findInterview-inProgress/response-fields.adoc[]
 include::{snippetsDir}/interview-findInterview-inProgress/curl-request.adoc[]
 
 ==== 인터뷰 조회 응답 - 진행 중
+
 include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
 
 ==== 인터뷰 조회 응답 - 완료
+
 include::{snippetsDir}/interview-findInterview-finished/http-response.adoc[]
 
 === 자신의 인터뷰 목록 조회
@@ -104,6 +120,13 @@ include::{snippetsDir}/interview-findMyInterviews/http-response.adoc[]
 include::{snippetsDir}/interview-findMyInterviews/response-fields.adoc[]
 include::{snippetsDir}/interview-findMyInterviews/curl-request.adoc[]
 
+=== 다른 사용자의 인터뷰 목록 조회
+
+include::{snippetsDir}/interview-findMemberInterviews/http-request.adoc[]
+include::{snippetsDir}/interview-findMemberInterviews/query-parameters.adoc[]
+include::{snippetsDir}/interview-findMemberInterviews/http-response.adoc[]
+include::{snippetsDir}/interview-findMemberInterviews/response-fields.adoc[]
+include::{snippetsDir}/interview-findMemberInterviews/curl-request.adoc[]
 
 === 인터뷰 최종 결과 조회
 

@@ -1,0 +1,5 @@
+ALTER TABLE member
+    ADD COLUMN profile_completed BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE member
+    ALTER COLUMN profile_completed DROP DEFAULT;
