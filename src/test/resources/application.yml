@@ -36,7 +36,6 @@ spring:
       ddl-auto: none
     show-sql: true
     database-platform: org.hibernate.dialect.MySQL8Dialect
-
 ---
 # docs
 spring:
