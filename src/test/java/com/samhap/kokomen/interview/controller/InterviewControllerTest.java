@@ -601,7 +601,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"cur_answer_count": %d,
                 		"score": %s
                 	},
                 	{
@@ -610,15 +609,14 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"cur_answer_count": %d,
                 		"score": %s
                 	}
                 ]
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getInterviewState(), finishedInterview2.getRootQuestion().getCategory(),
-                finishedInterview2.getRootQuestion().getContent(), finishedInterview2.getMaxQuestionCount(), 3, finishedInterview2.getTotalScore(),
+                finishedInterview2.getRootQuestion().getContent(), finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(),
                 finishedInterview1.getId(), finishedInterview1.getInterviewState(), finishedInterview1.getRootQuestion().getCategory(),
-                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), 3, finishedInterview1.getTotalScore()
+                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore()
         );
 
         // when & then
@@ -646,7 +644,6 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].created_at").description("생성 시간"),
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
                                 fieldWithPath("[].score").description("점수").optional()
                         )
                 ));

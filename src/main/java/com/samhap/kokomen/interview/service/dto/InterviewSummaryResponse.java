@@ -27,4 +27,8 @@ public record InterviewSummaryResponse(
                 interview.getTotalScore()
         );
     }
+
+    public InterviewSummaryResponse(Interview interview) {
+        this(interview, null);
+    }
 } 

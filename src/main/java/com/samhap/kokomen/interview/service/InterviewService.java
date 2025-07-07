@@ -1,10 +1,10 @@
 package com.samhap.kokomen.interview.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
+import com.samhap.kokomen.global.service.RedisDistributedLockService;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
@@ -13,10 +13,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
-import com.samhap.kokomen.interview.external.dto.response.LLMResponse;
-import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -31,6 +28,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +49,8 @@ public class InterviewService {
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
-    private final ObjectMapper objectMapper;
+    private final RedisDistributedLockService redisDistributedLockService;
+    private final InterviewAnswerResponseService interviewAnswerResponseService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -81,30 +80,34 @@ public class InterviewService {
     }
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
-    @Transactional
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        decreaseTokenCount(memberAuth.memberId());
+        String lockKey = "interview:proceed:" + memberAuth.memberId();
+        acquireLock(lockKey);
+
         Member member = readMember(memberAuth.memberId());
+        validateHasToken(member);
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(curQuestionId, answerRequest, interview);
 
-        LLMResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-
-        if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(llmResponse, interview);
-            return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
+        try {
+            LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
+            return interviewAnswerResponseService.handleGptResponse(member.getId(), questionAndAnswers, llmResponse, interview.getId());
+        } finally {
+            redisDistributedLockService.releaseLock(lockKey);
         }
-
-        evaluateInterview(interview, questionAndAnswers, curAnswer, llmResponse, member);
-        return Optional.empty();
     }
 
-    private void decreaseTokenCount(Long memberId) {
-        int affectedRows = memberRepository.decreaseFreeTokenCount(memberId);
-        if (affectedRows == 0) {
-            throw new BadRequestException("회원의 토큰 개수가 부족해 인터뷰를 더 이상 진행할 수 없습니다.");
+    private void acquireLock(String lockKey) {
+        boolean lockAcquired = redisDistributedLockService.acquireLock(lockKey, Duration.ofSeconds(30));
+        if (!lockAcquired) {
+            throw new BadRequestException("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
+        }
+    }
+
+    private static void validateHasToken(Member member) {
+        if (!member.hasEnoughTokenCount(1)) {
+            throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
         }
     }
 
@@ -112,24 +115,6 @@ public class InterviewService {
         List<Question> questions = questionRepository.findByInterview(interview);
         List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
-    }
-
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LLMResponse llmResponse) {
-        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
-        return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
-    }
-
-    private Question saveNextQuestion(LLMResponse llmResponse, Interview interview) {
-        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, nextQuestionResponse.nextQuestion());
-        return questionRepository.save(next);
-    }
-
-    private void evaluateInterview(Interview interview, QuestionAndAnswers questionAndAnswers, Answer curAnswer, LLMResponse llmResponse, Member member) {
-        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
-        int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
-        member.addScore(totalScore);
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
@@ -188,7 +173,7 @@ public class InterviewService {
         List<Interview> interviews = findInterviews(member, InterviewState.FINISHED, pageable);
 
         return interviews.stream()
-                .map(interview -> new InterviewSummaryResponse(interview, countCurAnswers(interview)))
+                .map(InterviewSummaryResponse::new)
                 .toList();
     }
 
