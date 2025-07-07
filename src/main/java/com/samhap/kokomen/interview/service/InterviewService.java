@@ -139,10 +139,18 @@ public class InterviewService {
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
-        return InterviewResultResponse.of(feedbackResponses, interview, member);
+        return InterviewResultResponse.createMyResultResponse(feedbackResponses, interview, member);
+    }
+
+    @Transactional(readOnly = true)
+    public InterviewResultResponse findResults(Long interviewId) {
+        Interview interview = readInterview(interviewId);
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
+
+        return InterviewResultResponse.createResultResponse(feedbackResponses, interview);
     }
 
     @Transactional(readOnly = true)

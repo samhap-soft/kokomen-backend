@@ -59,6 +59,13 @@ public class InterviewController {
         return ResponseEntity.ok(interviewService.findMyResults(interviewId, memberAuth));
     }
 
+    @GetMapping("/{interviewId}/result")
+    public ResponseEntity<InterviewResultResponse> findResults(
+            @PathVariable Long interviewId
+    ) {
+        return ResponseEntity.ok(interviewService.findResults(interviewId));
+    }
+
     @GetMapping("/{interviewId}")
     public ResponseEntity<InterviewResponse> findInterview(
             @PathVariable Long interviewId,

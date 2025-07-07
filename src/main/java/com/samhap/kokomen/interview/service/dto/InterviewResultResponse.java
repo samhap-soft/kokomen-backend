@@ -14,7 +14,7 @@ public record InterviewResultResponse(
         String userPrevRank
 ) {
 
-    public static InterviewResultResponse of(
+    public static InterviewResultResponse createMyResultResponse(
             List<FeedbackResponse> feedbacks,
             Interview interview,
             Member member
@@ -27,6 +27,21 @@ public record InterviewResultResponse(
                 member.getScore() - interview.getTotalScore(),
                 "BRONZE",
                 "BRONZE"
+        );
+    }
+
+    public static InterviewResultResponse createResultResponse(
+            List<FeedbackResponse> feedbacks,
+            Interview interview
+    ) {
+        return new InterviewResultResponse(
+                feedbacks,
+                interview.getTotalFeedback(),
+                interview.getTotalScore(),
+                null,
+                null,
+                null,
+                null
         );
     }
 }

@@ -179,7 +179,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰에_대한_최종_결과를_조회한다() throws Exception {
+    void 자신의_인터뷰에_대한_최종_결과를_조회한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -265,6 +265,79 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("user_prev_score").description("이전 사용자 점수"),
                                 fieldWithPath("user_prev_rank").description("이전 사용자 랭크"),
                                 fieldWithPath("user_cur_rank").description("현재 사용자 랭크")
+                        )
+                ));
+    }
+
+    @Test
+    void 다른_사용자의_인터뷰에_대한_최종_결과를_조회한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Answer answer1 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        Answer answer2 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        Answer answer3 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+        interview.evaluate("제대로 좀 공부 해라.", -30);
+        interviewRepository.save(interview);
+
+        String responseJson = """
+                {
+                	"feedbacks": [
+                		{
+                			"question_id": 1,
+                			"answer_id": 1,
+                			"question": "자바의 특징은 무엇인가요?",
+                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "C",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 2,
+                			"answer_id": 2,
+                			"question": "객체지향의 특징을 설명해주세요.",
+                			"answer": "객체가 각자 책임집니다.",
+                			"answer_rank": "D",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 3,
+                			"answer_id": 3,
+                			"question": "객체는 무엇인가요?",
+                			"answer": "클래스의 인스턴스 입니다.",
+                			"answer_rank": "F",
+                			"answer_feedback": "부족합니다."
+                		}
+                	],
+                	"total_score": -30
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/result", interview.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findResults",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("feedbacks").description("피드백 목록"),
+                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
+                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
+                                fieldWithPath("feedbacks[].question").description("질문 내용"),
+                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
+                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
+                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
+                                fieldWithPath("total_score").description("인터뷰 총 점수")
                         )
                 ));
     }
