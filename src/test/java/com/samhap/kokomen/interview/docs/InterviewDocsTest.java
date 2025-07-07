@@ -51,7 +51,9 @@ public class InterviewDocsTest extends DocsTest {
     @ParameterizedTest
     void 인터뷰_시작_예외_문서화(int maxQuestionCount, int docsNo) throws Exception {
         // given
-        memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
         rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
         // when & then
@@ -59,7 +61,8 @@ public class InterviewDocsTest extends DocsTest {
                         "/api/v1/interviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new InterviewRequest(Category.OPERATING_SYSTEM, maxQuestionCount)))
-                )
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
                 .andDo(document("interview-startInterview-exception" + docsNo));
     }
 
@@ -74,6 +77,8 @@ public class InterviewDocsTest extends DocsTest {
     void 인터뷰_진행_예외_문서화(Long interviewId, Long questionId, int docsNo) throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview proceedInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(proceedInterview).content(rootQuestion.getContent()).build());
@@ -90,7 +95,8 @@ public class InterviewDocsTest extends DocsTest {
                         "/api/v1/interviews/{interview_id}/questions/{question_id}/answers", interviewId, questionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변")))
-                )
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
                 .andDo(document("interview-proceedInterview-exception" + docsNo));
     }
 
