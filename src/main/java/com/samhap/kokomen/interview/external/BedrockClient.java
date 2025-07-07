@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.external;
 
+import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
+import org.springframework.web.client.RestClientResponseException;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -28,7 +30,14 @@ public class BedrockClient {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
 
-        ConverseResponse converseResponse = bedrockRuntimeClient.converse(converseRequest);
+        ConverseResponse converseResponse;
+        try {
+            converseResponse = bedrockRuntimeClient.converse(converseRequest);
+        } catch (RestClientResponseException e) {
+            throw new LlmApiException("Bedrock API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
+        } catch (Exception e) {
+            throw new LlmApiException("Bedrock API 호출 중 예상치 못한 오류가 발생했습니다.", e);
+        }
 
         stopWatch.stop();
         log.info("Bedrock API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());

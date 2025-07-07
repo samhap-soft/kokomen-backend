@@ -4,6 +4,10 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
+  data:
+    redis:
+      host: localhost
+      port: 16379
 
 open-ai:
   api-key: test_api_key
@@ -32,7 +36,6 @@ spring:
       ddl-auto: none
     show-sql: true
     database-platform: org.hibernate.dialect.MySQL8Dialect
-
 ---
 # docs
 spring:

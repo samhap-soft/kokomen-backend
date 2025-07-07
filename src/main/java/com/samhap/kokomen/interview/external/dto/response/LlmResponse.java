@@ -2,7 +2,7 @@ package com.samhap.kokomen.interview.external.dto.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public interface LLMResponse {
+public interface LlmResponse {
 
     AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper);
 
