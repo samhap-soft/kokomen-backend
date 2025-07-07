@@ -15,7 +15,10 @@ public class RedisDistributedLockService {
 
     public boolean acquireLock(String lockKey, Duration ttl) {
         Boolean result = redisTemplate.opsForValue().setIfAbsent(lockKey, "1", ttl);
-        return Boolean.TRUE.equals(result);
+        if (result == null) {
+            throw new IllegalStateException("분산 락 획득 실패. key: " + lockKey);
+        }
+        return result;
     }
 
     public void releaseLock(String lockKey) {
