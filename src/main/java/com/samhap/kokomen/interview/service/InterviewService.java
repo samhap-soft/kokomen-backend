@@ -138,6 +138,7 @@ public class InterviewService {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
+        validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
@@ -147,10 +148,17 @@ public class InterviewService {
     @Transactional(readOnly = true)
     public InterviewResultResponse findResults(Long interviewId) {
         Interview interview = readInterview(interviewId);
+        validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
         return InterviewResultResponse.createResultResponse(feedbackResponses, interview);
+    }
+
+    private void validateInterviewFinished(Interview interview) {
+        if (interview.isInProgress()) {
+            throw new BadRequestException("해당 인터뷰는 아직 진행 중입니다. 인터뷰가 종료된 후 결과를 조회할 수 있습니다.");
+        }
     }
 
     @Transactional(readOnly = true)
