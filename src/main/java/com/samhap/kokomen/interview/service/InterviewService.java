@@ -172,7 +172,7 @@ public class InterviewService {
         List<Interview> interviews = findInterviews(member, InterviewState.FINISHED, pageable);
 
         return interviews.stream()
-                .map(interview -> new InterviewSummaryResponse(interview, countCurAnswers(interview)))
+                .map(InterviewSummaryResponse::new)
                 .toList();
     }
 
