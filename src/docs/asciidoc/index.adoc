@@ -140,3 +140,17 @@ include::{snippetsDir}/interview-findTotalFeedbacks/curl-request.adoc[]
 
 include::{snippetsDir}/interview-findTotalFeedbacks-exception1/http-request.adoc[]
 include::{snippetsDir}/interview-findTotalFeedbacks-exception1/http-response.adoc[]
+
+=== 인터뷰 좋아요 요청
+
+include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
+include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
+include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
+
+=== 인터뷰 좋아요 취소 요청
+
+include::{snippetsDir}/interview-unlikeInterview/http-request.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/http-response.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/curl-request.adoc[]

@@ -7,6 +7,7 @@ import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.global.service.RedisDistributedLockService;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
@@ -15,6 +16,7 @@ import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -32,6 +34,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +54,7 @@ public class InterviewService {
     private final RootQuestionRepository rootQuestionRepository;
     private final RedisDistributedLockService redisDistributedLockService;
     private final InterviewAnswerResponseService interviewAnswerResponseService;
+    private final InterviewLikeRepository interviewLikeRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -115,6 +119,30 @@ public class InterviewService {
         List<Question> questions = questionRepository.findByInterview(interview);
         List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
+    }
+
+    // TODO: 한 명의 사용자가 계속 요청했을 떄 Unique 제약조건에 의해 락 대기가 발생할 수 있음 -> DB에 과부하가 가지 않도록 redis 사용하거나 rate limiter 사용 고려
+    @Transactional
+    public void likeInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        Interview interview = readInterview(interviewId);
+        try {
+            interviewLikeRepository.save(new InterviewLike(member, interview));
+            interviewRepository.increaseLikeCount(interviewId);
+        } catch (DataIntegrityViolationException e) {
+            throw new BadRequestException("이미 좋아요를 누른 인터뷰입니다.");
+        }
+    }
+
+    @Transactional
+    public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        Interview interview = readInterview(interviewId);
+        int affectedRows = interviewLikeRepository.deleteByMemberAndInterview(member, interview);
+        if (affectedRows == 0) {
+            throw new BadRequestException("좋아요를 누르지 않은 인터뷰입니다.");
+        }
+        interviewRepository.decreaseLikeCount(interviewId);
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
