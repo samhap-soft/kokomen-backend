@@ -239,12 +239,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/result", interview.getId())
+                        "/api/v1/interviews/{interview_id}/my-result", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findTotalFeedbacks",
+                .andDo(document("interview-findMyResults",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),

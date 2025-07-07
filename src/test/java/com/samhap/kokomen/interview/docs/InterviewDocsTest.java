@@ -116,8 +116,8 @@ public class InterviewDocsTest extends DocsTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(endQuestion3).build());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", interviewId))
-                .andDo(document("interview-findTotalFeedbacks-exception" + docsNo));
+        mockMvc.perform(get("/api/v1/interviews/{interview_id}/my-result", interviewId))
+                .andDo(document("interview-findMyResults-exception" + docsNo));
     }
 
     private static Stream<Arguments> provideFindTotalFeedbacksExceptionCase() {

@@ -130,13 +130,13 @@ include::{snippetsDir}/interview-findMemberInterviews/curl-request.adoc[]
 
 === 인터뷰 최종 결과 조회
 
-include::{snippetsDir}/interview-findTotalFeedbacks/http-request.adoc[]
-include::{snippetsDir}/interview-findTotalFeedbacks/path-parameters.adoc[]
-include::{snippetsDir}/interview-findTotalFeedbacks/http-response.adoc[]
-include::{snippetsDir}/interview-findTotalFeedbacks/response-fields.adoc[]
-include::{snippetsDir}/interview-findTotalFeedbacks/curl-request.adoc[]
+include::{snippetsDir}/interview-findMyResults/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResults/path-parameters.adoc[]
+include::{snippetsDir}/interview-findMyResults/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResults/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyResults/curl-request.adoc[]
 
 ==== 인터뷰 최종 결과 조회 예외 1
 
-include::{snippetsDir}/interview-findTotalFeedbacks-exception1/http-request.adoc[]
-include::{snippetsDir}/interview-findTotalFeedbacks-exception1/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResults-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResults-exception1/http-response.adoc[]

@@ -6,9 +6,9 @@ import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -51,12 +51,12 @@ public class InterviewController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/{interviewId}/result")
-    public ResponseEntity<InterviewTotalResponse> findTotalFeedbacks(
+    @GetMapping("/{interviewId}/my-result")
+    public ResponseEntity<InterviewResultResponse> findMyResults(
             @PathVariable Long interviewId,
             MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewService.findMyResults(interviewId, memberAuth));
     }
 
     @GetMapping("/{interviewId}")

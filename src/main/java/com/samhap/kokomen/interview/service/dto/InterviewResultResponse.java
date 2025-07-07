@@ -4,7 +4,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 
-public record InterviewTotalResponse(
+public record InterviewResultResponse(
         List<FeedbackResponse> feedbacks,
         String totalFeedback,
         Integer totalScore,
@@ -14,12 +14,12 @@ public record InterviewTotalResponse(
         String userPrevRank
 ) {
 
-    public static InterviewTotalResponse of(
+    public static InterviewResultResponse of(
             List<FeedbackResponse> feedbacks,
             Interview interview,
             Member member
     ) {
-        return new InterviewTotalResponse(
+        return new InterviewResultResponse(
                 feedbacks,
                 interview.getTotalFeedback(),
                 interview.getTotalScore(),

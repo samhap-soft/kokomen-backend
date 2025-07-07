@@ -26,9 +26,9 @@ import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -134,7 +134,7 @@ public class InterviewService {
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
-    public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
+    public InterviewResultResponse findMyResults(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
@@ -142,7 +142,7 @@ public class InterviewService {
 
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
 
-        return InterviewTotalResponse.of(feedbackResponses, interview, member);
+        return InterviewResultResponse.of(feedbackResponses, interview, member);
     }
 
     @Transactional(readOnly = true)
