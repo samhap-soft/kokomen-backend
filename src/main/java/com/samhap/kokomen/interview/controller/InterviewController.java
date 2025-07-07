@@ -7,8 +7,8 @@ import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
-import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -68,11 +68,19 @@ public class InterviewController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<MyInterviewResponse>> findMyInterviews(
+    public ResponseEntity<List<InterviewSummaryResponse>> findMyInterviews(
             @RequestParam(required = false) InterviewState state,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<InterviewSummaryResponse>> findMemberInterviews(
+            @RequestParam("member_id") Long memberId,
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(interviewService.findMemberInterviews(memberId, pageable));
     }
 }

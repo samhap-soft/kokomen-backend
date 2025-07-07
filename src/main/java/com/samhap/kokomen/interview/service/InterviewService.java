@@ -24,8 +24,8 @@ import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
-import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
@@ -54,7 +54,7 @@ public class InterviewService {
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readMember(memberAuth.memberId());
         validateEnoughTokenCount(member, interviewRequest);
         RootQuestion rootQuestion = readRandomRootQuestion(member, interviewRequest);
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
@@ -84,7 +84,7 @@ public class InterviewService {
         String lockKey = "interview:proceed:" + memberAuth.memberId();
         acquireLock(lockKey);
 
-        Member member = readMember(memberAuth);
+        Member member = readMember(memberAuth.memberId());
         validateHasToken(member);
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
@@ -120,7 +120,7 @@ public class InterviewService {
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
     public InterviewTotalResponse findTotalFeedbacks(Long interviewId, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
@@ -132,7 +132,7 @@ public class InterviewService {
 
     @Transactional(readOnly = true)
     public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
@@ -142,12 +142,22 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<MyInterviewResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
-        Member member = readMember(memberAuth);
+    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+        Member member = readMember(memberAuth.memberId());
         List<Interview> interviews = findInterviews(member, state, pageable);
 
         return interviews.stream()
-                .map(interview -> new MyInterviewResponse(interview, countCurAnswers(interview)))
+                .map(interview -> new InterviewSummaryResponse(interview, countCurAnswers(interview)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewSummaryResponse> findMemberInterviews(Long memberId, Pageable pageable) {
+        Member member = readMember(memberId);
+        List<Interview> interviews = findInterviews(member, InterviewState.FINISHED, pageable);
+
+        return interviews.stream()
+                .map(InterviewSummaryResponse::new)
                 .toList();
     }
 
@@ -169,8 +179,8 @@ public class InterviewService {
         return qurQuestionCount;
     }
 
-    private Member readMember(MemberAuth memberAuth) {
-        return memberRepository.findById(memberAuth.memberId())
+    private Member readMember(Long memberId) {
+        return memberRepository.findById(memberId)
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 

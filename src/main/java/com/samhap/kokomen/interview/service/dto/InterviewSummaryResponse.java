@@ -5,7 +5,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import java.time.LocalDateTime;
 
-public record MyInterviewResponse(
+public record InterviewSummaryResponse(
         Long interviewId,
         InterviewState interviewState,
         Category interviewCategory,
@@ -15,7 +15,7 @@ public record MyInterviewResponse(
         Integer curAnswerCount,
         Integer score
 ) {
-    public MyInterviewResponse(Interview interview, Integer curAnswerCount) {
+    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount) {
         this(
                 interview.getId(),
                 interview.getInterviewState(),
@@ -26,5 +26,9 @@ public record MyInterviewResponse(
                 curAnswerCount,
                 interview.getTotalScore()
         );
+    }
+
+    public InterviewSummaryResponse(Interview interview) {
+        this(interview, null);
     }
 } 
