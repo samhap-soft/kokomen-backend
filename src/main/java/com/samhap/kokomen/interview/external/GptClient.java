@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
@@ -13,6 +14,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Slf4j
 @Component
@@ -44,13 +46,19 @@ public class GptClient {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
 
-        GptResponse gptResponse = restClient.post()
-                .uri(GPT_API_URL)
-                .header("Authorization", "Bearer " + gptApiKey)
-                .body(gptRequest)
-                .retrieve()
-                .body(GptResponse.class);
-
+        GptResponse gptResponse;
+        try {
+            gptResponse = restClient.post()
+                    .uri(GPT_API_URL)
+                    .header("Authorization", "Bearer " + gptApiKey)
+                    .body(gptRequest)
+                    .retrieve()
+                    .body(GptResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new LlmApiException("GPT API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
+        } catch (Exception e) {
+            throw new LlmApiException("GPT API 호출 중 예상치 못한 오류가 발생했습니다.", e);
+        }
         stopWatch.stop();
         log.info("GPT API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());
 
