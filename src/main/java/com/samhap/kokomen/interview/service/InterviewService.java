@@ -81,7 +81,7 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        String lockKey = "interview:proceed" + memberAuth.memberId();
+        String lockKey = "interview:proceed:" + memberAuth.memberId();
         acquireLock(lockKey);
 
         Member member = readMember(memberAuth);
