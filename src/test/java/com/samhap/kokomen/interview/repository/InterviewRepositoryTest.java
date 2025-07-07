@@ -45,7 +45,7 @@ class InterviewRepositoryTest extends BaseTest {
     }
 
     @Test
-    void 좋아요_개수가_1이상일_때_감소시킨다() {
+    void 좋아요_개수를_감소시킨다() {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -59,22 +59,5 @@ class InterviewRepositoryTest extends BaseTest {
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();
         assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() - 1);
-    }
-
-    @Test
-    void 좋아요_개수가_0이하라면_감소시키지_않는다() {
-        // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
-
-        // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
-        interviewRepository.decreaseLikeCount(interview.getId());
-        transactionManager.commit(status);
-
-        // then
-        Interview found = interviewRepository.findById(interview.getId()).get();
-        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
     }
 }

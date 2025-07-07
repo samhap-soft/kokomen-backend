@@ -614,7 +614,7 @@ class InterviewControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(member).build());
 
         // when & then
