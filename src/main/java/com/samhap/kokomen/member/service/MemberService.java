@@ -7,8 +7,11 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
+import com.samhap.kokomen.member.service.dto.RankingResponse;
 import jakarta.transaction.Transactional;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
@@ -35,6 +38,12 @@ public class MemberService {
     public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
         Member member = readMember(memberAuth);
         member.updateProfile(profileUpdateRequest.nickname());
+    }
+
+    public List<RankingResponse> findRanking(Pageable pageable) {
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
     }
 
     private Member readMember(MemberAuth memberAuth) {
