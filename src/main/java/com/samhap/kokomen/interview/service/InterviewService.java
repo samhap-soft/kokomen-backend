@@ -34,7 +34,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -126,12 +125,11 @@ public class InterviewService {
     public void likeInterview(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
-        try {
-            interviewLikeRepository.save(new InterviewLike(member, interview));
-            interviewRepository.increaseLikeCount(interviewId);
-        } catch (DataIntegrityViolationException e) {
+        if (interviewLikeRepository.existsByMemberIdAndInterviewId(member.getId(), interviewId)) {
             throw new BadRequestException("이미 좋아요를 누른 인터뷰입니다.");
         }
+        interviewLikeRepository.save(new InterviewLike(member, interview));
+        interviewRepository.increaseLikeCount(interviewId);
     }
 
     @Transactional

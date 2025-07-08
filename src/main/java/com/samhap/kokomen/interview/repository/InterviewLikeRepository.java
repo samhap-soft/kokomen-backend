@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface InterviewLikeRepository extends JpaRepository<InterviewLike, Long> {
 
     int deleteByMemberAndInterview(Member member, Interview interview);
+
+    boolean existsByMemberIdAndInterviewId(Long memberId, Long interviewId);
 }
