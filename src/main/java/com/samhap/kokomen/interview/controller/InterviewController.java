@@ -52,21 +52,6 @@ public class InterviewController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/{interviewId}/my-result")
-    public ResponseEntity<InterviewResultResponse> findMyResults(
-            @PathVariable Long interviewId,
-            MemberAuth memberAuth
-    ) {
-        return ResponseEntity.ok(interviewService.findMyResults(interviewId, memberAuth));
-    }
-
-    @GetMapping("/{interviewId}/result")
-    public ResponseEntity<InterviewResultResponse> findResults(
-            @PathVariable Long interviewId
-    ) {
-        return ResponseEntity.ok(interviewService.findResults(interviewId));
-    }
-
     @PostMapping("/{interviewId}/like")
     public ResponseEntity<Void> likeInterview(
             @PathVariable Long interviewId,
@@ -93,13 +78,12 @@ public class InterviewController {
         return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
     }
 
-    @DeleteMapping("/{interviewId}/like")
-    public ResponseEntity<Void> unlikeInterview(
+    @GetMapping("/{interviewId}/my-result")
+    public ResponseEntity<InterviewResultResponse> findMyResults(
             @PathVariable Long interviewId,
             MemberAuth memberAuth
     ) {
-        interviewService.unlikeInterview(interviewId, memberAuth);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(interviewService.findMyResults(interviewId, memberAuth));
     }
 
     @GetMapping
@@ -108,5 +92,21 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(interviewService.findMemberInterviews(memberId, pageable));
+    }
+
+    @GetMapping("/{interviewId}/result")
+    public ResponseEntity<InterviewResultResponse> findResults(
+            @PathVariable Long interviewId
+    ) {
+        return ResponseEntity.ok(interviewService.findResults(interviewId));
+    }
+
+    @DeleteMapping("/{interviewId}/like")
+    public ResponseEntity<Void> unlikeInterview(
+            @PathVariable Long interviewId,
+            MemberAuth memberAuth
+    ) {
+        interviewService.unlikeInterview(interviewId, memberAuth);
+        return ResponseEntity.ok().build();
     }
 }
