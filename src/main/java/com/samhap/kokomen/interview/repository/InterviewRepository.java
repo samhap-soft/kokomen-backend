@@ -6,10 +6,20 @@ import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
     List<Interview> findByMember(Member member, Pageable pageable);
 
     List<Interview> findByMemberAndInterviewState(Member member, InterviewState interviewState, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Interview i SET i.likeCount = i.likeCount + 1 WHERE i.id = :interviewId")
+    void increaseLikeCount(Long interviewId);
+
+    @Modifying
+    @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
+    void decreaseLikeCount(Long interviewId);
 }
