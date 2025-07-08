@@ -43,6 +43,14 @@ include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
 include::{snippetsDir}/member-findMyProfile/response-fields.adoc[]
 include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
 
+=== 랭킹 조회
+
+include::{snippetsDir}/member-findRanking/http-request.adoc[]
+include::{snippetsDir}/member-findRanking/query-parameters.adoc[]
+include::{snippetsDir}/member-findRanking/http-response.adoc[]
+include::{snippetsDir}/member-findRanking/response-fields.adoc[]
+include::{snippetsDir}/member-findRanking/curl-request.adoc[]
+
 === 멤버 프로필 변경
 
 include::{snippetsDir}/member-updateProfile/http-request.adoc[]
