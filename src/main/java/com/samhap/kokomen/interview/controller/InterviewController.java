@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.controller;
 
+import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.service.InterviewService;
@@ -35,7 +36,7 @@ public class InterviewController {
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody InterviewRequest interviewRequest,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.startInterview(interviewRequest, memberAuth));
     }
@@ -45,7 +46,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
             @RequestBody AnswerRequest answerRequest,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
@@ -55,14 +56,15 @@ public class InterviewController {
     @GetMapping("/{interviewId}/my-result")
     public ResponseEntity<InterviewResultResponse> findMyResults(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findMyResults(interviewId, memberAuth));
     }
 
     @GetMapping("/{interviewId}/result")
     public ResponseEntity<InterviewResultResponse> findResults(
-            @PathVariable Long interviewId
+            @PathVariable Long interviewId,
+            @Authentication(required = false) MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findResults(interviewId));
     }
@@ -70,7 +72,7 @@ public class InterviewController {
     @PostMapping("/{interviewId}/like")
     public ResponseEntity<Void> likeInterview(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         interviewService.likeInterview(interviewId, memberAuth);
         return ResponseEntity.ok().build();
@@ -79,7 +81,7 @@ public class InterviewController {
     @GetMapping("/{interviewId}")
     public ResponseEntity<InterviewResponse> findInterview(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findInterview(interviewId, memberAuth));
     }
@@ -88,7 +90,7 @@ public class InterviewController {
     public ResponseEntity<List<InterviewSummaryResponse>> findMyInterviews(
             @RequestParam(required = false) InterviewState state,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
     }
@@ -96,7 +98,7 @@ public class InterviewController {
     @DeleteMapping("/{interviewId}/like")
     public ResponseEntity<Void> unlikeInterview(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         interviewService.unlikeInterview(interviewId, memberAuth);
         return ResponseEntity.ok().build();
