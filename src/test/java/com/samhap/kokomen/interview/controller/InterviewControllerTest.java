@@ -315,7 +315,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_feedback": "부족합니다."
                 		}
                 	],
-                	"total_score": -30
+                	"total_score": -30,
+                	"total_feedback": "제대로 좀 공부 해라."
                 }
                 """;
 
