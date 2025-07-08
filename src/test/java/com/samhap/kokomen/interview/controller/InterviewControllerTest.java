@@ -236,9 +236,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_score": -30,
                 	"user_cur_score": 70,
-                	"user_prev_score": 100,
-                	"user_prev_rank": "BRONZE",
-                	"user_cur_rank": "BRONZE"
+                	"user_prev_score": 100
                 }
                 """;
 
@@ -267,9 +265,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
-                                fieldWithPath("user_prev_score").description("이전 사용자 점수"),
-                                fieldWithPath("user_prev_rank").description("이전 사용자 랭크"),
-                                fieldWithPath("user_cur_rank").description("현재 사용자 랭크")
+                                fieldWithPath("user_prev_score").description("이전 사용자 점수")
                         )
                 ));
     }
@@ -301,7 +297,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "자바의 특징은 무엇인가요?",
                 			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
                 			"answer_rank": "C",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0
                 		},
                 		{
                 			"question_id": 2,
@@ -309,7 +306,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "객체지향의 특징을 설명해주세요.",
                 			"answer": "객체가 각자 책임집니다.",
                 			"answer_rank": "D",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0
                 		},
                 		{
                 			"question_id": 3,
@@ -317,11 +315,13 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "객체는 무엇인가요?",
                 			"answer": "클래스의 인스턴스 입니다.",
                 			"answer_rank": "F",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0
                 		}
                 	],
                 	"total_score": -30,
-                	"total_feedback": "제대로 좀 공부 해라."
+                	"total_feedback": "제대로 좀 공부 해라.",
+                	"interview_like_count": 0
                 }
                 """;
 
@@ -342,8 +342,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer").description("답변 내용"),
                                 fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
-                                fieldWithPath("total_score").description("인터뷰 총 점수")
+                                fieldWithPath("total_score").description("인터뷰 총 점수"),
+                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수")
                         )
                 ));
     }
@@ -515,7 +517,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"root_question": "%s",
                 		"max_question_count": %d,
                 		"cur_answer_count": %d,
-                		"score": %s
+                		"score": %s,
+                		"interview_like_count": %d
                 	},
                 	{
                 		"interview_id": %d,
@@ -529,8 +532,9 @@ class InterviewControllerTest extends BaseControllerTest {
                 """.formatted(
                 finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
                 finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
+                finishedInterview.getLikeCount(),
                 inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
-                inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0
+                inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0, inProgressInterview.getLikeCount()
         );
 
         // when & then
@@ -562,7 +566,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
-                                fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional()
+                                fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional(),
+                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
@@ -607,7 +612,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"score": %s
+                		"score": %s,
+                		"interview_like_count": %d
                 	},
                 	{
                 		"interview_id": %d,
@@ -615,14 +621,17 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
-                		"score": %s
+                		"score": %s,
+                		"interview_like_count": %d
                 	}
                 ]
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getInterviewState(), finishedInterview2.getRootQuestion().getCategory(),
                 finishedInterview2.getRootQuestion().getContent(), finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(),
+                finishedInterview2.getLikeCount(),
                 finishedInterview1.getId(), finishedInterview1.getInterviewState(), finishedInterview1.getRootQuestion().getCategory(),
-                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore()
+                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore(),
+                finishedInterview1.getLikeCount()
         );
 
         // when & then
@@ -636,7 +645,6 @@ class InterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$[0].created_at").exists())
                 .andExpect(jsonPath("$[1].created_at").exists())
                 .andDo(document("interview-findMemberInterviews",
-
                         queryParameters(
                                 parameterWithName("member_id").description("인터뷰이 멤버 id").optional(),
                                 parameterWithName("page").description("페이지 번호 (기본값: 0)"),
@@ -650,7 +658,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].created_at").description("생성 시간"),
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("[].score").description("점수").optional()
+                                fieldWithPath("[].score").description("점수"),
+                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수")
                         )
                 ));
     }

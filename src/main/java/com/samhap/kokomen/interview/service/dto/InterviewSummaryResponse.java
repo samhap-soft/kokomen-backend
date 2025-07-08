@@ -13,7 +13,8 @@ public record InterviewSummaryResponse(
         String rootQuestion,
         Integer maxQuestionCount,
         Integer curAnswerCount,
-        Integer score
+        Integer score,
+        Integer interviewLikeCount
 ) {
     public InterviewSummaryResponse(Interview interview, Integer curAnswerCount) {
         this(
@@ -24,11 +25,39 @@ public record InterviewSummaryResponse(
                 interview.getRootQuestion().getContent(),
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
-                interview.getTotalScore()
+                interview.getTotalScore(),
+                interview.getLikeCount()
         );
     }
 
     public InterviewSummaryResponse(Interview interview) {
         this(interview, null);
+    }
+
+    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount) {
+        if (interview.isInProgress()) {
+            return new InterviewSummaryResponse(
+                    interview.getId(),
+                    interview.getInterviewState(),
+                    interview.getRootQuestion().getCategory(),
+                    interview.getCreatedAt(),
+                    interview.getRootQuestion().getContent(),
+                    interview.getMaxQuestionCount(),
+                    curAnswerCount,
+                    null,
+                    null
+            );
+        }
+        return new InterviewSummaryResponse(
+                interview.getId(),
+                interview.getInterviewState(),
+                interview.getRootQuestion().getCategory(),
+                interview.getCreatedAt(),
+                interview.getRootQuestion().getContent(),
+                interview.getMaxQuestionCount(),
+                curAnswerCount,
+                interview.getTotalScore(),
+                interview.getLikeCount()
+        );
     }
 } 

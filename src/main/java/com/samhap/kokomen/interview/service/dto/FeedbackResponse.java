@@ -11,7 +11,8 @@ public record FeedbackResponse(
         String question,
         String answer,
         AnswerRank answerRank,
-        String answerFeedback
+        String answerFeedback,
+        Integer answerLikeCount
 ) {
     public FeedbackResponse(Answer answer) {
         this(
@@ -20,7 +21,8 @@ public record FeedbackResponse(
                 answer.getQuestion().getContent(),
                 answer.getContent(),
                 answer.getAnswerRank(),
-                answer.getFeedback()
+                answer.getFeedback(),
+                answer.getLikeCount()
         );
     }
 
@@ -29,5 +31,24 @@ public record FeedbackResponse(
                 .map(FeedbackResponse::new)
                 .sorted(Comparator.comparing(FeedbackResponse::questionId))
                 .toList();
+    }
+
+    public static List<FeedbackResponse> createMine(List<Answer> answers) {
+        return answers.stream()
+                .map(FeedbackResponse::createMine)
+                .sorted(Comparator.comparing(FeedbackResponse::questionId))
+                .toList();
+    }
+
+    private static FeedbackResponse createMine(Answer answer) {
+        return new FeedbackResponse(
+                answer.getQuestion().getId(),
+                answer.getId(),
+                answer.getQuestion().getContent(),
+                answer.getContent(),
+                answer.getAnswerRank(),
+                answer.getFeedback(),
+                null
+        );
     }
 }

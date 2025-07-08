@@ -151,7 +151,7 @@ public class InterviewService {
         validateInterviewee(interview, member);
         validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers);
 
         return InterviewResultResponse.createMyResultResponse(feedbackResponses, interview, member);
     }
@@ -189,7 +189,7 @@ public class InterviewService {
         List<Interview> interviews = findInterviews(member, state, pageable);
 
         return interviews.stream()
-                .map(interview -> new InterviewSummaryResponse(interview, countCurAnswers(interview)))
+                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview)))
                 .toList();
     }
 

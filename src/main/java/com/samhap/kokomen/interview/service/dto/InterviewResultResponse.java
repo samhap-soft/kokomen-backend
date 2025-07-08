@@ -8,10 +8,9 @@ public record InterviewResultResponse(
         List<FeedbackResponse> feedbacks,
         String totalFeedback,
         Integer totalScore,
+        Integer interviewLikeCount,
         Integer userCurScore,
-        Integer userPrevScore,
-        String userCurRank,
-        String userPrevRank
+        Integer userPrevScore
 ) {
 
     public static InterviewResultResponse createMyResultResponse(
@@ -23,10 +22,9 @@ public record InterviewResultResponse(
                 feedbacks,
                 interview.getTotalFeedback(),
                 interview.getTotalScore(),
+                null,
                 member.getScore(),
-                member.getScore() - interview.getTotalScore(),
-                "BRONZE",
-                "BRONZE"
+                member.getScore() - interview.getTotalScore()
         );
     }
 
@@ -38,8 +36,7 @@ public record InterviewResultResponse(
                 feedbacks,
                 interview.getTotalFeedback(),
                 interview.getTotalScore(),
-                null,
-                null,
+                interview.getLikeCount(),
                 null,
                 null
         );
