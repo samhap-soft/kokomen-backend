@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
@@ -15,7 +16,6 @@ import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;

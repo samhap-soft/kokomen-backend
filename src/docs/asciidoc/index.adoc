@@ -185,3 +185,19 @@ include::{snippetsDir}/interview-unlikeInterview/http-request.adoc[]
 include::{snippetsDir}/interview-unlikeInterview/path-parameters.adoc[]
 include::{snippetsDir}/interview-unlikeInterview/http-response.adoc[]
 include::{snippetsDir}/interview-unlikeInterview/curl-request.adoc[]
+
+== 답변
+
+=== 답변 좋아요 요청
+
+include::{snippetsDir}/answer-likeAnswer/http-request.adoc[]
+include::{snippetsDir}/answer-likeAnswer/path-parameters.adoc[]
+include::{snippetsDir}/answer-likeAnswer/http-response.adoc[]
+include::{snippetsDir}/answer-likeAnswer/curl-request.adoc[]
+
+=== 답변 좋아요 취소 요청
+
+include::{snippetsDir}/answer-unlikeAnswer/http-request.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/path-parameters.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/http-response.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/curl-request.adoc[]

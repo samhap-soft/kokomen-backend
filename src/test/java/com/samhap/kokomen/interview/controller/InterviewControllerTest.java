@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
@@ -35,7 +36,6 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -51,17 +51,17 @@ import org.springframework.mock.web.MockHttpSession;
 class InterviewControllerTest extends BaseControllerTest {
 
     @Autowired
-    protected AnswerRepository answerRepository;
+    private AnswerRepository answerRepository;
     @Autowired
-    protected InterviewRepository interviewRepository;
+    private InterviewRepository interviewRepository;
     @Autowired
-    protected QuestionRepository questionRepository;
+    private QuestionRepository questionRepository;
     @Autowired
-    protected MemberRepository memberRepository;
+    private MemberRepository memberRepository;
     @Autowired
-    protected RootQuestionRepository rootQuestionRepository;
+    private RootQuestionRepository rootQuestionRepository;
     @Autowired
-    protected InterviewLikeRepository interviewLikeRepository;
+    private InterviewLikeRepository interviewLikeRepository;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {

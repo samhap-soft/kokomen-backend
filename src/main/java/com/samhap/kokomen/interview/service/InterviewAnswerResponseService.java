@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Answer;
@@ -11,7 +12,6 @@ import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
-import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
