@@ -11,6 +11,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -22,6 +23,7 @@ import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.InterviewLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
@@ -34,6 +36,7 @@ import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -57,6 +60,8 @@ class InterviewControllerTest extends BaseControllerTest {
     protected MemberRepository memberRepository;
     @Autowired
     protected RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    protected InterviewLikeRepository interviewLikeRepository;
 
     @Test
     void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
@@ -646,6 +651,57 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("[].score").description("점수").optional()
+                        )
+                ));
+    }
+
+    @Test
+    void 좋아요를_요청한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/{interview_id}/like", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andDo(document("interview-likeInterview",
+                        pathParameters(
+                                parameterWithName("interview_id").description("좋아요를 요청할 인터뷰 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 좋아요_취소를_요청한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1).build());
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(member).build());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/interviews/{interview_id}/like", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andDo(document("interview-unlikeInterview",
+                        pathParameters(
+                                parameterWithName("interview_id").description("좋아요 취소를 요청할 인터뷰 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )
                 ));
     }
