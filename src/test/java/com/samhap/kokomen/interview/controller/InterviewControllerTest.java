@@ -298,7 +298,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
                 			"answer_rank": "C",
                 			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
                 		},
                 		{
                 			"question_id": 2,
@@ -307,7 +308,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer": "객체가 각자 책임집니다.",
                 			"answer_rank": "D",
                 			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
                 		},
                 		{
                 			"question_id": 3,
@@ -316,12 +318,14 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer": "클래스의 인스턴스 입니다.",
                 			"answer_rank": "F",
                 			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
                 		}
                 	],
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
-                	"interview_like_count": 0
+                	"interview_like_count": 0,
+                	"interview_already_liked": false
                 }
                 """;
 
@@ -343,9 +347,11 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
                                 fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
+                                fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
-                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수")
+                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
                         )
                 ));
     }
@@ -519,7 +525,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"cur_answer_count": %d,
                 		"score": %s,
                 		"interview_like_count": %d,
-                		"already_liked": false
+                		"interview_already_liked": false
                 	},
                 	{
                 		"interview_id": %d,
@@ -569,7 +575,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
                                 fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional(),
                                 fieldWithPath("[].interview_like_count").description("면접 좋아요 수 (면접이 FINISHED 인 경우에만)").optional(),
-                                fieldWithPath("[].already_liked").description("면접에 이미 좋아요를 눌렀는지 여부 (면접이 FINISHED 인 경우에만)").optional()
+                                fieldWithPath("[].interview_already_liked").description("면접에 이미 좋아요를 눌렀는지 여부 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
@@ -616,7 +622,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"max_question_count": %d,
                 		"score": %s,
                 		"interview_like_count": %d,
-                		"already_liked": false
+                		"interview_already_liked": false
                 	},
                 	{
                 		"interview_id": %d,
@@ -626,7 +632,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"max_question_count": %d,
                 		"score": %s,
                 		"interview_like_count": %d,
-                		"already_liked": false
+                		"interview_already_liked": false
                 	}
                 ]
                 """.formatted(
@@ -664,7 +670,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("[].score").description("점수"),
                                 fieldWithPath("[].interview_like_count").description("면접 좋아요 수"),
-                                fieldWithPath("[].already_liked").description("이미 좋아요를 눌렀는지 여부")
+                                fieldWithPath("[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부")
                         )
                 ));
     }

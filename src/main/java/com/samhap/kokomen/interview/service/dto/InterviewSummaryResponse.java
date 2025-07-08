@@ -15,9 +15,9 @@ public record InterviewSummaryResponse(
         Integer curAnswerCount,
         Integer score,
         Integer interviewLikeCount,
-        Boolean alreadyLiked
+        Boolean interviewAlreadyLiked
 ) {
-    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean alreadyLiked) {
+    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         this(
                 interview.getId(),
                 interview.getInterviewState(),
@@ -28,15 +28,15 @@ public record InterviewSummaryResponse(
                 curAnswerCount,
                 interview.getTotalScore(),
                 interview.getLikeCount(),
-                alreadyLiked
+                interviewAlreadyLiked
         );
     }
 
-    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean alreadyLiked) {
-        return new InterviewSummaryResponse(interview, null, alreadyLiked);
+    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean interviewAlreadyLiked) {
+        return new InterviewSummaryResponse(interview, null, interviewAlreadyLiked);
     }
 
-    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean alreadyLiked) {
+    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
@@ -61,7 +61,7 @@ public record InterviewSummaryResponse(
                 curAnswerCount,
                 interview.getTotalScore(),
                 interview.getLikeCount(),
-                alreadyLiked
+                interviewAlreadyLiked
         );
     }
 } 

@@ -9,6 +9,7 @@ public record InterviewResultResponse(
         String totalFeedback,
         Integer totalScore,
         Integer interviewLikeCount,
+        Boolean interviewAlreadyLiked,
         Integer userCurScore,
         Integer userPrevScore
 ) {
@@ -23,6 +24,7 @@ public record InterviewResultResponse(
                 interview.getTotalFeedback(),
                 interview.getTotalScore(),
                 null,
+                null,
                 member.getScore(),
                 member.getScore() - interview.getTotalScore()
         );
@@ -30,13 +32,15 @@ public record InterviewResultResponse(
 
     public static InterviewResultResponse createResultResponse(
             List<FeedbackResponse> feedbacks,
-            Interview interview
+            Interview interview,
+            Boolean interviewAlreadyLiked
     ) {
         return new InterviewResultResponse(
                 feedbacks,
                 interview.getTotalFeedback(),
                 interview.getTotalScore(),
                 interview.getLikeCount(),
+                interviewAlreadyLiked,
                 null,
                 null
         );

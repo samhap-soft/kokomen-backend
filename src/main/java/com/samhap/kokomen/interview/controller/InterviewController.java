@@ -66,7 +66,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication(required = false) MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findResults(interviewId));
+        return ResponseEntity.ok(interviewService.findResults(interviewId, memberAuth));
     }
 
     @PostMapping("/{interviewId}/like")

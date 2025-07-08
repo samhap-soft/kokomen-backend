@@ -12,9 +12,10 @@ public record FeedbackResponse(
         String answer,
         AnswerRank answerRank,
         String answerFeedback,
-        Integer answerLikeCount
+        Integer answerLikeCount,
+        Boolean answerAlreadyLiked
 ) {
-    public FeedbackResponse(Answer answer) {
+    public FeedbackResponse(Answer answer, Boolean answerAlreadyLiked) {
         this(
                 answer.getQuestion().getId(),
                 answer.getId(),
@@ -22,13 +23,14 @@ public record FeedbackResponse(
                 answer.getContent(),
                 answer.getAnswerRank(),
                 answer.getFeedback(),
-                answer.getLikeCount()
+                answer.getLikeCount(),
+                answerAlreadyLiked
         );
     }
 
-    public static List<FeedbackResponse> from(List<Answer> answers) {
+    public static List<FeedbackResponse> createForNotAuthenticatedUser(List<Answer> answers) {
         return answers.stream()
-                .map(FeedbackResponse::new)
+                .map(answer -> new FeedbackResponse(answer, false))
                 .sorted(Comparator.comparing(FeedbackResponse::questionId))
                 .toList();
     }
@@ -48,6 +50,7 @@ public record FeedbackResponse(
                 answer.getContent(),
                 answer.getAnswerRank(),
                 answer.getFeedback(),
+                null,
                 null
         );
     }

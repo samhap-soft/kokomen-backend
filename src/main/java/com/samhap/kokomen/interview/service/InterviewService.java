@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -54,6 +55,7 @@ public class InterviewService {
     private final RedisDistributedLockService redisDistributedLockService;
     private final InterviewAnswerResponseService interviewAnswerResponseService;
     private final InterviewLikeRepository interviewLikeRepository;
+    private final AnswerLikeRepository answerLikeRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -157,13 +159,23 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewResultResponse findResults(Long interviewId) {
+    public InterviewResultResponse findResults(Long interviewId, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
         validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            List<Long> answerIds = answers.stream().map(Answer::getId).toList();
+            List<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+            List<FeedbackResponse> feedbackResponses = answers.stream()
+                    .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
+                    .toList();
+            boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
+            return InterviewResultResponse.createResultResponse(feedbackResponses, interview, interviewAlreadyLiked);
+        }
 
-        return InterviewResultResponse.createResultResponse(feedbackResponses, interview);
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createForNotAuthenticatedUser(answers);
+        return InterviewResultResponse.createResultResponse(feedbackResponses, interview, false);
     }
 
     private void validateInterviewFinished(Interview interview) {
