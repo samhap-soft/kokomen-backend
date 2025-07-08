@@ -187,19 +187,32 @@ public class InterviewService {
     public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
         Member member = readMember(memberAuth.memberId());
         List<Interview> interviews = findInterviews(member, state, pageable);
+        List<Long> finishedInterviewIds = interviews.stream()
+                .filter(interview -> !interview.isInProgress())
+                .map(Interview::getId)
+                .toList();
+        List<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
 
         return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview)))
+                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findMemberInterviews(Long memberId, Pageable pageable) {
-        Member member = readMember(memberId);
-        List<Interview> interviews = findInterviews(member, InterviewState.FINISHED, pageable);
+    public List<InterviewSummaryResponse> findMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+        Member targetMember = readMember(targetMemberId);
+        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
+            List<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
 
+            return interviews.stream()
+                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
+                    .toList();
+        }
         return interviews.stream()
-                .map(InterviewSummaryResponse::new)
+                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
                 .toList();
     }
 

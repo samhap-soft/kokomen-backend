@@ -107,8 +107,9 @@ public class InterviewController {
     @GetMapping
     public ResponseEntity<List<InterviewSummaryResponse>> findMemberInterviews(
             @RequestParam("member_id") Long memberId,
-            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @Authentication(required = false) MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findMemberInterviews(memberId, pageable));
+        return ResponseEntity.ok(interviewService.findMemberInterviews(memberId, memberAuth, pageable));
     }
 }

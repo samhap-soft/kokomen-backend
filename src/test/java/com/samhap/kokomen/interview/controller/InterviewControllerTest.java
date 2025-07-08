@@ -518,7 +518,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"max_question_count": %d,
                 		"cur_answer_count": %d,
                 		"score": %s,
-                		"interview_like_count": %d
+                		"interview_like_count": %d,
+                		"already_liked": false
                 	},
                 	{
                 		"interview_id": %d,
@@ -567,7 +568,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("[].cur_answer_count").description("현재 답변 개수"),
                                 fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional(),
-                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수 (면접이 FINISHED 인 경우에만)").optional()
+                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수 (면접이 FINISHED 인 경우에만)").optional(),
+                                fieldWithPath("[].already_liked").description("면접에 이미 좋아요를 눌렀는지 여부 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
@@ -613,7 +615,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"root_question": "%s",
                 		"max_question_count": %d,
                 		"score": %s,
-                		"interview_like_count": %d
+                		"interview_like_count": %d,
+                		"already_liked": false
                 	},
                 	{
                 		"interview_id": %d,
@@ -622,7 +625,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"root_question": "%s",
                 		"max_question_count": %d,
                 		"score": %s,
-                		"interview_like_count": %d
+                		"interview_like_count": %d,
+                		"already_liked": false
                 	}
                 ]
                 """.formatted(
@@ -659,7 +663,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("[].score").description("점수"),
-                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수")
+                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수"),
+                                fieldWithPath("[].already_liked").description("이미 좋아요를 눌렀는지 여부")
                         )
                 ));
     }

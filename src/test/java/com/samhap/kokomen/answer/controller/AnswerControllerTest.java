@@ -49,7 +49,7 @@ class AnswerControllerTest extends BaseControllerTest {
     private MemberRepository memberRepository;
 
     @Test
-    void 답변에_좋아요를_요청한댜() throws Exception {
+    void 답변에_좋아요를_요청한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();

@@ -14,9 +14,10 @@ public record InterviewSummaryResponse(
         Integer maxQuestionCount,
         Integer curAnswerCount,
         Integer score,
-        Integer interviewLikeCount
+        Integer interviewLikeCount,
+        Boolean alreadyLiked
 ) {
-    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount) {
+    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean alreadyLiked) {
         this(
                 interview.getId(),
                 interview.getInterviewState(),
@@ -26,15 +27,16 @@ public record InterviewSummaryResponse(
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
                 interview.getTotalScore(),
-                interview.getLikeCount()
+                interview.getLikeCount(),
+                alreadyLiked
         );
     }
 
-    public InterviewSummaryResponse(Interview interview) {
-        this(interview, null);
+    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean alreadyLiked) {
+        return new InterviewSummaryResponse(interview, null, alreadyLiked);
     }
 
-    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount) {
+    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean alreadyLiked) {
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
@@ -44,6 +46,7 @@ public record InterviewSummaryResponse(
                     interview.getRootQuestion().getContent(),
                     interview.getMaxQuestionCount(),
                     curAnswerCount,
+                    null,
                     null,
                     null
             );
@@ -57,7 +60,8 @@ public record InterviewSummaryResponse(
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
                 interview.getTotalScore(),
-                interview.getLikeCount()
+                interview.getLikeCount(),
+                alreadyLiked
         );
     }
 } 

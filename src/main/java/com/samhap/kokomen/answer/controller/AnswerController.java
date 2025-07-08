@@ -1,6 +1,7 @@
 package com.samhap.kokomen.answer.controller;
 
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class AnswerController {
     @PostMapping("/{answerId}/like")
     public ResponseEntity<Void> likeAnswer(
             @PathVariable Long answerId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         answerService.likeAnswer(answerId, memberAuth);
         return ResponseEntity.ok().build();
@@ -29,7 +30,7 @@ public class AnswerController {
     @DeleteMapping("/{answerId}/like")
     public ResponseEntity<Void> unlikeAnswer(
             @PathVariable Long answerId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         answerService.unlikeAnswer(answerId, memberAuth);
         return ResponseEntity.ok().build();
