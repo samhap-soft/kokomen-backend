@@ -32,6 +32,9 @@ import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -212,6 +215,40 @@ class InterviewServiceTest extends BaseTest {
         // then
         Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
         assertThat(viewCount).isEqualTo(1L);
+    }
+
+    @Test
+    void 여러명이_동시에_인터뷰_최종_결과를_조회하면_정확하게_사람_수만큼_조회수가_증가한다() throws InterruptedException {
+        // given
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(0L).build());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(interviewee).rootQuestion(rootQuestion).viewCount(0L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+        interview.evaluate("제대로 좀 공부 해라.", -30);
+        interviewRepository.save(interview);
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+        // when
+        for (int i = 1; i <= 10; i++) {
+            ClientIp clientIp = new ClientIp("%d.%d.%d.%d".formatted(i, i, i, i));
+            executorService.execute(() -> interviewService.findResults(interview.getId(), new MemberAuth(null), clientIp));
+        }
+
+        executorService.shutdown();
+        executorService.awaitTermination(3, TimeUnit.SECONDS);
+
+        // then
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
+        assertThat(viewCount).isEqualTo(10L);
     }
 
     @Test
