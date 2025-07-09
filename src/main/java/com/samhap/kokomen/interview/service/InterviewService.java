@@ -189,10 +189,11 @@ public class InterviewService {
             return;
         }
 
-        // TODO: PR에서 expire 먼저 하는 이유 설명하기 -> setIfAbsent가 성공하자마자 만료되는 경우를 방지하기 위함
         String viewCountKey = INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId());
-        redisService.expireKey(viewCountKey, Duration.ofDays(2));
-        redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
+        boolean expireSuccess = redisService.expireKey(viewCountKey, Duration.ofDays(2));
+        if (!expireSuccess) {
+            redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
+        }
         redisService.incrementKey(viewCountKey);
     }
 

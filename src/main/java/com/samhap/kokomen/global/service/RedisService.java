@@ -18,11 +18,11 @@ public class RedisService {
     }
 
     public boolean setIfAbsent(String lockKey, String value, Duration ttl) {
-        Boolean result = redisTemplate.opsForValue().setIfAbsent(lockKey, value, ttl);
-        if (result == null) {
+        Boolean setSuccess = redisTemplate.opsForValue().setIfAbsent(lockKey, value, ttl);
+        if (setSuccess == null) {
             throw new IllegalStateException("분산 락 획득 실패. key: " + lockKey);
         }
-        return result;
+        return setSuccess;
     }
 
     public void incrementKey(String key) {
@@ -32,8 +32,13 @@ public class RedisService {
         }
     }
 
-    public void expireKey(String key, Duration ttl) {
-        redisTemplate.expire(key, ttl);
+    public boolean expireKey(String key, Duration ttl) {
+        Boolean expireSuccess = redisTemplate.expire(key, ttl);
+        if (expireSuccess == null) {
+            throw new IllegalStateException("Redis 키 만료 설정 실패. key: " + key);
+        }
+
+        return expireSuccess;
     }
 
     public void releaseLock(String lockKey) {
