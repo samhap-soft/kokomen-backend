@@ -13,9 +13,11 @@ public record InterviewSummaryResponse(
         String rootQuestion,
         Integer maxQuestionCount,
         Integer curAnswerCount,
-        Integer score
+        Integer score,
+        Long interviewLikeCount,
+        Boolean interviewAlreadyLiked
 ) {
-    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount) {
+    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         this(
                 interview.getId(),
                 interview.getInterviewState(),
@@ -24,11 +26,42 @@ public record InterviewSummaryResponse(
                 interview.getRootQuestion().getContent(),
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
-                interview.getTotalScore()
+                interview.getTotalScore(),
+                interview.getLikeCount(),
+                interviewAlreadyLiked
         );
     }
 
-    public InterviewSummaryResponse(Interview interview) {
-        this(interview, null);
+    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean interviewAlreadyLiked) {
+        return new InterviewSummaryResponse(interview, null, interviewAlreadyLiked);
+    }
+
+    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
+        if (interview.isInProgress()) {
+            return new InterviewSummaryResponse(
+                    interview.getId(),
+                    interview.getInterviewState(),
+                    interview.getRootQuestion().getCategory(),
+                    interview.getCreatedAt(),
+                    interview.getRootQuestion().getContent(),
+                    interview.getMaxQuestionCount(),
+                    curAnswerCount,
+                    null,
+                    null,
+                    null
+            );
+        }
+        return new InterviewSummaryResponse(
+                interview.getId(),
+                interview.getInterviewState(),
+                interview.getRootQuestion().getCategory(),
+                interview.getCreatedAt(),
+                interview.getRootQuestion().getContent(),
+                interview.getMaxQuestionCount(),
+                curAnswerCount,
+                interview.getTotalScore(),
+                interview.getLikeCount(),
+                interviewAlreadyLiked
+        );
     }
 } 

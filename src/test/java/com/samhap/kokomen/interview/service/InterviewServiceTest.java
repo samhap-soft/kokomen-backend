@@ -6,37 +6,49 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.AnswerLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.InterviewLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.repository.AnswerRepository;
+import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.redis.core.RedisTemplate;
 
 class InterviewServiceTest extends BaseTest {
@@ -53,6 +65,10 @@ class InterviewServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private InterviewLikeRepository interviewLikeRepository;
+    @Autowired
+    private AnswerLikeRepository answerLikeRepository;
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -307,5 +323,93 @@ class InterviewServiceTest extends BaseTest {
         assertThatThrownBy(() -> interviewService.unlikeInterview(interview.getId(), new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("좋아요를 누르지 않은 인터뷰입니다.");
+    }
+
+    @Test
+    void 내_인터뷰_목록을_조회할_때_완료된_인터뷰의_경우에만_이미_좋아요를_눌렀는지_여부도_함께_조회된다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+        Interview interview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.IN_PROGRESS).build());
+
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+
+        // when
+        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertAll(
+                () -> assertThat(interviewSummaryResponses).hasSize(2),
+                () -> assertThat(interviewSummaryResponses.get(0).interviewId()).isEqualTo(interview2.getId()),
+                () -> assertThat(interviewSummaryResponses.get(0).interviewAlreadyLiked()).isNull(),
+                () -> assertThat(interviewSummaryResponses.get(1).interviewId()).isEqualTo(interview1.getId()),
+                () -> assertThat(interviewSummaryResponses.get(1).interviewAlreadyLiked()).isTrue()
+        );
+    }
+
+    @Test
+    void 남의_인터뷰_목록을_조회할_때_이미_좋아요를_눌렀는지_여부도_함께_조회된다() {
+        // given
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
+        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L)
+                        .build());
+        Interview interview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(readerMember).build());
+
+        // when
+        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findMemberInterviews(
+                targetMember.getId(),
+                new MemberAuth(readerMember.getId()),
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
+        );
+
+        // then
+        assertAll(
+                () -> assertThat(interviewSummaryResponses).hasSize(2),
+                () -> assertThat(interviewSummaryResponses.get(0).interviewId()).isEqualTo(interview2.getId()),
+                () -> assertThat(interviewSummaryResponses.get(0).interviewAlreadyLiked()).isFalse(),
+                () -> assertThat(interviewSummaryResponses.get(1).interviewId()).isEqualTo(interview1.getId()),
+                () -> assertThat(interviewSummaryResponses.get(1).interviewAlreadyLiked()).isTrue()
+        );
+    }
+
+    @Test
+    void 남의_인터뷰_결과를_조회할_때_답변과_인터뷰_각각에_대해_이미_좋아요를_눌렀는지_여부도_함께_조회된다() {
+        // given
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
+        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
+        answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer1).build());
+        answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer2).build());
+
+        // when
+        InterviewResultResponse results = interviewService.findResults(interview.getId(), new MemberAuth(readerMember.getId()), new ClientIp("1.1.1.1"));
+
+        // then
+        assertAll(
+                () -> assertThat(results.interviewAlreadyLiked()).isTrue(),
+                () -> assertThat(results.feedbacks().get(0).answerAlreadyLiked()).isTrue(),
+                () -> assertThat(results.feedbacks().get(1).answerAlreadyLiked()).isTrue(),
+                () -> assertThat(results.feedbacks().get(2).answerAlreadyLiked()).isFalse()
+        );
     }
 }
