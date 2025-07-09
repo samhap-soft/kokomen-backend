@@ -37,7 +37,7 @@ public class MemberAuthArgumentResolver implements HandlerMethodArgumentResolver
 
         validateAuthentication(session, authenticationRequired);
         if (session == null) {
-            return new MemberAuth(null);
+            return MemberAuth.notAuthenticated();
         }
         Long memberId = (Long) session.getAttribute("MEMBER_ID");
         validateAuthentication(memberId, authenticationRequired);

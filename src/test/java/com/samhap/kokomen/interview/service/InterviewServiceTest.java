@@ -240,7 +240,7 @@ class InterviewServiceTest extends BaseTest {
         // when
         for (int i = 1; i <= 10; i++) {
             ClientIp clientIp = new ClientIp("%d.%d.%d.%d".formatted(i, i, i, i));
-            executorService.execute(() -> interviewService.findResults(interview.getId(), new MemberAuth(null), clientIp));
+            executorService.execute(() -> interviewService.findResults(interview.getId(), MemberAuth.notAuthenticated(), clientIp));
         }
 
         executorService.shutdown();
