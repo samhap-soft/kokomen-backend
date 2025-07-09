@@ -8,7 +8,7 @@ public record InterviewResultResponse(
         List<FeedbackResponse> feedbacks,
         String totalFeedback,
         Integer totalScore,
-        Integer interviewLikeCount,
+        Long interviewLikeCount,
         Boolean interviewAlreadyLiked,
         Integer userCurScore,
         Integer userPrevScore

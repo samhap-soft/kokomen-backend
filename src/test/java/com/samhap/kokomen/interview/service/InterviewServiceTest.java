@@ -331,7 +331,7 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Interview interview2 = interviewRepository.save(
                 InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.IN_PROGRESS).build());
 
@@ -358,7 +358,8 @@ class InterviewServiceTest extends BaseTest {
         Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1).build());
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L)
+                        .build());
         Interview interview2 = interviewRepository.save(
                 InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
 
@@ -401,7 +402,7 @@ class InterviewServiceTest extends BaseTest {
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer2).build());
 
         // when
-        InterviewResultResponse results = interviewService.findResults(interview.getId(), new MemberAuth(readerMember.getId()));
+        InterviewResultResponse results = interviewService.findResults(interview.getId(), new MemberAuth(readerMember.getId()), new ClientIp("1.1.1.1"));
 
         // then
         assertAll(

@@ -14,7 +14,7 @@ public record InterviewSummaryResponse(
         Integer maxQuestionCount,
         Integer curAnswerCount,
         Integer score,
-        Integer interviewLikeCount,
+        Long interviewLikeCount,
         Boolean interviewAlreadyLiked
 ) {
     public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {

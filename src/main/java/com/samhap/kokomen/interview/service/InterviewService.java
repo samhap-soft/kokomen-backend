@@ -57,7 +57,7 @@ public class InterviewService {
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
-    private final RedisDistributedLockService redisDistributedLockService;
+    private final RedisService redisService;
     private final InterviewAnswerResponseService interviewAnswerResponseService;
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
