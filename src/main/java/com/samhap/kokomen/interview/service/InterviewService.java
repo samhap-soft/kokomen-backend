@@ -34,6 +34,7 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -182,7 +183,7 @@ public class InterviewService {
 
     private List<FeedbackResponse> createFeedbackResponses(List<Answer> answers, Member readerMember) {
         List<Long> answerIds = answers.stream().map(Answer::getId).toList();
-        List<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+        Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
         return answers.stream()
                 .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
                 .toList();
@@ -207,7 +208,7 @@ public class InterviewService {
                 .filter(interview -> !interview.isInProgress())
                 .map(Interview::getId)
                 .toList();
-        List<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
+        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
 
         return interviews.stream()
                 .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
@@ -221,7 +222,7 @@ public class InterviewService {
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
-            List<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
 
             return interviews.stream()
                     .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))

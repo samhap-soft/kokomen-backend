@@ -12,6 +12,7 @@ import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -41,7 +42,7 @@ class InterviewLikeRepositoryTest extends BaseTest {
         List<Long> interviewIds = List.of(interview1.getId(), interview2.getId(), interview3.getId());
 
         // when
-        List<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), interviewIds);
+        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), interviewIds);
 
         // then
         assertThat(likedInterviewIds).containsExactlyInAnyOrder(interview1.getId(), interview3.getId());
