@@ -12,9 +12,6 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 class InterviewRepositoryTest extends BaseTest {
 
@@ -24,8 +21,6 @@ class InterviewRepositoryTest extends BaseTest {
     private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private MemberRepository memberRepository;
-    @Autowired
-    private PlatformTransactionManager transactionManager;
 
     @Test
     void 좋아요_개수를_증가시킨다() {
@@ -35,9 +30,7 @@ class InterviewRepositoryTest extends BaseTest {
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
 
         // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
         interviewRepository.increaseLikeCount(interview.getId());
-        transactionManager.commit(status);
 
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();
@@ -52,9 +45,7 @@ class InterviewRepositoryTest extends BaseTest {
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1).build());
 
         // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
         interviewRepository.decreaseLikeCount(interview.getId());
-        transactionManager.commit(status);
 
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();
