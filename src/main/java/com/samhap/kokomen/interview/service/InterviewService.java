@@ -165,11 +165,7 @@ public class InterviewService {
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            List<Long> answerIds = answers.stream().map(Answer::getId).toList();
-            List<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
-            List<FeedbackResponse> feedbackResponses = answers.stream()
-                    .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
-                    .toList();
+            List<FeedbackResponse> feedbackResponses = createFeedbackResponses(answers, readerMember);
             boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
             return InterviewResultResponse.createResultResponse(feedbackResponses, interview, interviewAlreadyLiked);
         }
@@ -182,6 +178,14 @@ public class InterviewService {
         if (interview.isInProgress()) {
             throw new BadRequestException("해당 인터뷰는 아직 진행 중입니다. 인터뷰가 종료된 후 결과를 조회할 수 있습니다.");
         }
+    }
+
+    private List<FeedbackResponse> createFeedbackResponses(List<Answer> answers, Member readerMember) {
+        List<Long> answerIds = answers.stream().map(Answer::getId).toList();
+        List<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+        return answers.stream()
+                .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
