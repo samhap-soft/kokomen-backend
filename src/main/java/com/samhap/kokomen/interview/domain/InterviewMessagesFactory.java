@@ -58,10 +58,12 @@ public final class InterviewMessagesFactory {
     }
 
     private static void addBedrockMessages(QuestionAndAnswers questionAndAnswers, List<Message> messages) {
-        questionAndAnswers.getPrevAnswers().forEach(answer -> {
-            messages.add(createBedrockMessage("assistant", answer.getQuestion().getContent()));
-            messages.add(createBedrockMessage("user", answer.getContent()));
-        });
+        List<Question> questions = questionAndAnswers.getQuestions();
+        List<Answer> prevAnswers = questionAndAnswers.getPrevAnswers();
+        for (int i = 0; i < prevAnswers.size(); i++) {
+            messages.add(createBedrockMessage("assistant", questions.get(i).getContent()));
+            messages.add(createBedrockMessage("user", prevAnswers.get(i).getContent()));
+        }
 
         messages.add(createBedrockMessage("assistant", questionAndAnswers.readCurQuestion().getContent()));
         messages.add(createBedrockMessage("user", questionAndAnswers.getCurAnswerContent()));
