@@ -29,10 +29,12 @@ public final class InterviewMessagesFactory {
     }
 
     private static void addGptMessages(QuestionAndAnswers questionAndAnswers, List<GptMessage> gptMessages) {
-        questionAndAnswers.getPrevAnswers().forEach(answer -> {
-            gptMessages.add(new GptMessage("assistant", answer.getQuestion().getContent()));
-            gptMessages.add(new GptMessage("user", answer.getContent()));
-        });
+        List<Question> questions = questionAndAnswers.getQuestions();
+        List<Answer> prevAnswers = questionAndAnswers.getPrevAnswers();
+        for (int i = 0; i < prevAnswers.size(); i++) {
+            gptMessages.add(new GptMessage("assistant", questions.get(i).getContent()));
+            gptMessages.add(new GptMessage("user", prevAnswers.get(i).getContent()));
+        }
 
         gptMessages.add(new GptMessage("assistant", questionAndAnswers.readCurQuestion().getContent()));
         gptMessages.add(new GptMessage("user", questionAndAnswers.getCurAnswerContent()));
