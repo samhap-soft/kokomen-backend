@@ -44,7 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewService {
 
     private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
-    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT = "interview:viewCount:%s:%s";
+    private static final String INTERVIEW_PROCEED_LOCK_KEY_FORMAT = "lock:interview:proceed:%s";
+    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT = "lock:interview:viewCount:%s:%s";
     public static final String INTERVIEW_VIEW_COUNT_KEY_FORMAT = "interview:viewCount:%s";
 
     private final GptClient gptClient;
@@ -88,7 +89,7 @@ public class InterviewService {
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
-        String lockKey = "interview:proceed:" + member.getId();
+        String lockKey = INTERVIEW_PROCEED_LOCK_KEY_FORMAT.formatted(member.getId());
         acquireLockForProceedInterview(lockKey);
 
         validateHasToken(member);
