@@ -1,0 +1,3 @@
+ALTER TABLE interview MODIFY COLUMN like_count BIGINT;
+
+ALTER TABLE interview MODIFY COLUMN view_count BIGINT;
