@@ -1,10 +1,11 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.global.service.RedisDistributedLockService;
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
@@ -43,6 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewService {
 
     private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
+    private static final String INTERVIEW_PROCEED_LOCK_KEY_FORMAT = "lock:interview:proceed:%s";
+    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT = "lock:interview:viewCount:%s:%s";
+    public static final String INTERVIEW_VIEW_COUNT_KEY_FORMAT = "interview:viewCount:%s";
 
     private final GptClient gptClient;
     private final BedrockClient bedrockClient;
@@ -51,7 +55,7 @@ public class InterviewService {
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
-    private final RedisDistributedLockService redisDistributedLockService;
+    private final RedisService redisService;
     private final InterviewAnswerResponseService interviewAnswerResponseService;
     private final InterviewLikeRepository interviewLikeRepository;
 
@@ -84,10 +88,10 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        String lockKey = "interview:proceed:" + memberAuth.memberId();
-        acquireLock(lockKey);
-
         Member member = readMember(memberAuth.memberId());
+        String lockKey = INTERVIEW_PROCEED_LOCK_KEY_FORMAT.formatted(member.getId());
+        acquireLockForProceedInterview(lockKey);
+
         validateHasToken(member);
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
@@ -97,12 +101,12 @@ public class InterviewService {
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
             return interviewAnswerResponseService.handleGptResponse(member.getId(), questionAndAnswers, llmResponse, interview.getId());
         } finally {
-            redisDistributedLockService.releaseLock(lockKey);
+            redisService.releaseLock(lockKey);
         }
     }
 
-    private void acquireLock(String lockKey) {
-        boolean lockAcquired = redisDistributedLockService.acquireLock(lockKey, Duration.ofSeconds(30));
+    private void acquireLockForProceedInterview(String lockKey) {
+        boolean lockAcquired = redisService.acquireLock(lockKey, Duration.ofSeconds(30));
         if (!lockAcquired) {
             throw new BadRequestException("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
         }
@@ -157,11 +161,15 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewResultResponse findResults(Long interviewId) {
+    public InterviewResultResponse findResults(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
+
+        if (!isInterviewee(memberAuth, interview)) {
+            increaseViewCount(interview, clientIp);
+        }
 
         return InterviewResultResponse.createResultResponse(feedbackResponses, interview);
     }
@@ -170,6 +178,24 @@ public class InterviewService {
         if (interview.isInProgress()) {
             throw new BadRequestException("해당 인터뷰는 아직 진행 중입니다. 인터뷰가 종료된 후 결과를 조회할 수 있습니다.");
         }
+    }
+
+    private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
+        return memberAuth.isAuthenticated() && interview.isInterviewee(readMember(memberAuth.memberId()));
+    }
+
+    private void increaseViewCount(Interview interview, ClientIp clientIp) {
+        String viewCountLockKey = INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT.formatted(interview.getId(), clientIp.address());
+        if (!redisService.acquireLock(viewCountLockKey, Duration.ofDays(1))) {
+            return;
+        }
+
+        String viewCountKey = INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId());
+        boolean expireSuccess = redisService.expireKey(viewCountKey, Duration.ofDays(2));
+        if (!expireSuccess) {
+            redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
+        }
+        redisService.incrementKey(viewCountKey);
     }
 
     @Transactional(readOnly = true)
