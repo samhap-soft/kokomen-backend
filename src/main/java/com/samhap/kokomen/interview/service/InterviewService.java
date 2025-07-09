@@ -1,5 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -16,7 +18,6 @@ import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.interview.repository.AnswerRepository;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -34,6 +35,7 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class InterviewService {
     private final RedisService redisService;
     private final InterviewAnswerResponseService interviewAnswerResponseService;
     private final InterviewLikeRepository interviewLikeRepository;
+    private final AnswerLikeRepository answerLikeRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -155,7 +158,7 @@ public class InterviewService {
         validateInterviewee(interview, member);
         validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers);
 
         return InterviewResultResponse.createMyResultResponse(feedbackResponses, interview, member);
     }
@@ -164,14 +167,19 @@ public class InterviewService {
     public InterviewResultResponse findResults(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         validateInterviewFinished(interview);
-        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.from(answers);
-
         if (!isInterviewee(memberAuth, interview)) {
             increaseViewCount(interview, clientIp);
         }
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            List<FeedbackResponse> feedbackResponses = createFeedbackResponses(answers, readerMember);
+            boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
+            return InterviewResultResponse.createResultResponse(feedbackResponses, interview, interviewAlreadyLiked);
+        }
 
-        return InterviewResultResponse.createResultResponse(feedbackResponses, interview);
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createForNotAuthenticatedUser(answers);
+        return InterviewResultResponse.createResultResponse(feedbackResponses, interview, false);
     }
 
     private void validateInterviewFinished(Interview interview) {
@@ -198,6 +206,14 @@ public class InterviewService {
         redisService.incrementKey(viewCountKey);
     }
 
+    private List<FeedbackResponse> createFeedbackResponses(List<Answer> answers, Member readerMember) {
+        List<Long> answerIds = answers.stream().map(Answer::getId).toList();
+        Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+        return answers.stream()
+                .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
@@ -213,19 +229,32 @@ public class InterviewService {
     public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
         Member member = readMember(memberAuth.memberId());
         List<Interview> interviews = findInterviews(member, state, pageable);
+        List<Long> finishedInterviewIds = interviews.stream()
+                .filter(interview -> !interview.isInProgress())
+                .map(Interview::getId)
+                .toList();
+        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
 
         return interviews.stream()
-                .map(interview -> new InterviewSummaryResponse(interview, countCurAnswers(interview)))
+                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findMemberInterviews(Long memberId, Pageable pageable) {
-        Member member = readMember(memberId);
-        List<Interview> interviews = findInterviews(member, InterviewState.FINISHED, pageable);
+    public List<InterviewSummaryResponse> findMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+        Member targetMember = readMember(targetMemberId);
+        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
 
+            return interviews.stream()
+                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
+                    .toList();
+        }
         return interviews.stream()
-                .map(InterviewSummaryResponse::new)
+                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
                 .toList();
     }
 

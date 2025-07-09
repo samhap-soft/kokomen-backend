@@ -1,8 +1,7 @@
-package com.samhap.kokomen.interview.repository;
+package com.samhap.kokomen.answer.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
@@ -10,46 +9,47 @@ import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Answer;
+import com.samhap.kokomen.interview.domain.AnswerLike;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class AnswerRepositoryTest extends BaseTest {
+class AnswerLikeRepositoryTest extends BaseTest {
 
     @Autowired
-    private AnswerRepository answerRepository;
+    private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
     private QuestionRepository questionRepository;
     @Autowired
-    private MemberRepository memberRepository;
+    private AnswerRepository answerRepository;
     @Autowired
-    private RootQuestionRepository rootQuestionRepository;
+    private AnswerLikeRepository answerLikeRepository;
+    @Autowired
+    private MemberRepository memberRepository;
 
     @Test
-    void 질문들로_답변들을_찾는다() {
+    void memberId와_answerId로_좋아요가_존재하는지_확인한다() {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
-
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(rootQuestion).member(member).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+        answerLikeRepository.save(new AnswerLike(member, answer));
 
         // when
-        List<Answer> answers = answerRepository.findByQuestionIn(List.of(question1, question2));
+        boolean result = answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId());
 
         // then
-        assertThat(answers)
-                .extracting(Answer::getId)
-                .containsExactlyInAnyOrder(answer1.getId(), answer2.getId());
+        assertThat(result).isTrue();
     }
 }

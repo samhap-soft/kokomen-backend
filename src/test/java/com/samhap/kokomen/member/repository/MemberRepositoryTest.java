@@ -16,14 +16,9 @@ import com.samhap.kokomen.member.service.dto.RankingProjection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 class MemberRepositoryTest extends BaseTest {
 
-    @Autowired
-    private PlatformTransactionManager transactionManager;
     @Autowired
     private MemberRepository memberRepository;
     @Autowired
@@ -37,9 +32,7 @@ class MemberRepositoryTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(1).build());
 
         // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
         int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
-        transactionManager.commit(status);
 
         // then
         assertAll(
@@ -54,9 +47,7 @@ class MemberRepositoryTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(0).build());
 
         // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
         int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
-        transactionManager.commit(status);
 
         // then
         assertAll(
@@ -71,9 +62,7 @@ class MemberRepositoryTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(0).build());
 
         // when
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
         int affectedRows = memberRepository.rechargeDailyFreeToken(Member.DAILY_FREE_TOKEN_COUNT);
-        transactionManager.commit(status);
 
         // then
         assertAll(

@@ -8,15 +8,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByKakaoId(Long kakaoId);
 
+    @Transactional
     @Modifying
     @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m.id = :memberId AND m.freeTokenCount > 0")
     int decreaseFreeTokenCount(Long memberId);
 
+    @Transactional
     @Modifying
     @Query("UPDATE Member m SET m.freeTokenCount = :dailyFreeTokenCount")
     int rechargeDailyFreeToken(int dailyFreeTokenCount);
