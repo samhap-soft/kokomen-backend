@@ -894,7 +894,7 @@ class InterviewControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/interviews/{interview_id}/like", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isOk())
+                .andExpect(status().isNoContent())
                 .andDo(document("interview-likeInterview",
                         pathParameters(
                                 parameterWithName("interview_id").description("좋아요를 요청할 인터뷰 ID")
@@ -920,7 +920,7 @@ class InterviewControllerTest extends BaseControllerTest {
         mockMvc.perform(delete("/api/v1/interviews/{interview_id}/like", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isOk())
+                .andExpect(status().isNoContent())
                 .andDo(document("interview-unlikeInterview",
                         pathParameters(
                                 parameterWithName("interview_id").description("좋아요 취소를 요청할 인터뷰 ID")

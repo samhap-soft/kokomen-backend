@@ -24,7 +24,7 @@ public class AnswerController {
             @Authentication MemberAuth memberAuth
     ) {
         answerService.likeAnswer(answerId, memberAuth);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{answerId}/like")
@@ -33,6 +33,6 @@ public class AnswerController {
             @Authentication MemberAuth memberAuth
     ) {
         answerService.unlikeAnswer(answerId, memberAuth);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

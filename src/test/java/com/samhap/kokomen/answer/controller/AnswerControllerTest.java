@@ -64,7 +64,7 @@ class AnswerControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/answers/{answer_id}/like", answer.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isOk())
+                .andExpect(status().isNoContent())
                 .andDo(document("answer-likeAnswer",
                         pathParameters(
                                 parameterWithName("answer_id").description("좋아요를 요청할 답변 ID")
@@ -97,7 +97,7 @@ class AnswerControllerTest extends BaseControllerTest {
         mockMvc.perform(delete("/api/v1/answers/{answer_id}/like", answer.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isOk())
+                .andExpect(status().isNoContent())
                 .andDo(document("answer-unlikeAnswer",
                         pathParameters(
                                 parameterWithName("answer_id").description("좋아요를 요청할 답변 ID")

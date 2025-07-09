@@ -75,7 +75,7 @@ public class InterviewController {
             @Authentication MemberAuth memberAuth
     ) {
         interviewService.likeInterview(interviewId, memberAuth);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{interviewId}")
@@ -101,7 +101,7 @@ public class InterviewController {
             @Authentication MemberAuth memberAuth
     ) {
         interviewService.unlikeInterview(interviewId, memberAuth);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
