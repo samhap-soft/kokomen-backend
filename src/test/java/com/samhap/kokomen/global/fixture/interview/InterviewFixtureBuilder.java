@@ -15,8 +15,8 @@ public class InterviewFixtureBuilder {
     private InterviewState interviewState;
     private String totalFeedback;
     private Integer totalScore;
-    private Integer likeCount;
-    private Integer viewCount;
+    private Long likeCount;
+    private Long viewCount;
 
     public static InterviewFixtureBuilder builder() {
         return new InterviewFixtureBuilder();
@@ -57,12 +57,12 @@ public class InterviewFixtureBuilder {
         return this;
     }
 
-    public InterviewFixtureBuilder likeCount(Integer likeCount) {
+    public InterviewFixtureBuilder likeCount(Long likeCount) {
         this.likeCount = likeCount;
         return this;
     }
 
-    public InterviewFixtureBuilder viewCount(Integer viewCount) {
+    public InterviewFixtureBuilder viewCount(Long viewCount) {
         this.viewCount = viewCount;
         return this;
     }
@@ -76,8 +76,8 @@ public class InterviewFixtureBuilder {
                 interviewState != null ? interviewState : InterviewState.IN_PROGRESS,
                 totalFeedback,
                 totalScore,
-                likeCount != null ? likeCount : 0,
-                viewCount != null ? viewCount : 0
+                likeCount != null ? likeCount : 0L,
+                viewCount != null ? viewCount : 0L
         );
     }
 

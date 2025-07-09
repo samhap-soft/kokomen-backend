@@ -39,6 +39,8 @@ spring:
 ---
 # docs
 spring:
+  flyway:
+    enabled: false
   config:
     activate:
       on-profile: docs
@@ -49,6 +51,6 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     show-sql: true
     database-platform: org.hibernate.dialect.H2Dialect

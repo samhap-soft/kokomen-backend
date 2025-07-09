@@ -58,10 +58,10 @@ public class Interview extends BaseEntity {
     private Integer totalScore;
 
     @Column(name = "like_count", nullable = false)
-    private Integer likeCount;
+    private Long likeCount;
 
     @Column(name = "view_count", nullable = false)
-    private Integer viewCount;
+    private Long viewCount;
 
     public Interview(
             Long id,
@@ -71,8 +71,8 @@ public class Interview extends BaseEntity {
             InterviewState interviewState,
             String totalFeedback,
             Integer totalScore,
-            Integer likeCount,
-            Integer viewCount
+            Long likeCount,
+            Long viewCount
     ) {
         validateMaxQuestionCount(maxQuestionCount);
         this.id = id;
@@ -87,7 +87,7 @@ public class Interview extends BaseEntity {
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, null, null, 0, 0);
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, null, null, 0L, 0L);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {

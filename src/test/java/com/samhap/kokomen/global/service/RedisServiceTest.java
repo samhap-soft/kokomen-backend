@@ -8,10 +8,10 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class RedisDistributedLockServiceTest extends BaseTest {
+class RedisServiceTest extends BaseTest {
 
     @Autowired
-    private RedisDistributedLockService redisDistributedLockService;
+    private RedisService redisService;
 
     @Test
     void 같은_키값에_대해_분산락은_하나만_획득할_수_있다() {
@@ -20,8 +20,8 @@ class RedisDistributedLockServiceTest extends BaseTest {
         Duration ttl = Duration.ofSeconds(10);
 
         // when
-        boolean firstTrial = redisDistributedLockService.acquireLock(lockKey, ttl);
-        boolean secondTrial = redisDistributedLockService.acquireLock(lockKey, ttl);
+        boolean firstTrial = redisService.acquireLock(lockKey, ttl);
+        boolean secondTrial = redisService.acquireLock(lockKey, ttl);
 
         // then
         assertAll(
@@ -37,10 +37,10 @@ class RedisDistributedLockServiceTest extends BaseTest {
         Duration ttl = Duration.ofSeconds(10);
 
         // when
-        boolean firstTrial = redisDistributedLockService.acquireLock(lockKey, ttl);
-        boolean secondTrial = redisDistributedLockService.acquireLock(lockKey, ttl);
-        redisDistributedLockService.releaseLock(lockKey);
-        boolean retrial = redisDistributedLockService.acquireLock(lockKey, ttl);
+        boolean firstTrial = redisService.acquireLock(lockKey, ttl);
+        boolean secondTrial = redisService.acquireLock(lockKey, ttl);
+        redisService.releaseLock(lockKey);
+        boolean retrial = redisService.acquireLock(lockKey, ttl);
 
         // then
         assertAll(
