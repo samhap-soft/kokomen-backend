@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.service.InterviewService;
@@ -64,9 +65,10 @@ public class InterviewController {
     @GetMapping("/{interviewId}/result")
     public ResponseEntity<InterviewResultResponse> findResults(
             @PathVariable Long interviewId,
-            @Authentication(required = false) MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewService.findResults(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewService.findResults(interviewId, memberAuth, clientIp));
     }
 
     @PostMapping("/{interviewId}/like")

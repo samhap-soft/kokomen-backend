@@ -888,7 +888,7 @@ class InterviewControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
 
         // when & then
         mockMvc.perform(post("/api/v1/interviews/{interview_id}/like", interview.getId())
@@ -913,7 +913,7 @@ class InterviewControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(member).build());
 
         // when & then

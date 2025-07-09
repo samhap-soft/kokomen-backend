@@ -27,7 +27,7 @@ class InterviewRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
 
         // when
         interviewRepository.increaseLikeCount(interview.getId());
@@ -42,7 +42,7 @@ class InterviewRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
 
         // when
         interviewRepository.decreaseLikeCount(interview.getId());
