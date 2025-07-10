@@ -139,20 +139,71 @@ public class InterviewService {
         interviewRepository.increaseLikeCount(interviewId);
     }
 
-    @Transactional
-    public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
+    @Transactional(readOnly = true)
+    public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
-        int affectedRows = interviewLikeRepository.deleteByMemberAndInterview(member, interview);
-        if (affectedRows == 0) {
-            throw new BadRequestException("좋아요를 누르지 않은 인터뷰입니다.");
+        validateInterviewee(interview, member);
+        List<Question> questions = questionRepository.findByInterviewOrderById(interview);
+        List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
+
+        return InterviewResponse.of(interview, questions, answers);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+        Member member = readMember(memberAuth.memberId());
+        List<Interview> interviews = findInterviews(member, state, pageable);
+        List<Long> finishedInterviewIds = interviews.stream()
+                .filter(interview -> !interview.isInProgress())
+                .map(Interview::getId)
+                .toList();
+        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
+
+        return interviews.stream()
+                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
+                .toList();
+    }
+
+    private int countCurAnswers(Interview interview) {
+        int qurQuestionCount = questionRepository.countByInterview(interview);
+
+        // TODO: 해당 로직 적절한 도메인에 부여하기
+        if (interview.isInProgress()) {
+            return qurQuestionCount - 1;
         }
-        interviewRepository.decreaseLikeCount(interviewId);
+        return qurQuestionCount;
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewSummaryResponse> findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+        Member targetMember = readMember(targetMemberId);
+        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
+
+            return interviews.stream()
+                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
+                    .toList();
+        }
+        return interviews.stream()
+                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
+                .toList();
+    }
+
+    // TODO: 동적 쿼리 개선하기
+    private List<Interview> findInterviews(Member member, InterviewState state, Pageable pageable) {
+        if (state == null) {
+            return interviewRepository.findByMember(member, pageable);
+        }
+        return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
-    public InterviewResultResponse findMyResults(Long interviewId, MemberAuth memberAuth) {
+    public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewee(interview, member);
@@ -163,8 +214,14 @@ public class InterviewService {
         return InterviewResultResponse.createMyResultResponse(feedbackResponses, interview, member);
     }
 
+    private void validateInterviewee(Interview interview, Member member) {
+        if (!interview.isInterviewee(member)) {
+            throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
+        }
+    }
+
     @Transactional(readOnly = true)
-    public InterviewResultResponse findResults(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+    public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         validateInterviewFinished(interview);
         if (!isInterviewee(memberAuth, interview)) {
@@ -214,66 +271,15 @@ public class InterviewService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public InterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
+    @Transactional
+    public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
-        validateInterviewee(interview, member);
-        List<Question> questions = questionRepository.findByInterviewOrderById(interview);
-        List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
-
-        return InterviewResponse.of(interview, questions, answers);
-    }
-
-    @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
-        Member member = readMember(memberAuth.memberId());
-        List<Interview> interviews = findInterviews(member, state, pageable);
-        List<Long> finishedInterviewIds = interviews.stream()
-                .filter(interview -> !interview.isInProgress())
-                .map(Interview::getId)
-                .toList();
-        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
-
-        return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
-        Member targetMember = readMember(targetMemberId);
-        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
-        if (memberAuth.isAuthenticated()) {
-            Member readerMember = readMember(memberAuth.memberId());
-            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
-            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
-
-            return interviews.stream()
-                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
-                    .toList();
+        int affectedRows = interviewLikeRepository.deleteByMemberAndInterview(member, interview);
+        if (affectedRows == 0) {
+            throw new BadRequestException("좋아요를 누르지 않은 인터뷰입니다.");
         }
-        return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
-                .toList();
-    }
-
-    // TODO: 동적 쿼리 개선하기
-    private List<Interview> findInterviews(Member member, InterviewState state, Pageable pageable) {
-        if (state == null) {
-            return interviewRepository.findByMember(member, pageable);
-        }
-        return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
-    }
-
-    private int countCurAnswers(Interview interview) {
-        int qurQuestionCount = questionRepository.countByInterview(interview);
-
-        // TODO: 해당 로직 적절한 도메인에 부여하기
-        if (interview.isInProgress()) {
-            return qurQuestionCount - 1;
-        }
-        return qurQuestionCount;
+        interviewRepository.decreaseLikeCount(interviewId);
     }
 
     private Member readMember(Long memberId) {
@@ -284,11 +290,5 @@ public class InterviewService {
     private Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
-    }
-
-    private void validateInterviewee(Interview interview, Member member) {
-        if (!interview.isInterviewee(member)) {
-            throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
-        }
     }
 }
