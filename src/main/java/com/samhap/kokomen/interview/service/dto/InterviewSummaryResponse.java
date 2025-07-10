@@ -2,10 +2,12 @@ package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import java.time.LocalDateTime;
 
 public record InterviewSummaryResponse(
         Long interviewId,
+        InterviewState interviewState,
         Category interviewCategory,
         LocalDateTime createdAt,
         String rootQuestion,
@@ -15,9 +17,10 @@ public record InterviewSummaryResponse(
         Long interviewLikeCount,
         Boolean interviewAlreadyLiked
 ) {
-    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
+    public InterviewSummaryResponse(Interview interview, InterviewState interviewState, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         this(
                 interview.getId(),
+                interviewState,
                 interview.getRootQuestion().getCategory(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),
@@ -29,14 +32,19 @@ public record InterviewSummaryResponse(
         );
     }
 
-    public static InterviewSummaryResponse createOfOtherMember(Interview interview, Boolean interviewAlreadyLiked) {
-        return new InterviewSummaryResponse(interview, null, interviewAlreadyLiked);
+    public static InterviewSummaryResponse createOfOtherMemberForLoginMember(Interview interview, Boolean interviewAlreadyLiked) {
+        return new InterviewSummaryResponse(interview, null, null, interviewAlreadyLiked);
+    }
+
+    public static InterviewSummaryResponse createOfOtherMemberForLogoutMember(Interview interview) {
+        return new InterviewSummaryResponse(interview, null, null, false);
     }
 
     public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
+                    interview.getInterviewState(),
                     interview.getRootQuestion().getCategory(),
                     interview.getCreatedAt(),
                     interview.getRootQuestion().getContent(),
@@ -49,6 +57,7 @@ public record InterviewSummaryResponse(
         }
         return new InterviewSummaryResponse(
                 interview.getId(),
+                interview.getInterviewState(),
                 interview.getRootQuestion().getCategory(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),

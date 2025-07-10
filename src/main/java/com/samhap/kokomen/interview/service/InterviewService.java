@@ -179,21 +179,29 @@ public class InterviewService {
     @Transactional(readOnly = true)
     public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
         Member interviewee = readMember(targetMemberId);
-        List<Interview> interviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
+        long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
+        long totalMemberCount = memberRepository.count();
+
+        List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
-            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
+            List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
-            List<InterviewSummaryResponse> interviewSummaryResponses = interviews.stream()
-                    .map(interview -> InterviewSummaryResponse.createOfOtherMember(interview, likedInterviewIds.contains(interview.getId())))
-                    .toList();
-            return new InterviewSummaryResponses(interviewee.getNickname(), interviewSummaryResponses);
+            return InterviewSummaryResponses.createOfOtherMemberForLoginMember(
+                    interviewee.getNickname(),
+                    totalMemberCount,
+                    intervieweeRank,
+                    finishedInterviews,
+                    likedInterviewIds
+            );
         }
-        List<InterviewSummaryResponse> interviewSummaryResponses = interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfOtherMember(interview, false))
-                .toList();
-        return new InterviewSummaryResponses(interviewee.getNickname(), interviewSummaryResponses);
+        return InterviewSummaryResponses.createOfOtherMemberForLogoutMember(
+                interviewee.getNickname(),
+                totalMemberCount,
+                intervieweeRank,
+                finishedInterviews
+        );
     }
 
     // TODO: 동적 쿼리 개선하기
