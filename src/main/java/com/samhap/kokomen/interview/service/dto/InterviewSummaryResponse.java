@@ -2,12 +2,10 @@ package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewState;
 import java.time.LocalDateTime;
 
 public record InterviewSummaryResponse(
         Long interviewId,
-        InterviewState interviewState,
         Category interviewCategory,
         LocalDateTime createdAt,
         String rootQuestion,
@@ -20,7 +18,6 @@ public record InterviewSummaryResponse(
     public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         this(
                 interview.getId(),
-                interview.getInterviewState(),
                 interview.getRootQuestion().getCategory(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),
@@ -32,7 +29,7 @@ public record InterviewSummaryResponse(
         );
     }
 
-    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean interviewAlreadyLiked) {
+    public static InterviewSummaryResponse createOfOtherMember(Interview interview, Boolean interviewAlreadyLiked) {
         return new InterviewSummaryResponse(interview, null, interviewAlreadyLiked);
     }
 
@@ -40,7 +37,6 @@ public record InterviewSummaryResponse(
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
-                    interview.getInterviewState(),
                     interview.getRootQuestion().getCategory(),
                     interview.getCreatedAt(),
                     interview.getRootQuestion().getContent(),
@@ -53,7 +49,6 @@ public record InterviewSummaryResponse(
         }
         return new InterviewSummaryResponse(
                 interview.getId(),
-                interview.getInterviewState(),
                 interview.getRootQuestion().getCategory(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),

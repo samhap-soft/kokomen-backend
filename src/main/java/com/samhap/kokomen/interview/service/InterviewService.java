@@ -17,6 +17,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -176,21 +177,23 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
-        Member targetMember = readMember(targetMemberId);
-        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
+    public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+        Member interviewee = readMember(targetMemberId);
+        List<Interview> interviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
             Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
 
-            return interviews.stream()
-                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
+            List<InterviewSummaryResponse> interviewSummaryResponses = interviews.stream()
+                    .map(interview -> InterviewSummaryResponse.createOfOtherMember(interview, likedInterviewIds.contains(interview.getId())))
                     .toList();
+            return new InterviewSummaryResponses(interviewee.getNickname(), interviewSummaryResponses);
         }
-        return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
+        List<InterviewSummaryResponse> interviewSummaryResponses = interviews.stream()
+                .map(interview -> InterviewSummaryResponse.createOfOtherMember(interview, false))
                 .toList();
+        return new InterviewSummaryResponses(interviewee.getNickname(), interviewSummaryResponses);
     }
 
     // TODO: 동적 쿼리 개선하기
