@@ -30,8 +30,9 @@ public class MemberService {
 
     public MyProfileResponse findMember(MemberAuth memberAuth) {
         Member member = readMember(memberAuth);
-
-        return new MyProfileResponse(member);
+        long rank = memberRepository.findRankByScore(member.getScore());
+        long totalMemberCount = memberRepository.count();
+        return new MyProfileResponse(member, totalMemberCount, rank);
     }
 
     @Transactional

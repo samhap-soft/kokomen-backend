@@ -144,7 +144,7 @@ public class InterviewDocsTest extends DocsTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", interviewId))
-                .andDo(document("interview-findOtherMemberResult-exception" + docsNo));
+                .andDo(document("interview-findOtherMemberInterviewResult-exception" + docsNo));
     }
 
     private static Stream<Arguments> provideFindTotalFeedbacksExceptionCase() {
