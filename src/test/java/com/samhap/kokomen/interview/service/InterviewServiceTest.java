@@ -171,7 +171,7 @@ class InterviewServiceTest extends BaseTest {
         interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -200,7 +200,7 @@ class InterviewServiceTest extends BaseTest {
         interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -229,7 +229,7 @@ class InterviewServiceTest extends BaseTest {
         interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"));
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -263,7 +263,7 @@ class InterviewServiceTest extends BaseTest {
         executorService.awaitTermination(3, TimeUnit.SECONDS);
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(10L);
     }
 
