@@ -49,7 +49,7 @@ public class InterviewDocsTest extends DocsTest {
     // TODO: 로그인 기능 붙이면, 회원 못 찾을 때 발생하는 예외도 문서화
     @MethodSource("provideStartInterviewExceptionCase")
     @ParameterizedTest
-    void 인터뷰_시작_예외_문서화(int maxQuestionCount, int docsNo) throws Exception {
+    void 인터뷰_시작_예외(int maxQuestionCount, int docsNo) throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -74,7 +74,7 @@ public class InterviewDocsTest extends DocsTest {
 
     @MethodSource("provideProceedInterviewExceptionCase")
     @ParameterizedTest
-    void 인터뷰_진행_예외_문서화(Long interviewId, Long questionId, int docsNo) throws Exception {
+    void 인터뷰_진행_예외(Long interviewId, Long questionId, int docsNo) throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -110,7 +110,7 @@ public class InterviewDocsTest extends DocsTest {
 
     @MethodSource("provideFindTotalFeedbacksExceptionCase")
     @ParameterizedTest
-    void 자신의_인터뷰_최종_결과_조회_예외_문서화(Long interviewId, int docsNo) throws Exception {
+    void 자신의_인터뷰_결과_조회_예외(Long interviewId, int docsNo) throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -127,12 +127,12 @@ public class InterviewDocsTest extends DocsTest {
                         "/api/v1/interviews/{interview_id}/my-result", interviewId)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andDo(document("interview-findMyResults-exception" + docsNo));
+                .andDo(document("interview-findMyResult-exception" + docsNo));
     }
 
     @MethodSource("provideFindTotalFeedbacksExceptionCase")
     @ParameterizedTest
-    void 다른_사용자의_인터뷰_최종_결과_조회_예외_문서화(Long interviewId, int docsNo) throws Exception {
+    void 다른_사용자의_완료된_인터뷰_결과_조회_예외(Long interviewId, int docsNo) throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
@@ -144,7 +144,7 @@ public class InterviewDocsTest extends DocsTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", interviewId))
-                .andDo(document("interview-findResults-exception" + docsNo));
+                .andDo(document("interview-findOtherMemberResult-exception" + docsNo));
     }
 
     private static Stream<Arguments> provideFindTotalFeedbacksExceptionCase() {

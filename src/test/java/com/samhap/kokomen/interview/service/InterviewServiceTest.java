@@ -168,7 +168,7 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findResults(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // then
         Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
@@ -195,9 +195,9 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findResults(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findResults(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findResults(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // then
         Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
@@ -223,10 +223,10 @@ class InterviewServiceTest extends BaseTest {
         interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
 
-        interviewService.findResults(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // when
-        interviewService.findResults(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"));
 
         // then
         Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId())));
@@ -256,7 +256,7 @@ class InterviewServiceTest extends BaseTest {
         // when
         for (int i = 1; i <= 10; i++) {
             ClientIp clientIp = new ClientIp("%d.%d.%d.%d".formatted(i, i, i, i));
-            executorService.execute(() -> interviewService.findResults(interview.getId(), MemberAuth.notAuthenticated(), clientIp));
+            executorService.execute(() -> interviewService.findOtherMemberInterviewResult(interview.getId(), MemberAuth.notAuthenticated(), clientIp));
         }
 
         executorService.shutdown();
@@ -366,7 +366,7 @@ class InterviewServiceTest extends BaseTest {
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(readerMember).build());
 
         // when
-        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findMemberInterviews(
+        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findOtherMemberInterviews(
                 targetMember.getId(),
                 new MemberAuth(readerMember.getId()),
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
@@ -402,7 +402,8 @@ class InterviewServiceTest extends BaseTest {
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer2).build());
 
         // when
-        InterviewResultResponse results = interviewService.findResults(interview.getId(), new MemberAuth(readerMember.getId()), new ClientIp("1.1.1.1"));
+        InterviewResultResponse results = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(readerMember.getId()),
+                new ClientIp("1.1.1.1"));
 
         // then
         assertAll(

@@ -68,7 +68,7 @@ class InterviewControllerTest extends BaseControllerTest {
     private AnswerLikeRepository answerLikeRepository;
 
     @Test
-    void 인터뷰를_생성하면_루트_질문을_바탕으로_질문도_생성된다() throws Exception {
+    void 인터뷰_시작() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -118,7 +118,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰_답변을_전달하면_인터뷰에_대한_평가를_받고_다음_질문을_응답한다() throws Exception {
+    void 인터뷰_진행() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -188,277 +188,32 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 자신의_인터뷰에_대한_최종_결과를_조회한다() throws Exception {
+    void 인터뷰_좋아요_요청() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
-        member.addScore(100);
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
-        Answer answer1 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
-        Answer answer2 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
-        Answer answer3 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
-        interview.evaluate("제대로 좀 공부 해라.", -30);
-        interviewRepository.save(interview);
-        member.addScore(-30);
-        memberRepository.save(member);
 
-        String responseJson = """
-                {
-                	"feedbacks": [
-                		{
-                			"question_id": 1,
-                			"answer_id": 1,
-                			"question": "자바의 특징은 무엇인가요?",
-                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
-                			"answer_rank": "C",
-                			"answer_feedback": "부족합니다."
-                		},
-                		{
-                			"question_id": 2,
-                			"answer_id": 2,
-                			"question": "객체지향의 특징을 설명해주세요.",
-                			"answer": "객체가 각자 책임집니다.",
-                			"answer_rank": "D",
-                			"answer_feedback": "부족합니다."
-                		},
-                		{
-                			"question_id": 3,
-                			"answer_id": 3,
-                			"question": "객체는 무엇인가요?",
-                			"answer": "클래스의 인스턴스 입니다.",
-                			"answer_rank": "F",
-                			"answer_feedback": "부족합니다."
-                		}
-                	],
-                	"total_score": -30,
-                	"user_cur_score": 70,
-                	"user_prev_score": 100
-                }
-                """;
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
 
         // when & then
-        mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/my-result", interview.getId())
+        mockMvc.perform(post("/api/v1/interviews/{interview_id}/like", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
-                .andDo(document("interview-findMyResults",
+                .andExpect(status().isNoContent())
+                .andDo(document("interview-likeInterview",
                         pathParameters(
-                                parameterWithName("interview_id").description("인터뷰 ID")
+                                parameterWithName("interview_id").description("좋아요를 요청할 인터뷰 ID")
                         ),
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        responseFields(
-                                fieldWithPath("feedbacks").description("피드백 목록"),
-                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
-                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
-                                fieldWithPath("feedbacks[].question").description("질문 내용"),
-                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
-                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
-                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
-                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
-                                fieldWithPath("total_score").description("인터뷰 총 점수"),
-                                fieldWithPath("user_cur_score").description("현재 사용자 점수"),
-                                fieldWithPath("user_prev_score").description("이전 사용자 점수")
                         )
                 ));
     }
 
     @Test
-    void 다른_사용자의_인터뷰에_대한_최종_결과를_조회한다_로그인_버전() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
-
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", readerMember.getId());
-
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
-        Answer answer1 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
-        Answer answer2 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
-        Answer answer3 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
-        interview.evaluate("제대로 좀 공부 해라.", -30);
-        interviewRepository.save(interview);
-        interviewRepository.increaseLikeCount(interview.getId());
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
-        answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer1).member(readerMember).build());
-        answerRepository.incrementLikeCount(answer1.getId());
-
-        String responseJson = """
-                {
-                	"feedbacks": [
-                		{
-                			"question_id": 1,
-                			"answer_id": 1,
-                			"question": "자바의 특징은 무엇인가요?",
-                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
-                			"answer_rank": "C",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 1,
-                			"answer_already_liked": true
-                		},
-                		{
-                			"question_id": 2,
-                			"answer_id": 2,
-                			"question": "객체지향의 특징을 설명해주세요.",
-                			"answer": "객체가 각자 책임집니다.",
-                			"answer_rank": "D",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0,
-                			"answer_already_liked": false
-                		},
-                		{
-                			"question_id": 3,
-                			"answer_id": 3,
-                			"question": "객체는 무엇인가요?",
-                			"answer": "클래스의 인스턴스 입니다.",
-                			"answer_rank": "F",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0,
-                			"answer_already_liked": false
-                		}
-                	],
-                	"total_score": -30,
-                	"total_feedback": "제대로 좀 공부 해라.",
-                	"interview_like_count": 1,
-                	"interview_already_liked": true
-                }
-                """;
-
-        // when & then
-        mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/result", interview.getId())
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session))
-                .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
-                .andDo(document("interview-findResults-authenticated",
-                        pathParameters(
-                                parameterWithName("interview_id").description("인터뷰 ID")
-                        ),
-                        responseFields(
-                                fieldWithPath("feedbacks").description("피드백 목록"),
-                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
-                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
-                                fieldWithPath("feedbacks[].question").description("질문 내용"),
-                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
-                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
-                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
-                                fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
-                                fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
-                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
-                                fieldWithPath("total_score").description("인터뷰 총 점수"),
-                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
-                        )
-                ));
-    }
-
-    @Test
-    void 다른_사용자의_인터뷰에_대한_최종_결과를_조회한다_비회원_버전() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
-        Answer answer1 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
-        Answer answer2 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
-        Answer answer3 = answerRepository.save(
-                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
-        interview.evaluate("제대로 좀 공부 해라.", -30);
-        interviewRepository.save(interview);
-
-        String responseJson = """
-                {
-                	"feedbacks": [
-                		{
-                			"question_id": 1,
-                			"answer_id": 1,
-                			"question": "자바의 특징은 무엇인가요?",
-                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
-                			"answer_rank": "C",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0,
-                			"answer_already_liked": false
-                		},
-                		{
-                			"question_id": 2,
-                			"answer_id": 2,
-                			"question": "객체지향의 특징을 설명해주세요.",
-                			"answer": "객체가 각자 책임집니다.",
-                			"answer_rank": "D",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0,
-                			"answer_already_liked": false
-                		},
-                		{
-                			"question_id": 3,
-                			"answer_id": 3,
-                			"question": "객체는 무엇인가요?",
-                			"answer": "클래스의 인스턴스 입니다.",
-                			"answer_rank": "F",
-                			"answer_feedback": "부족합니다.",
-                			"answer_like_count": 0,
-                			"answer_already_liked": false
-                		}
-                	],
-                	"total_score": -30,
-                	"total_feedback": "제대로 좀 공부 해라.",
-                	"interview_like_count": 0,
-                	"interview_already_liked": false
-                }
-                """;
-
-        // when & then
-        mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/result", interview.getId()))
-                .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
-                .andDo(document("interview-findResults-unauthenticated",
-                        pathParameters(
-                                parameterWithName("interview_id").description("인터뷰 ID")
-                        ),
-                        responseFields(
-                                fieldWithPath("feedbacks").description("피드백 목록"),
-                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
-                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
-                                fieldWithPath("feedbacks[].question").description("질문 내용"),
-                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
-                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
-                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
-                                fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
-                                fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
-                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
-                                fieldWithPath("total_score").description("인터뷰 총 점수"),
-                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
-                        )
-                ));
-    }
-
-    @Test
-    void 진행중인_인터뷰_상태를_확인한다() throws Exception {
+    void 인터뷰_현황_체크_IN_PROGRESS() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
@@ -491,12 +246,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findInterview-inProgress",
+                .andDo(document("interview-checkInterview-inProgress",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -519,7 +274,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 종료된_인터뷰_상태를_확인한다() throws Exception {
+    void 인터뷰_현황_체크_FINISHED() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("첫번째 질문").build());
@@ -568,12 +323,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findInterview-finished",
+                .andDo(document("interview-checkInterview-finished",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -594,7 +349,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 자신의_면접_목록을_조회한다() throws Exception {
+    void 자신의_인터뷰_목록_조회() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -683,7 +438,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 다른_사용자의_완료된_면접_목록을_조회한다_로그인_버전() throws Exception {
+    void 다른_사용자의_완료된_인터뷰_목록_조회_로그인_버전() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
         Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
@@ -761,7 +516,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 .andExpect(content().json(responseJson))
                 .andExpect(jsonPath("$[0].created_at").exists())
                 .andExpect(jsonPath("$[1].created_at").exists())
-                .andDo(document("interview-findMemberInterviews-authenticated",
+                .andDo(document("interview-findOtherMemberInterviews-authenticated",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -786,7 +541,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 다른_사용자의_완료된_면접_목록을_조회한다_비회원_버전() throws Exception {
+    void 다른_사용자의_완료된_인터뷰_목록_조회_비회원_버전() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
 
@@ -859,7 +614,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 .andExpect(content().json(responseJson))
                 .andExpect(jsonPath("$[0].created_at").exists())
                 .andExpect(jsonPath("$[1].created_at").exists())
-                .andDo(document("interview-findMemberInterviews-unauthenticated",
+                .andDo(document("interview-findOtherMemberInterviews-unauthenticated",
                         queryParameters(
                                 parameterWithName("member_id").description("인터뷰이 멤버 id").optional(),
                                 parameterWithName("page").description("페이지 번호 (기본값: 0)"),
@@ -881,32 +636,277 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 좋아요를_요청한다() throws Exception {
+    void 자신의_인터뷰_결과_조회() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        member.addScore(100);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Answer answer1 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        Answer answer2 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        Answer answer3 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+        interview.evaluate("제대로 좀 공부 해라.", -30);
+        interviewRepository.save(interview);
+        member.addScore(-30);
+        memberRepository.save(member);
 
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
+        String responseJson = """
+                {
+                	"feedbacks": [
+                		{
+                			"question_id": 1,
+                			"answer_id": 1,
+                			"question": "자바의 특징은 무엇인가요?",
+                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "C",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 2,
+                			"answer_id": 2,
+                			"question": "객체지향의 특징을 설명해주세요.",
+                			"answer": "객체가 각자 책임집니다.",
+                			"answer_rank": "D",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 3,
+                			"answer_id": 3,
+                			"question": "객체는 무엇인가요?",
+                			"answer": "클래스의 인스턴스 입니다.",
+                			"answer_rank": "F",
+                			"answer_feedback": "부족합니다."
+                		}
+                	],
+                	"total_score": -30,
+                	"user_cur_score": 70,
+                	"user_prev_score": 100
+                }
+                """;
 
         // when & then
-        mockMvc.perform(post("/api/v1/interviews/{interview_id}/like", interview.getId())
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/my-result", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
-                .andExpect(status().isNoContent())
-                .andDo(document("interview-likeInterview",
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findMyResult",
                         pathParameters(
-                                parameterWithName("interview_id").description("좋아요를 요청할 인터뷰 ID")
+                                parameterWithName("interview_id").description("인터뷰 ID")
                         ),
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        responseFields(
+                                fieldWithPath("feedbacks").description("피드백 목록"),
+                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
+                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
+                                fieldWithPath("feedbacks[].question").description("질문 내용"),
+                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
+                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
+                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
+                                fieldWithPath("total_score").description("인터뷰 총 점수"),
+                                fieldWithPath("user_cur_score").description("현재 사용자 점수"),
+                                fieldWithPath("user_prev_score").description("이전 사용자 점수")
                         )
                 ));
     }
 
     @Test
-    void 좋아요_취소를_요청한다() throws Exception {
+    void 다른_사용자의_완료된_인터뷰_결과_조회_로그인_버전() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", readerMember.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Answer answer1 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        Answer answer2 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        Answer answer3 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+        interview.evaluate("제대로 좀 공부 해라.", -30);
+        interviewRepository.save(interview);
+        interviewRepository.increaseLikeCount(interview.getId());
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
+        answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer1).member(readerMember).build());
+        answerRepository.incrementLikeCount(answer1.getId());
+
+        String responseJson = """
+                {
+                	"feedbacks": [
+                		{
+                			"question_id": 1,
+                			"answer_id": 1,
+                			"question": "자바의 특징은 무엇인가요?",
+                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "C",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 1,
+                			"answer_already_liked": true
+                		},
+                		{
+                			"question_id": 2,
+                			"answer_id": 2,
+                			"question": "객체지향의 특징을 설명해주세요.",
+                			"answer": "객체가 각자 책임집니다.",
+                			"answer_rank": "D",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
+                		},
+                		{
+                			"question_id": 3,
+                			"answer_id": 3,
+                			"question": "객체는 무엇인가요?",
+                			"answer": "클래스의 인스턴스 입니다.",
+                			"answer_rank": "F",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
+                		}
+                	],
+                	"total_score": -30,
+                	"total_feedback": "제대로 좀 공부 해라.",
+                	"interview_like_count": 1,
+                	"interview_already_liked": true
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/result", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findOtherMemberResult-authenticated",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("feedbacks").description("피드백 목록"),
+                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
+                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
+                                fieldWithPath("feedbacks[].question").description("질문 내용"),
+                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
+                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
+                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
+                                fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
+                                fieldWithPath("total_score").description("인터뷰 총 점수"),
+                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                        )
+                ));
+    }
+
+    @Test
+    void 다른_사용자의_완료된_인터뷰_결과_조회_비회원_버전() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Answer answer1 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        Answer answer2 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D).feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        Answer answer3 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+        interview.evaluate("제대로 좀 공부 해라.", -30);
+        interviewRepository.save(interview);
+
+        String responseJson = """
+                {
+                	"feedbacks": [
+                		{
+                			"question_id": 1,
+                			"answer_id": 1,
+                			"question": "자바의 특징은 무엇인가요?",
+                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "C",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
+                		},
+                		{
+                			"question_id": 2,
+                			"answer_id": 2,
+                			"question": "객체지향의 특징을 설명해주세요.",
+                			"answer": "객체가 각자 책임집니다.",
+                			"answer_rank": "D",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
+                		},
+                		{
+                			"question_id": 3,
+                			"answer_id": 3,
+                			"question": "객체는 무엇인가요?",
+                			"answer": "클래스의 인스턴스 입니다.",
+                			"answer_rank": "F",
+                			"answer_feedback": "부족합니다.",
+                			"answer_like_count": 0,
+                			"answer_already_liked": false
+                		}
+                	],
+                	"total_score": -30,
+                	"total_feedback": "제대로 좀 공부 해라.",
+                	"interview_like_count": 0,
+                	"interview_already_liked": false
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/result", interview.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findOtherMemberResult-unauthenticated",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("feedbacks").description("피드백 목록"),
+                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
+                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
+                                fieldWithPath("feedbacks[].question").description("질문 내용"),
+                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
+                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
+                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
+                                fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
+                                fieldWithPath("total_score").description("인터뷰 총 점수"),
+                                fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_좋아요_취소_요청() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();

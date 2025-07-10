@@ -104,21 +104,24 @@ include::{snippetsDir}/interview-proceedInterview-exception2/http-response.adoc[
 include::{snippetsDir}/interview-proceedInterview-exception3/http-request.adoc[]
 include::{snippetsDir}/interview-proceedInterview-exception3/http-response.adoc[]
 
-=== 인터뷰 조회
+=== 인터뷰 좋아요 요청
 
-include::{snippetsDir}/interview-findInterview-inProgress/http-request.adoc[]
-include::{snippetsDir}/interview-findInterview-inProgress/path-parameters.adoc[]
-include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
-include::{snippetsDir}/interview-findInterview-inProgress/response-fields.adoc[]
-include::{snippetsDir}/interview-findInterview-inProgress/curl-request.adoc[]
+include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
+include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
+include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
 
-==== 인터뷰 조회 응답 - 진행 중
+=== 인터뷰 현황 체크 - IN_PROGRESS
 
-include::{snippetsDir}/interview-findInterview-inProgress/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress/curl-request.adoc[]
 
-==== 인터뷰 조회 응답 - 완료
+==== 인터뷰 현황 체크 - FINISHED
 
-include::{snippetsDir}/interview-findInterview-finished/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-finished/http-response.adoc[]
 
 === 자신의 인터뷰 목록 조회
 
@@ -128,72 +131,61 @@ include::{snippetsDir}/interview-findMyInterviews/http-response.adoc[]
 include::{snippetsDir}/interview-findMyInterviews/response-fields.adoc[]
 include::{snippetsDir}/interview-findMyInterviews/curl-request.adoc[]
 
-=== 다른 사용자의 인터뷰 목록 조회 (로그인 버전)
+=== 다른 사용자의 완료된 인터뷰 목록 조회 - 로그인 버전
 
-include::{snippetsDir}/interview-findMemberInterviews-authenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-authenticated/query-parameters.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-authenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-authenticated/response-fields.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-authenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/query-parameters.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/response-fields.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/curl-request.adoc[]
 
-=== 다른 사용자의 인터뷰 목록 조회 (비회원 버전)
+==== 다른 사용자의 완료된 인터뷰 목록 조회 - 비회원 버전
 
-include::{snippetsDir}/interview-findMemberInterviews-unauthenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-unauthenticated/query-parameters.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-unauthenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-unauthenticated/response-fields.adoc[]
-include::{snippetsDir}/interview-findMemberInterviews-unauthenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/curl-request.adoc[]
 
-=== 자신의 인터뷰 최종 결과 조회
+=== 자신의 인터뷰 결과 조회
 
-include::{snippetsDir}/interview-findMyResults/http-request.adoc[]
-include::{snippetsDir}/interview-findMyResults/path-parameters.adoc[]
-include::{snippetsDir}/interview-findMyResults/http-response.adoc[]
-include::{snippetsDir}/interview-findMyResults/response-fields.adoc[]
-include::{snippetsDir}/interview-findMyResults/curl-request.adoc[]
+include::{snippetsDir}/interview-findMyResult/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult/path-parameters.adoc[]
+include::{snippetsDir}/interview-findMyResult/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResult/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyResult/curl-request.adoc[]
 
-==== 자신의 인터뷰 최종 결과 조회 예외 1
+==== 자신의 인터뷰 결과 조회 예외 1
 
-include::{snippetsDir}/interview-findMyResults-exception1/http-request.adoc[]
-include::{snippetsDir}/interview-findMyResults-exception1/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception1/http-response.adoc[]
 
-==== 자신의 인터뷰 최종 결과 조회 예외 2
+==== 자신의 인터뷰 결과 조회 예외 2
 
-include::{snippetsDir}/interview-findMyResults-exception2/http-request.adoc[]
-include::{snippetsDir}/interview-findMyResults-exception2/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception2/http-response.adoc[]
 
-=== 다른 사용자의 인터뷰 최종 결과 조회 (로그인 버전)
+=== 다른 사용자의 완료된 인터뷰 결과 조회 - 로그인 버전
 
-include::{snippetsDir}/interview-findResults-authenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findResults-authenticated/path-parameters.adoc[]
-include::{snippetsDir}/interview-findResults-authenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findResults-authenticated/response-fields.adoc[]
-include::{snippetsDir}/interview-findResults-authenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-authenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-authenticated/path-parameters.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-authenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-authenticated/response-fields.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-authenticated/curl-request.adoc[]
 
-=== 다른 사용자의 인터뷰 최종 결과 조회 (비회원 버전)
+==== 다른 사용자의 완료된 인터뷰 결과 조회 - 비회원 버전
 
-include::{snippetsDir}/interview-findResults-unauthenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findResults-unauthenticated/path-parameters.adoc[]
-include::{snippetsDir}/interview-findResults-unauthenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findResults-unauthenticated/response-fields.adoc[]
-include::{snippetsDir}/interview-findResults-unauthenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/curl-request.adoc[]
 
-==== 다른 사용자의 인터뷰 최종 결과 조회 예외 1
+==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 1
 
-include::{snippetsDir}/interview-findResults-exception1/http-request.adoc[]
-include::{snippetsDir}/interview-findResults-exception1/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-exception1/http-response.adoc[]
 
-==== 다른 사용자의 인터뷰 최종 결과 조회 예외 2
+==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 2
 
-include::{snippetsDir}/interview-findResults-exception2/http-request.adoc[]
-include::{snippetsDir}/interview-findResults-exception2/http-response.adoc[]
-
-=== 인터뷰 좋아요 요청
-
-include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
-include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
-include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
-include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberResult-exception2/http-response.adoc[]
 
 === 인터뷰 좋아요 취소 요청
 
