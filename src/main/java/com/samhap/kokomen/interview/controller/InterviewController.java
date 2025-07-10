@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
@@ -81,7 +82,7 @@ public class InterviewController {
     }
 
     @GetMapping
-    public ResponseEntity<List<InterviewSummaryResponse>> findOtherMemberInterviews(
+    public ResponseEntity<InterviewSummaryResponses> findOtherMemberInterviews(
             @RequestParam("member_id") Long memberId,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication(required = false) MemberAuth memberAuth

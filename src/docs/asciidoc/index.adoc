@@ -142,8 +142,6 @@ include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/curl-re
 ==== 다른 사용자의 완료된 인터뷰 목록 조회 - 비회원 버전
 
 include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/curl-request.adoc[]
 
 === 자신의 인터뷰 결과 조회
 
@@ -165,27 +163,25 @@ include::{snippetsDir}/interview-findMyResult-exception2/http-response.adoc[]
 
 === 다른 사용자의 완료된 인터뷰 결과 조회 - 로그인 버전
 
-include::{snippetsDir}/interview-findOtherMemberResult-authenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-authenticated/path-parameters.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-authenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-authenticated/response-fields.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-authenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/path-parameters.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/response-fields.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/curl-request.adoc[]
 
 ==== 다른 사용자의 완료된 인터뷰 결과 조회 - 비회원 버전
 
-include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/http-request.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/http-response.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-unauthenticated/curl-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-unauthenticated/http-request.adoc[]
 
 ==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 1
 
-include::{snippetsDir}/interview-findOtherMemberResult-exception1/http-request.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-exception1/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception1/http-response.adoc[]
 
 ==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 2
 
-include::{snippetsDir}/interview-findOtherMemberResult-exception2/http-request.adoc[]
-include::{snippetsDir}/interview-findOtherMemberResult-exception2/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception2/http-response.adoc[]
 
 === 인터뷰 좋아요 취소 요청
 

@@ -440,8 +440,8 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 다른_사용자의_완료된_인터뷰_목록_조회_로그인_버전() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().nickname("오상훈").kakaoId(1L).score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
@@ -449,11 +449,11 @@ class InterviewControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
         RootQuestion rootQuestion3 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 공간복잡도는?").build());
 
-        Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
+        Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(interviewee).rootQuestion(rootQuestion1).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
 
         Interview finishedInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder()
-                .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
+                .member(interviewee).rootQuestion(rootQuestion2).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview1).content(rootQuestion2.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
@@ -463,7 +463,7 @@ class InterviewControllerTest extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
 
         Interview finishedInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder()
-                .member(member).rootQuestion(rootQuestion3).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
+                .member(interviewee).rootQuestion(rootQuestion3).maxQuestionCount(3).totalScore(20).interviewState(InterviewState.FINISHED).build());
         Question question4 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).content(rootQuestion3.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
@@ -475,38 +475,41 @@ class InterviewControllerTest extends BaseControllerTest {
         interviewRepository.increaseLikeCount(finishedInterview2.getId());
 
         String responseJson = """
-                [
-                	{
-                		"interview_id": %d,
-                		"interview_state": "%s",
-                		"interview_category": "%s",
-                		"root_question": "%s",
-                		"max_question_count": %d,
-                		"score": %s,
-                		"interview_like_count": 1,
-                		"interview_already_liked": true
-                	},
-                	{
-                		"interview_id": %d,
-                		"interview_state": "%s",
-                		"interview_category": "%s",
-                		"root_question": "%s",
-                		"max_question_count": %d,
-                		"score": %s,
-                		"interview_like_count": 0,
-                		"interview_already_liked": false
-                	}
-                ]
+                {
+                    "interview_summaries": [
+                        {
+                            "interview_id": %d,
+                            "interview_category": "%s",
+                            "root_question": "%s",
+                            "max_question_count": %d,
+                            "score": %s,
+                            "interview_like_count": 1,
+                            "interview_already_liked": true
+                        },
+                        {
+                            "interview_id": %d,
+                            "interview_category": "%s",
+                            "root_question": "%s",
+                            "max_question_count": %d,
+                            "score": %s,
+                            "interview_like_count": 0,
+                            "interview_already_liked": false
+                        }
+                    ],
+                    "interviewee_nickname": "오상훈",
+                    "total_member_count": 2,
+                    "interviewee_rank": 1
+                }
                 """.formatted(
-                finishedInterview2.getId(), finishedInterview2.getInterviewState(), finishedInterview2.getRootQuestion().getCategory(),
+                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(),
                 finishedInterview2.getRootQuestion().getContent(), finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(),
-                finishedInterview1.getId(), finishedInterview1.getInterviewState(), finishedInterview1.getRootQuestion().getCategory(),
+                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory(),
                 finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore()
         );
 
         // when & then
         mockMvc.perform(get("/api/v1/interviews")
-                        .param("member_id", String.valueOf(member.getId()))
+                        .param("member_id", String.valueOf(interviewee.getId()))
                         .param("page", "0")
                         .param("size", "10")
                         .param("sort", "id,desc")
@@ -514,8 +517,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andExpect(jsonPath("$[0].created_at").exists())
-                .andExpect(jsonPath("$[1].created_at").exists())
+                .andExpect(jsonPath("$.interview_summaries[0].created_at").exists())
+                .andExpect(jsonPath("$.interview_summaries[1].created_at").exists())
                 .andDo(document("interview-findOtherMemberInterviews-authenticated",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -527,15 +530,17 @@ class InterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
                         ),
                         responseFields(
-                                fieldWithPath("[].interview_id").description("면접 ID"),
-                                fieldWithPath("[].interview_state").description("면접 상태(항상 FINISHED)"),
-                                fieldWithPath("[].interview_category").description("면접 카테고리"),
-                                fieldWithPath("[].created_at").description("생성 시간"),
-                                fieldWithPath("[].root_question").description("루트 질문"),
-                                fieldWithPath("[].max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("[].score").description("점수"),
-                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수"),
-                                fieldWithPath("[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
+                                fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
+                                fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
+                                fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("interview_summaries[].score").description("점수"),
+                                fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
+                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -573,36 +578,36 @@ class InterviewControllerTest extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
 
         String responseJson = """
-                [
-                	{
-                		"interview_id": %d,
-                		"interview_state": "%s",
-                		"interview_category": "%s",
-                		"root_question": "%s",
-                		"max_question_count": %d,
-                		"score": %s,
-                		"interview_like_count": %d,
-                		"interview_already_liked": false
-                	},
-                	{
-                		"interview_id": %d,
-                		"interview_state": "%s",
-                		"interview_category": "%s",
-                		"root_question": "%s",
-                		"max_question_count": %d,
-                		"score": %s,
-                		"interview_like_count": %d,
-                		"interview_already_liked": false
-                	}
-                ]
+                {
+                    "interview_summaries": [
+                        {
+                            "interview_id": %d,
+                            "interview_category": "%s",
+                            "root_question": "%s",
+                            "max_question_count": %d,
+                            "score": %s,
+                            "interview_like_count": 0,
+                            "interview_already_liked": false
+                        },
+                        {
+                            "interview_id": %d,
+                            "interview_category": "%s",
+                            "root_question": "%s",
+                            "max_question_count": %d,
+                            "score": %s,
+                            "interview_like_count": 0,
+                            "interview_already_liked": false
+                        }
+                    ],
+                    "interviewee_nickname": "오상훈",
+                    "total_member_count": 1,
+                    "interviewee_rank": 1
+                }
                 """.formatted(
-                finishedInterview2.getId(), finishedInterview2.getInterviewState(), finishedInterview2.getRootQuestion().getCategory(),
+                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(),
                 finishedInterview2.getRootQuestion().getContent(), finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(),
-                finishedInterview2.getLikeCount(),
-                finishedInterview1.getId(), finishedInterview1.getInterviewState(), finishedInterview1.getRootQuestion().getCategory(),
-                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore(),
-                finishedInterview1.getLikeCount()
-        );
+                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory(),
+                finishedInterview1.getRootQuestion().getContent(), finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore());
 
         // when & then
         mockMvc.perform(get("/api/v1/interviews")
@@ -612,8 +617,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         .param("sort", "id,desc"))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andExpect(jsonPath("$[0].created_at").exists())
-                .andExpect(jsonPath("$[1].created_at").exists())
+                .andExpect(jsonPath("$.interview_summaries[0].created_at").exists())
+                .andExpect(jsonPath("$.interview_summaries[1].created_at").exists())
                 .andDo(document("interview-findOtherMemberInterviews-unauthenticated",
                         queryParameters(
                                 parameterWithName("member_id").description("인터뷰이 멤버 id").optional(),
@@ -622,15 +627,17 @@ class InterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
                         ),
                         responseFields(
-                                fieldWithPath("[].interview_id").description("면접 ID"),
-                                fieldWithPath("[].interview_state").description("면접 상태(항상 FINISHED)"),
-                                fieldWithPath("[].interview_category").description("면접 카테고리"),
-                                fieldWithPath("[].created_at").description("생성 시간"),
-                                fieldWithPath("[].root_question").description("루트 질문"),
-                                fieldWithPath("[].max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("[].score").description("점수"),
-                                fieldWithPath("[].interview_like_count").description("면접 좋아요 수"),
-                                fieldWithPath("[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
+                                fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
+                                fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
+                                fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("interview_summaries[].score").description("점수"),
+                                fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
+                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -725,14 +732,14 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 다른_사용자의_완료된_인터뷰_결과_조회_로그인_버전() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(interviewee).rootQuestion(rootQuestion).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         Answer answer1 = answerRepository.save(
                 AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
@@ -786,7 +793,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
                 	"interview_like_count": 1,
-                	"interview_already_liked": true
+                	"interview_already_liked": true,
+                	"interviewee_nickname": "오상훈",
+                	"total_member_count": 2,
+                	"interviewee_rank": 1
                 }
                 """;
 
@@ -797,7 +807,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findOtherMemberResult-authenticated",
+                .andDo(document("interview-findOtherMemberInterviewResult-authenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),
@@ -814,7 +824,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -874,7 +887,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
                 	"interview_like_count": 0,
-                	"interview_already_liked": false
+                	"interview_already_liked": false,
+                    "interviewee_nickname": "오상훈",
+                	"total_member_count": 1,
+                	"interviewee_rank": 1
                 }
                 """;
 
@@ -883,7 +899,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         "/api/v1/interviews/{interview_id}/result", interview.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findOtherMemberResult-unauthenticated",
+                .andDo(document("interview-findOtherMemberInterviewResult-unauthenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),
@@ -900,7 +916,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }

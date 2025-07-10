@@ -27,6 +27,20 @@ class MemberRepositoryTest extends BaseTest {
     private RootQuestionRepository rootQuestionRepository;
 
     @Test
+    void findRankByScore() {
+        // given
+        Member ranker1 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).score(100).build());
+        Member ranker2 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(50).build());
+        Member ranker3 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(3L).score(0).build());
+
+        // when
+        long rank = memberRepository.findRankByScore(ranker2.getScore());
+
+        // then
+        assertThat(rank).isEqualTo(2L);
+    }
+
+    @Test
     void free_token_count를_1_감소시킨다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(1).build());

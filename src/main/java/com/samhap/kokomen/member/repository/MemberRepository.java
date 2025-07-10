@@ -14,6 +14,13 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByKakaoId(Long kakaoId);
 
+    @Query(value = """
+            SELECT COUNT(*) + 1
+            FROM member
+            WHERE score > :score
+            """, nativeQuery = true)
+    long findRankByScore(@Param("score") int score);
+
     @Transactional
     @Modifying
     @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m.id = :memberId AND m.freeTokenCount > 0")

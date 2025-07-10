@@ -370,7 +370,7 @@ class InterviewServiceTest extends BaseTest {
                 targetMember.getId(),
                 new MemberAuth(readerMember.getId()),
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
-        );
+        ).interviewSummaries();
 
         // then
         assertAll(

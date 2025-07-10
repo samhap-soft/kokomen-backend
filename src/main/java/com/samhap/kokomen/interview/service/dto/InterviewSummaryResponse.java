@@ -17,10 +17,10 @@ public record InterviewSummaryResponse(
         Long interviewLikeCount,
         Boolean interviewAlreadyLiked
 ) {
-    public InterviewSummaryResponse(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
+    public InterviewSummaryResponse(Interview interview, InterviewState interviewState, Integer curAnswerCount, Boolean interviewAlreadyLiked) {
         this(
                 interview.getId(),
-                interview.getInterviewState(),
+                interviewState,
                 interview.getRootQuestion().getCategory(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),
@@ -32,8 +32,12 @@ public record InterviewSummaryResponse(
         );
     }
 
-    public static InterviewSummaryResponse createOfTargetMember(Interview interview, Boolean interviewAlreadyLiked) {
-        return new InterviewSummaryResponse(interview, null, interviewAlreadyLiked);
+    public static InterviewSummaryResponse createOfOtherMemberForAuthorized(Interview interview, Boolean interviewAlreadyLiked) {
+        return new InterviewSummaryResponse(interview, null, null, interviewAlreadyLiked);
+    }
+
+    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(Interview interview) {
+        return new InterviewSummaryResponse(interview, null, null, false);
     }
 
     public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Boolean interviewAlreadyLiked) {

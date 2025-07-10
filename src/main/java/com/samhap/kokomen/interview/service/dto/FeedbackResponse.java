@@ -28,13 +28,6 @@ public record FeedbackResponse(
         );
     }
 
-    public static List<FeedbackResponse> createForNotAuthenticatedUser(List<Answer> answers) {
-        return answers.stream()
-                .map(answer -> new FeedbackResponse(answer, false))
-                .sorted(Comparator.comparing(FeedbackResponse::questionId))
-                .toList();
-    }
-
     public static List<FeedbackResponse> createMine(List<Answer> answers) {
         return answers.stream()
                 .map(FeedbackResponse::createMine)
