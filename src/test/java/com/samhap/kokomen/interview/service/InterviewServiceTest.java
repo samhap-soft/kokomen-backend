@@ -108,7 +108,7 @@ class InterviewServiceTest extends BaseTest {
     }
 
     @Test
-    void 인터뷰를_진행할_때_마지막_답변이면_현재_답변에_대한_피드백과__응답한다() {
+    void 인터뷰를_진행할_때_마지막_답변이면_현재_답변에_대한_피드백과_응답한다() {
         // given
         AnswerRank answerRank = AnswerRank.B;
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -168,10 +168,10 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -195,12 +195,12 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -226,10 +226,10 @@ class InterviewServiceTest extends BaseTest {
         interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
