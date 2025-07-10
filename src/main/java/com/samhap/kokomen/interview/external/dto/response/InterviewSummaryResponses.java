@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Set;
 
 public record InterviewSummaryResponses(
-        String intervieweeNickname,
+        List<InterviewSummaryResponse> interviewSummaries,
         Long totalMemberCount,
         Long intervieweeRank,
-        List<InterviewSummaryResponse> interviewSummaries
+        String intervieweeNickname
 ) {
     public static InterviewSummaryResponses createOfOtherMemberForLoginMember(
             String intervieweeNickname,
@@ -24,10 +24,7 @@ public record InterviewSummaryResponses(
                 .toList();
 
         return new InterviewSummaryResponses(
-                intervieweeNickname,
-                totalMemberCount,
-                intervieweeRank,
-                interviewSummaries
+                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname
         );
     }
 
@@ -42,10 +39,7 @@ public record InterviewSummaryResponses(
                 .toList();
 
         return new InterviewSummaryResponses(
-                intervieweeNickname,
-                totalMemberCount,
-                intervieweeRank,
-                interviewSummaries
+                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname
         );
     }
 }

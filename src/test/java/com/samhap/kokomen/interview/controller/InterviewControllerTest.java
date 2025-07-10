@@ -476,9 +476,6 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                    "interviewee_nickname": "오상훈",
-                    "total_member_count": 2,
-                    "interviewee_rank": 1,
                     "interview_summaries": [
                         {
                             "interview_id": %d,
@@ -498,7 +495,10 @@ class InterviewControllerTest extends BaseControllerTest {
                             "interview_like_count": 0,
                             "interview_already_liked": false
                         }
-                    ]
+                    ],
+                    "interviewee_nickname": "오상훈",
+                    "total_member_count": 2,
+                    "interviewee_rank": 1
                 }
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(),
@@ -530,9 +530,6 @@ class InterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
                         ),
                         responseFields(
-                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
-                                fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수"),
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
@@ -540,7 +537,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("interview_summaries[].score").description("점수"),
                                 fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
-                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -579,9 +579,6 @@ class InterviewControllerTest extends BaseControllerTest {
 
         String responseJson = """
                 {
-                    "interviewee_nickname": "오상훈",
-                    "total_member_count": 1,
-                    "interviewee_rank": 1,
                     "interview_summaries": [
                         {
                             "interview_id": %d,
@@ -601,7 +598,10 @@ class InterviewControllerTest extends BaseControllerTest {
                             "interview_like_count": 0,
                             "interview_already_liked": false
                         }
-                    ]
+                    ],
+                    "interviewee_nickname": "오상훈",
+                    "total_member_count": 1,
+                    "interviewee_rank": 1
                 }
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(),
@@ -627,9 +627,6 @@ class InterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("sort").description("정렬 기준 (기본값: id,desc)")
                         ),
                         responseFields(
-                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
-                                fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수"),
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
@@ -637,7 +634,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("interview_summaries[].score").description("점수"),
                                 fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
-                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -732,14 +732,14 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 다른_사용자의_완료된_인터뷰_결과_조회_로그인_버전() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(interviewee).rootQuestion(rootQuestion).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         Answer answer1 = answerRepository.save(
                 AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.C).feedback("부족합니다.").build());
@@ -793,7 +793,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
                 	"interview_like_count": 1,
-                	"interview_already_liked": true
+                	"interview_already_liked": true,
+                	"interviewee_nickname": "오상훈",
+                	"total_member_count": 2,
+                	"interviewee_rank": 1
                 }
                 """;
 
@@ -804,7 +807,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findOtherMemberResult-authenticated",
+                .andDo(document("interview-findOtherMemberInterviewResult-authenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),
@@ -821,7 +824,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
@@ -881,7 +887,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
                 	"interview_like_count": 0,
-                	"interview_already_liked": false
+                	"interview_already_liked": false,
+                    "interviewee_nickname": "오상훈",
+                	"total_member_count": 1,
+                	"interviewee_rank": 1
                 }
                 """;
 
@@ -890,7 +899,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         "/api/v1/interviews/{interview_id}/result", interview.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-findOtherMemberResult-unauthenticated",
+                .andDo(document("interview-findOtherMemberInterviewResult-unauthenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),
@@ -907,7 +916,10 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_like_count").description("인터뷰 좋아요 수"),
-                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부")
+                                fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("interviewee_rank").description("면접자 등수")
                         )
                 ));
     }
