@@ -47,9 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewService {
 
     private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
-    private static final String INTERVIEW_PROCEED_LOCK_KEY_FORMAT = "lock:interview:proceed:%s";
-    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT = "lock:interview:viewCount:%s:%s";
-    public static final String INTERVIEW_VIEW_COUNT_KEY_FORMAT = "interview:viewCount:%s";
+    public static final String INTERVIEW_PROCEED_LOCK_KEY_PREFIX = "lock:interview:proceed:";
+    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX = "lock:interview:viewCount:";
+    public static final String INTERVIEW_VIEW_COUNT_KEY_PREFIX = "interview:viewCount:";
 
     private final GptClient gptClient;
     private final BedrockClient bedrockClient;
@@ -93,7 +93,7 @@ public class InterviewService {
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         Member member = readMember(memberAuth.memberId());
-        String lockKey = INTERVIEW_PROCEED_LOCK_KEY_FORMAT.formatted(member.getId());
+        String lockKey = createInterviewProceedLockKey(member);
         acquireLockForProceedInterview(lockKey);
 
         validateHasToken(member);
@@ -107,6 +107,10 @@ public class InterviewService {
         } finally {
             redisService.releaseLock(lockKey);
         }
+    }
+
+    public static String createInterviewProceedLockKey(Member member) {
+        return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + member.getId();
     }
 
     private void acquireLockForProceedInterview(String lockKey) {
@@ -257,17 +261,25 @@ public class InterviewService {
     }
 
     private void increaseViewCount(Interview interview, ClientIp clientIp) {
-        String viewCountLockKey = INTERVIEW_VIEW_COUNT_LOCK_KEY_FORMAT.formatted(interview.getId(), clientIp.address());
+        String viewCountLockKey = createInterviewViewCountLockKey(interview, clientIp);
         if (!redisService.acquireLock(viewCountLockKey, Duration.ofDays(1))) {
             return;
         }
 
-        String viewCountKey = INTERVIEW_VIEW_COUNT_KEY_FORMAT.formatted(interview.getId());
+        String viewCountKey = createInterviewViewCountKey(interview);
         boolean expireSuccess = redisService.expireKey(viewCountKey, Duration.ofDays(2));
         if (!expireSuccess) {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
         redisService.incrementKey(viewCountKey);
+    }
+
+    public static String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {
+        return INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + interview.getId() + ":" + clientIp.address();
+    }
+
+    public static String createInterviewViewCountKey(Interview interview) {
+        return INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId();
     }
 
     @Transactional
