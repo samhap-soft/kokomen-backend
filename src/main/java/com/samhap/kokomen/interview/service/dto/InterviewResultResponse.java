@@ -38,7 +38,7 @@ public record InterviewResultResponse(
         );
     }
 
-    public static InterviewResultResponse createOfOtherMemberForLoginMember(
+    public static InterviewResultResponse createOfOtherMemberForAuthorized(
             List<Answer> answers,
             Set<Long> likedAnswerIds,
             Interview interview,
@@ -65,7 +65,7 @@ public record InterviewResultResponse(
         );
     }
 
-    public static InterviewResultResponse createOfOtherMemberForLogoutMember(
+    public static InterviewResultResponse createOfOtherMemberForUnauthorized(
             List<Answer> answers,
             Interview interview,
             String intervieweeNickname,

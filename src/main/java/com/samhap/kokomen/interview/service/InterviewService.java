@@ -188,10 +188,10 @@ public class InterviewService {
             List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
             Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
-            return InterviewSummaryResponses.createOfOtherMemberForLoginMember(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
+            return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
                     likedInterviewIds);
         }
-        return InterviewSummaryResponses.createOfOtherMemberForLogoutMember(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews);
+        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews);
     }
 
     // TODO: 동적 쿼리 개선하기
@@ -239,11 +239,11 @@ public class InterviewService {
             List<Long> answerIds = answers.stream().map(Answer::getId).toList();
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
-            return InterviewResultResponse.createOfOtherMemberForLoginMember(answers, likedAnswerIds, interview, interviewAlreadyLiked,
+            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, interviewAlreadyLiked,
                     interview.getMember().getNickname(), totalMemberCount, intervieweeRank);
         }
 
-        return InterviewResultResponse.createOfOtherMemberForLogoutMember(answers, interview, interviewee.getNickname(), totalMemberCount, intervieweeRank);
+        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, interviewee.getNickname(), totalMemberCount, intervieweeRank);
     }
 
     private void validateInterviewFinished(Interview interview) {

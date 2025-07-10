@@ -32,11 +32,11 @@ public record InterviewSummaryResponse(
         );
     }
 
-    public static InterviewSummaryResponse createOfOtherMemberForLoginMember(Interview interview, Boolean interviewAlreadyLiked) {
+    public static InterviewSummaryResponse createOfOtherMemberForAuthorized(Interview interview, Boolean interviewAlreadyLiked) {
         return new InterviewSummaryResponse(interview, null, null, interviewAlreadyLiked);
     }
 
-    public static InterviewSummaryResponse createOfOtherMemberForLogoutMember(Interview interview) {
+    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(Interview interview) {
         return new InterviewSummaryResponse(interview, null, null, false);
     }
 

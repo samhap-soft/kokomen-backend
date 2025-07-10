@@ -11,7 +11,7 @@ public record InterviewSummaryResponses(
         Long intervieweeRank,
         String intervieweeNickname
 ) {
-    public static InterviewSummaryResponses createOfOtherMemberForLoginMember(
+    public static InterviewSummaryResponses createOfOtherMemberForAuthorized(
             String intervieweeNickname,
             Long totalMemberCount,
             Long intervieweeRank,
@@ -19,8 +19,7 @@ public record InterviewSummaryResponses(
             Set<Long> likedInterviewIds
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfOtherMemberForLoginMember(
-                        interview, likedInterviewIds.contains(interview.getId())))
+                .map(interview -> InterviewSummaryResponse.createOfOtherMemberForAuthorized(interview, likedInterviewIds.contains(interview.getId())))
                 .toList();
 
         return new InterviewSummaryResponses(
@@ -28,14 +27,14 @@ public record InterviewSummaryResponses(
         );
     }
 
-    public static InterviewSummaryResponses createOfOtherMemberForLogoutMember(
+    public static InterviewSummaryResponses createOfOtherMemberForUnAuthorized(
             String intervieweeNickname,
             Long totalMemberCount,
             Long intervieweeRank,
             List<Interview> interviews
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfOtherMemberForLogoutMember(interview))
+                .map(InterviewSummaryResponse::createOfOtherMemberForUnauthorized)
                 .toList();
 
         return new InterviewSummaryResponses(
