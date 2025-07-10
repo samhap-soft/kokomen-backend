@@ -39,7 +39,7 @@ class MemberControllerTest extends BaseControllerTest {
     private InterviewRepository interviewRepository;
 
     @Test
-    void 자신의_정보를_조회한다() throws Exception {
+    void 멤버_프로필_조회() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -50,6 +50,8 @@ class MemberControllerTest extends BaseControllerTest {
                     "id": %d,
                     "nickname": %s,
                     "score": %d,
+                    "total_member_count": 1,
+                    "rank": 1,
                     "token_count": %d,
                     "profile_completed": %s
                 }
@@ -70,6 +72,8 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("id").description("회원 id"),
                                 fieldWithPath("nickname").description("회원 닉네임"),
                                 fieldWithPath("score").description("현재 회원 점수"),
+                                fieldWithPath("total_member_count").description("전체 회원 수"),
+                                fieldWithPath("rank").description("회원 등수"),
                                 fieldWithPath("token_count").description("현재 회원 토큰 개수"),
                                 fieldWithPath("profile_completed").description("프로필 완성 여부")
                         )

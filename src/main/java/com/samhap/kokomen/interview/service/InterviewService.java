@@ -17,6 +17,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -176,21 +177,21 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
-        Member targetMember = readMember(targetMemberId);
-        List<Interview> interviews = findInterviews(targetMember, InterviewState.FINISHED, pageable);
+    public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+        Member interviewee = readMember(targetMemberId);
+        long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
+        long totalMemberCount = memberRepository.count();
+
+        List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            List<Long> interviewIds = interviews.stream().map(Interview::getId).toList();
-            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), interviewIds);
+            List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
-            return interviews.stream()
-                    .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, likedInterviewIds.contains(interview.getId())))
-                    .toList();
+            return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
+                    likedInterviewIds);
         }
-        return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfTargetMember(interview, false))
-                .toList();
+        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews);
     }
 
     // TODO: 동적 쿼리 개선하기
@@ -211,7 +212,7 @@ public class InterviewService {
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers);
 
-        return InterviewResultResponse.createMyResultResponse(feedbackResponses, interview, member);
+        return InterviewResultResponse.createMine(feedbackResponses, interview, member);
     }
 
     private void validateInterviewee(Interview interview, Member member) {
@@ -223,6 +224,10 @@ public class InterviewService {
     @Transactional(readOnly = true)
     public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
+        Member interviewee = interview.getMember();
+        long totalMemberCount = memberRepository.count();
+        long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
+
         validateInterviewFinished(interview);
         if (!isInterviewee(memberAuth, interview)) {
             increaseViewCount(interview, clientIp);
@@ -230,13 +235,15 @@ public class InterviewService {
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            List<FeedbackResponse> feedbackResponses = createFeedbackResponses(answers, readerMember);
             boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
-            return InterviewResultResponse.createResultResponse(feedbackResponses, interview, interviewAlreadyLiked);
+            List<Long> answerIds = answers.stream().map(Answer::getId).toList();
+            Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+
+            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, interviewAlreadyLiked,
+                    interview.getMember().getNickname(), totalMemberCount, intervieweeRank);
         }
 
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createForNotAuthenticatedUser(answers);
-        return InterviewResultResponse.createResultResponse(feedbackResponses, interview, false);
+        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, interviewee.getNickname(), totalMemberCount, intervieweeRank);
     }
 
     private void validateInterviewFinished(Interview interview) {
@@ -261,14 +268,6 @@ public class InterviewService {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
         redisService.incrementKey(viewCountKey);
-    }
-
-    private List<FeedbackResponse> createFeedbackResponses(List<Answer> answers, Member readerMember) {
-        List<Long> answerIds = answers.stream().map(Answer::getId).toList();
-        Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
-        return answers.stream()
-                .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
-                .toList();
     }
 
     @Transactional
