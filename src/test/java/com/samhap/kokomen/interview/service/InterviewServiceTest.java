@@ -44,7 +44,11 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -411,6 +415,36 @@ class InterviewServiceTest extends BaseTest {
                 () -> assertThat(results.feedbacks().get(0).answerAlreadyLiked()).isTrue(),
                 () -> assertThat(results.feedbacks().get(1).answerAlreadyLiked()).isTrue(),
                 () -> assertThat(results.feedbacks().get(2).answerAlreadyLiked()).isFalse()
+        );
+    }
+
+    @MethodSource("providePageSizeAndInterviewCountAndTotalPageCount")
+    @ParameterizedTest
+    void 다른_사람의_인터뷰_목록을_조회할_때_전체_페이지_수를_계산해서_응답한다(int pageSize, long interviewCount, long totalPageCount) {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        for (int i = 0; i < interviewCount; i++) {
+            interviewRepository.save(
+                    InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        }
+
+        // when
+        long actualTotalPageCount = interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, pageSize, Sort.by(Direction.DESC, "id"))
+        ).totalPageCount();
+
+        // then
+        assertThat(actualTotalPageCount).isEqualTo(totalPageCount);
+    }
+
+    private static Stream<Arguments> providePageSizeAndInterviewCountAndTotalPageCount() {
+        return Stream.of(
+                Arguments.of(10, 0, 0),
+                Arguments.of(10, 1, 1),
+                Arguments.of(10, 11, 2),
+                Arguments.of(10, 20, 2),
+                Arguments.of(10, 21, 3)
         );
     }
 }

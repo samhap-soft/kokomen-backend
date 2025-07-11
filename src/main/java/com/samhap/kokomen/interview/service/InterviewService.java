@@ -188,6 +188,7 @@ public class InterviewService {
         Member interviewee = readMember(targetMemberId);
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
         long totalMemberCount = memberRepository.count();
+        long totalPageCount = calculateTotalPageCount(interviewee, pageable);
 
         List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         Map<Long, Long> viewCounts = finishedInterviews.stream()
@@ -198,10 +199,21 @@ public class InterviewService {
             Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
             return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
-                    likedInterviewIds, viewCounts);
+                    likedInterviewIds, viewCounts, totalPageCount);
         }
         return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
-                viewCounts);
+                viewCounts, totalPageCount);
+    }
+
+    private Long calculateTotalPageCount(Member member, Pageable pageable) {
+        int pageSize = pageable.getPageSize();
+        long interviewCount = interviewRepository.countByMemberAndInterviewState(member, InterviewState.FINISHED);
+
+        if (interviewCount % pageSize == 0) {
+            return interviewCount / pageSize;
+        }
+
+        return interviewCount / pageSize + 1;
     }
 
     // TODO: 동적 쿼리 개선하기

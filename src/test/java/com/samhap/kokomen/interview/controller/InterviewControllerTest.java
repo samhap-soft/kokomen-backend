@@ -505,7 +505,8 @@ class InterviewControllerTest extends BaseControllerTest {
                     ],
                     "interviewee_nickname": "오상훈",
                     "total_member_count": 2,
-                    "interviewee_rank": 1
+                    "interviewee_rank": 1,
+                    "total_page_count": 1
                 }
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(), finishedInterview2.getRootQuestion().getContent(),
@@ -548,7 +549,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
     }
@@ -611,7 +613,8 @@ class InterviewControllerTest extends BaseControllerTest {
                     ],
                     "interviewee_nickname": "오상훈",
                     "total_member_count": 1,
-                    "interviewee_rank": 1
+                    "interviewee_rank": 1,
+                    "total_page_count": 1
                 }
                 """.formatted(
                 finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(), finishedInterview2.getRootQuestion().getContent(),
@@ -648,7 +651,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
     }

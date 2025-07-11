@@ -10,7 +10,8 @@ public record InterviewSummaryResponses(
         List<InterviewSummaryResponse> interviewSummaries,
         Long totalMemberCount,
         Long intervieweeRank,
-        String intervieweeNickname
+        String intervieweeNickname,
+        Long totalPageCount
 ) {
     public static InterviewSummaryResponses createOfOtherMemberForAuthorized(
             String intervieweeNickname,
@@ -18,7 +19,8 @@ public record InterviewSummaryResponses(
             Long intervieweeRank,
             List<Interview> interviews,
             Set<Long> likedInterviewIds,
-            Map<Long, Long> viewCounts
+            Map<Long, Long> viewCounts,
+            Long totalPageCount
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
                 .map(interview -> InterviewSummaryResponse.createOfOtherMemberForAuthorized(interview, viewCounts.get(interview.getId()),
@@ -26,7 +28,7 @@ public record InterviewSummaryResponses(
                 .toList();
 
         return new InterviewSummaryResponses(
-                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname
+                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname, totalPageCount
         );
     }
 
@@ -35,14 +37,15 @@ public record InterviewSummaryResponses(
             Long totalMemberCount,
             Long intervieweeRank,
             List<Interview> interviews,
-            Map<Long, Long> viewCounts
+            Map<Long, Long> viewCounts,
+            Long pageCount
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
                 .map(interview -> InterviewSummaryResponse.createOfOtherMemberForUnauthorized(interview, viewCounts.get(interview.getId())))
                 .toList();
 
         return new InterviewSummaryResponses(
-                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname
+                interviewSummaries, totalMemberCount, intervieweeRank, intervieweeNickname, pageCount
         );
     }
 }
