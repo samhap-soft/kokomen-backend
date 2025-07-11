@@ -16,6 +16,8 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
     List<Interview> findByMemberAndInterviewState(Member member, InterviewState interviewState, Pageable pageable);
 
+    Long countByMemberAndInterviewState(Member member, InterviewState interviewState);
+
     @Transactional
     @Modifying
     @Query("UPDATE Interview i SET i.likeCount = i.likeCount + 1 WHERE i.id = :interviewId")

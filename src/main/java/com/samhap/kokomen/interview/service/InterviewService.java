@@ -35,8 +35,10 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -166,7 +168,8 @@ public class InterviewService {
         Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
 
         return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), likedInterviewIds.contains(interview.getId())))
+                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), findViewCount(interview),
+                        likedInterviewIds.contains(interview.getId())))
                 .toList();
     }
 
@@ -185,17 +188,32 @@ public class InterviewService {
         Member interviewee = readMember(targetMemberId);
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
         long totalMemberCount = memberRepository.count();
+        long totalPageCount = calculateTotalPageCount(interviewee, pageable);
 
         List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
+        Map<Long, Long> viewCounts = finishedInterviews.stream()
+                .collect(Collectors.toMap(Interview::getId, this::findViewCount));
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
             Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
             return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
-                    likedInterviewIds);
+                    likedInterviewIds, viewCounts, totalPageCount);
         }
-        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews);
+        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
+                viewCounts, totalPageCount);
+    }
+
+    private Long calculateTotalPageCount(Member member, Pageable pageable) {
+        int pageSize = pageable.getPageSize();
+        long interviewCount = interviewRepository.countByMemberAndInterviewState(member, InterviewState.FINISHED);
+
+        if (interviewCount % pageSize == 0) {
+            return interviewCount / pageSize;
+        }
+
+        return interviewCount / pageSize + 1;
     }
 
     // TODO: 동적 쿼리 개선하기
@@ -233,9 +251,7 @@ public class InterviewService {
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
 
         validateInterviewFinished(interview);
-        if (!isInterviewee(memberAuth, interview)) {
-            increaseViewCount(interview, clientIp);
-        }
+        long viewCount = increaseViewCountIfNotInterviewee(interview, memberAuth, clientIp);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
@@ -243,11 +259,18 @@ public class InterviewService {
             List<Long> answerIds = answers.stream().map(Answer::getId).toList();
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
-            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, interviewAlreadyLiked,
+            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, viewCount, interviewAlreadyLiked,
                     interview.getMember().getNickname(), totalMemberCount, intervieweeRank);
         }
 
-        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, interviewee.getNickname(), totalMemberCount, intervieweeRank);
+        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount, interviewee.getNickname(), totalMemberCount,
+                intervieweeRank);
+    }
+
+    private Long findViewCount(Interview interview) {
+        return redisService.get(createInterviewViewCountKey(interview), String.class)
+                .map(Long::valueOf)
+                .orElse(interview.getViewCount());
     }
 
     private void validateInterviewFinished(Interview interview) {
@@ -260,10 +283,17 @@ public class InterviewService {
         return memberAuth.isAuthenticated() && interview.isInterviewee(readMember(memberAuth.memberId()));
     }
 
-    private void increaseViewCount(Interview interview, ClientIp clientIp) {
+    private Long increaseViewCountIfNotInterviewee(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
+        if (isInterviewee(memberAuth, interview)) {
+            return findViewCount(interview);
+        }
+        return increaseViewCount(interview, clientIp);
+    }
+
+    private Long increaseViewCount(Interview interview, ClientIp clientIp) {
         String viewCountLockKey = createInterviewViewCountLockKey(interview, clientIp);
         if (!redisService.acquireLock(viewCountLockKey, Duration.ofDays(1))) {
-            return;
+            return findViewCount(interview);
         }
 
         String viewCountKey = createInterviewViewCountKey(interview);
@@ -271,7 +301,7 @@ public class InterviewService {
         if (!expireSuccess) {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
-        redisService.incrementKey(viewCountKey);
+        return redisService.incrementKey(viewCountKey);
     }
 
     public static String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {

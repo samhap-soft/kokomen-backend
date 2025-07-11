@@ -3,6 +3,7 @@ package com.samhap.kokomen.global.service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +32,13 @@ public class RedisService {
         return setSuccess;
     }
 
-    public void incrementKey(String key) {
+    public Long incrementKey(String key) {
         Long count = redisTemplate.opsForValue().increment(key, 1);
         if (count == null) {
             throw new IllegalStateException("Redis 카운트 증가 실패. key: " + key);
         }
+
+        return count;
     }
 
     public boolean expireKey(String key, Duration ttl) {
@@ -54,6 +57,12 @@ public class RedisService {
                 .build();
 
         return redisTemplate.scan(scanOptions);
+    }
+
+    public <T> Optional<T> get(String key, Class<T> type) {
+        Object value = redisTemplate.opsForValue().get(key);
+        return Optional.ofNullable(value)
+                .map(type::cast);
     }
 
     public Map<String, Object> multiGet(List<String> keys) {
