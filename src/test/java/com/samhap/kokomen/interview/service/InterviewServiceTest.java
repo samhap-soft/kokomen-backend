@@ -44,7 +44,11 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -108,7 +112,7 @@ class InterviewServiceTest extends BaseTest {
     }
 
     @Test
-    void 인터뷰를_진행할_때_마지막_답변이면_현재_답변에_대한_피드백과__응답한다() {
+    void 인터뷰를_진행할_때_마지막_답변이면_현재_답변에_대한_피드백과_응답한다() {
         // given
         AnswerRank answerRank = AnswerRank.B;
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -168,10 +172,10 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -195,12 +199,12 @@ class InterviewServiceTest extends BaseTest {
         interviewRepository.save(interview);
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"));
+        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -226,10 +230,10 @@ class InterviewServiceTest extends BaseTest {
         interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(otherMember.getId()), new ClientIp("123.123.123.123"));
 
         // when
-        interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"));
+        Long viewCount = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(interviewee.getId()), new ClientIp("1.1.1.1"))
+                .interviewViewCount();
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(1L);
     }
 
@@ -411,6 +415,36 @@ class InterviewServiceTest extends BaseTest {
                 () -> assertThat(results.feedbacks().get(0).answerAlreadyLiked()).isTrue(),
                 () -> assertThat(results.feedbacks().get(1).answerAlreadyLiked()).isTrue(),
                 () -> assertThat(results.feedbacks().get(2).answerAlreadyLiked()).isFalse()
+        );
+    }
+
+    @MethodSource("providePageSizeAndInterviewCountAndTotalPageCount")
+    @ParameterizedTest
+    void 다른_사람의_인터뷰_목록을_조회할_때_전체_페이지_수를_계산해서_응답한다(int pageSize, long interviewCount, long totalPageCount) {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        for (int i = 0; i < interviewCount; i++) {
+            interviewRepository.save(
+                    InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        }
+
+        // when
+        long actualTotalPageCount = interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, pageSize, Sort.by(Direction.DESC, "id"))
+        ).totalPageCount();
+
+        // then
+        assertThat(actualTotalPageCount).isEqualTo(totalPageCount);
+    }
+
+    private static Stream<Arguments> providePageSizeAndInterviewCountAndTotalPageCount() {
+        return Stream.of(
+                Arguments.of(10, 0, 0),
+                Arguments.of(10, 1, 1),
+                Arguments.of(10, 11, 2),
+                Arguments.of(10, 20, 2),
+                Arguments.of(10, 21, 3)
         );
     }
 }
