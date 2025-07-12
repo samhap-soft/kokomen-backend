@@ -2,8 +2,13 @@ package com.samhap.kokomen.answer.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerLike;
+import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
+import com.samhap.kokomen.answer.service.dto.AnswerMemoCreateRequest;
+import com.samhap.kokomen.answer.service.dto.AnswerMemoResponse;
+import com.samhap.kokomen.answer.service.dto.AnswerMemoUpdateRequest;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.member.domain.Member;
@@ -19,6 +24,7 @@ public class AnswerService {
     private final MemberRepository memberRepository;
     private final AnswerRepository answerRepository;
     private final AnswerLikeRepository answerLikeRepository;
+    private final AnswerMemoRepository answerMemoRepository;
 
     @Transactional
     public void likeAnswer(Long answerId, MemberAuth memberAuth) {
@@ -42,13 +48,61 @@ public class AnswerService {
         answerRepository.decrementLikeCount(answerId);
     }
 
+    @Transactional
+    public AnswerMemoResponse createAnswerMemo(Long answerId, AnswerMemoCreateRequest answerMemoCreateRequest, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        Answer answer = readAnswer(answerId);
+        validateAnswerOwner(answerId, member);
+        validateAlreadyCreated(answerId, answerMemoCreateRequest);
+        AnswerMemo answerMemo = new AnswerMemo(answerMemoCreateRequest.content(), answer, answerMemoCreateRequest.visibility());
+        answerMemoRepository.save(answerMemo);
+
+        return new AnswerMemoResponse(answerMemo);
+    }
+
     private Member readMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 회원입니다."));
     }
 
+    private void validateAlreadyCreated(Long answerId, AnswerMemoCreateRequest answerMemoCreateRequest) {
+        if (answerMemoRepository.existsByAnswerIdAndAnswerMemoVisibility(answerId, answerMemoCreateRequest.visibility())) {
+            throw new BadRequestException("이미 해당 답변에 메모가 존재합니다.");
+        }
+    }
+
+    @Transactional
+    public void updateAnswerMemo(Long answerId, AnswerMemoUpdateRequest answerMemoUpdateRequest, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        validateAnswerOwner(answerId, member);
+        AnswerMemo answerMemo = readAnswerMemo(answerId);
+
+        answerMemo.updateContent(answerMemoUpdateRequest.content());
+        answerMemo.updateVisibility(answerMemoUpdateRequest.visibility());
+        answerMemoRepository.save(answerMemo);
+    }
+
+    private AnswerMemo readAnswerMemo(Long answerId) {
+        return answerMemoRepository.findByAnswerId(answerId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변 메모입니다."));
+    }
+
+    @Transactional
+    public void deleteAnswerMemo(Long answerId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        validateAnswerOwner(answerId, member);
+        AnswerMemo answerMemo = readAnswerMemo(answerId);
+        answerMemoRepository.delete(answerMemo);
+    }
+
     private Answer readAnswer(Long answerId) {
         return answerRepository.findById(answerId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 답변입니다."));
+    }
+
+    private void validateAnswerOwner(Long answerId, Member member) {
+        if (!answerRepository.belongsToMember(answerId, member.getId())) {
+            throw new BadRequestException("다른 회원이 작성한 답변에 메모를 추가할 수 없습니다.");
+        }
     }
 }

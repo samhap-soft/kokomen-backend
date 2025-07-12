@@ -199,9 +199,30 @@ include::{snippetsDir}/answer-likeAnswer/path-parameters.adoc[]
 include::{snippetsDir}/answer-likeAnswer/http-response.adoc[]
 include::{snippetsDir}/answer-likeAnswer/curl-request.adoc[]
 
+=== 답변 메모 생성
+
+include::{snippetsDir}/answer-createAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/curl-request.adoc[]
+
+=== 답변 메모 수정
+
+include::{snippetsDir}/answer-updateAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/curl-request.adoc[]
+
 === 답변 좋아요 취소 요청
 
 include::{snippetsDir}/answer-unlikeAnswer/http-request.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/path-parameters.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/http-response.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/curl-request.adoc[]
+
+=== 답변 메모 삭제
+
+include::{snippetsDir}/answer-deleteAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]

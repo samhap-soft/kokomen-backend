@@ -1,7 +1,8 @@
-package com.samhap.kokomen.global.fixture.interview;
+package com.samhap.kokomen.global.fixture.answer;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Question;
 
 public class AnswerFixtureBuilder {

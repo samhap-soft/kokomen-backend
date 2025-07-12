@@ -3,7 +3,7 @@ package com.samhap.kokomen.interview.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;

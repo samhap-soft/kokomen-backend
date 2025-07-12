@@ -49,4 +49,12 @@ public class AnswerMemo extends BaseEntity {
     public AnswerMemo(String content, Answer answer, AnswerMemoVisibility answerMemoVisibility) {
         this(null, content, answer, answerMemoVisibility, AnswerMemoState.SUBMITTED);
     }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateVisibility(AnswerMemoVisibility visibility) {
+        this.answerMemoVisibility = visibility;
+    }
 }
