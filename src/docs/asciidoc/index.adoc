@@ -199,6 +199,13 @@ include::{snippetsDir}/answer-likeAnswer/path-parameters.adoc[]
 include::{snippetsDir}/answer-likeAnswer/http-response.adoc[]
 include::{snippetsDir}/answer-likeAnswer/curl-request.adoc[]
 
+=== 답변에 메모 생성
+
+include::{snippetsDir}/answer-createMemo/http-request.adoc[]
+include::{snippetsDir}/answer-createMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-createMemo/http-response.adoc[]
+include::{snippetsDir}/answer-createMemo/curl-request.adoc[]
+
 === 답변 좋아요 취소 요청
 
 include::{snippetsDir}/answer-unlikeAnswer/http-request.adoc[]

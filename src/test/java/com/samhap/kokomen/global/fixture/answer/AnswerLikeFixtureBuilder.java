@@ -1,4 +1,4 @@
-package com.samhap.kokomen.global.fixture.interview;
+package com.samhap.kokomen.global.fixture.answer;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerLike;

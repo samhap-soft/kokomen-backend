@@ -3,9 +3,10 @@ package com.samhap.kokomen.answer.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.answer.domain.AnswerLike;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -18,38 +19,49 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class AnswerLikeRepositoryTest extends BaseTest {
+class AnswerMemoRepositoryTest extends BaseTest {
 
     @Autowired
-    private RootQuestionRepository rootQuestionRepository;
+    private AnswerRepository answerRepository;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
     private QuestionRepository questionRepository;
     @Autowired
-    private AnswerRepository answerRepository;
-    @Autowired
-    private AnswerLikeRepository answerLikeRepository;
-    @Autowired
     private MemberRepository memberRepository;
+    @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private AnswerMemoRepository answerMemoRepository;
 
-    @Test
-    void memberId와_answerId로_좋아요가_존재하는지_확인한다() {
+    @ParameterizedTest
+    @MethodSource("answerMemoExistsProvider")
+    void 답변_메모_존재_여부_테스트(boolean expected, AnswerMemoVisibility searchVisibility) {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(rootQuestion).member(member).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        answerLikeRepository.save(new AnswerLike(member, answer));
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
         // when
-        boolean result = answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId());
+        boolean exists = answerMemoRepository.existsByAnswerIdAndAnswerMemoVisibility(answer.getId(), searchVisibility);
 
         // then
-        assertThat(result).isTrue();
+        assertThat(exists).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> answerMemoExistsProvider() {
+        return Stream.of(
+                Arguments.of(true, AnswerMemoVisibility.PUBLIC),
+                Arguments.of(false, AnswerMemoVisibility.PRIVATE)
+        );
     }
 }
