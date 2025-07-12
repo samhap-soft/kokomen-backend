@@ -68,7 +68,8 @@ class AuthControllerTest extends BaseControllerTest {
         String responseJson = """
                 {
                   "id": 1,
-                  "nickname": "%s"
+                  "nickname": "%s",
+                  "profile_completed": false
                 }
                 """.formatted(nickname);
         when(kakaoOAuthClient.requestKakaoUserInfo(code, redirectUri)).thenReturn(new KakaoUserInfoResponse(1L, new KakaoAccount(new Profile(nickname))));
@@ -94,7 +95,8 @@ class AuthControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("id").description("멤버 id"),
-                                fieldWithPath("nickname").description("멤버 닉네임")
+                                fieldWithPath("nickname").description("멤버 닉네임"),
+                                fieldWithPath("profile_completed").description("프로필을 완성했는지 여부")
                         )
                 ));
     }

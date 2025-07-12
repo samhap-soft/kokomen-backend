@@ -1,6 +1,6 @@
 package com.samhap.kokomen.global.fixture.interview;
 
-import com.samhap.kokomen.interview.domain.AnswerRank;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 
 public class BedrockResponseFixtureBuilder {

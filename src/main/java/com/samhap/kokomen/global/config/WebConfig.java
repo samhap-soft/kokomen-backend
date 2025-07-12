@@ -1,5 +1,6 @@
 package com.samhap.kokomen.global.config;
 
+import com.samhap.kokomen.global.infrastructure.ClientIpArgumentResolver;
 import com.samhap.kokomen.global.infrastructure.MemberAuthArgumentResolver;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-        resolvers.add(new MemberAuthArgumentResolver());
+        resolvers.addAll(List.of(
+                new MemberAuthArgumentResolver(),
+                new ClientIpArgumentResolver()
+        ));
     }
 }

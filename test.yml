@@ -21,3 +21,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  test-redis:
+    container_name: test-redis
+    image: valkey/valkey:8.0.1
+    ports:
+      - 16379:6379
+    volumes:
+      - kokomen-test-redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  kokomen-test-redis-data:
