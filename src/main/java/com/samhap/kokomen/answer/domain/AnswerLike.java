@@ -1,4 +1,4 @@
-package com.samhap.kokomen.interview.domain;
+package com.samhap.kokomen.answer.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
 import com.samhap.kokomen.member.domain.Member;

@@ -1,11 +1,11 @@
 package com.samhap.kokomen.answer.service;
 
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerLike;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerLike;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;

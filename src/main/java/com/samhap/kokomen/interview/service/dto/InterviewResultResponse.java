@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import com.samhap.kokomen.interview.domain.Answer;
+import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;

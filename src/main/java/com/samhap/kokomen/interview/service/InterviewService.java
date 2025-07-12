@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.ClientIp;
@@ -8,7 +9,6 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.global.service.RedisService;
-import com.samhap.kokomen.interview.domain.Answer;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewState;

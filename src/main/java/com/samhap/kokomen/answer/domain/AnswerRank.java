@@ -1,4 +1,4 @@
-package com.samhap.kokomen.interview.domain;
+package com.samhap.kokomen.answer.domain;
 
 import lombok.Getter;
 
