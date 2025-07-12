@@ -11,15 +11,19 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.answer.AnswerLikeFixtureBuilder;
+import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -48,6 +52,8 @@ class AnswerControllerTest extends BaseControllerTest {
     private AnswerRepository answerRepository;
     @Autowired
     private AnswerLikeRepository answerLikeRepository;
+    @Autowired
+    private AnswerMemoRepository answerMemoRepository;
     @Autowired
     private MemberRepository memberRepository;
 
@@ -84,7 +90,7 @@ class AnswerControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 답변에_메모_생성() throws Exception {
+    void 답변_메모_생성() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -98,7 +104,7 @@ class AnswerControllerTest extends BaseControllerTest {
         String requestBody = """
                 {
                     "visibility": "PUBLIC",
-                    "content": "메모 내용입니다."
+                    "content": "생성할 메모 내용입니다."
                 }
                 """;
 
@@ -109,7 +115,7 @@ class AnswerControllerTest extends BaseControllerTest {
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andDo(document("answer-createMemo",
+                .andDo(document("answer-createAnswerMemo",
                         pathParameters(
                                 parameterWithName("answer_id").description("메모를 생성할 답변 ID")
                         ),
@@ -124,6 +130,49 @@ class AnswerControllerTest extends BaseControllerTest {
                                 fieldWithPath("answer_memo_id").description("생성된 메모 ID")
                         )
                 ));
+    }
+
+    @Test
+    void 답변_메모_수정() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());
+
+        String requestBody = """
+                {
+                    "visibility": "PUBLIC",
+                    "content": "변경할 메모 내용입니다."
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/answers/{answer_id}/memo", answer.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType("application/json")
+                        .content(requestBody))
+                .andExpect(status().isNoContent())
+                .andDo(document("answer-updateAnswerMemo",
+                        pathParameters(
+                                parameterWithName("answer_id").description("메모를 생성할 답변 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("visibility").description("공개 범위 (PUBLIC, PRIVATE, FRIENDS)"),
+                                fieldWithPath("content").description("메모 내용")
+                        )
+                ));
+
+        assertThat(answerMemoRepository.findById(answerMemo.getId()).get().getContent()).isEqualTo("변경할 메모 내용입니다.");
     }
 
     @Test

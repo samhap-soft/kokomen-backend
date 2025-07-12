@@ -199,12 +199,19 @@ include::{snippetsDir}/answer-likeAnswer/path-parameters.adoc[]
 include::{snippetsDir}/answer-likeAnswer/http-response.adoc[]
 include::{snippetsDir}/answer-likeAnswer/curl-request.adoc[]
 
-=== 답변에 메모 생성
+=== 답변 메모 생성
 
-include::{snippetsDir}/answer-createMemo/http-request.adoc[]
-include::{snippetsDir}/answer-createMemo/path-parameters.adoc[]
-include::{snippetsDir}/answer-createMemo/http-response.adoc[]
-include::{snippetsDir}/answer-createMemo/curl-request.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/curl-request.adoc[]
+
+=== 답변 메모 수정
+
+include::{snippetsDir}/answer-updateAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/curl-request.adoc[]
 
 === 답변 좋아요 취소 요청
 
