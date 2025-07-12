@@ -43,7 +43,7 @@ public class AnswerController {
     }
 
     @PatchMapping("/{answerId}/memo")
-    public ResponseEntity<Void> updateMemo(
+    public ResponseEntity<Void> updateAnswerMemo(
             @PathVariable Long answerId,
             @RequestBody AnswerMemoUpdateRequest answerMemoUpdateRequest,
             @Authentication MemberAuth memberAuth
@@ -62,7 +62,7 @@ public class AnswerController {
     }
 
     @DeleteMapping("/{answerId}/memo")
-    public ResponseEntity<Void> updateMemo(
+    public ResponseEntity<Void> deleteAnswerMemo(
             @PathVariable Long answerId,
             @Authentication MemberAuth memberAuth
     ) {
