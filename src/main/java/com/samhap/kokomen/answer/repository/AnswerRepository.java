@@ -1,6 +1,6 @@
 package com.samhap.kokomen.answer.repository;
 
-import com.samhap.kokomen.interview.domain.Answer;
+import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.interview.domain.Question;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,5 +1,7 @@
 package com.samhap.kokomen.interview.domain;
 
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import java.util.Comparator;
