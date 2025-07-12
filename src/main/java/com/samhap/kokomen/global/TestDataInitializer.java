@@ -1,9 +1,9 @@
 package com.samhap.kokomen.global;
 
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.category.domain.Category;
-import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;

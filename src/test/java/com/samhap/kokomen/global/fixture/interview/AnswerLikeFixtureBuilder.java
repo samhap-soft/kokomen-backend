@@ -1,8 +1,8 @@
 package com.samhap.kokomen.global.fixture.interview;
 
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerLike;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
-import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerLike;
 import com.samhap.kokomen.member.domain.Member;
 
 public class AnswerLikeFixtureBuilder {

@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerRank;
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import java.util.Comparator;
 import java.util.List;
 
