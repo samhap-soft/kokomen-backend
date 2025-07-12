@@ -60,4 +60,13 @@ public class AnswerController {
         answerService.unlikeAnswer(answerId, memberAuth);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{answerId}/memo")
+    public ResponseEntity<Void> updateMemo(
+            @PathVariable Long answerId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        answerService.deleteAnswerMemo(answerId, memberAuth);
+        return ResponseEntity.noContent().build();
+    }
 }

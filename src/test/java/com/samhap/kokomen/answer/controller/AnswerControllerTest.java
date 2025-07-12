@@ -161,7 +161,7 @@ class AnswerControllerTest extends BaseControllerTest {
                 .andExpect(status().isNoContent())
                 .andDo(document("answer-updateAnswerMemo",
                         pathParameters(
-                                parameterWithName("answer_id").description("메모를 생성할 답변 ID")
+                                parameterWithName("answer_id").description("메모를 수정할 답변 ID")
                         ),
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -206,5 +206,36 @@ class AnswerControllerTest extends BaseControllerTest {
                 () -> assertThat(answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId())).isFalse(),
                 () -> assertThat(answerRepository.findById(answer.getId()).get().getLikeCount()).isEqualTo(0)
         );
+    }
+
+    @Test
+    void 답변_메모_삭제() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/answers/{answer_id}/memo", answer.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType("application/json"))
+                .andExpect(status().isNoContent())
+                .andDo(document("answer-deleteAnswerMemo",
+                        pathParameters(
+                                parameterWithName("answer_id").description("메모를 삭제할 답변 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+
+        assertThat(answerMemoRepository.findById(answerMemo.getId())).isEmpty();
     }
 }

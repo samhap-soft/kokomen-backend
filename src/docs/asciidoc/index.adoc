@@ -219,3 +219,10 @@ include::{snippetsDir}/answer-unlikeAnswer/http-request.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/path-parameters.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/http-response.adoc[]
 include::{snippetsDir}/answer-unlikeAnswer/curl-request.adoc[]
+
+=== 답변 메모 삭제
+
+include::{snippetsDir}/answer-deleteAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]

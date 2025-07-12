@@ -65,11 +65,6 @@ public class AnswerService {
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 회원입니다."));
     }
 
-    private Answer readAnswer(Long answerId) {
-        return answerRepository.findById(answerId)
-                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변입니다."));
-    }
-
     private void validateAlreadyCreated(Long answerId, AnswerMemoCreateRequest answerMemoCreateRequest) {
         if (answerMemoRepository.existsByAnswerIdAndAnswerMemoVisibility(answerId, answerMemoCreateRequest.visibility())) {
             throw new BadRequestException("이미 해당 답변에 메모가 존재합니다.");
@@ -87,14 +82,27 @@ public class AnswerService {
         answerMemoRepository.save(answerMemo);
     }
 
+    private AnswerMemo readAnswerMemo(Long answerId) {
+        return answerMemoRepository.findByAnswerId(answerId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변 메모입니다."));
+    }
+
+    @Transactional
+    public void deleteAnswerMemo(Long answerId, MemberAuth memberAuth) {
+        Member member = readMember(memberAuth.memberId());
+        validateAnswerOwner(answerId, member);
+        AnswerMemo answerMemo = readAnswerMemo(answerId);
+        answerMemoRepository.delete(answerMemo);
+    }
+
+    private Answer readAnswer(Long answerId) {
+        return answerRepository.findById(answerId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변입니다."));
+    }
+
     private void validateAnswerOwner(Long answerId, Member member) {
         if (!answerRepository.belongsToMember(answerId, member.getId())) {
             throw new BadRequestException("다른 회원이 작성한 답변에 메모를 추가할 수 없습니다.");
         }
-    }
-
-    private AnswerMemo readAnswerMemo(Long answerId) {
-        return answerMemoRepository.findByAnswerId(answerId)
-                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변 메모입니다."));
     }
 }
