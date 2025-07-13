@@ -1,8 +1,10 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
+import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
@@ -251,7 +253,7 @@ public class InterviewService {
         validateInterviewee(interview, member);
         validateInterviewFinished(interview);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
-        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers);
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
 
         return InterviewResultResponse.createMine(feedbackResponses, interview, member);
     }
@@ -260,6 +262,18 @@ public class InterviewService {
         if (!interview.isInterviewee(member)) {
             throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
         }
+    }
+
+    private Map<Long, AnswerMemos> findAnswerMemos(List<Answer> answers) {
+        return answers.stream()
+                .collect(Collectors.toMap(
+                        Answer::getId,
+                        answer -> AnswerMemos.createMine(findAnswerMemo(answer, AnswerMemoState.SUBMITTED), findAnswerMemo(answer, AnswerMemoState.TEMP))));
+    }
+
+    private AnswerMemo findAnswerMemo(Answer answer, AnswerMemoState state) {
+        return answerMemoRepository.findByAnswerAndAnswerMemoState(answer, state)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -272,6 +286,7 @@ public class InterviewService {
         validateInterviewFinished(interview);
         long viewCount = increaseViewCountIfNotInterviewee(interview, memberAuth, clientIp);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
@@ -279,11 +294,24 @@ public class InterviewService {
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
             return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, viewCount, interviewAlreadyLiked,
-                    interview.getMember().getNickname(), totalMemberCount, intervieweeRank);
+                    interview.getMember().getNickname(), totalMemberCount, intervieweeRank, answerMemos);
         }
 
         return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount, interviewee.getNickname(), totalMemberCount,
-                intervieweeRank);
+                intervieweeRank, answerMemos);
+    }
+
+    private Map<Long, AnswerMemos> findPublicSubmittedAnswerMemos(List<Answer> answers) {
+        return answers.stream()
+                .collect(Collectors.toMap(
+                        Answer::getId,
+                        answer -> AnswerMemos.createOfOtherMember(findAnswerMemo(answer, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC))));
+    }
+
+    private AnswerMemo findAnswerMemo(Answer answer, AnswerMemoState answerMemoState, AnswerMemoVisibility answerMemoVisibility) {
+        return answerMemoRepository.findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(
+                        answer, answerMemoState, answerMemoVisibility)
+                .orElse(null);
     }
 
     private Long findViewCount(Interview interview) {

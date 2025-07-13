@@ -53,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.json.JsonCompareMode;
 
 class InterviewControllerTest extends BaseControllerTest {
 
@@ -721,6 +722,16 @@ class InterviewControllerTest extends BaseControllerTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
         Answer answer3 = answerRepository.save(
                 AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).content("작성된 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).content("임시 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("작성된 메모 2")
+                .answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("임시 메모 2")
+                .answerMemoState(AnswerMemoState.TEMP).build());
+
         interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
         member.addScore(-30);
@@ -735,7 +746,9 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "자바의 특징은 무엇인가요?",
                 			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
                 			"answer_rank": "C",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"submitted_answer_memo_content": "작성된 메모 1",
+                			"temp_answer_memo_content": ""
                 		},
                 		{
                 			"question_id": 2,
@@ -743,7 +756,9 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "객체지향의 특징을 설명해주세요.",
                 			"answer": "객체가 각자 책임집니다.",
                 			"answer_rank": "D",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"submitted_answer_memo_content": "",
+                			"temp_answer_memo_content": "임시 메모 1"
                 		},
                 		{
                 			"question_id": 3,
@@ -751,7 +766,9 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"question": "객체는 무엇인가요?",
                 			"answer": "클래스의 인스턴스 입니다.",
                 			"answer_rank": "F",
-                			"answer_feedback": "부족합니다."
+                			"answer_feedback": "부족합니다.",
+                			"submitted_answer_memo_content": "작성된 메모 2",
+                			"temp_answer_memo_content": "임시 메모 2"
                 		}
                 	],
                 	"total_score": -30,
@@ -782,6 +799,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer").description("답변 내용"),
                                 fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 답변 메모 내용"),
+                                fieldWithPath("feedbacks[].temp_answer_memo_content").description("임시 답변 메모 내용"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
@@ -810,6 +829,16 @@ class InterviewControllerTest extends BaseControllerTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
         Answer answer3 = answerRepository.save(
                 AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).content("작성된 공개 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).content("작성된 비공개 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("작성된 공개 메모 2")
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("임시 메모 2")
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.TEMP).build());
+
         interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
         interviewRepository.increaseLikeCount(interview.getId());
@@ -828,7 +857,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "C",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 1,
-                			"answer_already_liked": true
+                			"answer_already_liked": true,
+                			"submitted_answer_memo_content": "작성된 공개 메모 1"
                 		},
                 		{
                 			"question_id": 2,
@@ -838,7 +868,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "D",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 0,
-                			"answer_already_liked": false
+                			"answer_already_liked": false,
+                			"submitted_answer_memo_content": ""
                 		},
                 		{
                 			"question_id": 3,
@@ -848,7 +879,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "F",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 0,
-                			"answer_already_liked": false
+                			"answer_already_liked": false,
+                			"submitted_answer_memo_content": "작성된 공개 메모 2"
                 		}
                 	],
                 	"total_score": -30,
@@ -868,7 +900,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
+                .andExpect(content().json(responseJson, JsonCompareMode.STRICT))
                 .andDo(document("interview-findOtherMemberInterviewResult-authenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
@@ -883,6 +915,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
                                 fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
                                 fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 공개 답변 메모 내용"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_view_count").description("인터뷰 조회 수"),
@@ -910,6 +943,16 @@ class InterviewControllerTest extends BaseControllerTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
         Answer answer3 = answerRepository.save(
                 AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F).feedback("부족합니다.").build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).content("작성된 공개 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).content("작성된 비공개 메모 1").build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("작성된 공개 메모 2")
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("임시 메모 2")
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.TEMP).build());
+
         interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
 
@@ -924,7 +967,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "C",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 0,
-                			"answer_already_liked": false
+                			"answer_already_liked": false,
+                			"submitted_answer_memo_content": "작성된 공개 메모 1"
                 		},
                 		{
                 			"question_id": 2,
@@ -934,7 +978,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "D",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 0,
-                			"answer_already_liked": false
+                			"answer_already_liked": false,
+                			"submitted_answer_memo_content": ""
                 		},
                 		{
                 			"question_id": 3,
@@ -944,7 +989,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "F",
                 			"answer_feedback": "부족합니다.",
                 			"answer_like_count": 0,
-                			"answer_already_liked": false
+                			"answer_already_liked": false,
+                			"submitted_answer_memo_content": "작성된 공개 메모 2"
                 		}
                 	],
                 	"total_score": -30,
@@ -962,7 +1008,7 @@ class InterviewControllerTest extends BaseControllerTest {
         mockMvc.perform(get(
                         "/api/v1/interviews/{interview_id}/result", interview.getId()))
                 .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
+                .andExpect(content().json(responseJson, JsonCompareMode.STRICT))
                 .andDo(document("interview-findOtherMemberInterviewResult-unauthenticated",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID")
@@ -977,6 +1023,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
                                 fieldWithPath("feedbacks[].answer_like_count").description("답변 좋아요 수"),
                                 fieldWithPath("feedbacks[].answer_already_liked").description("이미 답변에 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 공개 답변 메모 내용"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_view_count").description("인터뷰 조회 수"),

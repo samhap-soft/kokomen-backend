@@ -1,9 +1,11 @@
 package com.samhap.kokomen.answer.repository;
 
+import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.interview.domain.Interview;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AnswerMemoRepository extends JpaRepository<AnswerMemo, Long> {
@@ -14,4 +16,9 @@ public interface AnswerMemoRepository extends JpaRepository<AnswerMemo, Long> {
             Interview interview, AnswerMemoState answerMemoState, AnswerMemoVisibility answerMemoVisibility);
 
     Boolean existsByAnswerQuestionInterviewAndAnswerMemoState(Interview interview, AnswerMemoState answerMemoState);
+
+    Optional<AnswerMemo> findByAnswerAndAnswerMemoState(Answer answer, AnswerMemoState answerMemoState);
+
+    Optional<AnswerMemo> findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(Answer answer, AnswerMemoState answerMemoState,
+                                                                               AnswerMemoVisibility answerMemoVisibility);
 }
