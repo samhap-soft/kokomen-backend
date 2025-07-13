@@ -19,10 +19,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.AnswerLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
@@ -66,6 +70,8 @@ class InterviewControllerTest extends BaseControllerTest {
     private InterviewLikeRepository interviewLikeRepository;
     @Autowired
     private AnswerLikeRepository answerLikeRepository;
+    @Autowired
+    private AnswerMemoRepository answerMemoRepository;
 
     @Test
     void 인터뷰_시작() throws Exception {
@@ -364,13 +370,19 @@ class InterviewControllerTest extends BaseControllerTest {
         Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).viewCount(2L).totalScore(20).interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).content(rootQuestion2.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(finishedInterview).member(member).build());
         interviewRepository.increaseLikeCount(finishedInterview.getId());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
 
         String responseJson = """
                 [
@@ -384,7 +396,9 @@ class InterviewControllerTest extends BaseControllerTest {
                 		"score": %s,
                 		"interview_view_count": %d,
                 		"interview_like_count": 1,
-                		"interview_already_liked": true
+                		"interview_already_liked": true,
+                		"submitted_answer_memo_count": 2,
+                		"has_temp_answer_memo": true
                 	},
                 	{
                 		"interview_id": %d,
@@ -435,7 +449,9 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].score").description("점수 (면접이 FINISHED 인 경우에만)").optional(),
                                 fieldWithPath("[].interview_view_count").description("면접 조회 수 (면접이 FINISHED 인 경우에만)").optional(),
                                 fieldWithPath("[].interview_like_count").description("면접 좋아요 수 (면접이 FINISHED 인 경우에만)").optional(),
-                                fieldWithPath("[].interview_already_liked").description("면접에 이미 좋아요를 눌렀는지 여부 (면접이 FINISHED 인 경우에만)").optional()
+                                fieldWithPath("[].interview_already_liked").description("면접에 이미 좋아요를 눌렀는지 여부 (면접이 FINISHED 인 경우에만)").optional(),
+                                fieldWithPath("[].submitted_answer_memo_count").description("제출된 답변 개수 (면접이 FINISHED 인 경우에만)").optional(),
+                                fieldWithPath("[].has_temp_answer_memo").description("임시 답변 메모가 있는지 여부 (면접이 FINISHED 인 경우에만)").optional()
                         )
                 ));
     }
@@ -460,24 +476,36 @@ class InterviewControllerTest extends BaseControllerTest {
                 .build());
         Question question1 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview1).content(rootQuestion2.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
 
         Interview finishedInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(interviewee).rootQuestion(rootQuestion3).maxQuestionCount(3).viewCount(3L).totalScore(20).interviewState(InterviewState.FINISHED)
                 .build());
         Question question4 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).content(rootQuestion3.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
+        Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
         Question question5 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
+        Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(finishedInterview2).member(readerMember).build());
         interviewRepository.increaseLikeCount(finishedInterview2.getId());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.TEMP).build());
 
         String responseJson = """
                 {
@@ -490,7 +518,8 @@ class InterviewControllerTest extends BaseControllerTest {
                             "score": %s,
                             "interview_view_count": %d,
                             "interview_like_count": 1,
-                            "interview_already_liked": true
+                            "interview_already_liked": true,
+                            "submitted_answer_memo_count": 2
                         },
                         {
                             "interview_id": %d,
@@ -500,7 +529,8 @@ class InterviewControllerTest extends BaseControllerTest {
                             "score": %s,
                             "interview_view_count": %d,
                             "interview_like_count": 0,
-                            "interview_already_liked": false
+                            "interview_already_liked": false,
+                            "submitted_answer_memo_count": 1
                         }
                     ],
                     "interviewee_nickname": "오상훈",
@@ -547,6 +577,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].interview_view_count").description("면접 조회 수"),
                                 fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
                                 fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interview_summaries[].submitted_answer_memo_count").description("제출된 답변 개수"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
                                 fieldWithPath("interviewee_rank").description("면접자 등수"),
@@ -571,21 +602,33 @@ class InterviewControllerTest extends BaseControllerTest {
                 .member(member).rootQuestion(rootQuestion2).maxQuestionCount(3).viewCount(2L).totalScore(20).interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview1).content(rootQuestion2.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
 
         Interview finishedInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member).rootQuestion(rootQuestion3).maxQuestionCount(3).viewCount(3L).totalScore(20).interviewState(InterviewState.FINISHED).build());
         Question question4 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).content(rootQuestion3.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
+        Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
         Question question5 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
+        Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.TEMP).build());
 
         String responseJson = """
                 {
@@ -598,7 +641,8 @@ class InterviewControllerTest extends BaseControllerTest {
                             "score": %s,
                             "interview_view_count": %d,
                             "interview_like_count": 0,
-                            "interview_already_liked": false
+                            "interview_already_liked": false,
+                            "submitted_answer_memo_count": 2
                         },
                         {
                             "interview_id": %d,
@@ -608,7 +652,8 @@ class InterviewControllerTest extends BaseControllerTest {
                             "score": %s,
                             "interview_view_count": %d,
                             "interview_like_count": 0,
-                            "interview_already_liked": false
+                            "interview_already_liked": false,
+                            "submitted_answer_memo_count": 1
                         }
                     ],
                     "interviewee_nickname": "오상훈",
@@ -649,6 +694,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_summaries[].interview_view_count").description("면접 조회 수"),
                                 fieldWithPath("interview_summaries[].interview_like_count").description("면접 좋아요 수"),
                                 fieldWithPath("interview_summaries[].interview_already_liked").description("이미 좋아요를 눌렀는지 여부"),
+                                fieldWithPath("interview_summaries[].submitted_answer_memo_count").description("제출된 답변 개수"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
                                 fieldWithPath("interviewee_rank").description("면접자 등수"),

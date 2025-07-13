@@ -20,11 +20,12 @@ public record InterviewSummaryResponses(
             List<Interview> interviews,
             Set<Long> likedInterviewIds,
             Map<Long, Long> viewCounts,
+            Map<Long, Integer> submittedAnswerMemoCounts,
             Long totalPageCount
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
                 .map(interview -> InterviewSummaryResponse.createOfOtherMemberForAuthorized(interview, viewCounts.get(interview.getId()),
-                        likedInterviewIds.contains(interview.getId())))
+                        likedInterviewIds.contains(interview.getId()), submittedAnswerMemoCounts.get(interview.getId())))
                 .toList();
 
         return new InterviewSummaryResponses(
@@ -38,10 +39,12 @@ public record InterviewSummaryResponses(
             Long intervieweeRank,
             List<Interview> interviews,
             Map<Long, Long> viewCounts,
+            Map<Long, Integer> submittedAnswerMemoCounts,
             Long pageCount
     ) {
         List<InterviewSummaryResponse> interviewSummaries = interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createOfOtherMemberForUnauthorized(interview, viewCounts.get(interview.getId())))
+                .map(interview -> InterviewSummaryResponse.createOfOtherMemberForUnauthorized(interview, viewCounts.get(interview.getId()),
+                        submittedAnswerMemoCounts.get(interview.getId())))
                 .toList();
 
         return new InterviewSummaryResponses(

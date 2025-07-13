@@ -1,0 +1,138 @@
+package com.samhap.kokomen.answer.repository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
+import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
+import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.MemberRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+class AnswerMemoRepositoryTest extends BaseTest {
+
+    @Autowired
+    AnswerMemoRepository answerMemoRepository;
+    @Autowired
+    private AnswerRepository answerRepository;
+    @Autowired
+    private InterviewRepository interviewRepository;
+    @Autowired
+    private QuestionRepository questionRepository;
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+
+    @Test
+    void 인터뷰와_답변_메모_상태로_개수를_센다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
+
+        // when
+        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.SUBMITTED);
+
+        // then
+        assertThat(submittedMemoCount).isEqualTo(2L);
+    }
+
+    @Test
+    void 인터뷰와_답변_메모_상태와_답변_메모_공개_여부로_개수를_센다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Question question4 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
+        Question question5 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+
+        // when
+        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(interview,
+                AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC);
+
+        // then
+        assertThat(submittedMemoCount).isEqualTo(3L);
+    }
+
+    @Test
+    void 인터뷰와_답변_메모_상태로_존재하는지_확인한다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
+
+        // when
+        Boolean tempMemoExists = answerMemoRepository.existsByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.TEMP);
+
+        // then
+        assertThat(tempMemoExists).isTrue();
+    }
+}

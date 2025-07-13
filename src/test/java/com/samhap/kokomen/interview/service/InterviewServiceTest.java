@@ -7,13 +7,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.AnswerLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
@@ -73,6 +77,8 @@ class InterviewServiceTest extends BaseTest {
     private InterviewLikeRepository interviewLikeRepository;
     @Autowired
     private AnswerLikeRepository answerLikeRepository;
+    @Autowired
+    private AnswerMemoRepository answerMemoRepository;
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -446,5 +452,175 @@ class InterviewServiceTest extends BaseTest {
                 Arguments.of(10, 20, 2),
                 Arguments.of(10, 21, 3)
         );
+    }
+
+    @Test
+    void 내_인터뷰_목록_조회시_완료된_인터뷰는_답변_메모_공개_여부와_상관_없이_작성된_답변_메모_개수를_응답한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 내_인터뷰_목록_조회시_작성된_답변_메모_개수를_응답할_때_작성_중인_답변_메모는_세지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(0);
+    }
+
+    @MethodSource("provideAnswerMemoStateAndHasTempAnswerMemo")
+    @ParameterizedTest
+    void 내_인터뷰_목록_조회시_완료된_인터뷰는_작성중인_답변_메모가_존재하는지_응답한다(AnswerMemoState answerMemoState, boolean hasTempAnswerMemo) {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(answerMemoState)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertThat(responses.get(0).hasTempAnswerMemo()).isEqualTo(hasTempAnswerMemo);
+    }
+
+    private static Stream<Arguments> provideAnswerMemoStateAndHasTempAnswerMemo() {
+        return Stream.of(
+                Arguments.of(AnswerMemoState.TEMP, true),
+                Arguments.of(AnswerMemoState.SUBMITTED, false)
+        );
+    }
+
+    @Test
+    void 내_인터뷰_목록_조회시_완료되지_않은_인터뷰는_작성된_답변_메모_개수와_작성중인_답변_메모가_존재하는지_여부를_응답하지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.IN_PROGRESS).likeCount(1L).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertAll(
+                () -> assertThat(responses.get(0).submittedAnswerMemoCount()).isNull(),
+                () -> assertThat(responses.get(0).hasTempAnswerMemo()).isNull()
+        );
+    }
+
+    @Test
+    void 다른_사람_인터뷰_목록_조회시_작성이_완료된_공개_답변_메모_개수만_응답한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4).interviewState(InterviewState.FINISHED)
+                        .likeCount(1L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Question question4 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
+        ).interviewSummaries();
+        // then
+        assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 다른_사람_인터뷰_목록_조회시_작성중인_답변_존재_여부는_응답하지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4).interviewState(InterviewState.FINISHED)
+                        .likeCount(1L).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        Question question4 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
+        Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
+
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+
+        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
+        ).interviewSummaries();
+        // then
+        assertThat(responses.get(0).hasTempAnswerMemo()).isNull();
     }
 }

@@ -1,7 +1,10 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
+import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -64,6 +67,7 @@ public class InterviewService {
     private final InterviewAnswerResponseService interviewAnswerResponseService;
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
+    private final AnswerMemoRepository answerMemoRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -169,7 +173,7 @@ public class InterviewService {
 
         return interviews.stream()
                 .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), findViewCount(interview),
-                        likedInterviewIds.contains(interview.getId())))
+                        likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview), hasTempAnswerMemo(interview)))
                 .toList();
     }
 
@@ -183,6 +187,14 @@ public class InterviewService {
         return qurQuestionCount;
     }
 
+    private int countSubmittedAnswerMemos(Interview interview) {
+        return Math.toIntExact(answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.SUBMITTED));
+    }
+
+    private Boolean hasTempAnswerMemo(Interview interview) {
+        return answerMemoRepository.existsByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.TEMP);
+    }
+
     @Transactional(readOnly = true)
     public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
         Member interviewee = readMember(targetMemberId);
@@ -193,16 +205,18 @@ public class InterviewService {
         List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         Map<Long, Long> viewCounts = finishedInterviews.stream()
                 .collect(Collectors.toMap(Interview::getId, this::findViewCount));
+        Map<Long, Integer> submittedAnswerMemoCounts = finishedInterviews.stream()
+                .collect(Collectors.toMap(Interview::getId, this::countSubmittedAndPublicAnswerMemos));
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
             Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
 
             return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
-                    likedInterviewIds, viewCounts, totalPageCount);
+                    likedInterviewIds, viewCounts, submittedAnswerMemoCounts, totalPageCount);
         }
         return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
-                viewCounts, totalPageCount);
+                viewCounts, submittedAnswerMemoCounts, totalPageCount);
     }
 
     private Long calculateTotalPageCount(Member member, Pageable pageable) {
@@ -222,6 +236,11 @@ public class InterviewService {
             return interviewRepository.findByMember(member, pageable);
         }
         return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
+    }
+
+    private int countSubmittedAndPublicAnswerMemos(Interview interview) {
+        return Math.toIntExact(answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(
+                interview, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC));
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
