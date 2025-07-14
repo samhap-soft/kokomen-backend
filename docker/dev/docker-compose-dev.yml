@@ -44,6 +44,16 @@ services:
       LANG: C.UTF-8
       MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
 
+  mysql-dev-exporter:
+    image: prom/mysqld-exporter
+    container_name: mysql-dev-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD_DEV}@tcp(kokomen-mysql-dev:3306)/"
+      TZ: Asia/Seoul
+    ports:
+      - "9104:9104"
+
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
     container_name: kokomen-redis-dev
@@ -144,6 +154,10 @@ services:
             scrape_interval: 15s
             static_configs:
               - targets: ['node:9100']
+           - job_name: 'mysql'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['mysql-dev-exporter:9104']
         EOF
         /bin/prometheus
     environment:
