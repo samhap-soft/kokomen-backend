@@ -46,7 +46,6 @@ public class LoggingFilter extends OncePerRequestFilter {
 
             MDC.clear();
         }
-
     }
 
     private String readRequestId(HttpServletRequest request) {
