@@ -41,7 +41,6 @@ public class MemberAuthArgumentResolver implements HandlerMethodArgumentResolver
         }
         Long memberId = (Long) session.getAttribute("MEMBER_ID");
         validateAuthentication(memberId, authenticationRequired);
-        log.info("MEMBER_ID: {}", memberId);
 
         return new MemberAuth(memberId);
     }

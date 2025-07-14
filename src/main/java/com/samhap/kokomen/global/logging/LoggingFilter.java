@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -38,7 +39,8 @@ public class LoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             stopWatch.stop();
-            log.info("{} {} ({}) - {}ms",
+            log.info("{} {} {} ({}) - {}ms",
+                    readMemberId(request),
                     request.getMethod(),
                     request.getRequestURI(),
                     HttpStatus.valueOf(response.getStatus()),
@@ -54,6 +56,17 @@ public class LoggingFilter extends OncePerRequestFilter {
             return requestId;
         }
         return UUID.randomUUID().toString();
+    }
+
+    private String readMemberId(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            Long memberId = (Long) session.getAttribute("MEMBER_ID");
+            if (memberId != null) {
+                return "memberId=" + memberId;
+            }
+        }
+        return "";
     }
 
     @Override

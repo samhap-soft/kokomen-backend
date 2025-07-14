@@ -5,7 +5,7 @@
     <!-- 공통 Appender 정의 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>[%X{requestId:-startup}] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+            <pattern>[%X{requestId:-noRequest}] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
             </pattern>
         </encoder>
     </appender>
@@ -34,7 +34,7 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>[%X{requestId:-startup}] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+            <pattern>[%X{requestId:-noRequest}] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
             </pattern>
         </encoder>
     </appender>
