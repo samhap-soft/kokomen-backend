@@ -79,7 +79,6 @@ public class AnswerService {
 
         answerMemo.updateContent(answerMemoUpdateRequest.content());
         answerMemo.updateVisibility(answerMemoUpdateRequest.visibility());
-        answerMemoRepository.save(answerMemo);
     }
 
     private AnswerMemo readAnswerMemo(Long answerId) {
