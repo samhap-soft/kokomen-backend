@@ -101,7 +101,7 @@ public class AnswerService {
     }
 
     private void validateAnswerOwner(Long answerId, Member member) {
-        if (!answerRepository.belongsToMember(answerId, member.getId())) {
+        if (!answerRepository.existsByIdAndQuestionInterviewMemberId(answerId, member.getId())) {
             throw new BadRequestException("다른 회원이 작성한 답변에 메모를 추가할 수 없습니다.");
         }
     }

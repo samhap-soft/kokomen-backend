@@ -42,10 +42,10 @@ class AnswerRepositoryTest extends BaseTest {
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
 
         // when
-        boolean belongsToMember = answerRepository.belongsToMember(answer.getId(), member.getId());
+        boolean exists = answerRepository.existsByIdAndQuestionInterviewMemberId(answer.getId(), member.getId());
 
         // then
-        assertThat(belongsToMember).isTrue();
+        assertThat(exists).isTrue();
     }
 
     @Test
@@ -59,10 +59,10 @@ class AnswerRepositoryTest extends BaseTest {
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
 
         // when
-        boolean belongsToMember = answerRepository.belongsToMember(answer.getId(), otherMember.getId());
+        boolean exists = answerRepository.existsByIdAndQuestionInterviewMemberId(answer.getId(), otherMember.getId());
 
         // then
-        assertThat(belongsToMember).isFalse();
+        assertThat(exists).isFalse();
     }
 
     @Test
