@@ -53,6 +53,8 @@ services:
       TZ: Asia/Seoul
     ports:
       - "9104:9104"
+    volumes:
+      - ./my.cnf:/.my.cnf
 
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
