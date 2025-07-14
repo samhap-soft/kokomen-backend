@@ -23,7 +23,6 @@ public class LoggingFilter extends OncePerRequestFilter {
             "/metrics",
             "/actuator/**");
 
-    // TODO: 로그인 구현 후 memberId도 찍기
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -33,7 +32,13 @@ public class LoggingFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
 
         stopWatch.stop();
-        log.info("{} {} ({}) - {}ms", request.getMethod(), request.getRequestURI(), HttpStatus.valueOf(response.getStatus()), stopWatch.getTotalTimeMillis());
+        String requestId = request.getHeader("X-RequestID");
+        log.info("[requestId:{}] {} {} ({}) - {}ms",
+                requestId,
+                request.getMethod(),
+                request.getRequestURI(),
+                HttpStatus.valueOf(response.getStatus()),
+                stopWatch.getTotalTimeMillis());
     }
 
     @Override

@@ -1,7 +1,7 @@
 name: CD DEV
 
 on:
-  push:
+  pull_request:
     branches: [ develop ]
 
 jobs:
@@ -65,10 +65,10 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git fetch origin develop
-          git checkout develop
+          git fetch origin feature/#152
+          git checkout feature/#152
           git sparse-checkout set docker
-          git pull origin develop
+          git pull origin feature/#152
 
       - name: Docker run
         working-directory: /home/ubuntu
