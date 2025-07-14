@@ -3,6 +3,7 @@ package com.samhap.kokomen.answer.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
@@ -42,7 +43,7 @@ class AnswerMemoRepositoryTest extends BaseTest {
 
     @ParameterizedTest
     @MethodSource("answerMemoExistsProvider")
-    void 답변_메모_존재_여부_테스트(boolean expected, AnswerMemoVisibility searchVisibility) {
+    void 답변_메모_존재_여부_테스트(boolean expected, AnswerMemoState answerMemoState) {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -52,7 +53,7 @@ class AnswerMemoRepositoryTest extends BaseTest {
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
         // when
-        boolean exists = answerMemoRepository.existsByAnswerIdAndAnswerMemoVisibility(answer.getId(), searchVisibility);
+        boolean exists = answerMemoRepository.existsByAnswerIdAndAnswerMemoState(answer.getId(), answerMemoState);
 
         // then
         assertThat(exists).isEqualTo(expected);
@@ -60,8 +61,8 @@ class AnswerMemoRepositoryTest extends BaseTest {
 
     static Stream<Arguments> answerMemoExistsProvider() {
         return Stream.of(
-                Arguments.of(true, AnswerMemoVisibility.PUBLIC),
-                Arguments.of(false, AnswerMemoVisibility.PRIVATE)
+                Arguments.of(true, AnswerMemoState.SUBMITTED),
+                Arguments.of(false, AnswerMemoState.TEMP)
         );
     }
 }

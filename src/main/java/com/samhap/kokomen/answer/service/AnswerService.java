@@ -3,6 +3,7 @@ package com.samhap.kokomen.answer.service;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerLike;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
+import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
@@ -53,7 +54,7 @@ public class AnswerService {
         Member member = readMember(memberAuth.memberId());
         Answer answer = readAnswer(answerId);
         validateAnswerOwner(answerId, member);
-        validateAlreadyCreated(answerId, answerMemoCreateRequest);
+        validateAlreadyCreated(answerId);
         AnswerMemo answerMemo = new AnswerMemo(answerMemoCreateRequest.content(), answer, answerMemoCreateRequest.visibility());
         answerMemoRepository.save(answerMemo);
 
@@ -65,8 +66,8 @@ public class AnswerService {
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 회원입니다."));
     }
 
-    private void validateAlreadyCreated(Long answerId, AnswerMemoCreateRequest answerMemoCreateRequest) {
-        if (answerMemoRepository.existsByAnswerIdAndAnswerMemoVisibility(answerId, answerMemoCreateRequest.visibility())) {
+    private void validateAlreadyCreated(Long answerId) {
+        if (answerMemoRepository.existsByAnswerIdAndAnswerMemoState(answerId, AnswerMemoState.SUBMITTED)) {
             throw new BadRequestException("이미 해당 답변에 메모가 존재합니다.");
         }
     }
