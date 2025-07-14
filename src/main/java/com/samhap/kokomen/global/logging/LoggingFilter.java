@@ -6,7 +6,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
@@ -29,16 +31,30 @@ public class LoggingFilter extends OncePerRequestFilter {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
 
-        filterChain.doFilter(request, response);
+        String requestId = readRequestId(request);
+        MDC.put("requestId", requestId);
 
-        stopWatch.stop();
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            stopWatch.stop();
+            log.info("{} {} ({}) - {}ms",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    HttpStatus.valueOf(response.getStatus()),
+                    stopWatch.getTotalTimeMillis());
+
+            MDC.clear();
+        }
+
+    }
+
+    private String readRequestId(HttpServletRequest request) {
         String requestId = request.getHeader("X-RequestID");
-        log.info("[requestId:{}] {} {} ({}) - {}ms",
-                requestId,
-                request.getMethod(),
-                request.getRequestURI(),
-                HttpStatus.valueOf(response.getStatus()),
-                stopWatch.getTotalTimeMillis());
+        if (requestId != null && !requestId.isEmpty()) {
+            return requestId;
+        }
+        return UUID.randomUUID().toString();
     }
 
     @Override
