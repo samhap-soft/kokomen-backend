@@ -6,9 +6,12 @@ public record MyProfileResponse(
         Long id,
         String nickname,
         Integer score,
-        Integer tokenCount
+        Long totalMemberCount,
+        Long rank,
+        Integer tokenCount,
+        Boolean profileCompleted
 ) {
-    public MyProfileResponse(Member member) {
-        this(member.getId(), member.getNickname(), member.getScore(), member.getFreeTokenCount());
+    public MyProfileResponse(Member member, Long totalMemberCount, Long rank) {
+        this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, member.getFreeTokenCount(), member.getProfileCompleted());
     }
 }

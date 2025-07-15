@@ -11,8 +11,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +22,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
+@Table(name = "interview", indexes = {
+        @Index(name = "idx_interview_like_count", columnList = "like_count"),
+        @Index(name = "idx_interview_view_count", columnList = "view_count")
+})
 public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
@@ -51,6 +57,12 @@ public class Interview extends BaseEntity {
     @Column(name = "total_score")
     private Integer totalScore;
 
+    @Column(name = "like_count", nullable = false)
+    private Long likeCount;
+
+    @Column(name = "view_count", nullable = false)
+    private Long viewCount;
+
     public Interview(
             Long id,
             Member member,
@@ -58,7 +70,9 @@ public class Interview extends BaseEntity {
             Integer maxQuestionCount,
             InterviewState interviewState,
             String totalFeedback,
-            Integer totalScore
+            Integer totalScore,
+            Long likeCount,
+            Long viewCount
     ) {
         validateMaxQuestionCount(maxQuestionCount);
         this.id = id;
@@ -68,10 +82,12 @@ public class Interview extends BaseEntity {
         this.interviewState = interviewState;
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;
+        this.likeCount = likeCount;
+        this.viewCount = viewCount;
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, null, null);
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, null, null, 0L, 0L);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
@@ -89,8 +105,12 @@ public class Interview extends BaseEntity {
     }
 
     public void evaluate(String totalFeedback, Integer totalScore) {
-        this.interviewState = InterviewState.FINISHED;
-        this.totalFeedback = totalFeedback;
-        this.totalScore = totalScore;
+        if (isInProgress()) {
+            this.interviewState = InterviewState.FINISHED;
+            this.totalFeedback = totalFeedback;
+            this.totalScore = totalScore;
+            return;
+        }
+        throw new BadRequestException("이미 종료된 인터뷰입니다.");
     }
 }
