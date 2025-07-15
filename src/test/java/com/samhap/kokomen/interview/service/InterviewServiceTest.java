@@ -584,8 +584,12 @@ class InterviewServiceTest extends BaseTest {
         List<InterviewSummaryResponse> responses = interviewService.findOtherMemberInterviews(
                 member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"))
         ).interviewSummaries();
+
         // then
-        assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(2);
+        assertAll(
+                () -> assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(2),
+                () -> assertThat(responses.get(0).hasTempAnswerMemo()).isNull()
+        );
     }
 
     @Test
