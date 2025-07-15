@@ -4,7 +4,6 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
-import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 
 public class AnswerMemoFixtureBuilder {
 
@@ -46,7 +45,7 @@ public class AnswerMemoFixtureBuilder {
     public AnswerMemo build() {
         return new AnswerMemo(
                 id,
-                content != null ? content : "이것은 메모입니다.",
+                content != null ? content : "오상훈의 메모",
                 answer != null ? answer : defaultAnswer(),
                 answerMemoVisibility != null ? answerMemoVisibility : AnswerMemoVisibility.PRIVATE,
                 answerMemoState != null ? answerMemoState : AnswerMemoState.SUBMITTED

@@ -15,8 +15,10 @@ public interface AnswerMemoRepository extends JpaRepository<AnswerMemo, Long> {
     Long countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(
             Interview interview, AnswerMemoState answerMemoState, AnswerMemoVisibility answerMemoVisibility);
 
+    boolean existsByAnswerIdAndAnswerMemoState(Long answerId, AnswerMemoState answerMemoState);
     Boolean existsByAnswerQuestionInterviewAndAnswerMemoState(Interview interview, AnswerMemoState answerMemoState);
 
+    Optional<AnswerMemo> findByAnswerIdAndAnswerMemoState(Long answerId, AnswerMemoState answerMemoState);
     Optional<AnswerMemo> findByAnswerAndAnswerMemoState(Answer answer, AnswerMemoState answerMemoState);
 
     Optional<AnswerMemo> findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(Answer answer, AnswerMemoState answerMemoState,

@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
 
+    boolean existsByIdAndQuestionInterviewMemberId(Long answerId, Long memberId);
+
     List<Answer> findByQuestionIn(List<Question> questions);
 
     List<Answer> findByQuestionInOrderById(List<Question> questions);
