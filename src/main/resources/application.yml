@@ -122,9 +122,8 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      cluster:
-        nodes:
-          - ${REDIS_CLUSTER_ENDPOINT}
+      host: ${REDIS_PRIMARY_HOST_PROD}
+      port: 6379
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}
