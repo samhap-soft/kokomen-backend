@@ -8,10 +8,10 @@ import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 public class AnswerMemoFixtureBuilder {
 
     private Long id;
-    private String content;
     private Answer answer;
-    private AnswerMemoVisibility answerMemoVisibility;
+    private String content;
     private AnswerMemoState answerMemoState;
+    private AnswerMemoVisibility answerMemoVisibility;
 
     public static AnswerMemoFixtureBuilder builder() {
         return new AnswerMemoFixtureBuilder();
@@ -22,23 +22,23 @@ public class AnswerMemoFixtureBuilder {
         return this;
     }
 
-    public AnswerMemoFixtureBuilder content(String content) {
-        this.content = content;
-        return this;
-    }
-
     public AnswerMemoFixtureBuilder answer(Answer answer) {
         this.answer = answer;
         return this;
     }
 
-    public AnswerMemoFixtureBuilder answerMemoVisibility(AnswerMemoVisibility answerMemoVisibility) {
-        this.answerMemoVisibility = answerMemoVisibility;
+    public AnswerMemoFixtureBuilder content(String content) {
+        this.content = content;
         return this;
     }
 
     public AnswerMemoFixtureBuilder answerMemoState(AnswerMemoState answerMemoState) {
         this.answerMemoState = answerMemoState;
+        return this;
+    }
+
+    public AnswerMemoFixtureBuilder answerMemoVisibility(AnswerMemoVisibility answerMemoVisibility) {
+        this.answerMemoVisibility = answerMemoVisibility;
         return this;
     }
 

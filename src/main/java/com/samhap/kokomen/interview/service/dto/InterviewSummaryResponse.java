@@ -16,9 +16,13 @@ public record InterviewSummaryResponse(
         Integer score,
         Long interviewViewCount,
         Long interviewLikeCount,
-        Boolean interviewAlreadyLiked
+        Boolean interviewAlreadyLiked,
+        Integer submittedAnswerMemoCount,
+        Boolean hasTempAnswerMemo
 ) {
-    public InterviewSummaryResponse(Interview interview, InterviewState interviewState, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked) {
+    public InterviewSummaryResponse(
+            Interview interview, InterviewState interviewState, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked,
+            Integer submittedAnswerMemoCount, Boolean hasTempAnswerMemo) {
         this(
                 interview.getId(),
                 interviewState,
@@ -30,19 +34,23 @@ public record InterviewSummaryResponse(
                 interview.getTotalScore(),
                 viewCount,
                 interview.getLikeCount(),
-                interviewAlreadyLiked
+                interviewAlreadyLiked,
+                submittedAnswerMemoCount,
+                hasTempAnswerMemo
         );
     }
 
-    public static InterviewSummaryResponse createOfOtherMemberForAuthorized(Interview interview, Long viewCount, Boolean interviewAlreadyLiked) {
-        return new InterviewSummaryResponse(interview, null, null, viewCount, interviewAlreadyLiked);
+    public static InterviewSummaryResponse createOfOtherMemberForAuthorized(
+            Interview interview, Long viewCount, Boolean interviewAlreadyLiked, Integer submittedAnswerMemoCount) {
+        return new InterviewSummaryResponse(interview, null, null, viewCount, interviewAlreadyLiked, submittedAnswerMemoCount, null);
     }
 
-    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(Interview interview, Long viewCount) {
-        return new InterviewSummaryResponse(interview, null, null, viewCount, false);
+    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(Interview interview, Long viewCount, Integer submittedAnswerMemoCount) {
+        return new InterviewSummaryResponse(interview, null, null, viewCount, false, submittedAnswerMemoCount, null);
     }
 
-    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked) {
+    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked,
+                                                      Integer submittedAnswerMemoCount, Boolean hasTempAnswerMemo) {
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
@@ -52,6 +60,8 @@ public record InterviewSummaryResponse(
                     interview.getRootQuestion().getContent(),
                     interview.getMaxQuestionCount(),
                     curAnswerCount,
+                    null,
+                    null,
                     null,
                     null,
                     null,
@@ -69,7 +79,9 @@ public record InterviewSummaryResponse(
                 interview.getTotalScore(),
                 viewCount,
                 interview.getLikeCount(),
-                interviewAlreadyLiked
+                interviewAlreadyLiked,
+                submittedAnswerMemoCount,
+                hasTempAnswerMemo
         );
     }
 } 
