@@ -15,3 +15,8 @@ scrape_configs:
           app: kokomen
           host: ${HOSTNAME}
           __path__: /logs/app/app.log
+    pipeline_stages:
+      - regex:
+          expression: '\[.*?\] [\d\-:.\s]+ \[.*?\] (?P<level>[A-Z]+)\s'
+      - labels:
+          level:
