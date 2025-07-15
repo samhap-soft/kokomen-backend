@@ -5,11 +5,11 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
-@Component
-public class MemberScheduler {
+@Service
+public class MemberSchedulerService {
 
     private final MemberRepository memberRepository;
 

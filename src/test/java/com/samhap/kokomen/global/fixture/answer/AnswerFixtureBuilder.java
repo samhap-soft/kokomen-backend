@@ -1,7 +1,8 @@
-package com.samhap.kokomen.global.fixture.interview;
+package com.samhap.kokomen.global.fixture.answer;
 
-import com.samhap.kokomen.interview.domain.Answer;
-import com.samhap.kokomen.interview.domain.AnswerRank;
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Question;
 
 public class AnswerFixtureBuilder {
@@ -11,6 +12,7 @@ public class AnswerFixtureBuilder {
     private String content;
     private AnswerRank answerRank;
     private String feedback;
+    private Integer likeCount;
 
     public static AnswerFixtureBuilder builder() {
         return new AnswerFixtureBuilder();
@@ -41,13 +43,19 @@ public class AnswerFixtureBuilder {
         return this;
     }
 
+    public AnswerFixtureBuilder likeCount(Integer likeCount) {
+        this.likeCount = likeCount;
+        return this;
+    }
+
     public Answer build() {
         return new Answer(
                 id,
                 question != null ? question : defaultQuestion(),
                 content != null ? content : "프로세스는 무겁고 스레드는 경량입니다.",
                 answerRank != null ? answerRank : AnswerRank.C,
-                feedback != null ? feedback : "좀 더 자세하게 설명해주시면 좋겠네요."
+                feedback != null ? feedback : "좀 더 자세하게 설명해주시면 좋겠네요.",
+                likeCount != null ? likeCount : 0
         );
     }
 

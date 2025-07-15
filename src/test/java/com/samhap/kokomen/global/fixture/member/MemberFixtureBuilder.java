@@ -9,6 +9,7 @@ public class MemberFixtureBuilder {
     private String nickname;
     private Integer score;
     private Integer freeTokenCount;
+    private Boolean profileCompleted;
 
     public static MemberFixtureBuilder builder() {
         return new MemberFixtureBuilder();
@@ -39,6 +40,11 @@ public class MemberFixtureBuilder {
         return this;
     }
 
+    public MemberFixtureBuilder profileCompleted(Boolean profileCompleted) {
+        this.profileCompleted = profileCompleted;
+        return this;
+    }
+
 
     public Member build() {
         return new Member(
@@ -46,7 +52,8 @@ public class MemberFixtureBuilder {
                 kakaoId != null ? kakaoId : 1L,
                 nickname != null ? nickname : "오상훈",
                 score != null ? score : 0,
-                freeTokenCount != null ? freeTokenCount : 10
+                freeTokenCount != null ? freeTokenCount : 10,
+                profileCompleted != null ? profileCompleted : false
         );
     }
 }

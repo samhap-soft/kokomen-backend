@@ -1,17 +1,18 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.LlmApiException;
 
 public record BedrockResponse(
         String content
-) implements LLMResponse {
+) implements LlmResponse {
 
     @Override
     public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
         try {
             return objectMapper.readValue(content, AnswerFeedbackResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
+            throw new LlmApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
@@ -20,7 +21,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, NextQuestionResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
+            throw new LlmApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
@@ -29,7 +30,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, TotalFeedbackResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
+            throw new LlmApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 }

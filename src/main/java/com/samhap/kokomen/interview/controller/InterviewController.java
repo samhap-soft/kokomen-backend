@@ -1,20 +1,24 @@
 package com.samhap.kokomen.interview.controller;
 
+import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewTotalResponse;
-import com.samhap.kokomen.interview.service.dto.MyInterviewResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +38,7 @@ public class InterviewController {
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody InterviewRequest interviewRequest,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.startInterview(interviewRequest, memberAuth));
     }
@@ -44,35 +48,71 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
             @RequestBody AnswerRequest answerRequest,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/{interviewId}/result")
-    public ResponseEntity<InterviewTotalResponse> findTotalFeedbacks(
+    @PostMapping("/{interviewId}/like")
+    public ResponseEntity<Void> likeInterview(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findTotalFeedbacks(interviewId, memberAuth));
+        interviewService.likeInterview(interviewId, memberAuth);
+        return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{interviewId}")
-    public ResponseEntity<InterviewResponse> findInterview(
+    @GetMapping("/{interviewId}/check")
+    public ResponseEntity<InterviewResponse> checkInterview(
             @PathVariable Long interviewId,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findInterview(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewService.checkInterview(interviewId, memberAuth));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<MyInterviewResponse>> findMyInterviews(
+    public ResponseEntity<List<InterviewSummaryResponse>> findMyInterviews(
             @RequestParam(required = false) InterviewState state,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
-            MemberAuth memberAuth
+            @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
+    }
+
+    @GetMapping
+    public ResponseEntity<InterviewSummaryResponses> findOtherMemberInterviews(
+            @RequestParam("member_id") Long memberId,
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @Authentication(required = false) MemberAuth memberAuth
+    ) {
+        return ResponseEntity.ok(interviewService.findOtherMemberInterviews(memberId, memberAuth, pageable));
+    }
+
+    @GetMapping("/{interviewId}/my-result")
+    public ResponseEntity<InterviewResultResponse> findMyInterviewResult(
+            @PathVariable Long interviewId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        return ResponseEntity.ok(interviewService.findMyInterviewResult(interviewId, memberAuth));
+    }
+
+    @GetMapping("/{interviewId}/result")
+    public ResponseEntity<InterviewResultResponse> findOtherMemberInterviewResult(
+            @PathVariable Long interviewId,
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
+    ) {
+        return ResponseEntity.ok(interviewService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
+    }
+
+    @DeleteMapping("/{interviewId}/like")
+    public ResponseEntity<Void> unlikeInterview(
+            @PathVariable Long interviewId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        interviewService.unlikeInterview(interviewId, memberAuth);
+        return ResponseEntity.noContent().build();
     }
 }

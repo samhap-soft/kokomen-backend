@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -19,9 +20,29 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(e.getMessage()));
     }
 
-    @ExceptionHandler(GptApiException.class)
-    public ResponseEntity<ErrorResponse> handleGptApiException(GptApiException e) {
-        log.warn("GptApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        String defaultErrorMessageForUser = "잘못된 요청입니다.";
+        String message = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse(defaultErrorMessageForUser);
+
+        if (message.equals(defaultErrorMessageForUser)) {
+            log.warn("MethodArgumentNotValidException :: message: {}", e.getMessage());
+        } else {
+            log.warn("MethodArgumentNotValidException :: message: {}", message);
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(message));
+    }
+
+    @ExceptionHandler(LlmApiException.class)
+    public ResponseEntity<ErrorResponse> handleLlmApiException(LlmApiException e) {
+        log.warn("LlmApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
         return ResponseEntity.status(e.getHttpStatusCode())
                 .body(new ErrorResponse(e.getMessage()));
     }
