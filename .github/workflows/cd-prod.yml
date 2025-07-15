@@ -84,7 +84,7 @@ jobs:
           KAKAO_CLIENT_ID_PROD: ${{ secrets.KAKAO_CLIENT_ID_PROD }}
           KAKAO_CLIENT_SECRET_PROD: ${{ secrets.KAKAO_CLIENT_SECRET_PROD }}
           MYSQL_ROOT_PASSWORD_PROD: ${{ secrets.MYSQL_ROOT_PASSWORD_PROD }}
-          REDIS_CLUSTER_ENDPOINT: ${{ secrets.REDIS_CLUSTER_ENDPOINT }}
+          REDIS_PRIMARY_HOST_PROD: ${{ secrets.REDIS_PRIMARY_HOST_PROD }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/prod
