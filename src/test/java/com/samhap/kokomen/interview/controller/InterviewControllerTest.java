@@ -804,8 +804,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
                                 fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 답변 메모 내용"),
                                 fieldWithPath("feedbacks[].temp_answer_memo_content").description("임시 답변 메모 내용"),
-                                fieldWithPath("feedbacks[].answer_memo_visibility").description(
-                                        "답변 메모 공개 여부 : " + Arrays.asList(AnswerMemoVisibility.values())),
+                                fieldWithPath("feedbacks[].answer_memo_visibility")
+                                        .description("답변 메모 공개 여부 : " + Arrays.asList(AnswerMemoVisibility.values()) + ", 메모가 존재하지 않는 경우 PUBLIC 응답"),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
