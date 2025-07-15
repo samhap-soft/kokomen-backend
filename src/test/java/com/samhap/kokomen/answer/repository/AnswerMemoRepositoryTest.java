@@ -9,7 +9,6 @@ import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -25,10 +24,10 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class AnswerMemoRepositoryTest extends BaseTest {
