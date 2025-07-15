@@ -1,9 +1,11 @@
 package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public record InterviewResultResponse(
@@ -48,10 +50,11 @@ public record InterviewResultResponse(
             Boolean interviewAlreadyLiked,
             String intervieweeNickname,
             Long totalMemberCount,
-            Long intervieweeRank
+            Long intervieweeRank,
+            Map<Long, AnswerMemos> answerMemos
     ) {
         List<FeedbackResponse> feedbackResponses = answers.stream()
-                .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId())))
+                .map(answer -> new FeedbackResponse(answer, likedAnswerIds.contains(answer.getId()), answerMemos.get(answer.getId())))
                 .toList();
 
         return new InterviewResultResponse(
@@ -75,10 +78,11 @@ public record InterviewResultResponse(
             Long interviewViewCount,
             String intervieweeNickname,
             Long totalMemberCount,
-            Long intervieweeRank
+            Long intervieweeRank,
+            Map<Long, AnswerMemos> answerMemos
     ) {
         List<FeedbackResponse> feedbackResponses = answers.stream()
-                .map(answer -> new FeedbackResponse(answer, false))
+                .map(answer -> new FeedbackResponse(answer, false, answerMemos.get(answer.getId())))
                 .toList();
 
         return new InterviewResultResponse(
