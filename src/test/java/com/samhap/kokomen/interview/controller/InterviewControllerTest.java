@@ -728,7 +728,7 @@ class InterviewControllerTest extends BaseControllerTest {
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
                 .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).content("임시 메모 1").build());
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("작성된 메모 2")
-                .answerMemoState(AnswerMemoState.SUBMITTED).build());
+                .answerMemoState(AnswerMemoState.SUBMITTED).answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).content("임시 메모 2")
                 .answerMemoState(AnswerMemoState.TEMP).build());
 
@@ -748,7 +748,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "C",
                 			"answer_feedback": "부족합니다.",
                 			"submitted_answer_memo_content": "작성된 메모 1",
-                			"temp_answer_memo_content": ""
+                			"temp_answer_memo_content": "",
+                			"answer_memo_visibility": "PUBLIC"
                 		},
                 		{
                 			"question_id": 2,
@@ -758,7 +759,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "D",
                 			"answer_feedback": "부족합니다.",
                 			"submitted_answer_memo_content": "",
-                			"temp_answer_memo_content": "임시 메모 1"
+                			"temp_answer_memo_content": "임시 메모 1",
+                			"answer_memo_visibility": "PUBLIC"
                 		},
                 		{
                 			"question_id": 3,
@@ -768,7 +770,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_rank": "F",
                 			"answer_feedback": "부족합니다.",
                 			"submitted_answer_memo_content": "작성된 메모 2",
-                			"temp_answer_memo_content": "임시 메모 2"
+                			"temp_answer_memo_content": "임시 메모 2",
+                			"answer_memo_visibility": "PRIVATE"
                 		}
                 	],
                 	"total_score": -30,
@@ -801,6 +804,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
                                 fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 답변 메모 내용"),
                                 fieldWithPath("feedbacks[].temp_answer_memo_content").description("임시 답변 메모 내용"),
+                                fieldWithPath("feedbacks[].answer_memo_visibility").description(
+                                        "답변 메모 공개 여부 : " + Arrays.asList(AnswerMemoVisibility.values())),
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),

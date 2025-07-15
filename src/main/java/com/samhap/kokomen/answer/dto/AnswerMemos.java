@@ -1,11 +1,13 @@
 package com.samhap.kokomen.answer.dto;
 
 import com.samhap.kokomen.answer.domain.AnswerMemo;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import java.util.Optional;
 
 public record AnswerMemos(
         String submittedAnswerMemo,
-        String tempAnswerMemo
+        String tempAnswerMemo,
+        AnswerMemoVisibility answerMemoVisibility
 ) {
 
     public static AnswerMemos createMine(AnswerMemo submittedAnswerMemo, AnswerMemo tempAnswerMemo) {
@@ -15,7 +17,10 @@ public record AnswerMemos(
                         .orElse(""),
                 Optional.ofNullable(tempAnswerMemo)
                         .map(AnswerMemo::getContent)
-                        .orElse("")
+                        .orElse(""),
+                Optional.ofNullable(submittedAnswerMemo)
+                        .map(AnswerMemo::getAnswerMemoVisibility)
+                        .orElse(AnswerMemoVisibility.PUBLIC)
         );
     }
 
@@ -24,6 +29,7 @@ public record AnswerMemos(
                 Optional.ofNullable(submittedAnswerMemo)
                         .map(AnswerMemo::getContent)
                         .orElse(""),
+                null,
                 null
         );
     }

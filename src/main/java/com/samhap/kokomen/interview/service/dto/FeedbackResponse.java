@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.dto.AnswerMemos;
 import java.util.Comparator;
@@ -17,7 +18,8 @@ public record FeedbackResponse(
         Integer answerLikeCount,
         Boolean answerAlreadyLiked,
         String submittedAnswerMemoContent,
-        String tempAnswerMemoContent
+        String tempAnswerMemoContent,
+        AnswerMemoVisibility answerMemoVisibility
 ) {
     public FeedbackResponse(Answer answer, Boolean answerAlreadyLiked, AnswerMemos answerMemos) {
         this(
@@ -30,7 +32,8 @@ public record FeedbackResponse(
                 answer.getLikeCount(),
                 answerAlreadyLiked,
                 answerMemos.submittedAnswerMemo(),
-                answerMemos.tempAnswerMemo()
+                answerMemos.tempAnswerMemo(),
+                answerMemos.answerMemoVisibility()
         );
     }
 
@@ -52,7 +55,8 @@ public record FeedbackResponse(
                 null,
                 null,
                 answerMemos.submittedAnswerMemo(),
-                answerMemos.tempAnswerMemo()
+                answerMemos.tempAnswerMemo(),
+                answerMemos.answerMemoVisibility()
         );
     }
 }
