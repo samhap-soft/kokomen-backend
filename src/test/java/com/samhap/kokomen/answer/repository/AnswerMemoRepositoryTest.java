@@ -138,13 +138,6 @@ class AnswerMemoRepositoryTest extends BaseTest {
         assertThat(tempMemoExists).isTrue();
     }
 
-    /*
-        Optional<AnswerMemo> findByAnswerAndAnswerMemoState(Answer answer, AnswerMemoState answerMemoState);
-
-    Optional<AnswerMemo> findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(Answer answer, AnswerMemoState answerMemoState,
-                                                                               AnswerMemoVisibility answerMemoVisibility);
-     */
-
     @Test
     void 답변과_답변_메모_상태로_답변_메모를_찾는다() {
         // given
