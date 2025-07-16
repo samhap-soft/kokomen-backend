@@ -24,6 +24,9 @@ server:
         http-only: true
         same-site: lax
         max-age: 86400
+  tomcat:
+    mbeanregistry:
+      enabled: true
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 management:
