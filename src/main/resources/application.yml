@@ -20,7 +20,6 @@ server:
       cookie:
         name: JSESSIONID
         path: /
-        secure: true
         http-only: true
         same-site: lax
         max-age: 86400
@@ -71,7 +70,11 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET}
 cors:
   allowed-origins: http://localhost:8080
-
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
 ---
 # dev profile
 spring:
@@ -136,3 +139,4 @@ server:
     session:
       cookie:
         domain: kokomen.kr
+        secure: true
