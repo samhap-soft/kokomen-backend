@@ -103,6 +103,7 @@ server:
     session:
       cookie:
         domain: kokomen.kr
+        secure: false
 
 ---
 # prod profile
