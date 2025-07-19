@@ -70,6 +70,16 @@ jobs:
           git sparse-checkout set docker
           git pull origin develop
 
+      - name: Create dev-kokomen-net Docker network
+        run: |
+          NETWORK_NAME="dev-kokomen-net"
+          if ! sudo docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+            echo "Creating Docker network: $NETWORK_NAME"
+            sudo docker network create --driver bridge "$NETWORK_NAME"
+          else
+            echo "Docker network '$NETWORK_NAME' already exists. Skipping."
+          fi
+
       - name: Docker run
         working-directory: /home/ubuntu
         env:
