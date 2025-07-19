@@ -174,10 +174,16 @@ services:
             scrape_interval: 15s
             static_configs:
               - targets: ['node:9100']
+        
           - job_name: 'mysql'
             scrape_interval: 15s
             static_configs:
               - targets: ['mysql-dev-exporter:9104']
+        
+          - job_name: 'notification-mysql'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['notification-mysql-dev-exporter:9104']
         EOF
         /bin/prometheus
     environment:
