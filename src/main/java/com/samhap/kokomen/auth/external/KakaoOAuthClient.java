@@ -3,6 +3,7 @@ package com.samhap.kokomen.auth.external;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.auth.external.dto.KakaoTokenResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoUserInfoResponse;
+import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -12,6 +13,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+@ExecutionTimer
 @Component
 public class KakaoOAuthClient {
 
