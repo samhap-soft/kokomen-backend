@@ -1,5 +1,6 @@
 package com.samhap.kokomen.global.service;
 
+import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
 @Slf4j
+@ExecutionTimer
 @RequiredArgsConstructor
 @Service
 public class RedisService {
