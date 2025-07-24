@@ -1,6 +1,7 @@
 package com.samhap.kokomen.member.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -45,6 +46,14 @@ public class MemberService {
         int limit = pageable.getPageSize();
         int offset = (int) pageable.getOffset();
         return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
+    }
+
+    public void validateHasToken(MemberAuth memberAuth) {
+        Member member = readMember(memberAuth);
+
+        if (!member.hasEnoughTokenCount(1)) {
+            throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+        }
     }
 
     private Member readMember(MemberAuth memberAuth) {
