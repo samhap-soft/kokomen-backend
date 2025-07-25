@@ -167,13 +167,16 @@ public class InterviewService {
     @Async
     public void requestLikeNotificationAsync(Long interviewId, MemberAuth memberAuth, String requestId) {
         MDC.put("requestId", requestId);
-        Interview interview = readInterview(interviewId);
-        Long receiverMemberId = interview.getMember().getId();
-        NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
-                new InterviewLikeNotificationPayload(
-                        NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
+        try {
+            Interview interview = readInterview(interviewId);
+            Long receiverMemberId = interview.getMember().getId();
+            NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
+                    new InterviewLikeNotificationPayload(NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
 
-        notificationClient.request(notificationRequest);
+            notificationClient.request(notificationRequest);
+        } finally {
+            MDC.clear();
+        }
     }
 
     @Transactional(readOnly = true)
