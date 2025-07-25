@@ -51,7 +51,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.MDC;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -164,19 +163,14 @@ public class InterviewService {
         interviewRepository.increaseLikeCount(interviewId);
     }
 
-    @Async
-    public void requestLikeNotificationAsync(Long interviewId, MemberAuth memberAuth, String requestId) {
-        MDC.put("requestId", requestId);
-        try {
-            Interview interview = readInterview(interviewId);
-            Long receiverMemberId = interview.getMember().getId();
-            NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
-                    new InterviewLikeNotificationPayload(NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
+    @Async("asyncExecutor")
+    public void requestLikeNotificationAsync(Long interviewId, MemberAuth memberAuth) {
+        Interview interview = readInterview(interviewId);
+        Long receiverMemberId = interview.getMember().getId();
+        NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
+                new InterviewLikeNotificationPayload(NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
 
-            notificationClient.request(notificationRequest);
-        } finally {
-            MDC.clear();
-        }
+        notificationClient.request(notificationRequest);
     }
 
     @Transactional(readOnly = true)

@@ -21,7 +21,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.MDC;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -67,7 +66,7 @@ public class InterviewFacadeService {
 
     public void likeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.likeInterview(interviewId, memberAuth);
-        interviewService.requestLikeNotificationAsync(interviewId, memberAuth, MDC.get("requestId"));
+        interviewService.requestLikeNotificationAsync(interviewId, memberAuth);
     }
 
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
