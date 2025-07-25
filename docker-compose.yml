@@ -8,7 +8,8 @@ volumes:
 
 services:
   # ✅ Spring Boot App
-  kokomen-app:
+  kokomen-interview-local-api:
+    container_name: kokomen-interview-local-api
     build: .
     ports:
       - 8080:8080
@@ -19,13 +20,14 @@ services:
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
     depends_on:
-      kokomen-mysql:
+      kokomen-interview-local-mysql:
         condition: service_healthy
     networks:
       - local-kokomen-net
 
   # ✅ MySQL
-  kokomen-mysql:
+  kokomen-interview-local-mysql:
+    container_name: kokomen-interview-local-mysql
     image: mysql:8.4.5
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -51,7 +53,8 @@ services:
       local-kokomen-net:
 
   # ✅ Redis
-  kokomen-redis:
+  kokomen-local-redis:
+    container_name: kokomen-local-redis
     image: valkey/valkey:8.0.1
     ports:
       - 6379:6379

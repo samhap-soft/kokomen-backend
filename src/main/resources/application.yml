@@ -57,7 +57,7 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:mysql://kokomen-mysql:3306/kokomen-local
+    url: jdbc:mysql://kokomen-interview-local-mysql:3306/kokomen-local
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -68,7 +68,7 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      host: kokomen-redis
+      host: kokomen-local-redis
       port: 6379
 oauth:
   kakao:
