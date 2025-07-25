@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,7 @@ public class InterviewFacadeService {
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = interviewService.createQuestionAndAnswers(interviewId, curQuestionId, answerRequest, memberAuth);
+            QuestionAndAnswers questionAndAnswers = interviewService.createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
             return interviewService.handleLlmResponse(memberAuth.memberId(), questionAndAnswers, llmResponse, interviewId);
         } finally {
@@ -66,6 +67,7 @@ public class InterviewFacadeService {
 
     public void likeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.likeInterview(interviewId, memberAuth);
+        interviewService.requestLikeNotificationAsync(interviewId, memberAuth, MDC.get("requestId"));
     }
 
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {

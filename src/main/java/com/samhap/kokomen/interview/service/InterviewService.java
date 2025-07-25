@@ -9,6 +9,7 @@ import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
+import com.samhap.kokomen.global.domain.NotificationType;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -21,6 +22,7 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
@@ -32,12 +34,14 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewLikeNotificationPayload;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.NotificationRequest;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
@@ -47,7 +51,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,13 +65,14 @@ public class InterviewService {
     public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX = "lock:interview:viewCount:";
     public static final String INTERVIEW_VIEW_COUNT_KEY_PREFIX = "interview:viewCount:";
 
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
+    private final NotificationClient notificationClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
     private final RootQuestionRepository rootQuestionRepository;
-    private final RedisService redisService;
-    private final ObjectMapper objectMapper;
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
@@ -99,7 +106,7 @@ public class InterviewService {
 
     // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
     @Transactional(readOnly = true)
-    public QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+    public QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, AnswerRequest answerRequest) {
         Interview interview = readInterview(interviewId);
 
         List<Question> questions = questionRepository.findByInterview(interview);
@@ -155,6 +162,18 @@ public class InterviewService {
         }
         interviewLikeRepository.save(new InterviewLike(member, interview));
         interviewRepository.increaseLikeCount(interviewId);
+    }
+
+    @Async
+    public void requestLikeNotificationAsync(Long interviewId, MemberAuth memberAuth, String requestId) {
+        MDC.put("requestId", requestId);
+        Interview interview = readInterview(interviewId);
+        Long receiverMemberId = interview.getMember().getId();
+        NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
+                new InterviewLikeNotificationPayload(
+                        NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
+
+        notificationClient.request(notificationRequest);
     }
 
     @Transactional(readOnly = true)

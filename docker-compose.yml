@@ -21,6 +21,8 @@ services:
     depends_on:
       kokomen-mysql:
         condition: service_healthy
+    networks:
+      - local-kokomen-net
 
   # ✅ MySQL
   kokomen-mysql:
@@ -45,6 +47,8 @@ services:
       test: [ "CMD", "mysql", "-u", "root", "-proot", "-e", "SELECT 1" ]
       interval: 5s
       retries: 10
+    networks:
+      local-kokomen-net:
 
   # ✅ Redis
   kokomen-redis:
@@ -53,6 +57,13 @@ services:
       - 6379:6379
     volumes:
       - kokomen-local-redis-data:/data
+    networks:
+      local-kokomen-net:
+
+networks:
+  local-kokomen-net:
+    external: true
+    driver: bridge
 
 #  로컬에서 모니터링 테스트가 필요할 때만 주석 해제
 #  # ✅ Loki
