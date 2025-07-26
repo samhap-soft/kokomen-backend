@@ -4,10 +4,13 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoCreateRequest;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoResponse;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoUpdateRequest;
+import com.samhap.kokomen.answer.service.event.AnswerLikedEvent;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,7 @@ public class AnswerFacadeService {
     private final AnswerLikeService answerLikeService;
     private final AnswerMemoService answerMemoService;
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public AnswerMemoResponse createAnswerMemo(Long answerId, AnswerMemoCreateRequest answerMemoCreateRequest, MemberAuth memberAuth) {
@@ -31,10 +35,14 @@ public class AnswerFacadeService {
 
     @Transactional
     public void likeAnswer(Long answerId, MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
+        Member likerMember = memberService.readById(memberAuth.memberId());
         Answer answer = answerService.readById(answerId);
-        answerLikeService.likeAnswer(member, answer);
+        answerLikeService.likeAnswer(likerMember, answer);
         answerService.incrementLikeCountModifying(answerId);
+
+        Interview interview = answer.getQuestion().getInterview();
+        eventPublisher.publishEvent(
+                new AnswerLikedEvent(answerId, interview.getId(), likerMember.getId(), interview.getMember().getId(), answer.getLikeCount()));
     }
 
     @Transactional

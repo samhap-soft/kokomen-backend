@@ -33,4 +33,5 @@ public class AnswerService {
     public void decrementLikeCountModifying(Long answerId) {
         answerRepository.decrementLikeCountModifying(answerId);
     }
+
 }
