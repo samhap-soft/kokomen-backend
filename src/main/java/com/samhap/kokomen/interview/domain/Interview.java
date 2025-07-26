@@ -96,8 +96,8 @@ public class Interview extends BaseEntity {
         }
     }
 
-    public boolean isInterviewee(Member member) {
-        return this.member.getId().equals(member.getId());
+    public boolean isInterviewee(Long memberId) {
+        return this.member.getId().equals(memberId);
     }
 
     public boolean isInProgress() {

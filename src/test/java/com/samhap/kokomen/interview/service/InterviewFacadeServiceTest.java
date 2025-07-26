@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
@@ -121,5 +123,50 @@ class InterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3),
                 () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
         );
+    }
+
+    @Test
+    void 아직_좋아요를_누르지_않은_인터뷰에_좋아요를_요청할_수_있다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
+
+        // when
+        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
+
+        // then
+        Interview found = interviewRepository.findById(interview.getId()).get();
+        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() + 1);
+    }
+
+    @Test
+    void 이미_좋아요를_누른_인터뷰에_좋아요를_요청하면_예외가_발생한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
+        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
+
+        // when & then
+        assertThatThrownBy(() -> interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("이미 좋아요를 누른 인터뷰입니다.");
+    }
+
+    @Test
+    void 이미_좋아요를_누른_인터뷰에_대해_좋아요를_취소할_수_있다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
+        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
+
+        // when
+        interviewFacadeService.unlikeInterview(interview.getId(), new MemberAuth(member.getId()));
+
+        // then
+        Interview found = interviewRepository.findById(interview.getId()).get();
+        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
     }
 }

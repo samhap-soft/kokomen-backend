@@ -16,34 +16,22 @@ import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
-import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
-import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
-import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
-import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +43,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewService {
 
-    private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
     public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX = "lock:interview:viewCount:";
     public static final String INTERVIEW_VIEW_COUNT_KEY_PREFIX = "interview:viewCount:";
 
@@ -71,97 +58,14 @@ public class InterviewService {
     private final AnswerMemoRepository answerMemoRepository;
 
     @Transactional
-    public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth.memberId());
-        validateEnoughTokenCount(member, interviewRequest);
-        RootQuestion rootQuestion = readRandomRootQuestion(member, interviewRequest);
-        Interview interview = interviewRepository.save(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
-        Question question = questionRepository.save(new Question(interview, rootQuestion.getContent()));
-
-        return new InterviewStartResponse(interview, question);
-    }
-
-    private void validateEnoughTokenCount(Member member, InterviewRequest interviewRequest) {
-        if (!member.hasEnoughTokenCount(interviewRequest.maxQuestionCount())) {
-            throw new BadRequestException("생성하려는 인터뷰의 최대 질문 수가 회원이 가진 토큰 개수를 초과합니다.");
-        }
-    }
-
-    private RootQuestion readRandomRootQuestion(Member member, InterviewRequest interviewRequest) {
-        String category = interviewRequest.category().name();
-
-        return rootQuestionRepository.findRandomByCategoryExcludingRecent(
-                member.getId(),
-                category,
-                EXCLUDED_RECENT_ROOT_QUESTION_COUNT
-        ).orElseThrow(() -> new IllegalStateException("루트 질문 갯수가 부족합니다. category = " + category));
-    }
-
-    // TODO: answer가 question을 들고 있는데, 영속성 컨텍스트를 활용해서 가져오는지 -> lazy 관련해서
-    @Transactional(readOnly = true)
-    public QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, AnswerRequest answerRequest) {
-        Interview interview = readInterview(interviewId);
-
-        List<Question> questions = questionRepository.findByInterview(interview);
-        List<Answer> prevAnswers = answerRepository.findByQuestionIn(questions);
-
-        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
-    }
-
-    @Transactional
-    public Optional<InterviewProceedResponse> handleLlmResponse(
-            Long memberId,
-            QuestionAndAnswers questionAndAnswers,
-            LlmResponse llmResponse,
-            Long interviewId
-    ) {
-        Member member = readMember(memberId);
-        member.useToken();
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-        Interview interview = readInterview(interviewId);
-        if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(llmResponse, interview);
-            return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
-        }
-        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-        return Optional.empty();
-    }
-
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
-        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
-        return answerRepository.save(questionAndAnswers.createCurAnswer(feedback));
-    }
-
-    private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
-        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
-        Question next = new Question(interview, nextQuestionResponse.nextQuestion());
-        return questionRepository.save(next);
-    }
-
-    private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview, LlmResponse llmResponse, Member member) {
-        int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
-        TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
-        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
-        member.addScore(totalScore);
-    }
-
-    // TODO: 한 명의 사용자가 계속 요청했을 떄 Unique 제약조건에 의해 락 대기가 발생할 수 있음 -> DB에 과부하가 가지 않도록 redis 사용하거나 rate limiter 사용 고려
-    @Transactional
-    public void likeInterview(Long interviewId, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth.memberId());
-        Interview interview = readInterview(interviewId);
-        if (interviewLikeRepository.existsByMemberIdAndInterviewId(member.getId(), interviewId)) {
-            throw new BadRequestException("이미 좋아요를 누른 인터뷰입니다.");
-        }
-        interviewLikeRepository.save(new InterviewLike(member, interview));
-        interviewRepository.increaseLikeCount(interviewId);
+    public Interview saveInterview(Interview interview) {
+        return interviewRepository.save(interview);
     }
 
     @Transactional(readOnly = true)
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
-        validateInterviewee(interviewId, memberAuth);
+        validateInterviewee(interviewId, memberAuth.memberId());
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 
@@ -253,7 +157,7 @@ public class InterviewService {
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
     public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth) {
-        validateInterviewee(interviewId, memberAuth);
+        validateInterviewee(interviewId, memberAuth.memberId());
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
         validateInterviewFinished(interview);
@@ -264,11 +168,9 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public void validateInterviewee(Long interviewId, MemberAuth memberAuth) {
-        Member member = readMember(memberAuth.memberId());
+    public void validateInterviewee(Long interviewId, Long memberId) {
         Interview interview = readInterview(interviewId);
-
-        if (!interview.isInterviewee(member)) {
+        if (!interview.isInterviewee(memberId)) {
             throw new ForbiddenException("해당 인터뷰를 생성한 회원이 아닙니다.");
         }
     }
@@ -343,7 +245,7 @@ public class InterviewService {
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
-        return memberAuth.isAuthenticated() && interview.isInterviewee(readMember(memberAuth.memberId()));
+        return memberAuth.isAuthenticated() && interview.isInterviewee(memberAuth.memberId());
     }
 
     private Long increaseViewCount(Interview interview, ClientIp clientIp) {
@@ -360,11 +262,11 @@ public class InterviewService {
         return redisService.incrementKey(viewCountKey);
     }
 
-    public static String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {
+    public String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {
         return INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + interview.getId() + ":" + clientIp.address();
     }
 
-    public static String createInterviewViewCountKey(Interview interview) {
+    public String createInterviewViewCountKey(Interview interview) {
         return INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId();
     }
 
@@ -376,7 +278,7 @@ public class InterviewService {
         if (affectedRows == 0) {
             throw new BadRequestException("좋아요를 누르지 않은 인터뷰입니다.");
         }
-        interviewRepository.decreaseLikeCount(interviewId);
+        interviewRepository.decreaseLikeCountModifying(interviewId);
     }
 
     private Member readMember(Long memberId) {
@@ -387,5 +289,9 @@ public class InterviewService {
     public Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
+    }
+
+    public void increaseLikeCountModifying(Long interviewId) {
+        interviewRepository.increaseLikeCountModifying(interviewId);
     }
 }

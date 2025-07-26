@@ -30,7 +30,7 @@ class InterviewRepositoryTest extends BaseTest {
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
 
         // when
-        interviewRepository.increaseLikeCount(interview.getId());
+        interviewRepository.increaseLikeCountModifying(interview.getId());
 
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();
@@ -45,7 +45,7 @@ class InterviewRepositoryTest extends BaseTest {
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
 
         // when
-        interviewRepository.decreaseLikeCount(interview.getId());
+        interviewRepository.decreaseLikeCountModifying(interview.getId());
 
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();

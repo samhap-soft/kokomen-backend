@@ -21,10 +21,10 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     @Transactional
     @Modifying
     @Query("UPDATE Interview i SET i.likeCount = i.likeCount + 1 WHERE i.id = :interviewId")
-    void increaseLikeCount(Long interviewId);
+    void increaseLikeCountModifying(Long interviewId);
 
     @Transactional
     @Modifying
     @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
-    void decreaseLikeCount(Long interviewId);
+    void decreaseLikeCountModifying(Long interviewId);
 }

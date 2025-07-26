@@ -377,7 +377,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
         Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(finishedInterview).member(member).build());
-        interviewRepository.increaseLikeCount(finishedInterview.getId());
+        interviewRepository.increaseLikeCountModifying(finishedInterview.getId());
 
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
                 .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
@@ -500,7 +500,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Question question6 = questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
         Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(finishedInterview2).member(readerMember).build());
-        interviewRepository.increaseLikeCount(finishedInterview2.getId());
+        interviewRepository.increaseLikeCountModifying(finishedInterview2.getId());
 
         answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.SUBMITTED)
                 .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
@@ -846,7 +846,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         interview.evaluate("제대로 좀 공부 해라.", -30);
         interviewRepository.save(interview);
-        interviewRepository.increaseLikeCount(interview.getId());
+        interviewRepository.increaseLikeCountModifying(interview.getId());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer1).member(readerMember).build());
         answerRepository.incrementLikeCountModifying(answer1.getId());

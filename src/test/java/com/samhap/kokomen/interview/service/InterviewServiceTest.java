@@ -188,53 +188,8 @@ class InterviewServiceTest extends BaseTest {
         executorService.awaitTermination(3, TimeUnit.SECONDS);
 
         // then
-        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(InterviewService.createInterviewViewCountKey(interview)));
+        Long viewCount = Long.valueOf((String) redisTemplate.opsForValue().get(interviewService.createInterviewViewCountKey(interview)));
         assertThat(viewCount).isEqualTo(10L);
-    }
-
-    @Test
-    void 아직_좋아요를_누르지_않은_인터뷰에_좋아요를_요청할_수_있다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
-
-        // when
-        interviewService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // then
-        Interview found = interviewRepository.findById(interview.getId()).get();
-        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() + 1);
-    }
-
-    @Test
-    void 이미_좋아요를_누른_인터뷰에_좋아요를_요청하면_예외가_발생한다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
-        interviewService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // when & then
-        assertThatThrownBy(() -> interviewService.likeInterview(interview.getId(), new MemberAuth(member.getId())))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("이미 좋아요를 누른 인터뷰입니다.");
-    }
-
-    @Test
-    void 이미_좋아요를_누른_인터뷰에_대해_좋아요를_취소할_수_있다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
-        interviewService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // when
-        interviewService.unlikeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // then
-        Interview found = interviewRepository.findById(interview.getId()).get();
-        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
     }
 
     @Test

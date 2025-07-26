@@ -41,23 +41,22 @@ public class MemberService {
         return new MyProfileResponse(member, totalMemberCount, rank);
     }
 
-    @Transactional
-    public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
-        Member member = readById(memberAuth.memberId());
-        member.updateProfile(profileUpdateRequest.nickname());
-    }
-
     public List<RankingResponse> findRanking(Pageable pageable) {
         int limit = pageable.getPageSize();
         int offset = (int) pageable.getOffset();
         return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
     }
 
-    public void validateHasToken(MemberAuth memberAuth) {
-        Member member = readById(memberAuth.memberId());
-
-        if (!member.hasEnoughTokenCount(1)) {
-            throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+    public void validateEnoughTokenCount(Long memberId, int tokenCount) {
+        Member member = readById(memberId);
+        if (!member.hasEnoughTokenCount(tokenCount)) {
+            throw new BadRequestException("토큰 갯수가 부족합니다.");
         }
+    }
+
+    @Transactional
+    public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
+        Member member = readById(memberAuth.memberId());
+        member.updateProfile(profileUpdateRequest.nickname());
     }
 }

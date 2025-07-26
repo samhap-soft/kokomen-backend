@@ -1,12 +1,17 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
@@ -18,6 +23,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
+import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.List;
@@ -36,29 +42,41 @@ public class InterviewFacadeService {
 
     private final BedrockClient bedrockClient;
     private final RedisService redisService;
+    private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
+    private final InterviewLikeService interviewLikeService;
     private final MemberService memberService;
+    private final RootQuestionService rootQuestionService;
+    private final QuestionService questionService;
+    private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
 
+    @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        return interviewService.startInterview(interviewRequest, memberAuth);
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), interviewRequest.maxQuestionCount());
+        Member member = memberService.readById(memberAuth.memberId());
+        RootQuestion rootQuestion = rootQuestionService.readRandomRootQuestion(member, interviewRequest);
+        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
+        Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+
+        return new InterviewStartResponse(interview, question);
     }
 
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        memberService.validateHasToken(memberAuth);
-        interviewService.validateInterviewee(interviewId, memberAuth);
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = interviewService.createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
-            return interviewService.handleLlmResponse(memberAuth.memberId(), questionAndAnswers, llmResponse, interviewId);
+            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse, interviewId);
         } finally {
             redisService.releaseLock(lockKey);
         }
     }
 
-    public static String createInterviewProceedLockKey(Long memberId) {
+    private String createInterviewProceedLockKey(Long memberId) {
         return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + memberId;
     }
 
@@ -69,10 +87,21 @@ public class InterviewFacadeService {
         }
     }
 
+    private QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, AnswerRequest answerRequest) {
+        Interview interview = interviewService.readInterview(interviewId);
+
+        List<Question> questions = questionService.findByInterview(interview);
+        List<Answer> prevAnswers = answerService.findByQuestionIn(questions);
+
+        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
+    }
+
     @Transactional
     public void likeInterview(Long interviewId, MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.readInterview(interviewId);
-        interviewService.likeInterview(interviewId, memberAuth);
+        interviewLikeService.likeInterview(new InterviewLike(member, interview));
+        interviewService.increaseLikeCountModifying(interviewId);
         eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
     }
 
@@ -96,6 +125,7 @@ public class InterviewFacadeService {
         return interviewService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp);
     }
 
+    @Transactional
     public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.unlikeInterview(interviewId, memberAuth);
     }
