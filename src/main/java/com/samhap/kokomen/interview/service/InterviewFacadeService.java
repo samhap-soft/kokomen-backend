@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.BedrockClient;
@@ -16,13 +17,16 @@ import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -34,6 +38,7 @@ public class InterviewFacadeService {
     private final RedisService redisService;
     private final InterviewService interviewService;
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         return interviewService.startInterview(interviewRequest, memberAuth);
@@ -64,9 +69,11 @@ public class InterviewFacadeService {
         }
     }
 
+    @Transactional
     public void likeInterview(Long interviewId, MemberAuth memberAuth) {
+        Interview interview = interviewService.readInterview(interviewId);
         interviewService.likeInterview(interviewId, memberAuth);
-        interviewService.requestLikeNotificationAsync(interviewId, memberAuth);
+        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
     }
 
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {

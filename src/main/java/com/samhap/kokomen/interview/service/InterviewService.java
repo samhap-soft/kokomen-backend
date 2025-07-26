@@ -9,7 +9,6 @@ import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
-import com.samhap.kokomen.global.domain.NotificationType;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -22,7 +21,6 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
@@ -34,14 +32,12 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewLikeNotificationPayload;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
-import com.samhap.kokomen.interview.service.dto.NotificationRequest;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
@@ -52,7 +48,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,7 +61,6 @@ public class InterviewService {
 
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
-    private final NotificationClient notificationClient;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -161,16 +155,6 @@ public class InterviewService {
         }
         interviewLikeRepository.save(new InterviewLike(member, interview));
         interviewRepository.increaseLikeCount(interviewId);
-    }
-
-    @Async("asyncExecutor")
-    public void requestLikeNotificationAsync(Long interviewId, MemberAuth memberAuth) {
-        Interview interview = readInterview(interviewId);
-        Long receiverMemberId = interview.getMember().getId();
-        NotificationRequest notificationRequest = new NotificationRequest(receiverMemberId,
-                new InterviewLikeNotificationPayload(NotificationType.INTERVIEW_LIKE, interviewId, memberAuth.memberId(), interview.getLikeCount()));
-
-        notificationClient.request(notificationRequest);
     }
 
     @Transactional(readOnly = true)
@@ -400,7 +384,7 @@ public class InterviewService {
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
-    private Interview readInterview(Long interviewId) {
+    public Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
