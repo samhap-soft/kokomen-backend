@@ -849,7 +849,7 @@ class InterviewControllerTest extends BaseControllerTest {
         interviewRepository.increaseLikeCount(interview.getId());
         interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer1).member(readerMember).build());
-        answerRepository.incrementLikeCount(answer1.getId());
+        answerRepository.incrementLikeCountModifying(answer1.getId());
 
         String responseJson = """
                 {

@@ -29,8 +29,13 @@ public class MemberService {
         return new MemberResponse(member);
     }
 
+    public Member readById(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+    }
+
     public MyProfileResponse findMember(MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readById(memberAuth.memberId());
         long rank = memberRepository.findRankByScore(member.getScore());
         long totalMemberCount = memberRepository.count();
         return new MyProfileResponse(member, totalMemberCount, rank);
@@ -38,7 +43,7 @@ public class MemberService {
 
     @Transactional
     public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
-        Member member = readMember(memberAuth);
+        Member member = readById(memberAuth.memberId());
         member.updateProfile(profileUpdateRequest.nickname());
     }
 
@@ -49,15 +54,10 @@ public class MemberService {
     }
 
     public void validateHasToken(MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readById(memberAuth.memberId());
 
         if (!member.hasEnoughTokenCount(1)) {
             throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
         }
-    }
-
-    private Member readMember(MemberAuth memberAuth) {
-        return memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 }

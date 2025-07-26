@@ -19,10 +19,10 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     @Transactional
     @Modifying
     @Query("UPDATE Answer a SET a.likeCount = a.likeCount + 1 WHERE a.id = :answerId")
-    void incrementLikeCount(Long answerId);
+    void incrementLikeCountModifying(Long answerId);
 
     @Transactional
     @Modifying
     @Query("UPDATE Answer a SET a.likeCount = a.likeCount - 1 WHERE a.id = :answerId")
-    void decrementLikeCount(Long answerId);
+    void decrementLikeCountModifying(Long answerId);
 }
