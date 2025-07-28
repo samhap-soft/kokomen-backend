@@ -33,6 +33,7 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.event.InterviewViewCountEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -72,10 +73,13 @@ class InterviewServiceTest extends BaseTest {
     private AnswerMemoRepository answerMemoRepository;
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private TestInterviewViewCountEventListener testInterviewViewCountEventListener;
 
     @Test
     void 다른_사용자의_인터뷰_최종_결과를_조회하면_조회수가_1_증가한다() {
         // given
+        testInterviewViewCountEventListener.clear();
         Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
@@ -98,6 +102,11 @@ class InterviewServiceTest extends BaseTest {
 
         // then
         assertThat(viewCount).isEqualTo(1L);
+        // 이벤트 리스너로 발행된 이벤트의 viewCount 값도 검증
+        List<InterviewViewCountEvent> events = testInterviewViewCountEventListener.getEvents();
+        assertThat(events).hasSize(1);
+        InterviewViewCountEvent event = events.get(0);
+        assertThat(event.viewCount()).isEqualTo(viewCount);
     }
 
     @Test

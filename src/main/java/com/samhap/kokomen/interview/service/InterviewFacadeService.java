@@ -102,6 +102,8 @@ public class InterviewFacadeService {
         Interview interview = interviewService.readInterview(interviewId);
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
         interviewService.increaseLikeCountModifying(interviewId);
+        interview = interviewService.readInterview(interviewId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 조회
+
         eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
     }
 
