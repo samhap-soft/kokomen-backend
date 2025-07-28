@@ -48,9 +48,9 @@ public class Answer extends BaseEntity {
     private String feedback;
 
     @Column(name = "like_count", nullable = false)
-    private Integer likeCount;
+    private Long likeCount;
 
     public Answer(Question question, String content, AnswerRank answerRank, String feedback) {
-        this(null, question, content, answerRank, feedback, 0);
+        this(null, question, content, answerRank, feedback, 0L);
     }
 }

@@ -55,7 +55,7 @@ public class AnswerFixtureBuilder {
                 content != null ? content : "프로세스는 무겁고 스레드는 경량입니다.",
                 answerRank != null ? answerRank : AnswerRank.C,
                 feedback != null ? feedback : "좀 더 자세하게 설명해주시면 좋겠네요.",
-                likeCount != null ? likeCount : 0
+                likeCount != null ? likeCount : 0L
         );
     }
 
