@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
@@ -22,11 +21,11 @@ import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryRespon
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
-import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.event.InterviewViewCountEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
@@ -35,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,15 +47,14 @@ public class InterviewService {
     public static final String INTERVIEW_VIEW_COUNT_KEY_PREFIX = "interview:viewCount:";
 
     private final RedisService redisService;
-    private final ObjectMapper objectMapper;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final MemberRepository memberRepository;
-    private final RootQuestionRepository rootQuestionRepository;
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Interview saveInterview(Interview interview) {
@@ -241,7 +240,9 @@ public class InterviewService {
         if (isInterviewee(memberAuth, interview)) {
             return findViewCount(interview);
         }
-        return increaseViewCount(interview, clientIp);
+        Long viewCount = increaseViewCount(interview, clientIp);
+        publishEventIfViewCountIsOneOrPowerOfTen(viewCount, interview);
+        return viewCount;
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
@@ -260,6 +261,23 @@ public class InterviewService {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
         return redisService.incrementKey(viewCountKey);
+    }
+
+    private void publishEventIfViewCountIsOneOrPowerOfTen(Long viewCount, Interview interview) {
+        if (isOneOrPowerOfTen(viewCount)) {
+            eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
+        }
+    }
+
+    private boolean isOneOrPowerOfTen(long viewCount) {
+        if (viewCount < 1) {
+            return false;
+        }
+
+        while (viewCount % 10 == 0) {
+            viewCount /= 10;
+        }
+        return viewCount == 1;
     }
 
     public String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {
