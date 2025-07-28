@@ -20,6 +20,10 @@ public class AnswerLikeNotificationListener {
     @Async("asyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendLikeNotificationAsync(AnswerLikedEvent event) {
+        if (event.receiverMemberId().equals(event.likerMemberId())) {
+            return;
+        }
+
         AnswerLikeNotificationPayload notificationPayload = new AnswerLikeNotificationPayload(
                 NotificationType.ANSWER_LIKE, event.answerId(), event.interviewId(), event.likerMemberId(), event.likeCount());
         NotificationRequest notificationRequest = new NotificationRequest(event.receiverMemberId(), notificationPayload);
