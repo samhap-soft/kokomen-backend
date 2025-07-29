@@ -1,4 +1,7 @@
 spring:
+  datasource:
+    hikari:
+      connection-timeout: 10000
   jpa:
     open-in-view: false
   jackson:
@@ -24,6 +27,10 @@ server:
         same-site: lax
         max-age: 86400
   tomcat:
+    threads:
+      min-spare: 20
+      max: 30
+    max-connections: 1024
     mbeanregistry:
       enabled: true
 open-ai:
