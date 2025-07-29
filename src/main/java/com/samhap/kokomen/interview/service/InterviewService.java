@@ -12,6 +12,7 @@ import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
+import com.samhap.kokomen.global.exception.RedisException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
@@ -34,11 +35,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class InterviewService {
@@ -225,9 +228,14 @@ public class InterviewService {
     }
 
     private Long findViewCount(Interview interview) {
-        return redisService.get(createInterviewViewCountKey(interview), String.class)
-                .map(Long::valueOf)
-                .orElse(interview.getViewCount());
+        try {
+            return redisService.get(createInterviewViewCountKey(interview), String.class)
+                    .map(Long::valueOf)
+                    .orElse(interview.getViewCount());
+        } catch (RedisException e) {
+            log.error("Redis 조회수 조회 실패: {}", e.getMessage());
+            return interview.getViewCount();
+        }
     }
 
     private void validateInterviewFinished(Interview interview) {
@@ -240,7 +248,13 @@ public class InterviewService {
         if (isInterviewee(memberAuth, interview)) {
             return findViewCount(interview);
         }
-        return increaseViewCount(interview, clientIp);
+
+        try {
+            return increaseViewCount(interview, clientIp);
+        } catch (RedisException e) {
+            log.error("Redis 조회수 증가 실패: {}", e.getMessage());
+            return interview.getViewCount();
+        }
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
