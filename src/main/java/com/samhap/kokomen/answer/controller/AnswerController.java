@@ -1,6 +1,6 @@
 package com.samhap.kokomen.answer.controller;
 
-import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.answer.service.AnswerFacadeService;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoCreateRequest;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoResponse;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoUpdateRequest;
@@ -21,14 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AnswerController {
 
-    private final AnswerService answerService;
+    private final AnswerFacadeService answerFacadeService;
 
     @PostMapping("/{answerId}/like")
     public ResponseEntity<Void> likeAnswer(
             @PathVariable Long answerId,
             @Authentication MemberAuth memberAuth
     ) {
-        answerService.likeAnswer(answerId, memberAuth);
+        answerFacadeService.likeAnswer(answerId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -38,7 +38,7 @@ public class AnswerController {
             @RequestBody AnswerMemoCreateRequest answerMemoCreateRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        AnswerMemoResponse answerMemoResponse = answerService.createAnswerMemo(answerId, answerMemoCreateRequest, memberAuth);
+        AnswerMemoResponse answerMemoResponse = answerFacadeService.createAnswerMemo(answerId, answerMemoCreateRequest, memberAuth);
         return ResponseEntity.ok(answerMemoResponse);
     }
 
@@ -48,7 +48,7 @@ public class AnswerController {
             @RequestBody AnswerMemoUpdateRequest answerMemoUpdateRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        answerService.updateAnswerMemo(answerId, answerMemoUpdateRequest, memberAuth);
+        answerFacadeService.updateAnswerMemo(answerId, answerMemoUpdateRequest, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -57,7 +57,7 @@ public class AnswerController {
             @PathVariable Long answerId,
             @Authentication MemberAuth memberAuth
     ) {
-        answerService.unlikeAnswer(answerId, memberAuth);
+        answerFacadeService.unlikeAnswer(answerId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -66,7 +66,7 @@ public class AnswerController {
             @PathVariable Long answerId,
             @Authentication MemberAuth memberAuth
     ) {
-        answerService.deleteAnswerMemo(answerId, memberAuth);
+        answerFacadeService.deleteAnswerMemo(answerId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 }

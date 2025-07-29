@@ -8,21 +8,26 @@ volumes:
 
 services:
   # ✅ Spring Boot App
-  kokomen-app:
+  kokomen-interview-local-api:
+    container_name: kokomen-interview-local-api
     build: .
     ports:
       - 8080:8080
+      - 8081:8081
     environment:
       SPRING_PROFILES_ACTIVE: local
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
     depends_on:
-      kokomen-mysql:
+      kokomen-interview-local-mysql:
         condition: service_healthy
+    networks:
+      - local-kokomen-net
 
   # ✅ MySQL
-  kokomen-mysql:
+  kokomen-interview-local-mysql:
+    container_name: kokomen-interview-local-mysql
     image: mysql:8.4.5
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -44,14 +49,24 @@ services:
       test: [ "CMD", "mysql", "-u", "root", "-proot", "-e", "SELECT 1" ]
       interval: 5s
       retries: 10
+    networks:
+      local-kokomen-net:
 
   # ✅ Redis
-  kokomen-redis:
+  kokomen-local-redis:
+    container_name: kokomen-local-redis
     image: valkey/valkey:8.0.1
     ports:
       - 6379:6379
     volumes:
       - kokomen-local-redis-data:/data
+    networks:
+      local-kokomen-net:
+
+networks:
+  local-kokomen-net:
+    external: true
+    driver: bridge
 
 #  로컬에서 모니터링 테스트가 필요할 때만 주석 해제
 #  # ✅ Loki

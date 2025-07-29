@@ -1,6 +1,7 @@
 package com.samhap.kokomen.member.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -28,17 +29,16 @@ public class MemberService {
         return new MemberResponse(member);
     }
 
+    public Member readById(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+    }
+
     public MyProfileResponse findMember(MemberAuth memberAuth) {
-        Member member = readMember(memberAuth);
+        Member member = readById(memberAuth.memberId());
         long rank = memberRepository.findRankByScore(member.getScore());
         long totalMemberCount = memberRepository.count();
         return new MyProfileResponse(member, totalMemberCount, rank);
-    }
-
-    @Transactional
-    public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
-        Member member = readMember(memberAuth);
-        member.updateProfile(profileUpdateRequest.nickname());
     }
 
     public List<RankingResponse> findRanking(Pageable pageable) {
@@ -47,8 +47,16 @@ public class MemberService {
         return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
     }
 
-    private Member readMember(MemberAuth memberAuth) {
-        return memberRepository.findById(memberAuth.memberId())
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+    public void validateEnoughTokenCount(Long memberId, int tokenCount) {
+        Member member = readById(memberId);
+        if (!member.hasEnoughTokenCount(tokenCount)) {
+            throw new BadRequestException("토큰 갯수가 부족합니다.");
+        }
+    }
+
+    @Transactional
+    public void updateProfile(MemberAuth memberAuth, ProfileUpdateRequest profileUpdateRequest) {
+        Member member = readById(memberAuth.memberId());
+        member.updateProfile(profileUpdateRequest.nickname());
     }
 }

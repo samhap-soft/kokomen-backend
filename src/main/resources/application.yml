@@ -1,4 +1,7 @@
 spring:
+  datasource:
+    hikari:
+      connection-timeout: 10000
   jpa:
     open-in-view: false
   jackson:
@@ -20,10 +23,16 @@ server:
       cookie:
         name: JSESSIONID
         path: /
-        secure: true
         http-only: true
         same-site: lax
         max-age: 86400
+  tomcat:
+    threads:
+      min-spare: 20
+      max: 30
+    max-connections: 1024
+    mbeanregistry:
+      enabled: true
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 management:
@@ -44,6 +53,9 @@ management:
     web:
       exposure:
         include: prometheus, info, health, metrics
+notification:
+  connect-timeout: 3s
+  read-timeout: 3s
 
 ---
 # local profile
@@ -52,7 +64,7 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:mysql://kokomen-mysql:3306/kokomen-local
+    url: jdbc:mysql://kokomen-interview-local-mysql:3306/kokomen-local
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -63,7 +75,7 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      host: kokomen-redis
+      host: kokomen-local-redis
       port: 6379
 oauth:
   kakao:
@@ -71,6 +83,13 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET}
 cors:
   allowed-origins: http://localhost:8080
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+notification:
+  base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
 
 ---
 # dev profile
@@ -97,13 +116,15 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000
+  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000
 server:
   servlet:
     session:
       cookie:
         domain: kokomen.kr
-
+        secure: false
+notification:
+  base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
 ---
 # prod profile
 spring:
@@ -135,3 +156,9 @@ server:
     session:
       cookie:
         domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s

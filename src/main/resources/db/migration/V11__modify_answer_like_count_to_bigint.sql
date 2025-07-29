@@ -1,0 +1,1 @@
+ALTER TABLE answer MODIFY COLUMN like_count BIGINT;

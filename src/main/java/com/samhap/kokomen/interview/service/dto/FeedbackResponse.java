@@ -15,7 +15,7 @@ public record FeedbackResponse(
         String answer,
         AnswerRank answerRank,
         String answerFeedback,
-        Integer answerLikeCount,
+        Long answerLikeCount,
         Boolean answerAlreadyLiked,
         String submittedAnswerMemoContent,
         String tempAnswerMemoContent,
