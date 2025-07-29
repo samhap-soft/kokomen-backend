@@ -159,6 +159,6 @@ server:
         secure: true
 
 notification:
-  base-url: http://notification-internal.kokomen.kr # url에 internal이 존재하는지 파싱이 필요하다면 notification.internal.kokomen.kr이 맞을지도?
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
   connect-timeout: 3s
   read-timeout: 3s
