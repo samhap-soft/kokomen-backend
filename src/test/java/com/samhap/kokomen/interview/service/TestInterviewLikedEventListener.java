@@ -1,12 +1,11 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class TestInterviewLikedEventListener {
@@ -25,4 +24,4 @@ public class TestInterviewLikedEventListener {
     public void clear() {
         events.clear();
     }
-} 
+}
