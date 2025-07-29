@@ -17,7 +17,7 @@ public class InterviewNotificationListener {
 
     private final NotificationClient notificationClient;
 
-    @Async("asyncExecutor")
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendLikeNotificationAsync(InterviewLikedEvent likeEvent) {
         if (likeEvent.receiverMemberId().equals(likeEvent.likerMemberId())) {
@@ -31,7 +31,7 @@ public class InterviewNotificationListener {
         notificationClient.request(notificationRequest);
     }
 
-    @Async("asyncExecutor")
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendViewCountNotificationAsync(InterviewViewCountEvent viewCountEvent) {
         InterviewViewCountNotificationPayload notificationPayload = new InterviewViewCountNotificationPayload(

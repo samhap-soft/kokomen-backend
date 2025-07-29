@@ -17,7 +17,7 @@ public class AnswerLikeNotificationListener {
 
     private final NotificationClient notificationClient;
 
-    @Async("asyncExecutor")
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void sendLikeNotificationAsync(AnswerLikedEvent event) {
         if (event.receiverMemberId().equals(event.likerMemberId())) {
