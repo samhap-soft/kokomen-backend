@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
@@ -12,11 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StopWatch;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @Slf4j
+@ExecutionTimer
 @Component
 public class GptClient {
 
@@ -42,10 +43,6 @@ public class GptClient {
 
     public GptResponse requestToGpt(QuestionAndAnswers questionAndAnswers) {
         GptRequest gptRequest = createGptRequest(questionAndAnswers);
-
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start();
-
         GptResponse gptResponse;
         try {
             gptResponse = restClient.post()
@@ -59,8 +56,6 @@ public class GptClient {
         } catch (Exception e) {
             throw new LlmApiException("GPT API 호출 중 예상치 못한 오류가 발생했습니다.", e);
         }
-        stopWatch.stop();
-        log.info("GPT API 호출 완료 - {}ms", stopWatch.getTotalTimeMillis());
 
         return gptResponse;
     }

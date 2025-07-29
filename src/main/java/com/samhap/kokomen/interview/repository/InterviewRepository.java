@@ -19,12 +19,12 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     Long countByMemberAndInterviewState(Member member, InterviewState interviewState);
 
     @Transactional
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Interview i SET i.likeCount = i.likeCount + 1 WHERE i.id = :interviewId")
-    void increaseLikeCount(Long interviewId);
+    void increaseLikeCountModifying(Long interviewId);
 
     @Transactional
     @Modifying
     @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
-    void decreaseLikeCount(Long interviewId);
+    void decreaseLikeCountModifying(Long interviewId);
 }

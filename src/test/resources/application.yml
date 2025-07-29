@@ -24,6 +24,11 @@ logging:
   level:
     org.springframework.jdbc.core.JdbcTemplate: trace
 
+notification:
+  base-url: http://kokomen-notification-test
+  connect-timeout: 3s
+  read-timeout: 3s
+
 ---
 # test
 spring:

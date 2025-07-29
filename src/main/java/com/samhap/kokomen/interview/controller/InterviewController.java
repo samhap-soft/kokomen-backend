@@ -5,7 +5,7 @@ import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
-import com.samhap.kokomen.interview.service.InterviewService;
+import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
@@ -33,14 +33,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InterviewController {
 
-    private final InterviewService interviewService;
+    private final InterviewFacadeService interviewFacadeService;
 
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody InterviewRequest interviewRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.startInterview(interviewRequest, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.startInterview(interviewRequest, memberAuth));
     }
 
     @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
@@ -50,7 +50,7 @@ public class InterviewController {
             @RequestBody AnswerRequest answerRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        return interviewService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
+        return interviewFacadeService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
@@ -60,7 +60,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewService.likeInterview(interviewId, memberAuth);
+        interviewFacadeService.likeInterview(interviewId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -69,7 +69,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.checkInterview(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.checkInterview(interviewId, memberAuth));
     }
 
     @GetMapping("/me")
@@ -78,7 +78,7 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findMyInterviews(memberAuth, state, pageable));
+        return ResponseEntity.ok(interviewFacadeService.findMyInterviews(memberAuth, state, pageable));
     }
 
     @GetMapping
@@ -87,7 +87,7 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication(required = false) MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findOtherMemberInterviews(memberId, memberAuth, pageable));
+        return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviews(memberId, memberAuth, pageable));
     }
 
     @GetMapping("/{interviewId}/my-result")
@@ -95,7 +95,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewService.findMyInterviewResult(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.findMyInterviewResult(interviewId, memberAuth));
     }
 
     @GetMapping("/{interviewId}/result")
@@ -104,7 +104,7 @@ public class InterviewController {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
+        return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
     }
 
     @DeleteMapping("/{interviewId}/like")
@@ -112,7 +112,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewService.unlikeInterview(interviewId, memberAuth);
+        interviewFacadeService.unlikeInterview(interviewId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 }
