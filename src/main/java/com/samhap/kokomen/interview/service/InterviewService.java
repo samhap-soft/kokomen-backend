@@ -240,9 +240,7 @@ public class InterviewService {
         if (isInterviewee(memberAuth, interview)) {
             return findViewCount(interview);
         }
-        Long viewCount = increaseViewCount(interview, clientIp);
-        publishEventIfViewCountIsOneOrPowerOfTen(viewCount, interview);
-        return viewCount;
+        return increaseViewCount(interview, clientIp);
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
@@ -260,7 +258,9 @@ public class InterviewService {
         if (!expireSuccess) {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
-        return redisService.incrementKey(viewCountKey);
+        Long viewCount = redisService.incrementKey(viewCountKey);
+        publishEventIfViewCountIsOneOrPowerOfTen(viewCount, interview);
+        return viewCount;
     }
 
     private void publishEventIfViewCountIsOneOrPowerOfTen(Long viewCount, Interview interview) {
