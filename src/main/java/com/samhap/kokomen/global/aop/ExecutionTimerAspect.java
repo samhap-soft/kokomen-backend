@@ -5,10 +5,12 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
 @Slf4j
+@Order(2)
 @Aspect
 @Component
 public class ExecutionTimerAspect {
