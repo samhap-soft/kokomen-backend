@@ -28,8 +28,10 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
+import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +50,8 @@ class InterviewFacadeServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private TestInterviewLikedEventListener testInterviewLikedEventListener;
 
     @Test
     void 인터뷰를_진행할_때_마지막_답변이_아니면_다음_꼬리_질문과_현재_답변에_대한_피드백을_응답한다() {
@@ -168,5 +172,28 @@ class InterviewFacadeServiceTest extends BaseTest {
         // then
         Interview found = interviewRepository.findById(interview.getId()).get();
         assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
+    }
+
+    @Test
+    void 인터뷰에_좋아요를_누르면_최신_좋아요_수로_이벤트가_발행된다() {
+        // given
+        testInterviewLikedEventListener.clear();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
+        MemberAuth memberAuth = new MemberAuth(member.getId());
+        Long beforeLikeCount = interview.getLikeCount();
+
+        // when
+        interviewFacadeService.likeInterview(interview.getId(), memberAuth);
+
+        // then
+        Interview updatedInterview = interviewRepository.findById(interview.getId()).get();
+        assertThat(updatedInterview.getLikeCount()).isEqualTo(beforeLikeCount + 1);
+        // 이벤트 리스너로 발행된 이벤트의 likeCount 값도 검증
+        List<InterviewLikedEvent> events = testInterviewLikedEventListener.getEvents();
+        assertThat(events).hasSize(1);
+        InterviewLikedEvent event = events.get(0);
+        assertThat(event.likeCount()).isEqualTo(updatedInterview.getLikeCount());
     }
 }

@@ -31,7 +31,7 @@ public class NotificationClientBuilder {
                 .requestInterceptor((request, body, execution) -> {
                     String requestId = MDC.get("requestId");
                     if (requestId != null) {
-                        request.getHeaders().add("X-Request-Id", requestId);
+                        request.getHeaders().add("X-RequestID", requestId);
                     }
                     return execution.execute(request, body);
                 })

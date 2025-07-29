@@ -37,12 +37,15 @@ public class AnswerFacadeService {
     public void likeAnswer(Long answerId, MemberAuth memberAuth) {
         Member likerMember = memberService.readById(memberAuth.memberId());
         Answer answer = answerService.readById(answerId);
+        Interview interview = answer.getQuestion().getInterview();
+        Member interviewee = interview.getMember();
+
         answerLikeService.likeAnswer(likerMember, answer);
         answerService.incrementLikeCountModifying(answerId);
+        answer = answerService.readById(answerId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 조회
 
-        Interview interview = answer.getQuestion().getInterview();
         eventPublisher.publishEvent(
-                new AnswerLikedEvent(answerId, interview.getId(), likerMember.getId(), interview.getMember().getId(), answer.getLikeCount()));
+                new AnswerLikedEvent(answerId, interview.getId(), likerMember.getId(), interviewee.getId(), answer.getLikeCount()));
     }
 
     @Transactional
