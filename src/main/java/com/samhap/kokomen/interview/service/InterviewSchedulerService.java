@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 public class InterviewSchedulerService {
 
     private static final String INTERVIEW_VIEW_COUNT_SCHEDULER_LOCK = "lock:interview:viewCount:scheduler";
-    private static final String INTERVIEW_VIEW_COUNT_KEY_PATTERN = InterviewService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*";
+    private static final String INTERVIEW_VIEW_COUNT_KEY_PATTERN = InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*";
     private static final int REDIS_INTERVIEW_VIEW_COUNT_BATCH_SIZE = 100;
     private static final int DB_INTERVIEW_VIEW_COUNT_BATCH_SIZE = 1_000;
 
@@ -83,6 +83,6 @@ public class InterviewSchedulerService {
     }
 
     private Long extractInterviewId(String key) {
-        return Long.parseLong(key.replace(InterviewService.INTERVIEW_VIEW_COUNT_KEY_PREFIX, ""));
+        return Long.parseLong(key.replace(InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX, ""));
     }
 }

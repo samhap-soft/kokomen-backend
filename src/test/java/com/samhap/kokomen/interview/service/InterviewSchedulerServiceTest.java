@@ -43,7 +43,7 @@ class InterviewSchedulerServiceTest extends BaseTest {
 
         for (long interviewId = 1; interviewId <= interviewCount; interviewId++) {
             String viewCount = String.valueOf(interviewId);
-            redisService.setIfAbsent(InterviewService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + interviewId, viewCount, Duration.ofDays(1));
+            redisService.setIfAbsent(InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + interviewId, viewCount, Duration.ofDays(1));
         }
 
         // when
