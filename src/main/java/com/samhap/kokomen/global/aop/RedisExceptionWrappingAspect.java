@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 public class RedisExceptionWrappingAspect {
 
     @Around("@within(com.samhap.kokomen.global.annotation.RedisExceptionWrapper) || @annotation(com.samhap.kokomen.global.annotation.RedisExceptionWrapper)")
-    public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
+    public Object wrapException(ProceedingJoinPoint joinPoint) throws Throwable {
         try {
             return joinPoint.proceed();
         } catch (RedisException e) {
