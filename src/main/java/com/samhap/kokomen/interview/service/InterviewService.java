@@ -13,7 +13,6 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
@@ -25,16 +24,13 @@ import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
-import com.samhap.kokomen.interview.service.event.InterviewViewCountEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,10 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewService {
 
-    public static final String INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX = "lock:interview:viewCount:";
-    public static final String INTERVIEW_VIEW_COUNT_KEY_PREFIX = "interview:viewCount:";
-
-    private final RedisService redisService;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -54,7 +46,7 @@ public class InterviewService {
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final InterviewViewCountService interviewViewCountService;
 
     @Transactional
     public Interview saveInterview(Interview interview) {
@@ -82,8 +74,9 @@ public class InterviewService {
         Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
 
         return interviews.stream()
-                .map(interview -> InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), findViewCount(interview),
-                        likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview), hasTempAnswerMemo(interview)))
+                .map(interview ->
+                        InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), interviewViewCountService.findViewCount(interview),
+                                likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview), hasTempAnswerMemo(interview)))
                 .toList();
     }
 
@@ -114,7 +107,7 @@ public class InterviewService {
 
         List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
         Map<Long, Long> viewCounts = finishedInterviews.stream()
-                .collect(Collectors.toMap(Interview::getId, this::findViewCount));
+                .collect(Collectors.toMap(Interview::getId, interviewViewCountService::findViewCount));
         Map<Long, Integer> submittedAnswerMemoCounts = finishedInterviews.stream()
                 .collect(Collectors.toMap(Interview::getId, this::countSubmittedAndPublicAnswerMemos));
         if (memberAuth.isAuthenticated()) {
@@ -224,12 +217,6 @@ public class InterviewService {
                 .orElse(null);
     }
 
-    private Long findViewCount(Interview interview) {
-        return redisService.get(createInterviewViewCountKey(interview), String.class)
-                .map(Long::valueOf)
-                .orElse(interview.getViewCount());
-    }
-
     private void validateInterviewFinished(Interview interview) {
         if (interview.isInProgress()) {
             throw new BadRequestException("해당 인터뷰는 아직 진행 중입니다. 인터뷰가 종료된 후 결과를 조회할 수 있습니다.");
@@ -237,55 +224,7 @@ public class InterviewService {
     }
 
     private Long increaseViewCountIfNotInterviewee(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
-        if (isInterviewee(memberAuth, interview)) {
-            return findViewCount(interview);
-        }
-        return increaseViewCount(interview, clientIp);
-    }
-
-    private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
-        return memberAuth.isAuthenticated() && interview.isInterviewee(memberAuth.memberId());
-    }
-
-    private Long increaseViewCount(Interview interview, ClientIp clientIp) {
-        String viewCountLockKey = createInterviewViewCountLockKey(interview, clientIp);
-        if (!redisService.acquireLock(viewCountLockKey, Duration.ofDays(1))) {
-            return findViewCount(interview);
-        }
-
-        String viewCountKey = createInterviewViewCountKey(interview);
-        boolean expireSuccess = redisService.expireKey(viewCountKey, Duration.ofDays(2));
-        if (!expireSuccess) {
-            redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
-        }
-        Long viewCount = redisService.incrementKey(viewCountKey);
-        publishEventIfViewCountIsOneOrPowerOfTen(viewCount, interview);
-        return viewCount;
-    }
-
-    private void publishEventIfViewCountIsOneOrPowerOfTen(Long viewCount, Interview interview) {
-        if (isOneOrPowerOfTen(viewCount)) {
-            eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
-        }
-    }
-
-    private boolean isOneOrPowerOfTen(long viewCount) {
-        if (viewCount < 1) {
-            return false;
-        }
-
-        while (viewCount % 10 == 0) {
-            viewCount /= 10;
-        }
-        return viewCount == 1;
-    }
-
-    public String createInterviewViewCountLockKey(Interview interview, ClientIp clientIp) {
-        return INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + interview.getId() + ":" + clientIp.address();
-    }
-
-    public String createInterviewViewCountKey(Interview interview) {
-        return INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId();
+        return interviewViewCountService.incrementViewCount(interview, memberAuth, clientIp);
     }
 
     @Transactional
