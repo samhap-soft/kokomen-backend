@@ -25,7 +25,7 @@ public class InterviewViewCountService {
     private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Retryable(retryFor = RedisException.class, maxAttempts = 1)
+    @Retryable(recover = "recoverIncrementViewCount", retryFor = RedisException.class, maxAttempts = 1)
     public Long incrementViewCount(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
         if (isInterviewee(memberAuth, interview)) {
             return findViewCount(interview);
@@ -42,7 +42,7 @@ public class InterviewViewCountService {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
         Long viewCount = redisService.incrementKey(viewCountKey);
-        publishEventIfViewCountIsOneOrPowerOfTen(viewCount, interview);
+        eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
         return viewCount;
     }
 
@@ -58,17 +58,13 @@ public class InterviewViewCountService {
         return INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId();
     }
 
-    private void publishEventIfViewCountIsOneOrPowerOfTen(Long viewCount, Interview interview) {
-        eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
-    }
-
     @Recover
     public Long recoverIncrementViewCount(RedisException e, Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
         log.error("Redis 조회수 업데이트 실패", e);
         return interview.getViewCount();
     }
 
-    @Retryable(retryFor = RedisException.class, maxAttempts = 1)
+    @Retryable(recover = "recoverFindViewCount", retryFor = RedisException.class, maxAttempts = 1)
     public Long findViewCount(Interview interview) {
         return redisService.get(createInterviewViewCountKey(interview), String.class)
                 .map(Long::valueOf)
