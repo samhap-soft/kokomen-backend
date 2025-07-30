@@ -25,4 +25,6 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     @Modifying
     @Query("UPDATE Answer a SET a.likeCount = a.likeCount - 1 WHERE a.id = :answerId")
     void decrementLikeCountModifying(Long answerId);
+
+    Answer findByQuestionId(Long questionId);
 }
