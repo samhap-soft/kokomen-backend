@@ -170,8 +170,8 @@ spring:
       on-profile: load-test
   datasource:
     url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
-    username: ${SPRING_DATASOURCE_USERNAME_LOAD_TEST}
-    password: ${SPRING_DATASOURCE_PASSWORD_LOAD_TEST}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     database: mysql
