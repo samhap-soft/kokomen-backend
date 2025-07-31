@@ -36,6 +36,10 @@ server:
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   server:
     port: 8081
     address: 0.0.0.0
