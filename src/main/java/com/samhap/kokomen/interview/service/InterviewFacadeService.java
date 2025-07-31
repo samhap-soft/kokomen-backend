@@ -174,13 +174,11 @@ public class InterviewFacadeService {
     }
 
     private void callbackBedrock(ConverseResponse converseResponse, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey) {
-        log.info("memberId: {}, interviewId: {}, curQuestionId: {}, Bedrock API 응답: {}", memberId, interviewId, questionAndAnswers.readCurQuestion().getId(),
-                converseResponse);
         String rawText = converseResponse.output().message().content().get(0).text();
         String cleanedContent = cleanJsonContent(rawText);
 
         BedrockResponse response = new BedrockResponse(cleanedContent);
-        interviewProceedService.proceedOrEndInterviewNonblockAsync(interviewId, questionAndAnswers, response, memberId);
+        interviewProceedService.proceedOrEndInterviewNonblockAsync(memberId, questionAndAnswers, response, interviewId);
 
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
         redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
