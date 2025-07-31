@@ -6,7 +6,6 @@ import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
-import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewProceedService {
 
-    private final BedrockClient bedrockClient;
     private final MemberService memberService;
     private final InterviewService interviewService;
     private final AnswerService answerService;
@@ -71,9 +69,9 @@ public class InterviewProceedService {
     public void proceedOrEndInterviewBlockAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
+            LlmResponse llmResponse,
             Long interviewId
     ) {
-        LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
         Member member = memberService.readById(memberId);
         member.useToken();
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
