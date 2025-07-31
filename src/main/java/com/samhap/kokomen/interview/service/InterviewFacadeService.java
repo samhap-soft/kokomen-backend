@@ -30,9 +30,11 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -117,6 +119,7 @@ public class InterviewFacadeService {
     }
 
     public void proceedInterviewNonblockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
@@ -126,9 +129,10 @@ public class InterviewFacadeService {
             String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
             CompletableFuture<ConverseResponse> completableFuture = bedrockAsyncClient.requestToBedrock(questionAndAnswers);
-            completableFuture.thenAcceptAsync(response -> callbackBedrock(response, memberAuth.memberId(), questionAndAnswers, interviewId, lockKey),
+            completableFuture.thenAcceptAsync(
+                            response -> callbackBedrock(response, memberAuth.memberId(), questionAndAnswers, interviewId, lockKey, mdcContext),
                             threadPoolTaskExecutor)
-                    .exceptionallyAsync(ex -> handleBedrockException(ex, lockKey, interviewProceedStateKey), threadPoolTaskExecutor);
+                    .exceptionallyAsync(ex -> handleBedrockException(ex, lockKey, interviewProceedStateKey, mdcContext), threadPoolTaskExecutor);
 
             redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
@@ -173,16 +177,25 @@ public class InterviewFacadeService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private void callbackBedrock(ConverseResponse converseResponse, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey) {
-        String rawText = converseResponse.output().message().content().get(0).text();
-        String cleanedContent = cleanJsonContent(rawText);
+    private void callbackBedrock(ConverseResponse converseResponse, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey,
+                                 Map<String, String> mdcContext) {
+        if (mdcContext != null) {
+            MDC.setContextMap(mdcContext);
+        }
 
-        BedrockResponse response = new BedrockResponse(cleanedContent);
-        interviewProceedService.proceedOrEndInterviewNonblockAsync(memberId, questionAndAnswers, response, interviewId);
+        try {
+            String rawText = converseResponse.output().message().content().get(0).text();
+            String cleanedContent = cleanJsonContent(rawText);
 
-        String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
-        redisService.releaseLock(lockKey);
+            BedrockResponse response = new BedrockResponse(cleanedContent);
+            interviewProceedService.proceedOrEndInterviewNonblockAsync(memberId, questionAndAnswers, response, interviewId);
+
+            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
+            redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
+            redisService.releaseLock(lockKey);
+        } finally {
+            MDC.clear();
+        }
     }
 
     private String cleanJsonContent(String rawText) {
@@ -197,11 +210,19 @@ public class InterviewFacadeService {
         return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
     }
 
-    private Void handleBedrockException(Throwable ex, String lockKey, String interviewProceedStateKey) {
-        log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
-        redisService.releaseLock(lockKey);
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
-        return null;
+    private Void handleBedrockException(Throwable ex, String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
+        if (mdcContext != null) {
+            MDC.setContextMap(mdcContext);
+        }
+
+        try {
+            log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
+            redisService.releaseLock(lockKey);
+            redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
+            return null;
+        } finally {
+            MDC.clear();
+        }
     }
 
     public LlmProceedState getInterviewProceedState(Long interviewId, Long curQuestionId) {
