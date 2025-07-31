@@ -9,10 +9,13 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.external.BedrockAsyncClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
+import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
@@ -28,19 +31,27 @@ import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class InterviewFacadeService {
 
     public static final String INTERVIEW_PROCEED_LOCK_KEY_PREFIX = "lock:interview:proceed:";
+    public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
 
     private final BedrockClient bedrockClient;
+    private final BedrockAsyncClient bedrockAsyncClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
@@ -50,6 +61,8 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
+    @Qualifier("bedrockCallbackExecutor")
+    private final ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -76,6 +89,27 @@ public class InterviewFacadeService {
         }
     }
 
+    public void proceedInterviewNonblockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
+        acquireLockForProceedInterview(lockKey);
+        try {
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
+
+            CompletableFuture<ConverseResponse> completableFuture = bedrockAsyncClient.requestToBedrock(questionAndAnswers);
+            completableFuture.thenAcceptAsync(response -> callbackBedrock(response, memberAuth.memberId(), questionAndAnswers, interviewId, lockKey),
+                            threadPoolTaskExecutor)
+                    .exceptionallyAsync(ex -> handleBedrockException(ex, lockKey, interviewProceedStateKey), threadPoolTaskExecutor);
+
+            redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
+        } catch (Exception e) {
+            redisService.releaseLock(lockKey);
+            throw e;
+        }
+    }
+
     private String createInterviewProceedLockKey(Long memberId) {
         return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + memberId;
     }
@@ -94,6 +128,43 @@ public class InterviewFacadeService {
         List<Answer> prevAnswers = answerService.findByQuestionIn(questions);
 
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
+    }
+
+    private void callbackBedrock(ConverseResponse converseResponse, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey) {
+        String rawText = converseResponse.output().message().content().get(0).text();
+        String cleanedContent = cleanJsonContent(rawText);
+
+        BedrockResponse response = new BedrockResponse(cleanedContent);
+        interviewProceedService.proceedOrEndInterviewAsync(interviewId, questionAndAnswers, response, memberId);
+
+        String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
+        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
+        redisService.releaseLock(lockKey);
+    }
+
+    private String cleanJsonContent(String rawText) {
+        return rawText
+                .replaceAll("```json", "")
+                .replaceAll("```", "")
+                .replaceAll("`", "")
+                .trim();
+    }
+
+    private String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
+        return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
+    }
+
+    private Void handleBedrockException(Throwable ex, String lockKey, String interviewProceedStateKey) {
+        log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
+        redisService.releaseLock(lockKey);
+        redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
+        return null;
+    }
+
+    public LlmProceedState getInterviewProceedState(Long interviewId, Long curQuestionId) {
+        String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
+        String state = redisService.get(interviewProceedStateKey, String.class).get();
+        return LlmProceedState.valueOf(state);
     }
 
     @Transactional
