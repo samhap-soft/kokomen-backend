@@ -67,6 +67,17 @@ public class InterviewController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{interviewId}/questions/{curQuestionId}/answers/block-async")
+    public ResponseEntity<Void> proceedInterviewBlockAsync(
+            @PathVariable Long interviewId,
+            @PathVariable Long curQuestionId,
+            @RequestBody AnswerRequest answerRequest,
+            @Authentication MemberAuth memberAuth
+    ) {
+        interviewFacadeService.proceedInterviewBlockAsync(interviewId, curQuestionId, answerRequest, memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
     // TODO: 제대로 다시 만들어라 제발
     @GetMapping("/{interviewId}/questions/{curQuestionId}/success")
     public ResponseEntity<LlmProceedState> getInterviewSummary(

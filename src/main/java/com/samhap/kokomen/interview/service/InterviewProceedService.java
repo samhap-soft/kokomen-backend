@@ -3,9 +3,11 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
@@ -22,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewProceedService {
 
+    private final BedrockClient bedrockClient;
+    private final RedisService redisService;
     private final MemberService memberService;
     private final InterviewService interviewService;
     private final AnswerService answerService;
@@ -48,12 +52,30 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public void proceedOrEndInterviewAsync(
+    public void proceedOrEndInterviewNonblockAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
             LlmResponse llmResponse,
             Long interviewId
     ) {
+        Member member = memberService.readById(memberId);
+        member.useToken();
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
+        Interview interview = interviewService.readInterview(interviewId);
+        if (questionAndAnswers.isProceedRequest()) {
+            saveNextQuestion(llmResponse, interview);
+            return;
+        }
+        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
+    }
+
+    @Transactional
+    public void proceedOrEndInterviewBlockAsync(
+            Long memberId,
+            QuestionAndAnswers questionAndAnswers,
+            Long interviewId
+    ) {
+        LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
         Member member = memberService.readById(memberId);
         member.useToken();
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);

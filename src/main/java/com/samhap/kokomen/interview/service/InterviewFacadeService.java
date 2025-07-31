@@ -63,6 +63,7 @@ public class InterviewFacadeService {
     private final ApplicationEventPublisher eventPublisher;
     @Qualifier("bedrockCallbackExecutor")
     private final ThreadPoolTaskExecutor threadPoolTaskExecutor;
+    private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -110,7 +111,23 @@ public class InterviewFacadeService {
         }
     }
 
-    private String createInterviewProceedLockKey(Long memberId) {
+    public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
+        acquireLockForProceedInterview(lockKey);
+        try {
+            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            interviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
+
+            redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
+        } catch (Exception e) {
+            redisService.releaseLock(lockKey);
+        }
+    }
+
+    public static String createInterviewProceedLockKey(Long memberId) {
         return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + memberId;
     }
 
@@ -135,7 +152,7 @@ public class InterviewFacadeService {
         String cleanedContent = cleanJsonContent(rawText);
 
         BedrockResponse response = new BedrockResponse(cleanedContent);
-        interviewProceedService.proceedOrEndInterviewAsync(interviewId, questionAndAnswers, response, memberId);
+        interviewProceedService.proceedOrEndInterviewNonblockAsync(interviewId, questionAndAnswers, response, memberId);
 
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
         redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
@@ -150,7 +167,7 @@ public class InterviewFacadeService {
                 .trim();
     }
 
-    private String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
+    public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
         return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
     }
 
