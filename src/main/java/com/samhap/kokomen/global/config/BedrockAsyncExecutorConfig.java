@@ -19,7 +19,7 @@ public class BedrockAsyncExecutorConfig {
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
         executor.setTaskDecorator(new MdcDecorator());
-        executor.setThreadNamePrefix("Async-");
+        executor.setThreadNamePrefix("Async-Nonblock-Bedrock-");
         executor.initialize();
         executor.getThreadPoolExecutor().prestartAllCoreThreads();
         return executor;
