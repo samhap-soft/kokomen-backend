@@ -3,7 +3,6 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
-import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
@@ -25,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewProceedService {
 
     private final BedrockClient bedrockClient;
-    private final RedisService redisService;
     private final MemberService memberService;
     private final InterviewService interviewService;
     private final AnswerService answerService;

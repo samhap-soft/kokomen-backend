@@ -32,7 +32,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,7 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class InterviewFacadeService {
 
@@ -61,9 +59,37 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
-    @Qualifier("bedrockCallbackExecutor")
     private final ThreadPoolTaskExecutor threadPoolTaskExecutor;
     private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
+
+    public InterviewFacadeService(
+            BedrockClient bedrockClient,
+            BedrockAsyncClient bedrockAsyncClient,
+            RedisService redisService,
+            InterviewProceedService interviewProceedService,
+            InterviewService interviewService,
+            InterviewLikeService interviewLikeService,
+            MemberService memberService,
+            RootQuestionService rootQuestionService,
+            QuestionService questionService,
+            AnswerService answerService,
+            ApplicationEventPublisher eventPublisher,
+            @Qualifier("bedrockCallbackExecutor") ThreadPoolTaskExecutor threadPoolTaskExecutor,
+            InterviewProceedBlockAsyncService interviewProceedBlockAsyncService) {
+        this.bedrockClient = bedrockClient;
+        this.bedrockAsyncClient = bedrockAsyncClient;
+        this.redisService = redisService;
+        this.interviewProceedService = interviewProceedService;
+        this.interviewService = interviewService;
+        this.interviewLikeService = interviewLikeService;
+        this.memberService = memberService;
+        this.rootQuestionService = rootQuestionService;
+        this.questionService = questionService;
+        this.answerService = answerService;
+        this.eventPublisher = eventPublisher;
+        this.threadPoolTaskExecutor = threadPoolTaskExecutor;
+        this.interviewProceedBlockAsyncService = interviewProceedBlockAsyncService;
+    }
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
