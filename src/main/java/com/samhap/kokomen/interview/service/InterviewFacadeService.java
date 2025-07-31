@@ -128,7 +128,9 @@ public class InterviewFacadeService {
             QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
             String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
+            log.info("논블로킹 비동기 요청 보내기 직전 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
             CompletableFuture<ConverseResponse> completableFuture = bedrockAsyncClient.requestToBedrock(questionAndAnswers);
+            log.info("논블로킹 비동기 요청 보내기 직후 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
             completableFuture.thenAcceptAsync(
                             response -> callbackBedrock(response, memberAuth.memberId(), questionAndAnswers, interviewId, lockKey, mdcContext),
                             threadPoolTaskExecutor)
@@ -149,7 +151,9 @@ public class InterviewFacadeService {
         try {
             String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
             QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            log.info("블로킹 비동기 요청 보내기 직전 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
             interviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
+            log.info("블로킹 비동기 요청 보낸 직후 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
 
             redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
@@ -182,6 +186,7 @@ public class InterviewFacadeService {
         if (mdcContext != null) {
             MDC.setContextMap(mdcContext);
         }
+        log.info("논블로킹 비동기 스레드 시작 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
 
         try {
             String rawText = converseResponse.output().message().content().get(0).text();
@@ -194,6 +199,7 @@ public class InterviewFacadeService {
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
             redisService.releaseLock(lockKey);
         } finally {
+            log.info("논블로킹 비동기 스레드 종료 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
             MDC.clear();
         }
     }
@@ -214,6 +220,7 @@ public class InterviewFacadeService {
         if (mdcContext != null) {
             MDC.setContextMap(mdcContext);
         }
+        log.info("논블로킹 비동기 예외 스레드 시작 - {}}", interviewProceedStateKey);
 
         try {
             log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
@@ -221,6 +228,7 @@ public class InterviewFacadeService {
             redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
             return null;
         } finally {
+            log.info("논블로킹 비동기 예외 스레드 종료 - {}}", interviewProceedStateKey);
             MDC.clear();
         }
     }
