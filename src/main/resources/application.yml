@@ -162,3 +162,40 @@ notification:
   base-url: ${NOTIFICATION_BASE_URL_PROD}
   connect-timeout: 3s
   read-timeout: 3s
+---
+# load-test profile
+spring:
+  config:
+    activate:
+      on-profile: load-test
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
+    username: ${SPRING_DATASOURCE_USERNAME_LOAD_TEST}
+    password: ${SPRING_DATASOURCE_PASSWORD_LOAD_TEST}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS_PRIMARY_HOST_PROD}
+      port: 6379
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
