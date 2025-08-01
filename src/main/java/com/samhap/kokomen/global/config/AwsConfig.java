@@ -17,7 +17,7 @@ public class AwsConfig {
         return BedrockRuntimeClient.builder()
                 .credentialsProvider(InstanceProfileCredentialsProvider.create())
                 .httpClientBuilder(ApacheHttpClient.builder()
-                        .maxConnections(1000)
+                        .maxConnections(100)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(10))
                         .connectionTimeout(java.time.Duration.ofSeconds(3))
                         .socketTimeout(java.time.Duration.ofSeconds(20))
