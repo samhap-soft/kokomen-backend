@@ -24,7 +24,7 @@ public class AwsConfig {
         return BedrockRuntimeAsyncClient.builder()
                 .credentialsProvider(InstanceProfileCredentialsProvider.create())
                 .httpClientBuilder(NettyNioAsyncHttpClient.builder()
-                        .maxConcurrency(100)
+                        .maxConcurrency(1000)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(10))
                         .connectionTimeout(java.time.Duration.ofSeconds(3))
                         .readTimeout(java.time.Duration.ofSeconds(20))

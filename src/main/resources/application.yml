@@ -30,7 +30,7 @@ server:
     threads:
       min-spare: 20
       max: 30
-    max-connections: 1024
+    max-connections: 2000
     mbeanregistry:
       enabled: true
 open-ai:
