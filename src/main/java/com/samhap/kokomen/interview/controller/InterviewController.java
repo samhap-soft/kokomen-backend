@@ -140,6 +140,15 @@ public class InterviewController {
         return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
     }
 
+    @GetMapping("/{interviewId}/result-db")
+    public ResponseEntity<InterviewResultResponse> findOtherMemberInterviewResultDB(
+            @PathVariable Long interviewId,
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
+    ) {
+        return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviewResultDB(interviewId, memberAuth, clientIp));
+    }
+
     @DeleteMapping("/{interviewId}/like")
     public ResponseEntity<Void> unlikeInterview(
             @PathVariable Long interviewId,

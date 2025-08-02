@@ -5,7 +5,7 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.RedisException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.service.event.InterviewViewCountEvent;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +24,7 @@ public class InterviewViewCountService {
 
     private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
+    private final InterviewRepository interviewRepository;
 
     @Retryable(recover = "recoverIncrementViewCount", retryFor = RedisException.class, maxAttempts = 1)
     public Long incrementViewCount(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
@@ -32,9 +33,7 @@ public class InterviewViewCountService {
         }
 
         String viewCountLockKey = createInterviewViewCountLockKey(interview, clientIp);
-        if (!redisService.acquireLock(viewCountLockKey, Duration.ofDays(1))) {
-            return findViewCount(interview);
-        }
+        redisService.acquireLock(viewCountLockKey, Duration.ofDays(1));
 
         String viewCountKey = createInterviewViewCountKey(interview);
         boolean expireSuccess = redisService.expireKey(viewCountKey, Duration.ofDays(2));
@@ -42,8 +41,19 @@ public class InterviewViewCountService {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
         Long viewCount = redisService.incrementKey(viewCountKey);
-        eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
         return viewCount;
+    }
+
+    public Long incrementViewCountDB(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
+        if (isInterviewee(memberAuth, interview)) {
+            return findViewCount(interview);
+        }
+
+        String viewCountLockKey = createInterviewViewCountLockKey(interview, clientIp);
+        redisService.acquireLock(viewCountLockKey, Duration.ofDays(1));
+
+        interviewRepository.increaseViewCountModifying(interview.getId());
+        return interviewRepository.findById(interview.getId()).get().getViewCount();
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {

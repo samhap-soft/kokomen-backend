@@ -270,6 +270,10 @@ public class InterviewFacadeService {
         return interviewService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp);
     }
 
+    public InterviewResultResponse findOtherMemberInterviewResultDB(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+        return interviewService.findOtherMemberInterviewResultDB(interviewId, memberAuth, clientIp);
+    }
+
     @Transactional
     public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.unlikeInterview(interviewId, memberAuth);

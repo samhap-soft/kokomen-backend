@@ -204,6 +204,31 @@ public class InterviewService {
                 intervieweeRank, answerMemos);
     }
 
+    @Transactional(readOnly = true)
+    public InterviewResultResponse findOtherMemberInterviewResultDB(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+        Interview interview = readInterview(interviewId);
+        Member interviewee = interview.getMember();
+        long totalMemberCount = memberRepository.count();
+        long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
+
+        validateInterviewFinished(interview);
+        long viewCount = increaseViewCountIfNotIntervieweeDB(interview, memberAuth, clientIp);
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
+        if (memberAuth.isAuthenticated()) {
+            Member readerMember = readMember(memberAuth.memberId());
+            boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
+            List<Long> answerIds = answers.stream().map(Answer::getId).toList();
+            Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
+
+            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, viewCount, interviewAlreadyLiked,
+                    interview.getMember().getNickname(), totalMemberCount, intervieweeRank, answerMemos);
+        }
+
+        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount, interviewee.getNickname(), totalMemberCount,
+                intervieweeRank, answerMemos);
+    }
+
     private Map<Long, AnswerMemos> findPublicSubmittedAnswerMemos(List<Answer> answers) {
         return answers.stream()
                 .collect(Collectors.toMap(
@@ -225,6 +250,10 @@ public class InterviewService {
 
     private Long increaseViewCountIfNotInterviewee(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
         return interviewViewCountService.incrementViewCount(interview, memberAuth, clientIp);
+    }
+
+    private Long increaseViewCountIfNotIntervieweeDB(Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
+        return interviewViewCountService.incrementViewCountDB(interview, memberAuth, clientIp);
     }
 
     @Transactional
