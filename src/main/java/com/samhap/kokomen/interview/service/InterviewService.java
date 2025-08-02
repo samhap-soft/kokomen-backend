@@ -204,7 +204,7 @@ public class InterviewService {
                 intervieweeRank, answerMemos);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public InterviewResultResponse findOtherMemberInterviewResultDB(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         Member interviewee = interview.getMember();
@@ -213,6 +213,7 @@ public class InterviewService {
 
         validateInterviewFinished(interview);
         long viewCount = increaseViewCountIfNotIntervieweeDB(interview, memberAuth, clientIp);
+        interview = readInterview(interviewId);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
         if (memberAuth.isAuthenticated()) {
