@@ -99,4 +99,20 @@ public record InterviewResultResponse(
                 null
         );
     }
+
+    public static InterviewResultResponse of(InterviewResultResponse response, Long viewCount) {
+        return new InterviewResultResponse(
+                response.feedbacks,
+                response.totalFeedback,
+                response.totalScore,
+                viewCount,
+                response.interviewLikeCount,
+                response.interviewAlreadyLiked,
+                response.intervieweeNickname,
+                response.totalMemberCount,
+                response.intervieweeRank,
+                response.userCurScore,
+                response.userPrevScore
+        );
+    }
 }

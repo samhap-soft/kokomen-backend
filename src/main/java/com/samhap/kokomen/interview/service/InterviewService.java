@@ -212,7 +212,6 @@ public class InterviewService {
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
 
         validateInterviewFinished(interview);
-        long viewCount = increaseViewCountIfNotIntervieweeDB(interview, memberAuth, clientIp);
         interview = readInterview(interviewId);
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
@@ -222,12 +221,19 @@ public class InterviewService {
             List<Long> answerIds = answers.stream().map(Answer::getId).toList();
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
-            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, viewCount, interviewAlreadyLiked,
+            InterviewResultResponse response = InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview,
+                    null, interviewAlreadyLiked,
                     interview.getMember().getNickname(), totalMemberCount, intervieweeRank, answerMemos);
+            long viewCount = increaseViewCountIfNotIntervieweeDB(interview, memberAuth, clientIp);
+            return InterviewResultResponse.of(response, viewCount);
         }
 
-        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount, interviewee.getNickname(), totalMemberCount,
+        InterviewResultResponse response = InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, null,
+                interviewee.getNickname(), totalMemberCount,
                 intervieweeRank, answerMemos);
+        long viewCount = increaseViewCountIfNotIntervieweeDB(interview, memberAuth, clientIp);
+
+        return InterviewResultResponse.of(response, viewCount);
     }
 
     private Map<Long, AnswerMemos> findPublicSubmittedAnswerMemos(List<Answer> answers) {
