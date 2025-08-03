@@ -43,22 +43,27 @@ public class RootQuestionMetricAspect {
     }
 
     @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
+    public void increaseRootQuestionInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
         if (result.isEmpty()) {
             Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            meterRegistry.counter("root_question_interview_end_count_total", "root_question_id", String.valueOf(rootQuestionId)).increment();
+            meterRegistry.counter(
+                    "root_question_interview_end_count_total",
+                    "root_question_id", String.valueOf(rootQuestionId)
+            ).increment();
         }
     }
 
     @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseAnswerRankCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
+    public void increaseRootQuestionAnswerRankCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
         Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
-        boolean isFirst = Objects.equals(curQuestionId, firstQuestionId);
-        if (isFirst) {
+        boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
+        if (isRootQuestionAnswer) {
             AnswerRank answerRank = result.get().curAnswerRank();
             Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            String metricName = "root_question_answer_rank_count_" + answerRank.name().toLowerCase();
-            meterRegistry.counter(metricName, "root_question_id", String.valueOf(rootQuestionId)).increment();
+            meterRegistry.counter(
+                    "root_question_answer_rank_count_" + answerRank.name().toLowerCase(),
+                    "root_question_id", String.valueOf(rootQuestionId)
+            ).increment();
         }
     }
 }
