@@ -1,5 +1,7 @@
 package com.samhap.kokomen.interview.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
@@ -12,8 +14,6 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class QuestionRepositoryTest extends BaseTest {
 
