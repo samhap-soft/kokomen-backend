@@ -64,6 +64,16 @@ public class InterviewController {
         return ResponseEntity.noContent().build();
     }
 
+    // TODO: 하나로 합치기
+    @PostMapping("/{interviewId}/like/kafka")
+    public ResponseEntity<Void> likeInterviewKafka(
+            @PathVariable Long interviewId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        interviewFacadeService.likeInterviewKafka(interviewId, memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{interviewId}/check")
     public ResponseEntity<InterviewResponse> checkInterview(
             @PathVariable Long interviewId,

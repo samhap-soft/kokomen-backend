@@ -22,6 +22,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
@@ -101,10 +102,20 @@ public class InterviewFacadeService {
         Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.readInterview(interviewId);
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
+
+        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
+        interviewService.increaseLikeCountModifying(interviewId);
+    }
+
+    // TODO: 하나로 합치기
+    @Transactional
+    public void likeInterviewKafka(Long interviewId, MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+        Interview interview = interviewService.readInterview(interviewId);
+        interviewLikeService.likeInterview(new InterviewLike(member, interview));
+
         // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
         interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), interview.getLikeCount() + 1);
-//        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
-//        interviewService.increaseLikeCountModifying(interviewId);
     }
 
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
