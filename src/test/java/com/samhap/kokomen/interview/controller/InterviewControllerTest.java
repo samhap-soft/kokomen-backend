@@ -49,6 +49,7 @@ import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -197,6 +198,8 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 인터뷰_좋아요_요청() throws Exception {
         // given
+        when(kafkaTemplate.send(any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(null));
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());

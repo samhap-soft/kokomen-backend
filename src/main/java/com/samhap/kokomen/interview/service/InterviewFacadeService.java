@@ -22,7 +22,6 @@ import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
-import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
@@ -50,6 +49,7 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
+    private final InterviewLikeEventProducer interviewLikeEventProducer;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -101,10 +101,10 @@ public class InterviewFacadeService {
         Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.readInterview(interviewId);
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
-        interviewService.increaseLikeCountModifying(interviewId);
-        interview = interviewService.readInterview(interviewId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 조회
-
-        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
+        // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
+        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), interview.getLikeCount() + 1);
+//        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
+//        interviewService.increaseLikeCountModifying(interviewId);
     }
 
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {

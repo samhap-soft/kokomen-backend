@@ -63,6 +63,34 @@ services:
     networks:
       local-kokomen-net:
 
+  # ✅ Zookeeper (Kafka 의존)
+  kokomen-local-zookeeper:
+    image: bitnami/zookeeper:3.8
+    container_name: kokomen-local-zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - local-kokomen-net
+
+  # ✅ Kafka (로컬 개발용)
+  kokomen-local-kafka:
+    image: bitnami/kafka:3.8
+    container_name: kokomen-local-kafka
+    ports:
+      - 9092:9092
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=kokomen-local-zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kokomen-local-kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - kokomen-local-zookeeper
+    networks:
+      - local-kokomen-net
+
 networks:
   local-kokomen-net:
     external: true

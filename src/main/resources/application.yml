@@ -16,6 +16,17 @@ spring:
     clean-disabled: true
   session:
     store-type: redis
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+    consumer:
+      group-id: kokomen-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    properties:
+      security.protocol: PLAINTEXT
 server:
   servlet:
     session:
@@ -77,6 +88,8 @@ spring:
     redis:
       host: kokomen-local-redis
       port: 6379
+  kafka:
+    bootstrap-servers: kokomen-local-kafka:9092
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
@@ -111,6 +124,8 @@ spring:
     redis:
       host: kokomen-redis-dev
       port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
@@ -126,6 +141,7 @@ server:
 notification:
   base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
 ---
+
 # prod profile
 spring:
   config:
@@ -145,6 +161,8 @@ spring:
     redis:
       host: ${REDIS_PRIMARY_HOST_PROD}
       port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}
@@ -160,5 +178,45 @@ server:
 
 notification:
   base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
+
+---
+# load-test profile
+spring:
+  config:
+    activate:
+      on-profile: load-test
+  datasource:
+    url: ${DATASOURCE}
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS}
+      port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA}
+oauth:
+  kakao:
+    client-id: ${KAKAO_ID}
+    client-secret: ${KAKAO_SECRET}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION}
   connect-timeout: 3s
   read-timeout: 3s
