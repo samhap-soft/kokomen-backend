@@ -13,7 +13,7 @@ public interface InterviewLikeRepository extends JpaRepository<InterviewLike, Lo
 
     int deleteByMemberAndInterview(Member member, Interview interview);
 
-    boolean existsByMemberIdAndInterviewId(Long memberId, Long interviewId);
+    boolean existsByInterviewIdAndMemberId(Long interviewId, Long memberId);
 
     @Query("SELECT il.interview.id FROM InterviewLike il WHERE il.member.id = :memberId AND il.interview.id IN :interviewIds")
     Set<Long> findLikedInterviewIds(@Param("memberId") Long memberId, @Param("interviewIds") List<Long> interviewIds);

@@ -22,7 +22,7 @@ public class InterviewLikeService {
     }
 
     private void validateNotAlreadyLiked(Interview interview, Member member) {
-        if (interviewLikeRepository.existsByMemberIdAndInterviewId(member.getId(), interview.getId())) {
+        if (interviewLikeRepository.existsByInterviewIdAndMemberId(interview.getId(), member.getId())) {
             throw new BadRequestException("이미 좋아요를 누른 인터뷰입니다.");
         }
     }
