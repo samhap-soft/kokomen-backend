@@ -51,6 +51,7 @@ public class InterviewFacadeService {
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
     private final InterviewLikeEventProducer interviewLikeEventProducer;
+    private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -126,7 +127,7 @@ public class InterviewFacadeService {
         Long likeCount = incrementAndGetLikeCountInRedis(interviewId, interview);
 
         // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
-        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), likeCount);
+        interviewLikeEventProducerV2.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), likeCount);
     }
 
     private Long incrementAndGetLikeCountInRedis(Long interviewId, Interview interview) {

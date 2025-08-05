@@ -34,7 +34,7 @@ public class InterviewLikeEventStreams {
         this.streamsConfig = streamsConfig;
         String[] profiles = environment.getActiveProfiles();
         String activeProfile = (profiles.length > 0) ? profiles[0] : "test";
-        this.topic = String.format("%s-interview-like", activeProfile);
+        this.topic = String.format("%s-interview-like-v2", activeProfile);
     }
 
     @PostConstruct
