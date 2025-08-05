@@ -23,7 +23,7 @@ public class AuthLocalController {
             @PathVariable Long kakaoId,
             HttpServletRequest request) {
         Member member = memberRepository.findById(kakaoId)
-                .orElseGet(() -> memberRepository.save(new Member(kakaoId, "테스트 회원")));
+                .orElseGet(() -> memberRepository.save(new Member(kakaoId, "테스트 회원_" + kakaoId)));
         HttpSession session = request.getSession(true);
         session.setAttribute("MEMBER_ID", member.getId());
 

@@ -41,7 +41,7 @@ server:
     threads:
       min-spare: 20
       max: 30
-    max-connections: 1024
+    max-connections: 2000
     mbeanregistry:
       enabled: true
 open-ai:
@@ -197,9 +197,9 @@ spring:
     activate:
       on-profile: load-test
   datasource:
-    url: ${DATASOURCE}
-    username: root
-    password: root
+    url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     database: mysql
@@ -208,14 +208,17 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      host: ${REDIS}
+      host: ${REDIS_PRIMARY_HOST_PROD}
       port: 6379
   kafka:
-    bootstrap-servers: ${KAFKA}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams
 oauth:
   kakao:
-    client-id: ${KAKAO_ID}
-    client-secret: ${KAKAO_SECRET}
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
 cors:
   allowed-origins: https://kokomen.kr, https://www.kokomen.kr
 server:
@@ -226,6 +229,6 @@ server:
         secure: true
 
 notification:
-  base-url: ${NOTIFICATION}
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
   connect-timeout: 3s
   read-timeout: 3s
