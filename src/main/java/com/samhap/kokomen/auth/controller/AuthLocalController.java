@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Profile("local")
+@Profile("local|load-test")
 @RequiredArgsConstructor
 @RestController
 public class AuthLocalController {
