@@ -81,6 +81,7 @@ jobs:
           MYSQL_ROOT_PASSWORD_PROD: ${{ secrets.MYSQL_ROOT_PASSWORD_PROD }}
           REDIS_PRIMARY_HOST_PROD: ${{ secrets.REDIS_PRIMARY_HOST_PROD }}
           NOTIFICATION_BASE_URL_PROD: ${{ secrets.NOTIFICATION_BASE_URL_PROD }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/load-test
