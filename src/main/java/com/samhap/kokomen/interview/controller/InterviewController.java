@@ -74,6 +74,15 @@ public class InterviewController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{interviewId}/like/kafka-v2")
+    public ResponseEntity<Void> likeInterviewKafkaV2(
+            @PathVariable Long interviewId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        interviewFacadeService.likeInterviewKafkaV2(interviewId, memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{interviewId}/check")
     public ResponseEntity<InterviewResponse> checkInterview(
             @PathVariable Long interviewId,

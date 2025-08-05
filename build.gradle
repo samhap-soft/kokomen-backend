@@ -49,6 +49,7 @@ dependencies {
     implementation 'software.amazon.awssdk:bedrockruntime'
 
     implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.apache.kafka:kafka-streams'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

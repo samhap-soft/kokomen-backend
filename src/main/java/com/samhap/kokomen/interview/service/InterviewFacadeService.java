@@ -118,6 +118,27 @@ public class InterviewFacadeService {
         interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), interview.getLikeCount() + 1);
     }
 
+    @Transactional
+    public void likeInterviewKafkaV2(Long interviewId, MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+        Interview interview = interviewService.readInterview(interviewId);
+        interviewLikeService.likeInterview(new InterviewLike(member, interview));
+        Long likeCount = incrementAndGetLikeCountInRedis(interviewId, interview);
+
+        // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
+        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), likeCount);
+    }
+
+    private Long incrementAndGetLikeCountInRedis(Long interviewId, Interview interview) {
+        String likeCountKey = "interview:like:" + interviewId;
+        boolean expireSuccess = redisService.expireKey(likeCountKey, Duration.ofDays(2));
+        if (!expireSuccess) {
+            redisService.setIfAbsent(likeCountKey, String.valueOf(interview.getLikeCount()), Duration.ofDays(2));
+        }
+        Long likeCount = redisService.incrementKey(likeCountKey);
+        return likeCount;
+    }
+
     public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
         return interviewService.checkInterview(interviewId, memberAuth);
     }

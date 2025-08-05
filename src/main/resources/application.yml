@@ -90,6 +90,9 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: kokomen-local-kafka:9092
+    streams:
+      bootstrap-servers: kokomen-local-kafka:9092
+      application-id: interview-like-streams
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
@@ -126,6 +129,9 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
@@ -163,6 +169,9 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}

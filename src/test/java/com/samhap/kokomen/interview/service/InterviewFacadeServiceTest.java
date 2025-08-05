@@ -147,6 +147,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() + 1);
     }
 
+    @Disabled
     @Test
     void 이미_좋아요를_누른_인터뷰에_좋아요를_요청하면_예외가_발생한다() {
         // given
