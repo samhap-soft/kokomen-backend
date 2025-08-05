@@ -192,7 +192,7 @@ public class InterviewService {
         Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            boolean interviewAlreadyLiked = interviewLikeRepository.existsByMemberIdAndInterviewId(readerMember.getId(), interview.getId());
+            boolean interviewAlreadyLiked = interviewLikeRepository.existsByInterviewIdAndMemberId(interview.getId(), readerMember.getId());
             List<Long> answerIds = answers.stream().map(Answer::getId).toList();
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
