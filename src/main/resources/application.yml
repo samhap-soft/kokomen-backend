@@ -116,7 +116,7 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000
+  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000, https://www.webview-dev.kokomen.kr, https://webview-dev.kokomen.kr
 server:
   servlet:
     session:
@@ -150,7 +150,7 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_PROD}
     client-secret: ${KAKAO_CLIENT_SECRET_PROD}
 cors:
-  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
 server:
   servlet:
     session:
