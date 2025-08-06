@@ -32,9 +32,9 @@ public class AsyncConfig implements AsyncConfigurer {
     @Bean("bedrockBlockExecutor")
     public ThreadPoolTaskExecutor bedrockBlockExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(500);
-        executor.setMaxPoolSize(500);
-        executor.setQueueCapacity(1000);
+        executor.setCorePoolSize(60);
+        executor.setMaxPoolSize(60);
+        executor.setQueueCapacity(100);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
         executor.setTaskDecorator(new MdcDecorator());
