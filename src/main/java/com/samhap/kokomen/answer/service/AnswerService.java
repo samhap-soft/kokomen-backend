@@ -5,6 +5,7 @@ import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.domain.Question;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,16 @@ public class AnswerService {
         return answerRepository.findById(answerId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 답변입니다."));
     }
+
+    public Answer readByQuestionId(Long questionId) {
+        return answerRepository.findByQuestionId(questionId)
+                .orElseThrow(() -> new IllegalStateException("다음 질문에 대한 답변이 존재하지 않습니다. question_id = " + questionId));
+    }
+
+    public Optional<Answer> findByQuestionId(Long questionId) {
+        return answerRepository.findByQuestionId(questionId);
+    }
+
 
     public List<Answer> findByQuestionIn(List<Question> questions) {
         return answerRepository.findByQuestionIn(questions);

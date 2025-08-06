@@ -4,7 +4,6 @@ import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
@@ -54,27 +53,6 @@ public class InterviewController {
         return interviewFacadeService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
-    }
-
-    @PostMapping("/{interviewId}/questions/{curQuestionId}/answers/block-async")
-    public ResponseEntity<Void> proceedInterviewBlockAsync(
-            @PathVariable Long interviewId,
-            @PathVariable Long curQuestionId,
-            @RequestBody AnswerRequest answerRequest,
-            @Authentication MemberAuth memberAuth
-    ) {
-        interviewFacadeService.proceedInterviewBlockAsync(interviewId, curQuestionId, answerRequest, memberAuth);
-        return ResponseEntity.noContent().build();
-    }
-
-    // TODO: 제대로 다시 만들어라 제발
-    @GetMapping("/{interviewId}/questions/{curQuestionId}/success")
-    public ResponseEntity<LlmProceedState> getInterviewSummary(
-            @PathVariable Long interviewId,
-            @PathVariable Long curQuestionId,
-            @Authentication MemberAuth memberAuth
-    ) {
-        return ResponseEntity.ok(interviewFacadeService.getInterviewProceedState(interviewId, curQuestionId));
     }
 
     @PostMapping("/{interviewId}/like")

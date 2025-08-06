@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -18,6 +19,7 @@ import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryRespon
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
@@ -55,6 +57,7 @@ public class InterviewFacadeService {
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
     private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
+    private final AnswerRepository answerRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -120,10 +123,40 @@ public class InterviewFacadeService {
         return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
     }
 
-    public LlmProceedState getInterviewProceedState(Long interviewId, Long curQuestionId) {
+    @Transactional(readOnly = true)
+    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, MemberAuth memberAuth) {
+        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
-        String state = redisService.get(interviewProceedStateKey, String.class).get();
-        return LlmProceedState.valueOf(state);
+
+        Optional<String> stateOptional = redisService.get(interviewProceedStateKey, String.class);
+        if (stateOptional.isPresent()) {
+            LlmProceedState llmProceedState = LlmProceedState.valueOf(stateOptional.get());
+            return createResponseByLlmProceedState(interviewId, curQuestionId, llmProceedState);
+        }
+
+        return answerService.findByQuestionId(curQuestionId)
+                .map(answer -> createCompletedResponse(interviewId, curQuestionId))
+                .orElseThrow(() -> new BadRequestException("아직 답변을 제출하지 않은 질문입니다. 답변을 먼저 제출해 주세요."));
+    }
+
+    private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
+        if (llmProceedState == LlmProceedState.PENDING || llmProceedState == LlmProceedState.FAILED) {
+            return InterviewProceedStateResponse.createOfStatus(llmProceedState);
+        }
+        return createCompletedResponse(interviewId, curQuestionId);
+    }
+
+    private InterviewProceedStateResponse createCompletedResponse(Long interviewId, Long curQuestionId) {
+        Interview interview = interviewService.readInterview(interviewId);
+
+        if (interview.getInterviewState() == InterviewState.FINISHED) {
+            // curQuestionId가 마지막 질문의 id가 아닌 경우 예외 처리 해주어야 하는지?
+            return InterviewProceedStateResponse.createCompletedAndFinished(interview);
+        }
+
+        Answer curAnswer = answerService.readByQuestionId(curQuestionId);
+        Question nextQuestion = questionService.readLastQuestionByInterviewId(interviewId);
+        return InterviewProceedStateResponse.createCompletedAndInProgress(interview, curAnswer, nextQuestion);
     }
 
     @Transactional

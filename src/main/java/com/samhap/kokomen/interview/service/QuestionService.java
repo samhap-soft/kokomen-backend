@@ -22,4 +22,9 @@ public class QuestionService {
     public List<Question> findByInterview(Interview interview) {
         return questionRepository.findByInterview(interview);
     }
+
+    public Question readLastQuestionByInterviewId(Long interviewId) {
+        return questionRepository.findFirstByInterviewIdOrderByIdDesc(interviewId)
+                .orElseThrow(() -> new IllegalStateException("다음 인터뷰의 마지막 질문이 존재하지 않습니다. interviewId: " + interviewId));
+    }
 }
