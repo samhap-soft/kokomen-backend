@@ -21,12 +21,7 @@ public class InterviewProceedBlockAsyncService {
     private final BedrockClient bedrockClient;
 
     @Async("bedrockBlockExecutor")
-    public void proceedOrEndInterviewBlockAsync(
-            Long memberId,
-            QuestionAndAnswers questionAndAnswers,
-            Long interviewId
-    ) {
-        log.info("블로킹 비동기 스레드 시작 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
+    public void proceedOrEndInterviewBlockAsync(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
         String lockKey = InterviewFacadeService.createInterviewProceedLockKey(memberId);
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
 
@@ -40,8 +35,6 @@ public class InterviewProceedBlockAsyncService {
             throw e;
         } finally {
             redisService.releaseLock(lockKey);
-            log.info("블로킹 비동기 스레드 종료 - interviewId: {}, curQuestionId: {}, memberId: {}",
-                    interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
         }
     }
 }
