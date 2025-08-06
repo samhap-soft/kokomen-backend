@@ -13,9 +13,7 @@ import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.BedrockAsyncClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
@@ -30,20 +28,16 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class InterviewFacadeService {
 
@@ -51,7 +45,6 @@ public class InterviewFacadeService {
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
 
     private final BedrockClient bedrockClient;
-    private final BedrockAsyncClient bedrockAsyncClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
@@ -61,37 +54,7 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
-    private final ThreadPoolTaskExecutor threadPoolTaskExecutor;
     private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
-
-    public InterviewFacadeService(
-            BedrockClient bedrockClient,
-            BedrockAsyncClient bedrockAsyncClient,
-            RedisService redisService,
-            InterviewProceedService interviewProceedService,
-            InterviewService interviewService,
-            InterviewLikeService interviewLikeService,
-            MemberService memberService,
-            RootQuestionService rootQuestionService,
-            QuestionService questionService,
-            AnswerService answerService,
-            ApplicationEventPublisher eventPublisher,
-            @Qualifier("bedrockCallbackExecutor") ThreadPoolTaskExecutor threadPoolTaskExecutor,
-            InterviewProceedBlockAsyncService interviewProceedBlockAsyncService) {
-        this.bedrockClient = bedrockClient;
-        this.bedrockAsyncClient = bedrockAsyncClient;
-        this.redisService = redisService;
-        this.interviewProceedService = interviewProceedService;
-        this.interviewService = interviewService;
-        this.interviewLikeService = interviewLikeService;
-        this.memberService = memberService;
-        this.rootQuestionService = rootQuestionService;
-        this.questionService = questionService;
-        this.answerService = answerService;
-        this.eventPublisher = eventPublisher;
-        this.threadPoolTaskExecutor = threadPoolTaskExecutor;
-        this.interviewProceedBlockAsyncService = interviewProceedBlockAsyncService;
-    }
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -118,31 +81,6 @@ public class InterviewFacadeService {
         }
     }
 
-    public void proceedInterviewNonblockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
-        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
-        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
-        acquireLockForProceedInterview(lockKey);
-        try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
-            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
-
-            log.info("논블로킹 비동기 요청 보내기 직전 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
-            CompletableFuture<ConverseResponse> completableFuture = bedrockAsyncClient.requestToBedrock(questionAndAnswers);
-            log.info("논블로킹 비동기 요청 보내기 직후 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
-            completableFuture.thenAcceptAsync(
-                            response -> callbackBedrock(response, memberAuth.memberId(), questionAndAnswers, interviewId, lockKey, mdcContext),
-                            threadPoolTaskExecutor)
-                    .exceptionallyAsync(ex -> handleBedrockException(ex, lockKey, interviewProceedStateKey, mdcContext), threadPoolTaskExecutor);
-
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
-        } catch (Exception e) {
-            redisService.releaseLock(lockKey);
-            throw e;
-        }
-    }
-
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
@@ -151,10 +89,7 @@ public class InterviewFacadeService {
         try {
             String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
             QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
-            log.info("블로킹 비동기 요청 보내기 직전 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
             interviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
-            log.info("블로킹 비동기 요청 보낸 직후 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, curQuestionId, memberAuth.memberId());
-
             redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
@@ -181,56 +116,8 @@ public class InterviewFacadeService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    private void callbackBedrock(ConverseResponse converseResponse, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey,
-                                 Map<String, String> mdcContext) {
-        if (mdcContext != null) {
-            MDC.setContextMap(mdcContext);
-        }
-        log.info("논블로킹 비동기 스레드 시작 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
-
-        try {
-            String rawText = converseResponse.output().message().content().get(0).text();
-            String cleanedContent = cleanJsonContent(rawText);
-
-            BedrockResponse response = new BedrockResponse(cleanedContent);
-            interviewProceedService.proceedOrEndInterviewNonblockAsync(memberId, questionAndAnswers, response, interviewId);
-
-            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
-            redisService.releaseLock(lockKey);
-        } finally {
-            log.info("논블로킹 비동기 스레드 종료 - interviewId: {}, curQuestionId: {}, memberId: {}", interviewId, questionAndAnswers.readCurQuestion().getId(), memberId);
-            MDC.clear();
-        }
-    }
-
-    private String cleanJsonContent(String rawText) {
-        return rawText
-                .replaceAll("```json", "")
-                .replaceAll("```", "")
-                .replaceAll("`", "")
-                .trim();
-    }
-
     public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
         return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
-    }
-
-    private Void handleBedrockException(Throwable ex, String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
-        if (mdcContext != null) {
-            MDC.setContextMap(mdcContext);
-        }
-        log.info("논블로킹 비동기 예외 스레드 시작 - {}}", interviewProceedStateKey);
-
-        try {
-            log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
-            redisService.releaseLock(lockKey);
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
-            return null;
-        } finally {
-            log.info("논블로킹 비동기 예외 스레드 종료 - {}}", interviewProceedStateKey);
-            MDC.clear();
-        }
     }
 
     public LlmProceedState getInterviewProceedState(Long interviewId, Long curQuestionId) {

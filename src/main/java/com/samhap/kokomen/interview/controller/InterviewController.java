@@ -56,17 +56,6 @@ public class InterviewController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    @PostMapping("/{interviewId}/questions/{curQuestionId}/answers/nonblock-async")
-    public ResponseEntity<Void> proceedInterviewNonblockAsync(
-            @PathVariable Long interviewId,
-            @PathVariable Long curQuestionId,
-            @RequestBody AnswerRequest answerRequest,
-            @Authentication MemberAuth memberAuth
-    ) {
-        interviewFacadeService.proceedInterviewNonblockAsync(interviewId, curQuestionId, answerRequest, memberAuth);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/{interviewId}/questions/{curQuestionId}/answers/block-async")
     public ResponseEntity<Void> proceedInterviewBlockAsync(
             @PathVariable Long interviewId,

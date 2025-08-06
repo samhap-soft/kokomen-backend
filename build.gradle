@@ -47,7 +47,6 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.31.69')
     implementation 'software.amazon.awssdk:bedrock'
     implementation 'software.amazon.awssdk:bedrockruntime'
-    implementation 'software.amazon.awssdk:netty-nio-client:2.32.11'
     implementation 'software.amazon.awssdk:apache-client:2.32.12'
 
     compileOnly 'org.projectlombok:lombok'

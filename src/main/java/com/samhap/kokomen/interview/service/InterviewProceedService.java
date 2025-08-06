@@ -48,24 +48,6 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public void proceedOrEndInterviewNonblockAsync(
-            Long memberId,
-            QuestionAndAnswers questionAndAnswers,
-            LlmResponse llmResponse,
-            Long interviewId
-    ) {
-        Member member = memberService.readById(memberId);
-        member.useToken();
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-        Interview interview = interviewService.readInterview(interviewId);
-        if (questionAndAnswers.isProceedRequest()) {
-            saveNextQuestion(llmResponse, interview);
-            return;
-        }
-        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-    }
-
-    @Transactional
     public void proceedOrEndInterviewBlockAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
