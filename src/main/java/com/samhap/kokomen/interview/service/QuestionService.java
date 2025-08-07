@@ -24,6 +24,6 @@ public class QuestionService {
     }
 
     public List<Question> readLastTwoQuestionsByInterviewId(Long interviewId) {
-        return questionRepository.findTopNByInterviewIdOrderByIdDesc(interviewId, 2);
+        return questionRepository.findTop2ByInterviewIdOrderByIdDesc(interviewId);
     }
 }
