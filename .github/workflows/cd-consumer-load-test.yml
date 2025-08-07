@@ -2,7 +2,7 @@ name: CD CONSUMER LOAD TEST
 
 on:
   pull_request:
-    branches: [ load-test ]
+    branches: [ likecount-load-test ]
 
 jobs:
   detect-changes:
@@ -14,7 +14,7 @@ jobs:
       - id: filter
         uses: dorny/paths-filter@v3
         with:
-          base: load-test
+          base: likecount-load-test
           filters: |
             consumer:
               - 'consumer/**'
