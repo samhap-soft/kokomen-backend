@@ -166,7 +166,7 @@ public class InterviewFacadeService {
     private InterviewProceedStateResponse handleInProgressInterview(Interview interview, Long curQuestionId, List<Question> lastTwoQuestions) {
         Question lastQuestion = lastTwoQuestions.get(0);
         Question curQuestion = lastTwoQuestions.get(1);
-        if (!curQuestionId.equals(curQuestion)) {
+        if (!curQuestionId.equals(curQuestion.getId())) {
             throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
         }
         Answer curAnswer = answerService.readByQuestionId(curQuestionId);
