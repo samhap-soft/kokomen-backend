@@ -73,4 +73,11 @@
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
+
+    <!-- docs 환경: 콘솔만 사용 -->
+    <springProfile name="docs">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 </configuration>
