@@ -1,7 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -57,7 +56,6 @@ public class InterviewFacadeService {
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
     private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
-    private final AnswerRepository answerRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
