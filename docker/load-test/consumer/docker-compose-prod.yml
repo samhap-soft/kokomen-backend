@@ -1,0 +1,56 @@
+services:
+  kokomen-interview-consumer-prod:
+    image: samhap/kokomen-interview-consumer:load-test
+    container_name: kokomen-interview-consumer-prod
+    restart: on-failure:3
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./app/logs:/logs
+    environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
+      HOSTNAME: ${HOSTNAME}
+      SPRING_PROFILES_ACTIVE: load-test
+      SPRING_DATASOURCE_URL_PROD: ${SPRING_DATASOURCE_URL_PROD}
+      SPRING_DATASOURCE_USERNAME_PROD: ${SPRING_DATASOURCE_USERNAME_PROD}
+      SPRING_DATASOURCE_PASSWORD_PROD: ${SPRING_DATASOURCE_PASSWORD_PROD}
+      REDIS_PRIMARY_HOST_PROD: ${REDIS_PRIMARY_HOST_PROD}
+      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
+      KAKAO_CLIENT_ID_PROD: ${KAKAO_CLIENT_ID_PROD}
+      KAKAO_CLIENT_SECRET_PROD: ${KAKAO_CLIENT_SECRET_PROD}
+      NOTIFICATION_BASE_URL_PROD: ${NOTIFICATION_BASE_URL_PROD}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+
+  node:
+    image: prom/node-exporter
+    container_name: node
+    restart: unless-stopped
+    pid: host
+    ports:
+      - 9100:9100
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro'
+    environment:
+      TZ: Asia/Seoul
+
+  promtail:
+    image: grafana/promtail
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
+      - ./app/logs:/logs/app
+      - promtail-tmp:/tmp
+    command:
+      - "-config.file=/etc/promtail/promtail.yaml"
+      - "-config.expand-env=true"
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+      HOSTNAME: ${HOSTNAME}
+
+volumes:
+  promtail-tmp:
