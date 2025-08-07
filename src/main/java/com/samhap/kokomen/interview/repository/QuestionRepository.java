@@ -3,7 +3,6 @@ package com.samhap.kokomen.interview.repository;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface QuestionRepository extends JpaRepository<Question, Long> {
@@ -14,5 +13,5 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     int countByInterview(Interview interview);
 
-    Optional<Question> findFirstByInterviewIdOrderByIdDesc(Long interviewId);
+    List<Question> findTopNByInterviewIdOrderByIdDesc(Long interviewId, int n);
 }

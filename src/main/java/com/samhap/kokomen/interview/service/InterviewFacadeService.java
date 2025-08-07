@@ -136,7 +136,7 @@ public class InterviewFacadeService {
 
         return answerService.findByQuestionId(curQuestionId)
                 .map(answer -> createCompletedResponse(interviewId, curQuestionId))
-                .orElseThrow(() -> new BadRequestException("아직 답변을 제출하지 않은 질문입니다. 답변을 먼저 제출해 주세요."));
+                .orElseGet(() -> createResponseByLlmProceedState(interviewId, curQuestionId, LlmProceedState.FAILED));
     }
 
     private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
@@ -148,15 +148,30 @@ public class InterviewFacadeService {
 
     private InterviewProceedStateResponse createCompletedResponse(Long interviewId, Long curQuestionId) {
         Interview interview = interviewService.readInterview(interviewId);
-
+        List<Question> lastTwoQuestions = questionService.readLastTwoQuestionsByInterviewId(interviewId);
         if (interview.getInterviewState() == InterviewState.FINISHED) {
-            // curQuestionId가 마지막 질문의 id가 아닌 경우 예외 처리 해주어야 하는지?
-            return InterviewProceedStateResponse.createCompletedAndFinished(interview);
+            return handleFinishedInterview(interview, curQuestionId, lastTwoQuestions);
         }
+        return handleInProgressInterview(interview, curQuestionId, lastTwoQuestions);
+    }
 
+    private InterviewProceedStateResponse handleFinishedInterview(Interview interview, Long curQuestionId, List<Question> lastTwoQuestions) {
+        Question lastQuestion = lastTwoQuestions.get(0);
+        if (!curQuestionId.equals(lastQuestion.getId())) {
+            throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + lastQuestion.getId());
+        }
+        return InterviewProceedStateResponse.createCompletedAndFinished(interview);
+    }
+
+    private InterviewProceedStateResponse handleInProgressInterview(Interview interview, Long curQuestionId, List<Question> lastTwoQuestions) {
+        Question lastQuestion = lastTwoQuestions.get(0);
+        Question curQuestion = lastTwoQuestions.get(1);
+        if (!curQuestionId.equals(curQuestion)) {
+            throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + curQuestion.getId());
+        }
         Answer curAnswer = answerService.readByQuestionId(curQuestionId);
-        Question nextQuestion = questionService.readLastQuestionByInterviewId(interviewId);
-        return InterviewProceedStateResponse.createCompletedAndInProgress(interview, curAnswer, nextQuestion);
+
+        return InterviewProceedStateResponse.createCompletedAndInProgress(interview, curAnswer, lastQuestion);
     }
 
     @Transactional
