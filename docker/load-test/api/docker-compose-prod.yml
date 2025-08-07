@@ -1,6 +1,6 @@
 services:
   kokomen-interview-api-prod:
-    image: samhap/kokomen-interview-api:prod
+    image: samhap/kokomen-interview-api:load-test
     container_name: kokomen-interview-api-prod
     restart: on-failure:3
     ports:
