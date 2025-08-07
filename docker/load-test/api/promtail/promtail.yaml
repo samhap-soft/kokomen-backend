@@ -8,10 +8,10 @@ clients:
   - url: http://10.0.37.94:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: kokomen-app-prod
+  - job_name: kokomen-app-load-test
     static_configs:
       - labels:
-          job: kokomen-app
+          job: kokomen-app-load-test
           app: kokomen
           host: ${HOSTNAME}
           __path__: /logs/app/app.log
