@@ -2,7 +2,7 @@ name: CI API TEST
 
 on:
   pull_request:
-    branches: [ main, release, develop, load-test ] # TODO: load-test는 잘 돌아가는지만 보고 삭제하기
+    branches: [ main, release, develop ]
 
 jobs:
   detect-changes:

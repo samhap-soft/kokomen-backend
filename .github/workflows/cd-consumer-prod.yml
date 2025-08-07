@@ -20,7 +20,7 @@ jobs:
               - 'consumer/**'
   build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.consumer == 'true'
+    if: needs.detect-changes.outputs.consumer_changed == 'true'
     runs-on: ubuntu-latest
 
     defaults:
