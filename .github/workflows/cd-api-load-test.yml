@@ -58,9 +58,11 @@ jobs:
 
       - name: Build the Docker image
         run: docker build -f ./Dockerfile --platform linux/arm64 --no-cache -t samhap/kokomen-interview-api:load-test .
+        working-directory: ./api
 
       - name: Push the Docker Image to Dockerhub
         run: docker push samhap/kokomen-interview-api:load-test
+        working-directory: ./api
 
   deploy:
     needs: build
