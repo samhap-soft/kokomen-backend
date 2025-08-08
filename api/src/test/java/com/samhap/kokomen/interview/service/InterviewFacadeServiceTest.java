@@ -18,7 +18,10 @@ import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
@@ -28,9 +31,11 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +57,8 @@ class InterviewFacadeServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private RedisService redisService;
     @Autowired
     private TestInterviewLikedEventListener testInterviewLikedEventListener;
 
@@ -132,6 +139,69 @@ class InterviewFacadeServiceTest extends BaseTest {
     }
 
     @Disabled
+    @Test
+    void 진행중인_인터뷰_진행_상황을_폴링으로_조회할_때_현재_질문_id가_아니라면_예외가_발생한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(AnswerRank.B).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.A).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+
+        // when & then
+        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question1.getId(), new MemberAuth(member.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 2");
+    }
+
+    @Test
+    void 완료된_인터뷰_진행_상황을_폴링으로_조회할_때_현재_질문_id가_아니라면_예외가_발생한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(AnswerRank.B).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.A).build());
+        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).answerRank(AnswerRank.A).build());
+
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question3.getId());
+        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+
+        // when & then
+        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), new MemberAuth(member.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 3");
+    }
+
+    @Test
+    void 인터뷰_진행_상황을_폴링으로_조회할_때_레디스에_LLM_진행_상태가_없고_답변이_없는_질문으로_요청이_오면_FAILED를_응답한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(AnswerRank.B).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+
+        // when
+        InterviewProceedStateResponse interviewProceedState =
+                interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), new MemberAuth(member.getId()));
+
+        // then
+        assertThat(interviewProceedState.llmProceedState()).isEqualTo(LlmProceedState.FAILED);
+    }
+
     @Test
     void 아직_좋아요를_누르지_않은_인터뷰에_좋아요를_요청할_수_있다() {
         // given

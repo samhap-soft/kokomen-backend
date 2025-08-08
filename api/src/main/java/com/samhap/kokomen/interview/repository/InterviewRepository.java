@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface InterviewRepository extends JpaRepository<Interview, Long> {
@@ -30,11 +31,14 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
     @Transactional
     @Modifying
-    @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
-    void decreaseLikeCountModifying(Long interviewId);
+    @Query("UPDATE Interview i SET i.likeCount = :likeCount WHERE i.id = :interviewId")
+    void updateLikeCount(Long interviewId, Long likeCount);
 
     @Transactional
     @Modifying
-    @Query("UPDATE Interview i SET i.likeCount = :likeCount WHERE i.id = :interviewId")
-    void updateLikeCount(Long interviewId, Long likeCount);
+    @Query("UPDATE Interview i SET i.likeCount = i.likeCount - 1 WHERE i.id = :interviewId")
+    void decreaseLikeCountModifying(Long interviewId);
+
+    @Query("SELECT i.rootQuestion.id FROM Interview i WHERE i.id = :interviewId")
+    Long findRootQuestionIdByInterviewId(@Param("interviewId") Long interviewId);
 }

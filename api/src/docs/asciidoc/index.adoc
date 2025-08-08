@@ -104,6 +104,56 @@ include::{snippetsDir}/interview-proceedInterview-exception2/http-response.adoc[
 include::{snippetsDir}/interview-proceedInterview-exception3/http-request.adoc[]
 include::{snippetsDir}/interview-proceedInterview-exception3/http-response.adoc[]
 
+=== 인터뷰 진행 V2
+
+include::{snippetsDir}/interview-proceedInterview-V2/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/request-fields.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/http-response.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - PENDING
+
+include::{snippetsDir}/interview-getPolling-PENDING-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-PENDING-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-PENDING-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-PENDING-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-PENDING-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - FAILED
+
+include::{snippetsDir}/interview-getPolling-FAILED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-FAILED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-FAILED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-FAILED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-FAILED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED - 종료된 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED - 진행중인 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/curl-request.adoc[]
+
+==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 1
+include::{snippetsDir}/interview-getPolling-exception1-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-exception1-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-exception1-V2/response-fields.adoc[]
+
+==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 2
+include::{snippetsDir}/interview-getPolling-exception2-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-exception2-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]
+
 === 인터뷰 좋아요 요청
 
 include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
