@@ -3,8 +3,9 @@ services:
     image: samhap/kokomen-interview-consumer:load-test
     container_name: kokomen-interview-consumer-prod
     restart: on-failure:3
+    expose:
+      - 8080
     ports:
-      - "8080:8080"
       - "8081:8081"
     volumes:
       - ./app/logs:/logs

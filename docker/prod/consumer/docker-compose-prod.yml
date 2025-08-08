@@ -3,8 +3,9 @@ services:
     image: samhap/kokomen-interview-consumer:prod
     container_name: kokomen-interview-consumer-prod
     restart: on-failure:3
+    expose:
+      - 8080
     ports:
-      - "8080:8080"
       - "8081:8081"
     volumes:
       - ./app/logs:/logs
@@ -17,10 +18,6 @@ services:
       SPRING_DATASOURCE_USERNAME_PROD: ${SPRING_DATASOURCE_USERNAME_PROD}
       SPRING_DATASOURCE_PASSWORD_PROD: ${SPRING_DATASOURCE_PASSWORD_PROD}
       REDIS_PRIMARY_HOST_PROD: ${REDIS_PRIMARY_HOST_PROD}
-      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
-      KAKAO_CLIENT_ID_PROD: ${KAKAO_CLIENT_ID_PROD}
-      KAKAO_CLIENT_SECRET_PROD: ${KAKAO_CLIENT_SECRET_PROD}
-      NOTIFICATION_BASE_URL_PROD: ${NOTIFICATION_BASE_URL_PROD}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
 
   node:
