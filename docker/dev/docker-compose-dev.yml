@@ -1,13 +1,13 @@
 services:
-  kokomen-dev-server:
-    image: samhap/kokomen:dev
-    container_name: kokomen-dev-server
+  kokomen-interview-api-dev:
+    image: samhap/kokomen-interview-api:dev
+    container_name: kokomen-interview-api-dev
     restart: on-failure:3
     ports:
       - "8080:8080"
       - "8081:8081"
     volumes:
-      - ./app/logs:/logs
+      - ./interview/api/app/logs:/logs
     environment:
       TZ: Asia/Seoul
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
@@ -19,6 +19,45 @@ services:
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
       KAKAO_CLIENT_ID_DEV: ${KAKAO_CLIENT_ID_DEV}
       KAKAO_CLIENT_SECRET_DEV: ${KAKAO_CLIENT_SECRET_DEV}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+    networks:
+      - dev-kokomen-net
+
+  kokomen-interview-consumer-dev:
+    image: samhap/kokomen-interview-consumer:dev
+    container_name: kokomen-interview-consumer-dev
+    restart: on-failure:3
+    expose:
+      - 8080
+    ports:
+      - "8091:8081"
+    volumes:
+      - ./interview/consumer/app/logs:/logs
+    environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
+      HOSTNAME: ${HOSTNAME}
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL_DEV: ${SPRING_DATASOURCE_URL_DEV}
+      SPRING_DATASOURCE_USERNAME_DEV: ${SPRING_DATASOURCE_USERNAME_DEV}
+      SPRING_DATASOURCE_PASSWORD_DEV: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+    networks:
+      - dev-kokomen-net
+
+  node:
+    image: prom/node-exporter
+    container_name: node
+    restart: unless-stopped
+    pid: host
+    ports:
+      - 9100:9100
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro'
+    environment:
+      TZ: Asia/Seoul
     networks:
       - dev-kokomen-net
 
@@ -122,7 +161,8 @@ services:
     container_name: promtail
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
-      - ./app/logs:/logs/app
+      - ./interview/api/app/logs:/logs/interviews/api
+      - ./interview/consumer/app/logs:/logs/interviews/consumer
       - promtail-tmp:/tmp
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
@@ -131,22 +171,6 @@ services:
     environment:
       TZ: Asia/Seoul
       HOSTNAME: ${HOSTNAME}
-    networks:
-      - dev-kokomen-net
-
-  node:
-    image: prom/node-exporter
-    container_name: node
-    restart: unless-stopped
-    pid: host
-    ports:
-      - 9100:9100
-    command:
-      - '--path.rootfs=/host'
-    volumes:
-      - '/:/host:ro'
-    environment:
-      TZ: Asia/Seoul
     networks:
       - dev-kokomen-net
 
@@ -164,11 +188,17 @@ services:
       - |
         cat <<EOF > /prometheus/prometheus.yml
         scrape_configs:
-          - job_name: 'app'
+          - job_name: 'api-actuator'
             metrics_path: '/actuator/prometheus'
             scrape_interval: 15s
             static_configs:
-              - targets: ['kokomen-dev-server:8081']
+              - targets: ['kokomen-interview-api-dev:8081']
+
+          - job_name: 'consumer-actuator'
+            metrics_path: '/actuator/prometheus'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['kokomen-interview-consumer-dev:8081']
 
           - job_name: 'node'
             scrape_interval: 15s

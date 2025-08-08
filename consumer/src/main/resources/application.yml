@@ -1,0 +1,130 @@
+spring:
+  datasource:
+    hikari:
+      connection-timeout: 10000
+  jpa:
+    open-in-view: false
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  kafka:
+    consumer:
+      group-id: default-consumer-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    properties:
+      security.protocol: PLAINTEXT
+server:
+  tomcat:
+    threads:
+      min-spare: 20
+      max: 30
+    max-connections: 1024
+    mbeanregistry:
+      enabled: true
+management:
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
+
+---
+# local profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:mysql://kokomen-interview-local-mysql:3306/kokomen-local
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: kokomen-local-kafka:9092
+    streams:
+      bootstrap-servers: kokomen-local-kafka:9092
+      application-id: interview-like-streams
+
+---
+# dev profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_DEV}
+    username: ${SPRING_DATASOURCE_USERNAME_DEV}
+    password: ${SPRING_DATASOURCE_PASSWORD_DEV}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams
+---
+
+# prod profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_PROD}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams
+
+---
+# load-test profile
+spring:
+  config:
+    activate:
+      on-profile: load-test
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      application-id: interview-like-streams

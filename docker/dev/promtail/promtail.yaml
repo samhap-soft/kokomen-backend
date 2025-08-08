@@ -8,13 +8,25 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: kokomen-app-dev
+  - job_name: interview-api-dev
     static_configs:
       - labels:
-          job: kokomen-app
-          app: kokomen
+          job: interview-api
+          app: interview-api
           host: ${HOSTNAME}
-          __path__: /logs/app/app.log
+          __path__: /logs/interviews/api/app.log
+    pipeline_stages:
+      - regex:
+          expression: '\[.*?\] [\d\-:.\s]+ \[.*?\] (?P<level>[A-Z]+)\s'
+      - labels:
+          level:
+  - job_name: interview-consumer-dev
+    static_configs:
+      - labels:
+          job: interview-consumer
+          app: interview-consumer
+          host: ${HOSTNAME}
+          __path__: /logs/interviews/consumer/app.log
     pipeline_stages:
       - regex:
           expression: '\[.*?\] [\d\-:.\s]+ \[.*?\] (?P<level>[A-Z]+)\s'
