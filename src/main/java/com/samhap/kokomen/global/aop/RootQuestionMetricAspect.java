@@ -82,6 +82,7 @@ public class RootQuestionMetricAspect {
     public void asyncProceedInterviewPointcut(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
     }
 
+    // TODO: 테스트 코드 작성
     @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
     public void increaseRootQuestionInterviewEndCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
         Interview interview = interviewService.readInterview(interviewId);
@@ -94,6 +95,7 @@ public class RootQuestionMetricAspect {
         }
     }
 
+    // TODO: 테스트 코드 작성
     @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
     public void increaseRootQuestionAnswerRankCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
         Long curQuestionId = questionAndAnswers.readCurQuestion().getId();
