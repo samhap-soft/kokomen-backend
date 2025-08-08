@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.InterviewBatchRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class InterviewLikeEventConsumer {
 
-    private final InterviewRepository interviewRepository;
+    private final InterviewBatchRepository InterviewBatchRepository;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(
@@ -41,11 +41,7 @@ public class InterviewLikeEventConsumer {
         }
 
         // interviewId별로 likeCount만큼 한 번에 증가
-        for (Map.Entry<Long, Long> entry : interviewLikeCountMap.entrySet()) {
-            Long interviewId = entry.getKey();
-            Long count = entry.getValue();
-            interviewRepository.increaseLikeCountModifying(interviewId, count);
-            log.info("인터뷰 좋아요 카운트 증가: interviewId={}, count={}", interviewId, count);
-        }
+        InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
+        log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
     }
 }

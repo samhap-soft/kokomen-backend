@@ -52,4 +52,30 @@ class InterviewBatchRepositoryTest extends BaseTest {
             assertThat(viewCount).isEqualTo(interviewViewCounts.get(interviewId));
         }
     }
+
+    @Test
+    void batchUpdateInterviewLikeCount() {
+        // given
+        int interviewCount = 15;
+        int batchSize = 3;
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Map<Long, Long> interviewLikeCounts = new HashMap<>();
+
+        for (long interviewId = 1; interviewId <= interviewCount; interviewId++) {
+            long likeCount = interviewId;
+            interviewRepository.save(
+                    InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+            interviewLikeCounts.put(interviewId, likeCount);
+        }
+
+        // when
+        interviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCounts, batchSize);
+
+        // then
+        for (long interviewId = 1; interviewId <= interviewCount; interviewId++) {
+            Long likeCount = interviewRepository.findById(interviewId).get().getLikeCount();
+            assertThat(likeCount).isEqualTo(interviewLikeCounts.get(interviewId));
+        }
+    }
 }
