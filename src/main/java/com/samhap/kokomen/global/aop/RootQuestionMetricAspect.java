@@ -12,11 +12,13 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-@Aspect
-@Component
 @RequiredArgsConstructor
+@Component
+@Order(1)
+@Aspect
 public class RootQuestionMetricAspect {
 
     private final MeterRegistry meterRegistry;
@@ -44,7 +46,8 @@ public class RootQuestionMetricAspect {
 
     @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
     public void increaseRootQuestionInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
-        if (result.isEmpty()) {
+        boolean isInterviewEnded = result.isEmpty();
+        if (isInterviewEnded) {
             Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
             meterRegistry.counter(
                     "root_question_interview_end_count_total",
