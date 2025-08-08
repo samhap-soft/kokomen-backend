@@ -139,7 +139,7 @@ public class InterviewFacadeService {
 
     private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
         if (llmProceedState == LlmProceedState.PENDING || llmProceedState == LlmProceedState.FAILED) {
-            return InterviewProceedStateResponse.createOfStatus(llmProceedState);
+            return InterviewProceedStateResponse.createPendingOrFailed(llmProceedState);
         }
         return createCompletedResponse(interviewId, curQuestionId);
     }

@@ -16,12 +16,12 @@ public record InterviewProceedStateResponse(
         String nextQuestion
 ) {
 
-    public static InterviewProceedStateResponse createOfStatus(LlmProceedState llmProceedState) {
+    public static InterviewProceedStateResponse createPendingOrFailed(LlmProceedState llmProceedState) {
         return new InterviewProceedStateResponse(llmProceedState, null, null, null, null);
     }
 
     public static InterviewProceedStateResponse createCompletedAndFinished(Interview interview) {
-        return new InterviewProceedStateResponse(LlmProceedState.COMPLETED, interview.getInterviewState(), null, null, null);
+        return new InterviewProceedStateResponse(LlmProceedState.COMPLETED, InterviewState.FINISHED, null, null, null);
     }
 
     public static InterviewProceedStateResponse createCompletedAndInProgress(
@@ -31,7 +31,7 @@ public record InterviewProceedStateResponse(
     ) {
         return new InterviewProceedStateResponse(
                 LlmProceedState.COMPLETED,
-                interview.getInterviewState(),
+                InterviewState.IN_PROGRESS,
                 curAnswer.getAnswerRank(),
                 nextQuestion.getId(),
                 nextQuestion.getContent()
