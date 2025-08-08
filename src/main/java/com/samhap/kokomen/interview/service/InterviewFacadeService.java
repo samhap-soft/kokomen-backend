@@ -132,9 +132,13 @@ public class InterviewFacadeService {
             return createResponseByLlmProceedState(interviewId, curQuestionId, llmProceedState);
         }
 
+        return recoverWhenRedisStateMissing(interviewId, curQuestionId);
+    }
+
+    private InterviewProceedStateResponse recoverWhenRedisStateMissing(Long interviewId, Long curQuestionId) {
         return answerService.findByQuestionId(curQuestionId)
                 .map(answer -> createCompletedResponse(interviewId, curQuestionId))
-                .orElseGet(() -> createResponseByLlmProceedState(interviewId, curQuestionId, LlmProceedState.FAILED));
+                .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(LlmProceedState.FAILED));
     }
 
     private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
@@ -148,12 +152,13 @@ public class InterviewFacadeService {
         Interview interview = interviewService.readInterview(interviewId);
         List<Question> lastTwoQuestions = questionService.readLastTwoQuestionsByInterviewId(interviewId);
         if (interview.getInterviewState() == InterviewState.FINISHED) {
-            return handleFinishedInterview(interview, curQuestionId, lastTwoQuestions);
+            return createCompletedAndFinishedInterviewResponse(interview, curQuestionId, lastTwoQuestions);
         }
-        return handleInProgressInterview(interview, curQuestionId, lastTwoQuestions);
+        return createCompletedAndInProgressInterviewResponse(interview, curQuestionId, lastTwoQuestions);
     }
 
-    private InterviewProceedStateResponse handleFinishedInterview(Interview interview, Long curQuestionId, List<Question> lastTwoQuestions) {
+    private InterviewProceedStateResponse createCompletedAndFinishedInterviewResponse(Interview interview, Long curQuestionId,
+                                                                                      List<Question> lastTwoQuestions) {
         Question lastQuestion = lastTwoQuestions.get(0);
         if (!curQuestionId.equals(lastQuestion.getId())) {
             throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + lastQuestion.getId());
@@ -161,7 +166,8 @@ public class InterviewFacadeService {
         return InterviewProceedStateResponse.createCompletedAndFinished(interview);
     }
 
-    private InterviewProceedStateResponse handleInProgressInterview(Interview interview, Long curQuestionId, List<Question> lastTwoQuestions) {
+    private InterviewProceedStateResponse createCompletedAndInProgressInterviewResponse(Interview interview, Long curQuestionId,
+                                                                                        List<Question> lastTwoQuestions) {
         Question lastQuestion = lastTwoQuestions.get(0);
         Question curQuestion = lastTwoQuestions.get(1);
         if (!curQuestionId.equals(curQuestion.getId())) {
