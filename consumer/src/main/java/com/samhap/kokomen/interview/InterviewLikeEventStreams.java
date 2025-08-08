@@ -41,9 +41,6 @@ public class InterviewLikeEventStreams {
     public void startKafkaStreams() {
         StreamsBuilder builder = new StreamsBuilder();
 
-        //
-        log.info("Kafka Streams 시작: topic = {}", topic);
-        //
         KStream<String, String> stream = builder.stream(topic);
 
         KTable<String, String> latestLikeTable = stream

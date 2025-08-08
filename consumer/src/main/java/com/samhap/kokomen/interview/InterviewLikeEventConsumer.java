@@ -22,6 +22,7 @@ public class InterviewLikeEventConsumer {
 
     @KafkaListener(
             topics = "#{environment.getProperty('spring.profiles.active', 'local') + '-interview-like'}",
+            groupId = "interview-like-consumer-group",
             containerFactory = "kafkaBatchListenerContainerFactory"
     )
     public void consumeBatch(List<ConsumerRecord<String, String>> records) {
@@ -29,12 +30,10 @@ public class InterviewLikeEventConsumer {
             return;
         }
 
-        // interviewId별로 갯수 세기
         Map<Long, Long> interviewLikeCountMap = records.stream()
                 .map(this::extractInterviewId)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-        // interviewId별로 likeCount만큼 한 번에 증가
         InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
         log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
     }
