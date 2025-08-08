@@ -37,6 +37,10 @@ public class RedisService {
         return setSuccess;
     }
 
+    public void setValue(String key, Object value, Duration ttl) {
+        redisTemplate.opsForValue().set(key, value, ttl);
+    }
+
     public Long incrementKey(String key) {
         Long count = redisTemplate.opsForValue().increment(key, 1);
         if (count == null) {

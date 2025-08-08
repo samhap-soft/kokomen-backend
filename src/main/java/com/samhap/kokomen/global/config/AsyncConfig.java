@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.logging.MdcDecorator;
 import java.util.concurrent.Executor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -18,11 +19,26 @@ public class AsyncConfig implements AsyncConfigurer {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(20);
         executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(100);
+        executor.setQueueCapacity(1000);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
         executor.setTaskDecorator(new MdcDecorator());
         executor.setThreadNamePrefix("Async-");
+        executor.initialize();
+        executor.getThreadPoolExecutor().prestartAllCoreThreads();
+        return executor;
+    }
+
+    @Bean("bedrockBlockExecutor")
+    public ThreadPoolTaskExecutor bedrockBlockExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(60);
+        executor.setMaxPoolSize(60);
+        executor.setQueueCapacity(100);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(10);
+        executor.setTaskDecorator(new MdcDecorator());
+        executor.setThreadNamePrefix("Async-Block-Bedrock-");
         executor.initialize();
         executor.getThreadPoolExecutor().prestartAllCoreThreads();
         return executor;

@@ -3,6 +3,7 @@ package com.samhap.kokomen.global.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
@@ -13,6 +14,12 @@ public class AwsConfig {
     public BedrockRuntimeClient bedrockRuntimeClient() {
         return BedrockRuntimeClient.builder()
                 .credentialsProvider(InstanceProfileCredentialsProvider.create())
+                .httpClientBuilder(ApacheHttpClient.builder()
+                        .maxConnections(60)
+                        .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(5))
+                        .connectionTimeout(java.time.Duration.ofSeconds(3))
+                        .socketTimeout(java.time.Duration.ofSeconds(15))
+                )
                 .region(Region.AP_NORTHEAST_2)
                 .build();
     }

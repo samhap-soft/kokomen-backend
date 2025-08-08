@@ -12,4 +12,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByInterviewOrderById(Interview interview);
 
     int countByInterview(Interview interview);
+
+    List<Question> findTop2ByInterviewIdOrderByIdDesc(Long interviewId);
 }

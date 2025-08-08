@@ -1,7 +1,6 @@
 package com.samhap.kokomen.interview.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
@@ -12,13 +11,12 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @Slf4j
-@ExecutionTimer
-@Component
+//@ExecutionTimer
+//@Component
 public class GptClient {
 
     private static final String GPT_API_URL = "/v1/chat/completions";

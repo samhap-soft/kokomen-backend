@@ -19,7 +19,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 @Component
 public class BedrockClient {
 
-    private static final String INFERENCE_PROFILE_ID = "apac.anthropic.claude-sonnet-4-20250514-v1:0";
+    private static final String MODEL_ID = "apac.anthropic.claude-sonnet-4-20250514-v1:0";
 
     private final BedrockRuntimeClient bedrockRuntimeClient;
 
@@ -42,9 +42,8 @@ public class BedrockClient {
 
     private ConverseRequest createConverseRequest(QuestionAndAnswers questionAndAnswers) {
         List<Message> messages = InterviewMessagesFactory.createBedrockMessages(questionAndAnswers);
-
         ConverseRequest.Builder builder = ConverseRequest.builder()
-                .modelId(INFERENCE_PROFILE_ID)
+                .modelId(MODEL_ID)
                 .messages(messages);
 
         if (questionAndAnswers.isProceedRequest()) {
