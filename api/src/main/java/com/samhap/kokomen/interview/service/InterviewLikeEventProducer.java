@@ -24,7 +24,7 @@ public class InterviewLikeEventProducer {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
         String[] profiles = environment.getActiveProfiles();
-        String activeProfile = (profiles.length > 0) ? profiles[0] : "test";
+        String activeProfile = (profiles.length > 0) ? profiles[0] : "unknown";
         this.topic = String.format("%s-interview-like", activeProfile);
     }
 
