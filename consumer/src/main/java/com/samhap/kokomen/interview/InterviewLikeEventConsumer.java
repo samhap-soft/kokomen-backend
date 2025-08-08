@@ -2,9 +2,10 @@ package com.samhap.kokomen.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.interview.repository.InterviewBatchRepository;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -29,19 +30,22 @@ public class InterviewLikeEventConsumer {
         }
 
         // interviewId별로 갯수 세기
-        Map<Long, Long> interviewLikeCountMap = new HashMap<>();
-        for (ConsumerRecord<String, String> record : records) {
-            try {
-                Map<String, Object> payload = objectMapper.readValue(record.value(), Map.class);
-                Long interviewId = Long.valueOf(payload.get("interviewId").toString());
-                interviewLikeCountMap.put(interviewId, interviewLikeCountMap.getOrDefault(interviewId, 0L) + 1);
-            } catch (Exception e) {
-                log.error("Kafka 메시지 파싱 실패: {}", record.value(), e);
-            }
-        }
+        Map<Long, Long> interviewLikeCountMap = records.stream()
+                .map(this::extractInterviewId)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
         // interviewId별로 likeCount만큼 한 번에 증가
         InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
         log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
+    }
+
+    private Long extractInterviewId(ConsumerRecord<String, String> record) {
+        try {
+            Map<String, Object> payload = objectMapper.readValue(record.value(), Map.class);
+            return Long.valueOf(payload.get("interviewId").toString());
+        } catch (Exception e) {
+            log.error("Kafka 메시지 파싱 실패: {}", record.value(), e);
+            throw new IllegalStateException(e);
+        }
     }
 }
