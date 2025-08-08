@@ -46,7 +46,7 @@ public class InterviewNotificationListener {
                 NotificationType.INTERVIEW_LIKE, likeEvent.interviewId(), likeEvent.likerMemberId(), likeEvent.likeCount());
         NotificationRequest notificationRequest = new NotificationRequest(likeEvent.receiverMemberId(), notificationPayload);
 
-//        notificationClient.request(notificationRequest); TODO: 해제하기
+        notificationClient.request(notificationRequest);
     }
 
     @Async
