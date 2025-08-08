@@ -138,7 +138,6 @@ class InterviewFacadeServiceTest extends BaseTest {
         );
     }
 
-    @Disabled
     @Test
     void 진행중인_인터뷰_진행_상황을_폴링으로_조회할_때_현재_질문_id가_아니라면_예외가_발생한다() {
         // given
@@ -235,7 +234,6 @@ class InterviewFacadeServiceTest extends BaseTest {
                 .hasMessageContaining("이미 좋아요를 누른 인터뷰입니다.");
     }
 
-    @Disabled
     @Test
     void 이미_좋아요를_누른_인터뷰에_대해_좋아요를_취소할_수_있다() {
         // given
@@ -252,7 +250,6 @@ class InterviewFacadeServiceTest extends BaseTest {
         assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
     }
 
-    @Disabled
     @Test
     void 인터뷰에_좋아요를_누르면_최신_좋아요_수로_이벤트가_발행된다() {
         // given

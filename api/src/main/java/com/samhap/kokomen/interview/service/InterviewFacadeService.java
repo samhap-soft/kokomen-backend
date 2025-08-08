@@ -191,9 +191,10 @@ public class InterviewFacadeService {
         Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.readInterview(interviewId);
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
+        interviewService.increaseLikeCountModifying(interviewId); // X락을 사용하기 때문에 동시에 요청이 와도 올바른 likeCount 값으로 이벤트를 생성할 수 있다.
+        interview = interviewService.readInterview(interviewId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 읽어와야 최신 likeCount 값을 가져올 수 있다. 다른 트랜잭션에서 변경했을 수도 있기 때문
 
         eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
-        interviewService.increaseLikeCountModifying(interviewId);
     }
 
     // TODO: 하나로 합치기
