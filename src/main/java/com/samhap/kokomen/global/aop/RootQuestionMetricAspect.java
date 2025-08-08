@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Component
-@Order(1)
+@Order(3)
 @Aspect
 public class RootQuestionMetricAspect {
 
