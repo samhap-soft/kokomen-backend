@@ -16,4 +16,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query(value = "SELECT q.id FROM question q WHERE q.interview_id = :interviewId ORDER BY q.id ASC LIMIT 1", nativeQuery = true)
     Long findFirstQuestionIdByInterviewIdOrderByIdAsc(Long interviewId);
+
+    List<Question> findTop2ByInterviewIdOrderByIdDesc(Long interviewId);
 }

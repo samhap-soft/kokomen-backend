@@ -36,6 +36,10 @@ server:
 open-ai:
   api-key: ${OPEN_AI_API_KEY}
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   server:
     port: 8081
     address: 0.0.0.0
@@ -116,7 +120,7 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
 cors:
-  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000
+  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000, https://www.webview-dev.kokomen.kr, https://webview-dev.kokomen.kr
 server:
   servlet:
     session:
@@ -133,6 +137,43 @@ spring:
       on-profile: prod
   datasource:
     url: ${SPRING_DATASOURCE_URL_PROD}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS_PRIMARY_HOST_PROD}
+      port: 6379
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
+---
+# load-test profile
+spring:
+  config:
+    activate:
+      on-profile: load-test
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
     username: ${SPRING_DATASOURCE_USERNAME_PROD}
     password: ${SPRING_DATASOURCE_PASSWORD_PROD}
     driver-class-name: com.mysql.cj.jdbc.Driver
