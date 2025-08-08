@@ -51,4 +51,18 @@ class InterviewRepositoryTest extends BaseTest {
         Interview found = interviewRepository.findById(interview.getId()).get();
         assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() - 1);
     }
+
+    @Test
+    void interviewId로_rootQuestionId를_조회할_수_있다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+
+        // when
+        Long foundRootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interview.getId());
+
+        // then
+        assertThat(foundRootQuestionId).isEqualTo(rootQuestion.getId());
+    }
 }
