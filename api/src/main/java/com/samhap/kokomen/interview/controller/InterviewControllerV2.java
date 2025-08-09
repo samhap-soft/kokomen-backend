@@ -28,7 +28,7 @@ public class InterviewControllerV2 {
             @RequestBody AnswerRequest answerRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewFacadeService.proceedInterviewBlockAsync(interviewId, curQuestionId, answerRequest, memberAuth);
+        interviewFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth);
         return ResponseEntity.noContent().build();
     }
 

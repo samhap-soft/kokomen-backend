@@ -58,6 +58,7 @@ public class InterviewFacadeService {
     private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
     private final InterviewLikeEventProducer interviewLikeEventProducer;
     private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
+    private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -94,6 +95,19 @@ public class InterviewFacadeService {
             QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
             interviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
             redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
+        } catch (Exception e) {
+            redisService.releaseLock(lockKey);
+        }
+    }
+
+    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
+        acquireLockForProceedInterview(lockKey);
+        try {
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
         }
