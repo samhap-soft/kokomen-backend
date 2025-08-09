@@ -68,7 +68,8 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
         String requestJson = """
                 {
-                  "answer": "절차지향 프로그래밍과 반대되는 개념입니다."
+                  "answer": "절차지향 프로그래밍과 반대되는 개념입니다.",
+                  "mode": "TEXT"
                 }
                 """;
 
@@ -91,7 +92,8 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
-                                fieldWithPath("answer").description("사용자가 작성한 답변")
+                                fieldWithPath("answer").description("사용자가 작성한 답변"),
+                                fieldWithPath("mode").description("인터뷰 모드(TEXT, VOICE)")
                         )
                 ));
     }
@@ -119,7 +121,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}",
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=TEXT",
                         interview.getId(),
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -165,7 +167,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}",
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=TEXT",
                         interview.getId(),
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -214,7 +216,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}",
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=TEXT",
                         interview.getId(),
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -270,7 +272,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}",
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=TEXT",
                         interview.getId(),
                         question2.getId())
                         .contentType(MediaType.APPLICATION_JSON)

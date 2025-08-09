@@ -6,6 +6,6 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 public record InterviewRequest(
         Category category,
         int maxQuestionCount,
-        InterviewMode interviewMode
+        InterviewMode mode
 ) {
 }

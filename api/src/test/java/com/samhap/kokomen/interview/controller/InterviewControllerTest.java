@@ -88,7 +88,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                   "category": "OPERATING_SYSTEM",
                   "max_question_count": 3,
-                  "interview_mode": "TEXT"
+                  "mode": "TEXT"
                 }
                 """;
 
@@ -117,7 +117,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("interview_mode").description("인터뷰 모드(음성, 텍스트)")
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
@@ -139,7 +139,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                   "category": "OPERATING_SYSTEM",
                   "max_question_count": 3,
-                  "interview_mode": "VOICE"
+                  "mode": "VOICE"
                 }
                 """;
 
@@ -168,7 +168,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("interview_mode").description("인터뷰 모드(음성, 텍스트)")
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),

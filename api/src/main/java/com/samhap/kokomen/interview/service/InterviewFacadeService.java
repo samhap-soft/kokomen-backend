@@ -20,6 +20,8 @@ import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedStateTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewProceedStateVoiceModeResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
@@ -62,7 +64,7 @@ public class InterviewFacadeService {
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        InterviewMode interviewMode = interviewRequest.interviewMode();
+        InterviewMode interviewMode = interviewRequest.mode();
         int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount();
         memberService.validateEnoughTokenCount(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
@@ -89,6 +91,7 @@ public class InterviewFacadeService {
 
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
@@ -122,33 +125,34 @@ public class InterviewFacadeService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
-        return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
-    }
-
     @Transactional(readOnly = true)
-    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, MemberAuth memberAuth) {
+    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, InterviewMode mode, MemberAuth memberAuth) {
+        interviewService.validateInterviewMode(interviewId, mode);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
-        Optional<String> stateOptional = redisService.get(interviewProceedStateKey, String.class);
-        if (stateOptional.isPresent()) {
-            LlmProceedState llmProceedState = LlmProceedState.valueOf(stateOptional.get());
+        Optional<String> interviewProceedStateOptional = redisService.get(interviewProceedStateKey, String.class);
+        if (interviewProceedStateOptional.isPresent()) {
+            LlmProceedState llmProceedState = LlmProceedState.valueOf(interviewProceedStateOptional.get());
             return createResponseByLlmProceedState(interviewId, curQuestionId, llmProceedState);
         }
 
         return recoverWhenRedisStateMissing(interviewId, curQuestionId);
     }
 
+    public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
+        return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
+    }
+
     private InterviewProceedStateResponse recoverWhenRedisStateMissing(Long interviewId, Long curQuestionId) {
         return answerService.findByQuestionId(curQuestionId)
                 .map(answer -> createCompletedResponse(interviewId, curQuestionId))
-                .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(LlmProceedState.FAILED));
+                .orElseGet(() -> InterviewProceedStateTextModeResponse.createPendingOrFailed(LlmProceedState.FAILED));
     }
 
     private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
         if (llmProceedState == LlmProceedState.PENDING || llmProceedState == LlmProceedState.FAILED) {
-            return InterviewProceedStateResponse.createPendingOrFailed(llmProceedState);
+            return InterviewProceedStateTextModeResponse.createPendingOrFailed(llmProceedState);
         }
         return createCompletedResponse(interviewId, curQuestionId);
     }
@@ -171,7 +175,7 @@ public class InterviewFacadeService {
         if (!curQuestionId.equals(lastQuestion.getId())) {
             throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + lastQuestion.getId());
         }
-        return InterviewProceedStateResponse.createCompletedAndFinished(interview);
+        return InterviewProceedStateTextModeResponse.createCompletedAndFinished(interview);
     }
 
     private InterviewProceedStateResponse createCompletedAndInProgressInterviewResponse(
@@ -186,7 +190,23 @@ public class InterviewFacadeService {
         }
         Answer curAnswer = answerService.readByQuestionId(curQuestionId);
 
-        return InterviewProceedStateResponse.createCompletedAndInProgress(interview, curAnswer, lastQuestion);
+        if (interview.getInterviewMode() == InterviewMode.VOICE) {
+            return createCompletedAndInProgressVoiceModeResponse(lastQuestion, curAnswer);
+        }
+
+        return InterviewProceedStateTextModeResponse.createCompletedAndInProgress(interview, curAnswer, lastQuestion);
+    }
+
+    private InterviewProceedStateResponse createCompletedAndInProgressVoiceModeResponse(Question nextQuestion, Answer curAnswer) {
+        Optional<String> questionVoiceUrlOptional = redisService.get(
+                InterviewProceedBlockAsyncService.createQuestionVoiceUrlKey(nextQuestion.getId()), String.class);
+
+        if (questionVoiceUrlOptional.isPresent()) {
+            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, nextQuestion, questionVoiceUrlOptional.get());
+        }
+        // 음성 모드인데 Redis에 음성 URL이 없는 경우, 비동기로 Typecast 요청하고 PENDING 응답
+        interviewProceedBlockAsyncService.requestTypecastAndSaveUrlToRedisAsync(nextQuestion);
+        return InterviewProceedStateVoiceModeResponse.createPendingOrFailed(LlmProceedState.PENDING);
     }
 
     @Transactional

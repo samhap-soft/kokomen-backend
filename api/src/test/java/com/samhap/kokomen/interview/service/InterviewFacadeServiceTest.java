@@ -20,6 +20,7 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
@@ -87,7 +88,7 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
+                interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요.", InterviewMode.TEXT), new MemberAuth(member.getId()));
 
         // then
         assertAll(
@@ -125,7 +126,7 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
+                interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요.", InterviewMode.TEXT), new MemberAuth(member.getId()));
 
         // then
         assertAll(
@@ -154,7 +155,8 @@ class InterviewFacadeServiceTest extends BaseTest {
         redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
-        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question1.getId(), new MemberAuth(member.getId())))
+        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question1.getId(), InterviewMode.TEXT,
+                new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 2");
     }
@@ -177,7 +179,8 @@ class InterviewFacadeServiceTest extends BaseTest {
         redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
-        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), new MemberAuth(member.getId())))
+        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), InterviewMode.TEXT,
+                new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 3");
     }
@@ -195,7 +198,7 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         InterviewProceedStateResponse interviewProceedState =
-                interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), new MemberAuth(member.getId()));
+                interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), InterviewMode.TEXT, new MemberAuth(member.getId()));
 
         // then
         assertThat(interviewProceedState.llmProceedState()).isEqualTo(LlmProceedState.FAILED);

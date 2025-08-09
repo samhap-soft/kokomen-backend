@@ -14,6 +14,7 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
@@ -157,6 +158,14 @@ public class InterviewService {
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
 
         return InterviewResultResponse.createMine(feedbackResponses, interview, member);
+    }
+
+    @Transactional(readOnly = true)
+    public void validateInterviewMode(Long interviewId, InterviewMode interviewMode) {
+        Interview interview = readInterview(interviewId);
+        if (interview.getInterviewMode() != interviewMode) {
+            throw new BadRequestException("인터뷰 모드가 일치하지 않습니다. 현재 인터뷰 모드: " + interview.getInterviewMode() + ", 요청한 인터뷰 모드: " + interviewMode);
+        }
     }
 
     @Transactional(readOnly = true)

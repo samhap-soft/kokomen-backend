@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class InterviewProceedBlockAsyncService {
 
-    private static final String NEXT_QUESTION_VOICE_URL_KEY_FORMAT = "next_question:%d:voice_url";
+    public static final String QUESTION_VOICE_URL_KEY_FORMAT = "question:%d:voice_url";
     private static final int TYPECAST_FORCED_TTL_HOURS = 24;
 
     private final InterviewProceedService interviewProceedService;
@@ -41,9 +41,7 @@ public class InterviewProceedBlockAsyncService {
 
             nextQuestionOptional.ifPresent(nextQuestion -> {
                 if (interviewProceedService.isVoiceMode(interviewId)) {
-                    TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(nextQuestion.getContent()));
-                    redisService.setValue(NEXT_QUESTION_VOICE_URL_KEY_FORMAT.formatted(nextQuestion.getId()),
-                            typecastResponse.getSpeakV2Url(), Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
+                    requestTypecastAndSaveUrlToRedisAsync(nextQuestion);
                 }
             });
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
@@ -54,5 +52,20 @@ public class InterviewProceedBlockAsyncService {
         } finally {
             redisService.releaseLock(lockKey);
         }
+    }
+
+    /*
+    1. 굳이 새로운 Executor 만들지 않고, bedrockBlockExecutor를 재사용
+    2. proceedOrEndInterviewBlockAsync에서는 아래 메서드를 비동기 호출할 필요가 없어서 의도적으로 내부 호출
+     */
+    @Async("bedrockBlockExecutor")
+    public void requestTypecastAndSaveUrlToRedisAsync(Question question) {
+        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
+        redisService.setValue(QUESTION_VOICE_URL_KEY_FORMAT.formatted(question.getId()),
+                typecastResponse.getSpeakV2Url(), Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
+    }
+
+    public static String createQuestionVoiceUrlKey(Long questionId) {
+        return QUESTION_VOICE_URL_KEY_FORMAT.formatted(questionId);
     }
 }

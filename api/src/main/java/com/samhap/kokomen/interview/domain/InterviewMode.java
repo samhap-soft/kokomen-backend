@@ -1,13 +1,13 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartTextResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartVoiceResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.InterviewStartVoiceModeResponse;
 import java.util.function.BiFunction;
 
 public enum InterviewMode {
-    TEXT(1, (interview, question) -> new InterviewStartTextResponse(interview, question)),
-    VOICE(2, (interview, question) -> new InterviewStartVoiceResponse(interview, question)),
+    TEXT(1, (interview, question) -> new InterviewStartTextModeResponse(interview, question)),
+    VOICE(2, (interview, question) -> new InterviewStartVoiceModeResponse(interview, question)),
     ;
 
     private final int requiredTokenCount;

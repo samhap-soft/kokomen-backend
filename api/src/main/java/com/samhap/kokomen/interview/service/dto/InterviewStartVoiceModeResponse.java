@@ -3,13 +3,13 @@ package com.samhap.kokomen.interview.service.dto;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 
-public record InterviewStartVoiceResponse(
+public record InterviewStartVoiceModeResponse(
         Long interviewId,
         Long questionId,
         String rootQuestionVoiceUrl
 ) implements InterviewStartResponse {
 
-    public InterviewStartVoiceResponse(Interview interview, Question question) {
+    public InterviewStartVoiceModeResponse(Interview interview, Question question) {
         this(interview.getId(), question.getId(), interview.getRootQuestion().getVoiceUrl());
     }
 
