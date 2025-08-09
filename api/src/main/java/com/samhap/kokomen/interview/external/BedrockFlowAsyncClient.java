@@ -5,6 +5,8 @@ import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.LlmApiException;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.InterviewHistory;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.document.Document;
@@ -29,14 +31,20 @@ public class BedrockFlowAsyncClient {
 
     private InvokeFlowRequest createInvokeFlowRequest(QuestionAndAnswers questionAndAnswers) {
         InterviewHistory interviewHistory = InterviewHistory.from(questionAndAnswers);
-        String jsonString;
-        try {
-            jsonString = objectMapper.writeValueAsString(interviewHistory);
-        } catch (Exception e) {
-            throw new LlmApiException("JSON 변환 중 오류가 발생했습니다.", e);
-        }
+
+        List<Document> documents = interviewHistory.interviewHistory().stream()
+                .map(qna -> Document.fromMap(Map.of(
+                        "question", Document.fromString(qna.question()),
+                        "answer", Document.fromString(qna.answer())
+                )))
+                .toList();
+
+        Document document = Document.fromMap(Map.of(
+                "interview_history", Document.fromList(documents)
+        ));
+
         FlowInputContent content = FlowInputContent.builder()
-                .document(Document.fromString(jsonString))
+                .document(document)
                 .build();
 
         FlowInput flowInput = FlowInput.builder()
