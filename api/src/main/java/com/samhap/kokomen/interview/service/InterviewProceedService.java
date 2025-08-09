@@ -67,7 +67,7 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public void proceedOrEndInterviewByBedrockFlowAsync(
+    public Answer proceedOrEndInterviewByBedrockFlowAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
             LlmResponse llmResponse,
@@ -77,23 +77,22 @@ public class InterviewProceedService {
         member.useToken();
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
-            saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
             saveNextQuestion(llmResponse, interview);
-            return;
+            return saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
         }
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
+        return curAnswer;
     }
 
     private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
         NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
-        Question nextQuestion = questionService.saveQuestion(new Question(interview, nextQuestionResponse.nextQuestion()));
-        return nextQuestion;
+        return questionService.saveQuestion(new Question(interview, nextQuestionResponse.nextQuestion()));
     }
 
-    private void saveCurrentAnswerWithoutFeedback(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
+    private Answer saveCurrentAnswerWithoutFeedback(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
         AnswerRankResponse answerRankResponse = llmResponse.extractAnswerRankResponse(objectMapper);
-        answerService.saveAnswer(questionAndAnswers.createCurAnswerWithoutFeedback(answerRankResponse));
+        return answerService.saveAnswer(questionAndAnswers.createCurAnswerWithoutFeedback(answerRankResponse));
     }
 
     private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
@@ -106,5 +105,11 @@ public class InterviewProceedService {
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
+    }
+
+    @Transactional
+    public void saveAnswerFeedback(Long answerId, String answerFeedback) {
+        Answer answer = answerService.readById(answerId);
+        answer.giveFeedback(answerFeedback);
     }
 }

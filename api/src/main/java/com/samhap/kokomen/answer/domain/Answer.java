@@ -53,4 +53,8 @@ public class Answer extends BaseEntity {
     public Answer(Question question, String content, AnswerRank answerRank, String feedback) {
         this(null, question, content, answerRank, feedback, 0L);
     }
+
+    public void giveFeedback(String feedback) {
+        this.feedback = feedback;
+    }
 }
