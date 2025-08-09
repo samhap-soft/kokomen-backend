@@ -88,7 +88,6 @@ public class InterviewFacadeService {
     }
 
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        //VOICE 모드일 때는 Typecast에 요청한 URL을 응답해야 하고, TEXT 모드일 때는 그냥 응답해야 하는데, 이건 if 문 분기처리를 해버려? 아니면 객체를 만들까?
         memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
