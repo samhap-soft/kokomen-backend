@@ -44,7 +44,7 @@ public class Answer extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AnswerRank answerRank;
 
-    @Column(name = "feedback", nullable = false, length = 2_000)
+    @Column(name = "feedback", length = 2_000)
     private String feedback;
 
     @Column(name = "like_count", nullable = false)
