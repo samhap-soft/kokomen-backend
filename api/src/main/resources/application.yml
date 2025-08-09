@@ -67,6 +67,8 @@ management:
 notification:
   connect-timeout: 3s
   read-timeout: 3s
+typecast:
+  api-token: ${TYPECAST_API_TOKEN}
 
 ---
 # local profile

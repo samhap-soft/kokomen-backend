@@ -29,6 +29,9 @@ notification:
   connect-timeout: 3s
   read-timeout: 3s
 
+typecast:
+  api-token: mock-token
+
 ---
 # test
 spring:
