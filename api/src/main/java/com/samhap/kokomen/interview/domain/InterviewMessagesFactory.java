@@ -4,6 +4,8 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
@@ -77,5 +79,25 @@ public final class InterviewMessagesFactory {
                 .role(role)
                 .content(List.of(ContentBlock.builder().text(content).build()))
                 .build();
+    }
+
+    public static Document createBedrockFlowDocument(QuestionAndAnswers questionAndAnswers) {
+        List<Document> interviewHistoryDocuments = new ArrayList<>();
+
+        List<Question> questions = questionAndAnswers.getQuestions();
+        List<Answer> prevAnswers = questionAndAnswers.getPrevAnswers();
+        for (int i = 0; i < prevAnswers.size(); i++) {
+            interviewHistoryDocuments.add(createQuestionAndAnswerDocument(questions.get(i).getContent(), prevAnswers.get(i).getContent()));
+        }
+        interviewHistoryDocuments.add(createQuestionAndAnswerDocument(
+                questionAndAnswers.readCurQuestion().getContent(), questionAndAnswers.getCurAnswerContent()));
+
+        return Document.fromMap(Map.of("interview_history", Document.fromList(interviewHistoryDocuments)));
+    }
+
+    private static Document createQuestionAndAnswerDocument(String question, String answer) {
+        return Document.fromMap(Map.of(
+                "question", Document.fromString(question),
+                "answer", Document.fromString(answer)));
     }
 }

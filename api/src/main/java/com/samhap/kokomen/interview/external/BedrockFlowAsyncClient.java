@@ -1,19 +1,15 @@
 package com.samhap.kokomen.interview.external;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
-import com.samhap.kokomen.global.exception.LlmApiException;
+import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
-import com.samhap.kokomen.interview.external.dto.request.InterviewHistory;
-import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInput;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInputContent;
 import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRequest;
+import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRequest.Builder;
 import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowResponseHandler;
 
 @ExecutionTimer
@@ -21,50 +17,41 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRespo
 @Component
 public class BedrockFlowAsyncClient {
 
-    private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
-    private final ObjectMapper objectMapper;
+    private static final String IN_PROGRESS_INTERVIEW_FLOW_ID = "EFP2KPF1KA";
+    private static final String IN_PORGRESS_INTERVIEW_FLOW_ALIAS_ID = "6OH93Y3MXT";
+    private static final String FINISHED_INTERVIEW_FLOW_ID = "2Y5R698F4O";
+    private static final String FINISHED_INTERVIEW_FLOW_ALIAS_ID = "5C5W3WFEHT";
 
-    public void requestToBedrock(QuestionAndAnswers questionAndAnswers, InvokeFlowResponseHandler invokeFlowResponseHandler) throws LlmApiException {
+    private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
+
+    public void requestToBedrock(QuestionAndAnswers questionAndAnswers, InvokeFlowResponseHandler invokeFlowResponseHandler) {
         InvokeFlowRequest invokeFlowRequest = createInvokeFlowRequest(questionAndAnswers);
         bedrockAgentRuntimeAsyncClient.invokeFlow(invokeFlowRequest, invokeFlowResponseHandler);
     }
 
     private InvokeFlowRequest createInvokeFlowRequest(QuestionAndAnswers questionAndAnswers) {
-        InterviewHistory interviewHistory = InterviewHistory.from(questionAndAnswers);
-
-        List<Document> documents = interviewHistory.interviewHistory().stream()
-                .map(qna -> Document.fromMap(Map.of(
-                        "question", Document.fromString(qna.question()),
-                        "answer", Document.fromString(qna.answer())
-                )))
-                .toList();
-
-        Document document = Document.fromMap(Map.of(
-                "interview_history", Document.fromList(documents)
-        ));
-
-        FlowInputContent content = FlowInputContent.builder()
-                .document(document)
-                .build();
-
+        FlowInputContent content = FlowInputContent.fromDocument(InterviewMessagesFactory.createBedrockFlowDocument(questionAndAnswers));
         FlowInput flowInput = FlowInput.builder()
                 .nodeName("FlowInputNode")
                 .nodeOutputName("document")
                 .content(content)
                 .build();
-
         InvokeFlowRequest.Builder builder = InvokeFlowRequest.builder()
                 .inputs(flowInput)
                 .enableTrace(true);
 
+        return createInvokeFlowRequest(questionAndAnswers, builder);
+    }
+
+    private static InvokeFlowRequest createInvokeFlowRequest(QuestionAndAnswers questionAndAnswers, Builder builder) {
         if (questionAndAnswers.isProceedRequest()) {
-            return builder.flowIdentifier("EFP2KPF1KA")
-                    .flowAliasIdentifier("6OH93Y3MXT")
+            return builder.flowIdentifier(IN_PROGRESS_INTERVIEW_FLOW_ID)
+                    .flowAliasIdentifier(IN_PORGRESS_INTERVIEW_FLOW_ALIAS_ID)
                     .build();
         }
 
-        return builder.flowIdentifier("2Y5R698F4O")
-                .flowAliasIdentifier("5C5W3WFEHT")
+        return builder.flowIdentifier(FINISHED_INTERVIEW_FLOW_ID)
+                .flowAliasIdentifier(FINISHED_INTERVIEW_FLOW_ALIAS_ID)
                 .build();
     }
 }

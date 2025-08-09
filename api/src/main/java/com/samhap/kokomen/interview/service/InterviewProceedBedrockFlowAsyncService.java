@@ -44,13 +44,8 @@ public class InterviewProceedBedrockFlowAsyncService {
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
 
         try {
-            InvokeFlowResponseHandler invokeFlowResponseHandler = InvokeFlowResponseHandler.builder()
-                    .onEventStream(publisher -> publisher.subscribe(
-                            event -> executor.execute(() -> callbackBedrockFlow(event, memberId, questionAndAnswers, interviewId, lockKey, mdcContext))))
-                    .onError(ex ->
-                            executor.execute(() -> handleBedrockException(ex, lockKey, interviewProceedStateKey, mdcContext)))
-                    .build();
-            bedrockFlowAsyncClient.requestToBedrock(questionAndAnswers, invokeFlowResponseHandler);
+            bedrockFlowAsyncClient.requestToBedrock(questionAndAnswers,
+                    createInvokeFlowResponseHandler(memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext));
             redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
@@ -58,28 +53,33 @@ public class InterviewProceedBedrockFlowAsyncService {
         }
     }
 
+    private InvokeFlowResponseHandler createInvokeFlowResponseHandler(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey,
+                                                                      String interviewProceedStateKey, Map<String, String> mdcContext) {
+        return InvokeFlowResponseHandler.builder()
+                .onEventStream(publisher -> publisher.subscribe(event ->
+                        executor.execute(() ->
+                                callbackBedrockFlow(event, memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext))))
+                .onError(ex ->
+                        executor.execute(() -> handleBedrockException(ex, lockKey, interviewProceedStateKey, mdcContext)))
+                .build();
+    }
+
     private void callbackBedrockFlow(FlowResponseStream event, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey,
-                                     Map<String, String> mdcContext) {
+                                     String interviewProceedStateKey, Map<String, String> mdcContext) {
         if (event instanceof FlowOutputEvent outputEvent) {
-            callbackBedrockFlow(outputEvent, memberId, questionAndAnswers, interviewId, lockKey, mdcContext);
+            callbackBedrockFlow(outputEvent, memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext);
         }
     }
 
     private void callbackBedrockFlow(FlowOutputEvent outputEvent, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId, String lockKey,
-                                     Map<String, String> mdcContext) {
+                                     String interviewProceedStateKey, Map<String, String> mdcContext) {
         try {
-            if (mdcContext != null) {
-                MDC.setContextMap(mdcContext);
-            }
-
+            setMdcContext(mdcContext);
             String jsonPayload = outputEvent.content()
                     .document()
                     .toString();
-            log.info("플로우 응답 : " + jsonPayload);
-
             LlmResponse response = new BedrockResponse(jsonPayload);
             interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers, response, interviewId);
-            String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId, questionAndAnswers.readCurQuestion().getId());
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
             redisService.releaseLock(lockKey);
         } finally {
@@ -88,9 +88,7 @@ public class InterviewProceedBedrockFlowAsyncService {
     }
 
     private void handleBedrockException(Throwable ex, String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
-        if (mdcContext != null) {
-            MDC.setContextMap(mdcContext);
-        }
+        setMdcContext(mdcContext);
 
         try {
             log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
@@ -98,6 +96,12 @@ public class InterviewProceedBedrockFlowAsyncService {
             redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
         } finally {
             MDC.clear();
+        }
+    }
+
+    private void setMdcContext(Map<String, String> mdcContext) {
+        if (mdcContext != null) {
+            MDC.setContextMap(mdcContext);
         }
     }
 }
