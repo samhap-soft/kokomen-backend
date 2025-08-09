@@ -7,6 +7,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerRankResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
@@ -65,15 +66,39 @@ public class InterviewProceedService {
         evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
     }
 
-    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
-        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
-        return answerService.saveAnswer(questionAndAnswers.createCurAnswer(feedback));
+    @Transactional
+    public void proceedOrEndInterviewByBedrockFlowAsync(
+            Long memberId,
+            QuestionAndAnswers questionAndAnswers,
+            LlmResponse llmResponse,
+            Long interviewId
+    ) {
+        Member member = memberService.readById(memberId);
+        member.useToken();
+        Interview interview = interviewService.readInterview(interviewId);
+        if (questionAndAnswers.isProceedRequest()) {
+            saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
+            saveNextQuestion(llmResponse, interview);
+            return;
+        }
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
+        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
     }
 
     private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
         NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
         Question nextQuestion = questionService.saveQuestion(new Question(interview, nextQuestionResponse.nextQuestion()));
         return nextQuestion;
+    }
+
+    private void saveCurrentAnswerWithoutFeedback(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
+        AnswerRankResponse answerRankResponse = llmResponse.extractAnswerRankResponse(objectMapper);
+        answerService.saveAnswer(questionAndAnswers.createCurAnswerWithoutFeedback(answerRankResponse));
+    }
+
+    private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
+        AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
+        return answerService.saveAnswer(questionAndAnswers.createCurAnswer(feedback));
     }
 
     private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview, LlmResponse llmResponse, Member member) {
