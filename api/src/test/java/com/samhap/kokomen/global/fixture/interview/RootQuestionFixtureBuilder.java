@@ -8,6 +8,7 @@ public class RootQuestionFixtureBuilder {
     private Long id;
     private Category category;
     private String content;
+    private String voiceUrl;
 
     public static RootQuestionFixtureBuilder builder() {
         return new RootQuestionFixtureBuilder();
@@ -28,11 +29,17 @@ public class RootQuestionFixtureBuilder {
         return this;
     }
 
+    public RootQuestionFixtureBuilder voiceUrl(String voiceUrl) {
+        this.voiceUrl = voiceUrl;
+        return this;
+    }
+
     public RootQuestion build() {
         return new RootQuestion(
                 id,
                 category != null ? category : Category.OPERATING_SYSTEM,
-                content != null ? content : "프로세스와 스레드 차이 설명해주세요."
+                content != null ? content : "프로세스와 스레드 차이 설명해주세요.",
+                voiceUrl != null ? voiceUrl : "mock-voice-url"
         );
     }
 }

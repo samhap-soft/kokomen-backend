@@ -5,6 +5,7 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -33,8 +34,8 @@ public class TestDataInitializer {
     @EventListener(ApplicationReadyEvent.class)
     public void initData() {
         Member member = memberRepository.save(new Member(1L, "NAK"));
-        RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion(Category.OPERATING_SYSTEM, "자바의 특징은 무엇인가요?"));
-        Interview interview = interviewRepository.save(new Interview(member, rootQuestion, 3));
+        RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion(Category.OPERATING_SYSTEM, "자바의 특징은 무엇인가요?", "mock-voice-url"));
+        Interview interview = interviewRepository.save(new Interview(member, rootQuestion, 3, InterviewMode.TEXT));
         Question question1 = questionRepository.save(new Question(interview, rootQuestion.getContent()));
         answerRepository.save(new Answer(question1, "자바는 객체지향 프로그래밍 언어입니다.", AnswerRank.C, "부족합니다."));
         questionRepository.save(new Question(interview, "객체지향의 특징을 설명해주세요."));

@@ -67,13 +67,21 @@ include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
 
 == 인터뷰
 
-=== 인터뷰 시작
+=== 인터뷰 시작 텍스트모드
 
-include::{snippetsDir}/interview-startInterview/http-request.adoc[]
-include::{snippetsDir}/interview-startInterview/request-fields.adoc[]
-include::{snippetsDir}/interview-startInterview/http-response.adoc[]
-include::{snippetsDir}/interview-startInterview/response-fields.adoc[]
-include::{snippetsDir}/interview-startInterview/curl-request.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/curl-request.adoc[]
+
+=== 인터뷰 시작 음성모드
+
+include::{snippetsDir}/interview-startInterview-voice-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/curl-request.adoc[]
 
 ==== 인터뷰 시작 예외 1
 
@@ -145,11 +153,13 @@ include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/response-fi
 include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/curl-request.adoc[]
 
 ==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 1
+
 include::{snippetsDir}/interview-getPolling-exception1-V2/http-request.adoc[]
 include::{snippetsDir}/interview-getPolling-exception1-V2/http-response.adoc[]
 include::{snippetsDir}/interview-getPolling-exception1-V2/response-fields.adoc[]
 
 ==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 2
+
 include::{snippetsDir}/interview-getPolling-exception2-V2/http-request.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/http-response.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]

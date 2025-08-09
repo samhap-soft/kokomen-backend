@@ -32,8 +32,12 @@ public class RootQuestion extends BaseEntity {
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
 
-    public RootQuestion(Category category, String content) {
+    @Column(name = "voice_url", nullable = false, length = 1_000)
+    private String voiceUrl;
+
+    public RootQuestion(Category category, String content, String voiceUrl) {
         this.category = category;
         this.content = content;
+        this.voiceUrl = voiceUrl;
     }
 }

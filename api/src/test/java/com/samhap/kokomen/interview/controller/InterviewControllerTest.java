@@ -76,7 +76,7 @@ class InterviewControllerTest extends BaseControllerTest {
     private AnswerMemoRepository answerMemoRepository;
 
     @Test
-    void 인터뷰_시작() throws Exception {
+    void 인터뷰_시작_텍스트모드() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -87,7 +87,8 @@ class InterviewControllerTest extends BaseControllerTest {
         String requestJson = """
                 {
                   "category": "OPERATING_SYSTEM",
-                  "max_question_count": 3
+                  "max_question_count": 3,
+                  "interview_mode": "TEXT"
                 }
                 """;
 
@@ -109,18 +110,70 @@ class InterviewControllerTest extends BaseControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-startInterview",
+                .andDo(document("interview-startInterview-text-mode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
-                                fieldWithPath("max_question_count").description("최대 질문 개수")
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드(음성, 텍스트)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
                                 fieldWithPath("question_id").description("생성된 질문 ID"),
                                 fieldWithPath("root_question").description("루트 질문 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_시작_음성모드() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        String requestJson = """
+                {
+                  "category": "OPERATING_SYSTEM",
+                  "max_question_count": 3,
+                  "interview_mode": "VOICE"
+                }
+                """;
+
+        String responseJson = """
+                {
+                	"interview_id": 1,
+                	"question_id": 1,
+                	"root_question_voice_url": "%s"
+                }
+                """.formatted(rootQuestion.getVoiceUrl());
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/interviews")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-startInterview-voice-mode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("category").description("인터뷰 카테고리"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드(음성, 텍스트)")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 질문 ID"),
+                                fieldWithPath("root_question_voice_url").description("루트 질문 음성 URL")
                         )
                 ));
     }

@@ -8,6 +8,7 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
@@ -61,13 +62,15 @@ public class InterviewFacadeService {
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        memberService.validateEnoughTokenCount(memberAuth.memberId(), interviewRequest.maxQuestionCount());
+        InterviewMode interviewMode = interviewRequest.interviewMode();
+        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.readRandomRootQuestion(member, interviewRequest);
-        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
+        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
-        return new InterviewStartResponse(interview, question);
+        return interviewMode.createInterviewStartResponse(interview, question);
     }
 
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
@@ -85,6 +88,7 @@ public class InterviewFacadeService {
     }
 
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+        //VOICE 모드일 때는 Typecast에 요청한 URL을 응답해야 하고, TEXT 모드일 때는 그냥 응답해야 하는데, 이건 if 문 분기처리를 해버려? 아니면 객체를 만들까?
         memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
