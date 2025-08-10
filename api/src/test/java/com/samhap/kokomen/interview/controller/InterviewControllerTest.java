@@ -37,11 +37,14 @@ import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
+import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
+import com.samhap.kokomen.interview.external.dto.response.TypecastResult;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -276,7 +279,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰_현황_체크_IN_PROGRESS() throws Exception {
+    void 인터뷰_현황_체크_IN_PROGRESS_TEXT_MODE() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
@@ -309,12 +312,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/check", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check?mode=TEXT", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-checkInterview-inProgress",
+                .andDo(document("interview-checkInterview-inProgress-textMode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -325,6 +328,69 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question").description("현재 질문 내용 (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
+                                fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
+                                fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
+                                fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
+                                fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_현황_체크_IN_PROGRESS_VOICE_MODE() throws Exception {
+        // given
+        when(typecastClient.request(any())).thenReturn(new TypecastResponse(new TypecastResult("mock-url")));
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("현재 새로운 질문").build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String responseJson = """
+                {
+                	"interview_state": "IN_PROGRESS",
+                	"cur_question_id": %d,
+                	"cur_question_voice_url": "mock-url",
+                	"cur_question_count": %d,
+                	"max_question_count": %d,
+                	"prev_questions_and_answers": [
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		}
+                	]
+                }
+                """.formatted(
+                question2.getId(), 2, interview.getMaxQuestionCount(),
+                question1.getId(), question1.getContent(), answer1.getId(), answer1.getContent());
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/check?mode=VOICE", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-checkInterview-inProgress-voiceMode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_state").description("인터뷰 상태"),
+                                fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question_voice_url").description("현재 질문 음성 URL (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
@@ -386,7 +452,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/check", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check?mode=TEXT", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())

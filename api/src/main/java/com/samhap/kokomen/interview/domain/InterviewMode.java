@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.domain;
 
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartTextModeResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartVoiceModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
 import java.util.function.BiFunction;
 
 public enum InterviewMode {

@@ -5,7 +5,7 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

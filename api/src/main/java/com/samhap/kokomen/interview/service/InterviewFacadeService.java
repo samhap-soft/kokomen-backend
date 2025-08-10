@@ -19,14 +19,14 @@ import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryRespon
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateTextModeResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateVoiceModeResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateVoiceModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
@@ -147,12 +147,12 @@ public class InterviewFacadeService {
     private InterviewProceedStateResponse recoverWhenRedisStateMissing(Long interviewId, Long curQuestionId) {
         return answerService.findByQuestionId(curQuestionId)
                 .map(answer -> createCompletedResponse(interviewId, curQuestionId))
-                .orElseGet(() -> InterviewProceedStateTextModeResponse.createPendingOrFailed(LlmProceedState.FAILED));
+                .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(LlmProceedState.FAILED));
     }
 
     private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
         if (llmProceedState == LlmProceedState.PENDING || llmProceedState == LlmProceedState.FAILED) {
-            return InterviewProceedStateTextModeResponse.createPendingOrFailed(llmProceedState);
+            return InterviewProceedStateResponse.createPendingOrFailed(llmProceedState);
         }
         return createCompletedResponse(interviewId, curQuestionId);
     }
@@ -175,7 +175,7 @@ public class InterviewFacadeService {
         if (!curQuestionId.equals(lastQuestion.getId())) {
             throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + lastQuestion.getId());
         }
-        return InterviewProceedStateTextModeResponse.createCompletedAndFinished(interview);
+        return InterviewProceedStateResponse.createCompletedAndFinished();
     }
 
     private InterviewProceedStateResponse createCompletedAndInProgressInterviewResponse(
@@ -191,22 +191,11 @@ public class InterviewFacadeService {
         Answer curAnswer = answerService.readByQuestionId(curQuestionId);
 
         if (interview.getInterviewMode() == InterviewMode.VOICE) {
-            return createCompletedAndInProgressVoiceModeResponse(lastQuestion, curAnswer);
+            String questionVoiceUrl = questionService.resolveQuestionVoiceUrl(lastQuestion);
+            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion, questionVoiceUrl);
         }
 
-        return InterviewProceedStateTextModeResponse.createCompletedAndInProgress(interview, curAnswer, lastQuestion);
-    }
-
-    private InterviewProceedStateResponse createCompletedAndInProgressVoiceModeResponse(Question nextQuestion, Answer curAnswer) {
-        Optional<String> questionVoiceUrlOptional = redisService.get(
-                InterviewProceedBlockAsyncService.createQuestionVoiceUrlKey(nextQuestion.getId()), String.class);
-
-        if (questionVoiceUrlOptional.isPresent()) {
-            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, nextQuestion, questionVoiceUrlOptional.get());
-        }
-        // 음성 모드인데 Redis에 음성 URL이 없는 경우, 비동기로 Typecast 요청하고 PENDING 응답
-        interviewProceedBlockAsyncService.requestTypecastAndSaveUrlToRedisAsync(nextQuestion);
-        return InterviewProceedStateVoiceModeResponse.createPendingOrFailed(LlmProceedState.PENDING);
+        return InterviewProceedStateTextModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion);
     }
 
     @Transactional
@@ -252,8 +241,8 @@ public class InterviewFacadeService {
         return likeCount;
     }
 
-    public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
-        return interviewService.checkInterview(interviewId, memberAuth);
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
+        return interviewService.checkInterview(interviewId, mode, memberAuth);
     }
 
     public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {

@@ -22,9 +22,11 @@ import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckVoiceModeResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -48,6 +50,7 @@ public class InterviewService {
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
     private final InterviewViewCountService interviewViewCountService;
+    private final QuestionService questionService;
 
     @Transactional
     public Interview saveInterview(Interview interview) {
@@ -55,13 +58,28 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
+        validateInterviewMode(interviewId, mode);
         validateInterviewee(interviewId, memberAuth.memberId());
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 
-        return InterviewResponse.of(interview, questions, answers);
+        if (mode == InterviewMode.VOICE) {
+            String questionVoiceUrl = resolveQuestionVoiceUrl(questions, interview);
+            return InterviewCheckVoiceModeResponse.of(interview, questions, answers, questionVoiceUrl);
+        }
+        return InterviewCheckTextModeResponse.of(interview, questions, answers);
+    }
+
+    private String resolveQuestionVoiceUrl(List<Question> questions, Interview interview) {
+        // TODO: 답변하고 LLM 응답이 오기 전에 나갔다가 바로 다시 들어오는 경우에는 questions.size()가 당장은 1일텐데 RootQuestion부터 다시 시작?
+        if (questions.size() == 1) {
+            return interview.getRootQuestion().getVoiceUrl();
+        }
+
+        Question curQuestion = questions.get(questions.size() - 1);
+        return questionService.resolveQuestionVoiceUrl(curQuestion);
     }
 
     @Transactional(readOnly = true)

@@ -1,9 +1,15 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.external.TypecastClient;
+import com.samhap.kokomen.interview.external.dto.request.TypecastRequest;
+import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QuestionService {
 
+    public static final String QUESTION_VOICE_URL_KEY_FORMAT = "question:%d:voice_url";
+    private static final int TYPECAST_FORCED_TTL_HOURS = 24;
+
+    private final TypecastClient typecastClient;
+    private final RedisService redisService;
     private final QuestionRepository questionRepository;
 
     @Transactional
@@ -25,5 +36,22 @@ public class QuestionService {
 
     public List<Question> readLastTwoQuestionsByInterviewId(Long interviewId) {
         return questionRepository.findTop2ByInterviewIdOrderByIdDesc(interviewId);
+    }
+
+    public String resolveQuestionVoiceUrl(Question question) {
+        String questionVoiceUrlKey = createQuestionVoiceUrlKey(question.getId());
+        Optional<String> questionVoiceUrlOptional = redisService.get(questionVoiceUrlKey, String.class);
+
+        if (questionVoiceUrlOptional.isPresent()) {
+            return questionVoiceUrlOptional.get();
+        }
+
+        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
+        redisService.setValue(questionVoiceUrlKey, typecastResponse.getSpeakV2Url(), Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
+        return typecastResponse.getSpeakV2Url();
+    }
+
+    public static String createQuestionVoiceUrlKey(Long questionId) {
+        return QUESTION_VOICE_URL_KEY_FORMAT.formatted(questionId);
     }
 }

@@ -6,9 +6,7 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.TypecastClient;
-import com.samhap.kokomen.interview.external.dto.request.TypecastRequest;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
 import java.time.Duration;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class InterviewProceedBlockAsyncService {
 
-    public static final String QUESTION_VOICE_URL_KEY_FORMAT = "question:%d:voice_url";
-    private static final int TYPECAST_FORCED_TTL_HOURS = 24;
-
+    private final QuestionService questionService;
     private final InterviewProceedService interviewProceedService;
     private final RedisService redisService;
     private final BedrockClient bedrockClient;
@@ -41,7 +37,7 @@ public class InterviewProceedBlockAsyncService {
 
             nextQuestionOptional.ifPresent(nextQuestion -> {
                 if (interviewProceedService.isVoiceMode(interviewId)) {
-                    requestTypecastAndSaveUrlToRedisAsync(nextQuestion);
+                    questionService.resolveQuestionVoiceUrl(nextQuestion);
                 }
             });
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
@@ -52,20 +48,5 @@ public class InterviewProceedBlockAsyncService {
         } finally {
             redisService.releaseLock(lockKey);
         }
-    }
-
-    /*
-    1. 굳이 새로운 Executor 만들지 않고, bedrockBlockExecutor를 재사용
-    2. proceedOrEndInterviewBlockAsync에서는 아래 메서드를 비동기 호출할 필요가 없어서 의도적으로 내부 호출
-     */
-    @Async("bedrockBlockExecutor")
-    public void requestTypecastAndSaveUrlToRedisAsync(Question question) {
-        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
-        redisService.setValue(QUESTION_VOICE_URL_KEY_FORMAT.formatted(question.getId()),
-                typecastResponse.getSpeakV2Url(), Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
-    }
-
-    public static String createQuestionVoiceUrlKey(Long questionId) {
-        return QUESTION_VOICE_URL_KEY_FORMAT.formatted(questionId);
     }
 }

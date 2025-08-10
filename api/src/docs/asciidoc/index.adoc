@@ -171,13 +171,21 @@ include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
 include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
 include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
 
-=== 인터뷰 현황 체크 - IN_PROGRESS
+=== 인터뷰 현황 체크 - IN_PROGRESS (TEXT MODE)
 
-include::{snippetsDir}/interview-checkInterview-inProgress/http-request.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/path-parameters.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/http-response.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/response-fields.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/curl-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/curl-request.adoc[]
+
+=== 인터뷰 현황 체크 - IN_PROGRESS (VOICE MODE)
+
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/curl-request.adoc[]
 
 ==== 인터뷰 현황 체크 - FINISHED
 
