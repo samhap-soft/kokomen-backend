@@ -19,7 +19,7 @@ public record InterviewProceedStateVoiceModeResponse(
             Question nextQuestion,
             String nextQuestionVoiceUrl
     ) {
-        return new InterviewProceedStateTextModeResponse(
+        return new InterviewProceedStateVoiceModeResponse(
                 LlmProceedState.COMPLETED,
                 InterviewState.IN_PROGRESS,
                 curAnswer.getAnswerRank(),

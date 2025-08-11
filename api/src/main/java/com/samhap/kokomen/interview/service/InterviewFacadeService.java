@@ -27,6 +27,8 @@ import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedSta
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateVoiceModeResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
@@ -72,7 +74,10 @@ public class InterviewFacadeService {
         Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
-        return interviewMode.createInterviewStartResponse(interview, question);
+        if (interviewMode == InterviewMode.VOICE) {
+            return new InterviewStartVoiceModeResponse(interview, question);
+        }
+        return new InterviewStartTextModeResponse(interview, question);
     }
 
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {

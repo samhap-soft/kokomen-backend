@@ -75,7 +75,7 @@ public class InterviewService {
     private String resolveQuestionVoiceUrl(List<Question> questions, Interview interview) {
         // TODO: 답변하고 LLM 응답이 오기 전에 나갔다가 바로 다시 들어오는 경우에는 questions.size()가 당장은 1일텐데 RootQuestion부터 다시 시작?
         if (questions.size() == 1) {
-            return interview.getRootQuestion().getVoiceUrl();
+            return InterviewMode.ROOT_QUESTION_VOICE_URL_FORMAT.formatted(interview.getRootQuestion().getId());
         }
 
         Question curQuestion = questions.get(questions.size() - 1);

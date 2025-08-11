@@ -1,5 +1,6 @@
 package com.samhap.kokomen.category.domain;
 
+import com.samhap.kokomen.global.constant.AwsConstant;
 import java.util.List;
 import lombok.Getter;
 
@@ -46,7 +47,7 @@ public enum Category {
             "kokomen-operating-system.png"),
     ;
 
-    private static final String BASE_URL = "https://d2ftfzru2cd49g.cloudfront.net/category-image/";
+    private static final String BASE_URL = AwsConstant.CLOUD_FRONT_DOMAIN_URL + "/category-image/";
 
     private final String title;
     private final String description;

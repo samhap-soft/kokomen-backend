@@ -5,7 +5,6 @@ import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.BedrockClient;
-import com.samhap.kokomen.interview.external.TypecastClient;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import java.time.Duration;
 import java.util.Optional;
@@ -23,7 +22,6 @@ public class InterviewProceedBlockAsyncService {
     private final InterviewProceedService interviewProceedService;
     private final RedisService redisService;
     private final BedrockClient bedrockClient;
-    private final TypecastClient typecastClient;
 
     @Async("bedrockBlockExecutor")
     public void proceedOrEndInterviewBlockAsync(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
