@@ -47,7 +47,7 @@ public enum Category {
             "kokomen-operating-system.png"),
     ;
 
-    private static final String BASE_URL = AwsConstant.CLOUD_FRONT_DOMAIN_URL + "/category-image/";
+    private static final String BASE_URL = AwsConstant.CLOUD_FRONT_DOMAIN_URL + "category-image/";
 
     private final String title;
     private final String description;
