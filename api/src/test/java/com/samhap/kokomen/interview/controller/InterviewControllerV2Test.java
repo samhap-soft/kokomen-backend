@@ -359,7 +359,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_answer_rank").description("현재 답변 순위"),
                                 fieldWithPath("next_question_id").description("다음 질문 ID"),
-                                fieldWithPath("next_question_voice_url").description("다음 질문 음성 URL")
+                                fieldWithPath("next_question_voice_url").description("다음 질문 음성 URL (루트 질문인 경우 CDN URL이 가지만, 루트 질문이 아닌 경우 polling 필요할 수 있음)")
                         )
                 ));
     }
