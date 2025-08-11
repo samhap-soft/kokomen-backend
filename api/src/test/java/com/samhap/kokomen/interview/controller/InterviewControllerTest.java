@@ -512,6 +512,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	{
                 		"interview_id": %d,
                 		"interview_state": "%s",
+                		"interview_mode": "TEXT",
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
@@ -526,6 +527,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	{
                 		"interview_id": %d,
                 		"interview_state": "%s",
+                		"interview_mode": "TEXT",
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
@@ -565,6 +567,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].interview_id").description("면접 ID"),
                                 fieldWithPath("[].interview_state").description("면접 상태 " + Arrays.asList(InterviewState.values())),
                                 fieldWithPath("[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("[].created_at").description("생성 시간"),
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
@@ -636,6 +639,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -647,6 +651,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -693,6 +698,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
                                 fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
@@ -759,6 +765,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -770,6 +777,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -810,6 +818,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
                                 fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
@@ -898,7 +907,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_score": -30,
                 	"user_cur_score": 70,
-                	"user_prev_score": 100
+                	"user_prev_score": 100,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -931,7 +941,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
-                                fieldWithPath("user_prev_score").description("이전 사용자 점수")
+                                fieldWithPath("user_prev_score").description("이전 사용자 점수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }
@@ -1012,12 +1023,13 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
-                	"interview_view_count": 1, // 다른 사용자의 인터뷰 결과 조회 시 조회수가 1 증가합니다.
+                	"interview_view_count": 1,
                 	"interview_like_count": 1,
                 	"interview_already_liked": true,
                 	"interviewee_nickname": "오상훈",
                 	"total_member_count": 2,
-                	"interviewee_rank": 1
+                	"interviewee_rank": 1,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -1050,7 +1062,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }
@@ -1127,7 +1140,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"interview_already_liked": false,
                     "interviewee_nickname": "오상훈",
                 	"total_member_count": 1,
-                	"interviewee_rank": 1
+                	"interviewee_rank": 1,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -1158,7 +1172,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }
