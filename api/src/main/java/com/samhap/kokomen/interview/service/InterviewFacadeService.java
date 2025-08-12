@@ -49,6 +49,7 @@ public class InterviewFacadeService {
 
     public static final String INTERVIEW_PROCEED_LOCK_KEY_PREFIX = "lock:interview:proceed:";
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
+    private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
     private final BedrockClient bedrockClient;
     private final RedisService redisService;
@@ -67,7 +68,7 @@ public class InterviewFacadeService {
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         InterviewMode interviewMode = interviewRequest.mode();
-        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount() - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         memberService.validateEnoughTokenCount(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.readRandomRootQuestion(member, interviewRequest);
@@ -95,7 +96,7 @@ public class InterviewFacadeService {
     }
 
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());

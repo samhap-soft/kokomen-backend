@@ -59,4 +59,9 @@ public class MemberService {
         Member member = readById(memberAuth.memberId());
         member.updateProfile(profileUpdateRequest.nickname());
     }
+
+    public void useToken(Long memberId) {
+        Member member = readById(memberId);
+        member.useToken();
+    }
 }
