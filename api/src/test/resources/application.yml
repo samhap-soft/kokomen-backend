@@ -32,6 +32,9 @@ notification:
 typecast:
   api-token: mock-token
 
+aws:
+  root-question-s3-path: mock-path/
+
 ---
 # test
 spring:

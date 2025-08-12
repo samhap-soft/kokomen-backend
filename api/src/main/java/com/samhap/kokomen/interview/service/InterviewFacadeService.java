@@ -14,6 +14,7 @@ import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.RootQuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
@@ -51,6 +52,7 @@ public class InterviewFacadeService {
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
     private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
+    private final RootQuestionVoicePathResolver rootQuestionVoicePathResolver;
     private final BedrockClient bedrockClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
@@ -76,7 +78,7 @@ public class InterviewFacadeService {
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
-            return new InterviewStartVoiceModeResponse(interview, question);
+            return new InterviewStartVoiceModeResponse(interview, question, rootQuestionVoicePathResolver.resolvePath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
     }

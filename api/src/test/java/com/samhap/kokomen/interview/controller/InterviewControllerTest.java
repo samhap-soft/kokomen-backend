@@ -150,7 +150,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                 	"interview_id": 1,
                 	"question_id": 1,
-                	"root_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/root-question-voice/1.mp3"
+                	"root_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/1.mp3"
                 }
                 """;
 
