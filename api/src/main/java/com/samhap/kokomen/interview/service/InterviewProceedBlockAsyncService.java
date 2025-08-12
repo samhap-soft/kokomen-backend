@@ -35,12 +35,10 @@ public class InterviewProceedBlockAsyncService {
             Optional<Question> nextQuestionOptional = interviewProceedService.proceedOrEndInterviewBlockAsync(
                     memberId, questionAndAnswers, llmResponse, interviewId);
 
-            nextQuestionOptional.ifPresent(nextQuestion -> {
-                if (interviewProceedService.isVoiceMode(interviewId)) {
-                    questionService.createQuestionVoiceUrl(nextQuestion);
-                    memberService.useToken(memberId);
-                }
-            });
+            if (nextQuestionOptional.isPresent() && interviewProceedService.isVoiceMode(interviewId)) {
+                questionService.createQuestionVoiceUrl(nextQuestionOptional.get());
+                memberService.useToken(memberId);
+            }
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
             // LLM 호출은 성공해서 answer는 저장됐는데 typecast 요청이 실패한 경우, FAILED로만 떠서 클라이언트 입장에서는 위 API를 다시 시도할텐데, 사실 LLM 호출은 성공해서 Answer는 저장됐기 때문에
