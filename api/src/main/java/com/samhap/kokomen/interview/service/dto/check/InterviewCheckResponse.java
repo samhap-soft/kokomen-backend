@@ -9,11 +9,9 @@ import java.util.List;
 public interface InterviewCheckResponse {
 
     static InterviewCheckResponse createFinished(Interview interview, List<Question> questions, List<Answer> answers) {
-        return new InterviewCheckTextModeResponse(
+        return new InterviewFinishedCheckResponse(
                 interview.getInterviewState(),
                 createPrevQuestionAndAnswers(answers),
-                null,
-                null,
                 questions.size(),
                 interview.getMaxQuestionCount()
         );
