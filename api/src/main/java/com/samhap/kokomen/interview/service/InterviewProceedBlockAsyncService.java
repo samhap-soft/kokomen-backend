@@ -37,7 +37,7 @@ public class InterviewProceedBlockAsyncService {
 
             nextQuestionOptional.ifPresent(nextQuestion -> {
                 if (interviewProceedService.isVoiceMode(interviewId)) {
-                    questionService.resolveQuestionVoiceUrl(nextQuestion);
+                    questionService.createQuestionVoiceUrl(nextQuestion);
                     memberService.useToken(memberId);
                 }
             });

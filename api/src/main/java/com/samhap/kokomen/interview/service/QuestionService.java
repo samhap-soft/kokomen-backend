@@ -53,6 +53,13 @@ public class QuestionService {
         return questionVoiceUrl;
     }
 
+    public String createQuestionVoiceUrl(Question question) {
+        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
+        String questionVoiceUrl = typecastResponse.getSpeakV2Url();
+        redisService.setValue(createQuestionVoiceUrlKey(question.getId()), questionVoiceUrl, Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
+        return questionVoiceUrl;
+    }
+
     public static String createQuestionVoiceUrlKey(Long questionId) {
         return QUESTION_VOICE_URL_KEY_FORMAT.formatted(questionId);
     }
