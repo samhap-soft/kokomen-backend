@@ -21,7 +21,7 @@ public record BedrockResponse(
         try {
             return objectMapper.readValue(content, AnswerRankResponse.class);
         } catch (Exception e) {
-            throw new LlmApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
+            throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
     }
 
