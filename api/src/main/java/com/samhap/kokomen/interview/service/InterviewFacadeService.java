@@ -63,7 +63,6 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
-    private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
     private final InterviewLikeEventProducer interviewLikeEventProducer;
     private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
     private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;

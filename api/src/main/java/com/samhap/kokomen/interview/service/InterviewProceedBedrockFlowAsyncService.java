@@ -1,14 +1,15 @@
 package com.samhap.kokomen.interview.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.InterviewProceedResult;
 import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
+import com.samhap.kokomen.member.service.MemberService;
 import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -26,22 +27,25 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRespo
 public class InterviewProceedBedrockFlowAsyncService {
 
     private final InterviewProceedService interviewProceedService;
+    private final QuestionService questionService;
+    private final MemberService memberService;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final RedisService redisService;
-    private final ObjectMapper objectMapper;
     private final ThreadPoolTaskExecutor executor;
 
     public InterviewProceedBedrockFlowAsyncService(
             InterviewProceedService interviewProceedService,
+            QuestionService questionService,
+            MemberService memberService,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             RedisService redisService,
-            ObjectMapper objectMapper,
             @Qualifier("bedrockFlowCallbackExecutor")
             ThreadPoolTaskExecutor threadPoolTaskExecutor) {
         this.interviewProceedService = interviewProceedService;
+        this.questionService = questionService;
+        this.memberService = memberService;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.redisService = redisService;
-        this.objectMapper = objectMapper;
         this.executor = threadPoolTaskExecutor;
     }
 
@@ -99,11 +103,18 @@ public class InterviewProceedBedrockFlowAsyncService {
                     .document()
                     .toString();
             LlmResponse llmResponse = new BedrockResponse(jsonPayload);
-            Answer curAnswer = interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers, llmResponse, interviewId);
+            InterviewProceedResult result =
+                    interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers, llmResponse, interviewId);
+
+            if (result.isInProgress() && interviewProceedService.isVoiceMode(interviewId)) {
+                questionService.createQuestionVoiceUrl(result.getNextQuestion());
+                memberService.useToken(memberId);
+            }
+
             redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
-            AnswerRank curAnswerRank = AnswerRank.valueOf(llmResponse.extractAnswerRankResponse(objectMapper).rank());
-            Long curAnswerId = curAnswer.getId();
-            requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext, curAnswerRank, curAnswerId);
+
+            Answer curAnswer = result.getCurAnswer();
+            requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext, curAnswer.getAnswerRank(), curAnswer.getId());
         } catch (Exception e) {
             redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
             throw e;

@@ -5,6 +5,7 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedResult;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
@@ -50,25 +51,7 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public Optional<Question> proceedOrEndInterviewBlockAsync(
-            Long memberId,
-            QuestionAndAnswers questionAndAnswers,
-            LlmResponse llmResponse,
-            Long interviewId
-    ) {
-        Member member = memberService.readById(memberId);
-        member.useToken();
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-        Interview interview = interviewService.readInterview(interviewId);
-        if (questionAndAnswers.isProceedRequest()) {
-            return Optional.of(saveNextQuestion(llmResponse, interview));
-        }
-        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-        return Optional.empty();
-    }
-
-    @Transactional
-    public Answer proceedOrEndInterviewByBedrockFlowAsync(
+    public InterviewProceedResult proceedOrEndInterviewByBedrockFlowAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
             LlmResponse llmResponse,
@@ -78,12 +61,13 @@ public class InterviewProceedService {
         member.useToken();
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
-            saveNextQuestion(llmResponse, interview);
-            return saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
+            Answer curAnswer = saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
+            return InterviewProceedResult.createInProgress(curAnswer, nextQuestion);
         }
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-        return curAnswer;
+        return InterviewProceedResult.createFinished(curAnswer);
     }
 
     private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
