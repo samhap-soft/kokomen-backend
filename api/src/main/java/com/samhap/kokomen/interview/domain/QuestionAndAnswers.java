@@ -4,6 +4,7 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerRankResponse;
 import java.util.Comparator;
 import java.util.List;
 import lombok.Getter;
@@ -57,6 +58,15 @@ public class QuestionAndAnswers {
                 curAnswerContent,
                 AnswerRank.valueOf(feedback.rank()),
                 feedback.feedback()
+        );
+    }
+
+    public Answer createCurAnswerWithoutFeedback(AnswerRankResponse answerRankResponse) {
+        return new Answer(
+                readCurQuestion(),
+                curAnswerContent,
+                AnswerRank.valueOf(answerRankResponse.rank()),
+                null
         );
     }
 

@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Profile("local|load-test")
+@Profile("local|load-test|dev")
 @RequiredArgsConstructor
 @RestController
-public class AuthLocalController {
+public class AuthTestController {
 
     private final MemberRepository memberRepository;
 
-    @PostMapping("/local/register/{kakaoId}")
+    @PostMapping("/test/register/{kakaoId}")
     public ResponseEntity<Long> setTestSession(
             @PathVariable Long kakaoId,
             HttpServletRequest request) {

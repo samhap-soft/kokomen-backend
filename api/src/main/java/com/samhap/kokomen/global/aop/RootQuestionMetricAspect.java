@@ -78,7 +78,7 @@ public class RootQuestionMetricAspect {
         }
     }
 
-    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
+    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
     public void asyncProceedInterviewPointcut(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
     }
 

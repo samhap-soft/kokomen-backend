@@ -5,9 +5,11 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedResult;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
+import com.samhap.kokomen.interview.external.dto.response.AnswerRankResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
@@ -49,7 +51,7 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public Optional<Question> proceedOrEndInterviewBlockAsync(
+    public InterviewProceedResult proceedOrEndInterviewByBedrockFlowAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
             LlmResponse llmResponse,
@@ -57,24 +59,30 @@ public class InterviewProceedService {
     ) {
         Member member = memberService.readById(memberId);
         member.useToken();
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
-            return Optional.of(saveNextQuestion(llmResponse, interview));
+            Question nextQuestion = saveNextQuestion(llmResponse, interview);
+            Answer curAnswer = saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
+            return InterviewProceedResult.createInProgress(curAnswer, nextQuestion);
         }
+        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-        return Optional.empty();
+        return InterviewProceedResult.createFinished(curAnswer);
+    }
+
+    private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
+        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
+        return questionService.saveQuestion(new Question(interview, nextQuestionResponse.nextQuestion()));
+    }
+
+    private Answer saveCurrentAnswerWithoutFeedback(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
+        AnswerRankResponse answerRankResponse = llmResponse.extractAnswerRankResponse(objectMapper);
+        return answerService.saveAnswer(questionAndAnswers.createCurAnswerWithoutFeedback(answerRankResponse));
     }
 
     private Answer saveCurrentAnswer(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse) {
         AnswerFeedbackResponse feedback = llmResponse.extractAnswerFeedbackResponse(objectMapper);
         return answerService.saveAnswer(questionAndAnswers.createCurAnswer(feedback));
-    }
-
-    private Question saveNextQuestion(LlmResponse llmResponse, Interview interview) {
-        NextQuestionResponse nextQuestionResponse = llmResponse.extractNextQuestionResponse(objectMapper);
-        Question nextQuestion = questionService.saveQuestion(new Question(interview, nextQuestionResponse.nextQuestion()));
-        return nextQuestion;
     }
 
     private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview, LlmResponse llmResponse, Member member) {
@@ -87,5 +95,11 @@ public class InterviewProceedService {
     public boolean isVoiceMode(Long interviewId) {
         Interview interview = interviewService.readInterview(interviewId);
         return interview.getInterviewMode() == InterviewMode.VOICE;
+    }
+
+    @Transactional
+    public void saveAnswerFeedback(Long answerId, String answerFeedback) {
+        Answer answer = answerService.readById(answerId);
+        answer.giveFeedback(answerFeedback);
     }
 }
