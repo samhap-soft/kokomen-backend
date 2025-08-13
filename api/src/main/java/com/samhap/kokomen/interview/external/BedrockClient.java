@@ -1,20 +1,22 @@
 package com.samhap.kokomen.interview.external;
 
+import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientResponseException;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 
-//@ExecutionTimer
+@ExecutionTimer
 @RequiredArgsConstructor
-//@Component
+@Component
 public class BedrockClient {
 
     private static final String MODEL_ID = "apac.anthropic.claude-sonnet-4-20250514-v1:0";

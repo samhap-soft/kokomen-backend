@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 @Configuration
 public class AwsConfig {
 
-    //    @Bean
+    @Bean
     public BedrockRuntimeClient bedrockRuntimeClient() {
         return BedrockRuntimeClient.builder()
                 .credentialsProvider(InstanceProfileCredentialsProvider.create())
