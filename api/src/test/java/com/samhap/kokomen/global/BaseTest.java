@@ -5,6 +5,7 @@ import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.NotificationClient;
+import com.samhap.kokomen.interview.external.TypecastClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +19,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
 public abstract class BaseTest {
+
+    @MockitoBean
+    protected TypecastClient typecastClient;
 
     @MockitoBean
     protected NotificationClient notificationClient;

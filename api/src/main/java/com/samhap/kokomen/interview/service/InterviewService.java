@@ -14,16 +14,20 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.domain.RootQuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckVoiceModeResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -39,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewService {
 
+    private final RootQuestionVoicePathResolver rootQuestionVoicePathResolver;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -47,6 +52,7 @@ public class InterviewService {
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
     private final InterviewViewCountService interviewViewCountService;
+    private final QuestionService questionService;
 
     @Transactional
     public Interview saveInterview(Interview interview) {
@@ -54,13 +60,28 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
         Interview interview = readInterview(interviewId);
+        validateInterviewMode(interviewId, mode);
         validateInterviewee(interviewId, memberAuth.memberId());
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 
-        return InterviewResponse.of(interview, questions, answers);
+        if (mode == InterviewMode.VOICE) {
+            String questionVoiceUrl = resolveQuestionVoiceUrl(questions, interview);
+            return InterviewCheckVoiceModeResponse.of(interview, questions, answers, questionVoiceUrl);
+        }
+        return InterviewCheckTextModeResponse.of(interview, questions, answers);
+    }
+
+    private String resolveQuestionVoiceUrl(List<Question> questions, Interview interview) {
+        // TODO: 답변하고 LLM 응답이 오기 전에 나갔다가 바로 다시 들어오는 경우에는 questions.size()가 당장은 1일텐데 RootQuestion부터 다시 시작?
+        if (questions.size() == 1) {
+            return rootQuestionVoicePathResolver.resolvePath(interview.getRootQuestion().getId());
+        }
+
+        Question curQuestion = questions.get(questions.size() - 1);
+        return questionService.resolveQuestionVoiceUrl(curQuestion);
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +178,14 @@ public class InterviewService {
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
 
         return InterviewResultResponse.createMine(feedbackResponses, interview, member);
+    }
+
+    @Transactional(readOnly = true)
+    public void validateInterviewMode(Long interviewId, InterviewMode interviewMode) {
+        Interview interview = readInterview(interviewId);
+        if (interview.getInterviewMode() != interviewMode) {
+            throw new BadRequestException("인터뷰 모드가 일치하지 않습니다. 현재 인터뷰 모드: " + interview.getInterviewMode() + ", 요청한 인터뷰 모드: " + interviewMode);
+        }
     }
 
     @Transactional(readOnly = true)

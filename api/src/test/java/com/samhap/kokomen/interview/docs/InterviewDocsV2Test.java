@@ -21,6 +21,7 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
@@ -81,9 +82,9 @@ public class InterviewDocsV2Test extends DocsTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}", interview.getId(), question1.getId())
+                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변")))
+                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isBadRequest())
@@ -126,9 +127,9 @@ public class InterviewDocsV2Test extends DocsTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}", interview.getId(), question1.getId())
+                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변")))
+                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isBadRequest())

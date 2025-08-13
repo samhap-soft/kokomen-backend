@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
@@ -49,7 +50,7 @@ public class InterviewProceedService {
     }
 
     @Transactional
-    public void proceedOrEndInterviewBlockAsync(
+    public Optional<Question> proceedOrEndInterviewBlockAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
             LlmResponse llmResponse,
@@ -60,10 +61,10 @@ public class InterviewProceedService {
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
-            saveNextQuestion(llmResponse, interview);
-            return;
+            return Optional.of(saveNextQuestion(llmResponse, interview));
         }
         evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
+        return Optional.empty();
     }
 
     @Transactional
@@ -105,6 +106,11 @@ public class InterviewProceedService {
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
         member.addScore(totalScore);
+    }
+
+    public boolean isVoiceMode(Long interviewId) {
+        Interview interview = interviewService.readInterview(interviewId);
+        return interview.getInterviewMode() == InterviewMode.VOICE;
     }
 
     @Transactional
