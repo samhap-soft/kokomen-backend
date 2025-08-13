@@ -63,9 +63,9 @@ public class InterviewFacadeService {
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ApplicationEventPublisher eventPublisher;
-    private final InterviewProceedBlockAsyncService interviewProceedBlockAsyncService;
     private final InterviewLikeEventProducer interviewLikeEventProducer;
     private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
+    private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -97,17 +97,15 @@ public class InterviewFacadeService {
         }
     }
 
-    public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
         memberService.validateEnoughTokenCount(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
             QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
-            interviewProceedBlockAsyncService.proceedOrEndInterviewBlockAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
+            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
         }
@@ -169,13 +167,12 @@ public class InterviewFacadeService {
         Interview interview = interviewService.readInterview(interviewId);
         List<Question> lastTwoQuestions = questionService.readLastTwoQuestionsByInterviewId(interviewId);
         if (interview.getInterviewState() == InterviewState.FINISHED) {
-            return createCompletedAndFinishedInterviewResponse(interview, curQuestionId, lastTwoQuestions);
+            return createCompletedAndFinishedInterviewResponse(curQuestionId, lastTwoQuestions);
         }
         return createCompletedAndInProgressInterviewResponse(interview, curQuestionId, lastTwoQuestions);
     }
 
     private InterviewProceedStateResponse createCompletedAndFinishedInterviewResponse(
-            Interview interview,
             Long curQuestionId,
             List<Question> lastTwoQuestions
     ) {

@@ -105,6 +105,8 @@ server:
         secure: true
 notification:
   base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
+aws:
+  root-question-s3-path: local/root-question-voice/
 
 ---
 # dev profile
@@ -228,4 +230,4 @@ notification:
   read-timeout: 3s
 
 aws:
-  root-question-s3-path: prod/root-question-voice/
+  root-question-s3-path: dev/root-question-voice/

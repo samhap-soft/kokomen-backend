@@ -29,16 +29,15 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
-    @Bean("bedrockBlockExecutor")
-    public ThreadPoolTaskExecutor bedrockBlockExecutor() {
+    @Bean("bedrockFlowCallbackExecutor")
+    public ThreadPoolTaskExecutor bedrockFlowCallbackExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(60);
-        executor.setMaxPoolSize(60);
-        executor.setQueueCapacity(100);
+        executor.setCorePoolSize(20);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(1000);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
-        executor.setTaskDecorator(new MdcDecorator());
-        executor.setThreadNamePrefix("Async-Block-Bedrock-");
+        executor.setThreadNamePrefix("Async-Nonblock-Bedrock-");
         executor.initialize();
         executor.getThreadPoolExecutor().prestartAllCoreThreads();
         return executor;

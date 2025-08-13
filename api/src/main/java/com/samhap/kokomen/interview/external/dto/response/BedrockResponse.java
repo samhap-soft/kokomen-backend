@@ -17,6 +17,15 @@ public record BedrockResponse(
     }
 
     @Override
+    public AnswerRankResponse extractAnswerRankResponse(ObjectMapper objectMapper) {
+        try {
+            return objectMapper.readValue(content, AnswerRankResponse.class);
+        } catch (Exception e) {
+            throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
+        }
+    }
+
+    @Override
     public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
         try {
             return objectMapper.readValue(content, NextQuestionResponse.class);

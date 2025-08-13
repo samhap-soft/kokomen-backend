@@ -47,8 +47,10 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.31.69')
     implementation 'software.amazon.awssdk:bedrock'
     implementation 'software.amazon.awssdk:bedrockruntime'
+    implementation 'software.amazon.awssdk:bedrockagentruntime'
     implementation 'software.amazon.awssdk:apache-client:2.32.12'
-
+    implementation 'software.amazon.awssdk:netty-nio-client:2.32.16'
+    
     implementation 'org.springframework.kafka:spring-kafka'
 
     compileOnly 'org.projectlombok:lombok'
