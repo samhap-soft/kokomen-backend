@@ -9,7 +9,6 @@ import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,17 +39,8 @@ public class QuestionService {
 
     public String resolveQuestionVoiceUrl(Question question) {
         String questionVoiceUrlKey = createQuestionVoiceUrlKey(question.getId());
-        Optional<String> questionVoiceUrlOptional = redisService.get(questionVoiceUrlKey, String.class);
-
-        if (questionVoiceUrlOptional.isPresent()) {
-            return questionVoiceUrlOptional.get();
-        }
-
-        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
-        String questionVoiceUrl = typecastResponse.getSpeakV2Url();
-
-        redisService.setValue(questionVoiceUrlKey, questionVoiceUrl, Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
-        return questionVoiceUrl;
+        return redisService.get(questionVoiceUrlKey, String.class)
+                .orElseGet(() -> createQuestionVoiceUrl(question));
     }
 
     public String createQuestionVoiceUrl(Question question) {
