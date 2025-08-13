@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service.dto;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,8 @@ public record InterviewResultResponse(
         Long totalMemberCount,
         Long intervieweeRank,
         Integer userCurScore,
-        Integer userPrevScore
+        Integer userPrevScore,
+        InterviewMode interviewMode
 ) {
 
     public static InterviewResultResponse createMine(
@@ -38,7 +40,8 @@ public record InterviewResultResponse(
                 null,
                 null,
                 member.getScore(),
-                member.getScore() - interview.getTotalScore()
+                member.getScore() - interview.getTotalScore(),
+                interview.getInterviewMode()
         );
     }
 
@@ -68,7 +71,8 @@ public record InterviewResultResponse(
                 totalMemberCount,
                 intervieweeRank,
                 null,
-                null
+                null,
+                interview.getInterviewMode()
         );
     }
 
@@ -96,7 +100,8 @@ public record InterviewResultResponse(
                 totalMemberCount,
                 intervieweeRank,
                 null,
-                null
+                null,
+                interview.getInterviewMode()
         );
     }
 }

@@ -2,9 +2,10 @@ package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -36,8 +38,9 @@ public class InterviewControllerV2 {
     public ResponseEntity<InterviewProceedStateResponse> findInterviewProceedState(
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
+            @RequestParam InterviewMode mode,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findInterviewProceedState(interviewId, curQuestionId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth));
     }
 }

@@ -19,6 +19,7 @@ services:
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
+      TYPECAST_API_TOKEN: ${TYPECAST_API_TOKEN}
     depends_on:
       kokomen-interview-local-mysql:
         condition: service_healthy

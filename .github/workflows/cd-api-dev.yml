@@ -1,7 +1,7 @@
 name: CD API DEV
 
 on:
-  push:
+  pull_request:
     branches: [ develop ]
 
 jobs:
@@ -86,10 +86,10 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git fetch origin develop
-          git checkout develop
+          git fetch origin feature/#198
+          git checkout feature/#198
           git sparse-checkout set docker/dev
-          git pull origin develop
+          git pull origin feature/#198
 
       - name: Stop existing container
         run: sudo docker rm -f kokomen-interview-api-dev
@@ -114,6 +114,7 @@ jobs:
           KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
           MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }} # docker-compose-dev.yml에서 kokomen-mysql-dev를 실행시킬 때 필요
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          TYPECAST_API_TOKEN: ${{ secrets.TYPECAST_API_TOKEN }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/dev

@@ -10,7 +10,7 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewService;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Objects;
 import java.util.Optional;

@@ -3,15 +3,16 @@ package com.samhap.kokomen.interview.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -84,11 +85,12 @@ public class InterviewController {
     }
 
     @GetMapping("/{interviewId}/check")
-    public ResponseEntity<InterviewResponse> checkInterview(
+    public ResponseEntity<InterviewCheckResponse> checkInterview(
             @PathVariable Long interviewId,
+            @RequestParam InterviewMode mode,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.checkInterview(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewFacadeService.checkInterview(interviewId, mode, memberAuth));
     }
 
     @GetMapping("/me")

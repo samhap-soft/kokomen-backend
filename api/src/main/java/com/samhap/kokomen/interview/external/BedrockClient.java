@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.external;
 
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
-import com.samhap.kokomen.global.exception.LlmApiException;
+import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
@@ -29,9 +29,9 @@ public class BedrockClient {
         try {
             converseResponse = bedrockRuntimeClient.converse(converseRequest);
         } catch (RestClientResponseException e) {
-            throw new LlmApiException("Bedrock API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
+            throw new ExternalApiException("Bedrock API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
         } catch (Exception e) {
-            throw new LlmApiException("Bedrock API 호출 중 예상치 못한 오류가 발생했습니다.", e);
+            throw new ExternalApiException("Bedrock API 호출 중 예상치 못한 오류가 발생했습니다.", e);
         }
 
         String rawText = converseResponse.output().message().content().get(0).text();

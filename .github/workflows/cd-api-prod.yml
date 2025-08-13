@@ -105,6 +105,7 @@ jobs:
           REDIS_PRIMARY_HOST_PROD: ${{ secrets.REDIS_PRIMARY_HOST_PROD }}
           NOTIFICATION_BASE_URL_PROD: ${{ secrets.NOTIFICATION_BASE_URL_PROD }}
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          TYPECAST_API_TOKEN: ${{ secrets.TYPECAST_API_TOKEN }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/prod/api
