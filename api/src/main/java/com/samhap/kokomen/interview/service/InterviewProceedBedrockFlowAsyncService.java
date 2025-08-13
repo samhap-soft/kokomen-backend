@@ -77,6 +77,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                 .build();
     }
 
+    // TODO: FlowFailureEvent 이 있던데 베드락 흐름 실패 시 어떻게 처리해야하는지 다시 확인하기
     private void callbackInterviewProceedBedrockFlow(FlowResponseStream event, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
                                                      String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
         if (event instanceof FlowOutputEvent outputEvent) {
