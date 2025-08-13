@@ -67,13 +67,21 @@ include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
 
 == 인터뷰
 
-=== 인터뷰 시작
+=== 인터뷰 시작 텍스트모드
 
-include::{snippetsDir}/interview-startInterview/http-request.adoc[]
-include::{snippetsDir}/interview-startInterview/request-fields.adoc[]
-include::{snippetsDir}/interview-startInterview/http-response.adoc[]
-include::{snippetsDir}/interview-startInterview/response-fields.adoc[]
-include::{snippetsDir}/interview-startInterview/curl-request.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/curl-request.adoc[]
+
+=== 인터뷰 시작 음성모드
+
+include::{snippetsDir}/interview-startInterview-voice-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/curl-request.adoc[]
 
 ==== 인터뷰 시작 예외 1
 
@@ -136,20 +144,30 @@ include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/http-response.
 include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/response-fields.adoc[]
 include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/curl-request.adoc[]
 
-=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED - 진행중인 인터뷰
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED 텍스트모드 - 진행중인 인터뷰
 
-include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/http-request.adoc[]
-include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/path-parameters.adoc[]
-include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/http-response.adoc[]
-include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/response-fields.adoc[]
-include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2/curl-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED 음성모드 - 진행중인 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/curl-request.adoc[]
 
 ==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 1
+
 include::{snippetsDir}/interview-getPolling-exception1-V2/http-request.adoc[]
 include::{snippetsDir}/interview-getPolling-exception1-V2/http-response.adoc[]
 include::{snippetsDir}/interview-getPolling-exception1-V2/response-fields.adoc[]
 
 ==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 2
+
 include::{snippetsDir}/interview-getPolling-exception2-V2/http-request.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/http-response.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]
@@ -161,13 +179,21 @@ include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
 include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
 include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
 
-=== 인터뷰 현황 체크 - IN_PROGRESS
+=== 인터뷰 현황 체크 - IN_PROGRESS (TEXT MODE)
 
-include::{snippetsDir}/interview-checkInterview-inProgress/http-request.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/path-parameters.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/http-response.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/response-fields.adoc[]
-include::{snippetsDir}/interview-checkInterview-inProgress/curl-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/curl-request.adoc[]
+
+=== 인터뷰 현황 체크 - IN_PROGRESS (VOICE MODE)
+
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/curl-request.adoc[]
 
 ==== 인터뷰 현황 체크 - FINISHED
 

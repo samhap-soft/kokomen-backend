@@ -8,22 +8,28 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.RootQuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
-import com.samhap.kokomen.interview.service.dto.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateVoiceModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResponse;
+import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
@@ -44,7 +50,9 @@ public class InterviewFacadeService {
 
     public static final String INTERVIEW_PROCEED_LOCK_KEY_PREFIX = "lock:interview:proceed:";
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
+    private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
+    private final RootQuestionVoicePathResolver rootQuestionVoicePathResolver;
     private final BedrockClient bedrockClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
@@ -61,13 +69,18 @@ public class InterviewFacadeService {
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
-        memberService.validateEnoughTokenCount(memberAuth.memberId(), interviewRequest.maxQuestionCount());
+        InterviewMode interviewMode = interviewRequest.mode();
+        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount() - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.readRandomRootQuestion(member, interviewRequest);
-        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount()));
+        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
-        return new InterviewStartResponse(interview, question);
+        if (interviewMode == InterviewMode.VOICE) {
+            return new InterviewStartVoiceModeResponse(interview, question, rootQuestionVoicePathResolver.resolvePath(rootQuestion.getId()));
+        }
+        return new InterviewStartTextModeResponse(interview, question);
     }
 
     public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
@@ -85,7 +98,8 @@ public class InterviewFacadeService {
     }
 
     public void proceedInterviewBlockAsync(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
-        memberService.validateEnoughTokenCount(memberAuth.memberId(), 1);
+        memberService.validateEnoughTokenCount(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
+        interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
@@ -119,22 +133,23 @@ public class InterviewFacadeService {
         return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
     }
 
-    public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
-        return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
-    }
-
     @Transactional(readOnly = true)
-    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, MemberAuth memberAuth) {
+    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, InterviewMode mode, MemberAuth memberAuth) {
+        interviewService.validateInterviewMode(interviewId, mode);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
-        Optional<String> stateOptional = redisService.get(interviewProceedStateKey, String.class);
-        if (stateOptional.isPresent()) {
-            LlmProceedState llmProceedState = LlmProceedState.valueOf(stateOptional.get());
+        Optional<String> interviewProceedStateOptional = redisService.get(interviewProceedStateKey, String.class);
+        if (interviewProceedStateOptional.isPresent()) {
+            LlmProceedState llmProceedState = LlmProceedState.valueOf(interviewProceedStateOptional.get());
             return createResponseByLlmProceedState(interviewId, curQuestionId, llmProceedState);
         }
 
         return recoverWhenRedisStateMissing(interviewId, curQuestionId);
+    }
+
+    public static String createInterviewProceedStateKey(Long interviewId, Long curQuestionId) {
+        return INTERVIEW_PROCEED_STATE_KEY_PREFIX + interviewId + ":" + curQuestionId;
     }
 
     private InterviewProceedStateResponse recoverWhenRedisStateMissing(Long interviewId, Long curQuestionId) {
@@ -168,7 +183,7 @@ public class InterviewFacadeService {
         if (!curQuestionId.equals(lastQuestion.getId())) {
             throw new BadRequestException("현재 질문이 아닙니다. 현재 질문 id: " + lastQuestion.getId());
         }
-        return InterviewProceedStateResponse.createCompletedAndFinished(interview);
+        return InterviewProceedStateResponse.createCompletedAndFinished();
     }
 
     private InterviewProceedStateResponse createCompletedAndInProgressInterviewResponse(
@@ -183,7 +198,12 @@ public class InterviewFacadeService {
         }
         Answer curAnswer = answerService.readByQuestionId(curQuestionId);
 
-        return InterviewProceedStateResponse.createCompletedAndInProgress(interview, curAnswer, lastQuestion);
+        if (interview.getInterviewMode() == InterviewMode.VOICE) {
+            String questionVoiceUrl = questionService.resolveQuestionVoiceUrl(lastQuestion);
+            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion, questionVoiceUrl);
+        }
+
+        return InterviewProceedStateTextModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion);
     }
 
     @Transactional
@@ -229,8 +249,8 @@ public class InterviewFacadeService {
         return likeCount;
     }
 
-    public InterviewResponse checkInterview(Long interviewId, MemberAuth memberAuth) {
-        return interviewService.checkInterview(interviewId, memberAuth);
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
+        return interviewService.checkInterview(interviewId, mode, memberAuth);
     }
 
     public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {

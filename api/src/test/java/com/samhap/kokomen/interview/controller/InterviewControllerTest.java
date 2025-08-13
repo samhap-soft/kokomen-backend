@@ -37,11 +37,14 @@ import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
+import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
+import com.samhap.kokomen.interview.external.dto.response.TypecastResult;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -76,7 +79,7 @@ class InterviewControllerTest extends BaseControllerTest {
     private AnswerMemoRepository answerMemoRepository;
 
     @Test
-    void 인터뷰_시작() throws Exception {
+    void 인터뷰_시작_텍스트모드() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -87,7 +90,8 @@ class InterviewControllerTest extends BaseControllerTest {
         String requestJson = """
                 {
                   "category": "OPERATING_SYSTEM",
-                  "max_question_count": 3
+                  "max_question_count": 3,
+                  "mode": "TEXT"
                 }
                 """;
 
@@ -109,18 +113,70 @@ class InterviewControllerTest extends BaseControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-startInterview",
+                .andDo(document("interview-startInterview-text-mode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
-                                fieldWithPath("max_question_count").description("최대 질문 개수")
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
                                 fieldWithPath("question_id").description("생성된 질문 ID"),
                                 fieldWithPath("root_question").description("루트 질문 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_시작_음성모드() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        String requestJson = """
+                {
+                  "category": "OPERATING_SYSTEM",
+                  "max_question_count": 3,
+                  "mode": "VOICE"
+                }
+                """;
+
+        String responseJson = """
+                {
+                	"interview_id": 1,
+                	"question_id": 1,
+                	"root_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/1.mp3"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/interviews")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-startInterview-voice-mode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("category").description("인터뷰 카테고리"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 질문 ID"),
+                                fieldWithPath("root_question_voice_url").description("루트 질문 음성 URL")
                         )
                 ));
     }
@@ -223,7 +279,7 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰_현황_체크_IN_PROGRESS() throws Exception {
+    void 인터뷰_현황_체크_IN_PROGRESS_TEXT_MODE() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
@@ -256,12 +312,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/check", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check?mode=TEXT", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-checkInterview-inProgress",
+                .andDo(document("interview-checkInterview-inProgress-textMode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -272,6 +328,69 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question").description("현재 질문 내용 (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
+                                fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
+                                fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
+                                fieldWithPath("prev_questions_and_answers[].answer_id").description("이전 답변 ID"),
+                                fieldWithPath("prev_questions_and_answers[].answer").description("이전 답변 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_현황_체크_IN_PROGRESS_VOICE_MODE() throws Exception {
+        // given
+        when(typecastClient.request(any())).thenReturn(new TypecastResponse(new TypecastResult("mock-url")));
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().content(rootQuestion.getContent()).interview(interview).build());
+        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("현재 새로운 질문").build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String responseJson = """
+                {
+                	"interview_state": "IN_PROGRESS",
+                	"cur_question_id": %d,
+                	"cur_question_voice_url": "mock-url",
+                	"cur_question_count": %d,
+                	"max_question_count": %d,
+                	"prev_questions_and_answers": [
+                		{
+                			"question_id": %d,
+                			"question": "%s",
+                			"answer_id": %d,
+                			"answer": "%s"
+                		}
+                	]
+                }
+                """.formatted(
+                question2.getId(), 2, interview.getMaxQuestionCount(),
+                question1.getId(), question1.getContent(), answer1.getId(), answer1.getContent());
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/check?mode=VOICE", interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-checkInterview-inProgress-voiceMode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_state").description("인터뷰 상태"),
+                                fieldWithPath("cur_question_id").description("현재 질문 ID (면접이 IN_PROGRESS 인 경우에만)"),
+                                fieldWithPath("cur_question_voice_url").description("현재 질문 음성 URL (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
@@ -333,7 +452,7 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v1/interviews/{interview_id}/check", interview.getId())
+                        "/api/v1/interviews/{interview_id}/check?mode=TEXT", interview.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
@@ -393,6 +512,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	{
                 		"interview_id": %d,
                 		"interview_state": "%s",
+                		"interview_mode": "TEXT",
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
@@ -407,6 +527,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	{
                 		"interview_id": %d,
                 		"interview_state": "%s",
+                		"interview_mode": "TEXT",
                 		"interview_category": "%s",
                 		"root_question": "%s",
                 		"max_question_count": %d,
@@ -446,6 +567,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].interview_id").description("면접 ID"),
                                 fieldWithPath("[].interview_state").description("면접 상태 " + Arrays.asList(InterviewState.values())),
                                 fieldWithPath("[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("[].created_at").description("생성 시간"),
                                 fieldWithPath("[].root_question").description("루트 질문"),
                                 fieldWithPath("[].max_question_count").description("최대 질문 개수"),
@@ -517,6 +639,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -528,6 +651,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -574,6 +698,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
                                 fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
@@ -640,6 +765,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -651,6 +777,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         {
                             "interview_id": %d,
                             "interview_category": "%s",
+                            "interview_mode": "TEXT",
                             "root_question": "%s",
                             "max_question_count": %d,
                             "score": %s,
@@ -691,6 +818,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
+                                fieldWithPath("interview_summaries[].interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
                                 fieldWithPath("interview_summaries[].created_at").description("생성 시간"),
                                 fieldWithPath("interview_summaries[].root_question").description("루트 질문"),
                                 fieldWithPath("interview_summaries[].max_question_count").description("최대 질문 개수"),
@@ -779,7 +907,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_score": -30,
                 	"user_cur_score": 70,
-                	"user_prev_score": 100
+                	"user_prev_score": 100,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -812,7 +941,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
-                                fieldWithPath("user_prev_score").description("이전 사용자 점수")
+                                fieldWithPath("user_prev_score").description("이전 사용자 점수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }
@@ -893,12 +1023,13 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_score": -30,
                 	"total_feedback": "제대로 좀 공부 해라.",
-                	"interview_view_count": 1, // 다른 사용자의 인터뷰 결과 조회 시 조회수가 1 증가합니다.
+                	"interview_view_count": 1,
                 	"interview_like_count": 1,
                 	"interview_already_liked": true,
                 	"interviewee_nickname": "오상훈",
                 	"total_member_count": 2,
-                	"interviewee_rank": 1
+                	"interviewee_rank": 1,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -931,7 +1062,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }
@@ -1008,7 +1140,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"interview_already_liked": false,
                     "interviewee_nickname": "오상훈",
                 	"total_member_count": 1,
-                	"interviewee_rank": 1
+                	"interviewee_rank": 1,
+                	"interview_mode": "TEXT"
                 }
                 """;
 
@@ -1039,7 +1172,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_already_liked").description("이미 인터뷰에 좋아요를 눌렀는지 여부"),
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
-                                fieldWithPath("interviewee_rank").description("면접자 등수")
+                                fieldWithPath("interviewee_rank").description("면접자 등수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
                         )
                 ));
     }

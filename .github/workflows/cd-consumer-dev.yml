@@ -61,7 +61,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [ self-hosted, dev-consumer ]
+    runs-on: [ self-hosted, dev ]
 
     steps:
       - name: Create dev-kokomen-net Docker network
