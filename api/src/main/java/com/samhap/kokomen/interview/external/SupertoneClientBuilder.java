@@ -19,7 +19,7 @@ public class SupertoneClientBuilder {
     public SupertoneClientBuilder(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
-            @Value("${typecast.api-token}") String supertoneApiToken
+            @Value("${supertone.api-token}") String supertoneApiToken
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(3000);

@@ -29,7 +29,7 @@ notification:
   connect-timeout: 3s
   read-timeout: 3s
 
-typecast:
+supertone:
   api-token: mock-token
 
 aws:
