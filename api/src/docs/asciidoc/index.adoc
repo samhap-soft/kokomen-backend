@@ -34,6 +34,14 @@ include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
+=== 카카오 회원 탈퇴
+include::{snippetsDir}/auth-kakaoWithdraw/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/request-fields.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/request-cookies.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/response-fields.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/curl-request.adoc[]
+
 == 멤버
 
 === 멤버 프로필 조회
