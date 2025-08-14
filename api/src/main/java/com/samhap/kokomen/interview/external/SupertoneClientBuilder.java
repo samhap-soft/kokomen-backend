@@ -23,7 +23,7 @@ public class SupertoneClientBuilder {
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(3000);
-        requestFactory.setReadTimeout(3000);
+        requestFactory.setReadTimeout(15000);
 
         this.supertoneClientBuilder = builder
                 .requestFactory(requestFactory)
