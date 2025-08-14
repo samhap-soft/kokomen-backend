@@ -20,7 +20,7 @@ services:
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
-      TYPECAST_API_TOKEN: ${TYPECAST_API_TOKEN}
+      SUPERTONE_API_TOKEN: ${SUPERTONE_API_TOKEN}
     depends_on:
       kokomen-interview-local-mysql:
         condition: service_healthy

@@ -9,12 +9,12 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.domain.RootQuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
@@ -53,7 +53,7 @@ public class InterviewFacadeService {
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
     private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
-    private final RootQuestionVoicePathResolver rootQuestionVoicePathResolver;
+    private final QuestionVoicePathResolver questionVoicePathResolver;
     private final BedrockClient bedrockClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
@@ -79,7 +79,7 @@ public class InterviewFacadeService {
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
-            return new InterviewStartVoiceModeResponse(interview, question, rootQuestionVoicePathResolver.resolvePath(rootQuestion.getId()));
+            return new InterviewStartVoiceModeResponse(interview, question, questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
     }
@@ -140,8 +140,8 @@ public class InterviewFacadeService {
 
         Optional<String> interviewProceedStateOptional = redisService.get(interviewProceedStateKey, String.class);
         if (interviewProceedStateOptional.isPresent()) {
-            LlmProceedState llmProceedState = LlmProceedState.valueOf(interviewProceedStateOptional.get());
-            return createResponseByLlmProceedState(interviewId, curQuestionId, llmProceedState);
+            InterviewProceedState interviewProceedState = InterviewProceedState.valueOf(interviewProceedStateOptional.get());
+            return createResponseByLlmProceedState(interviewId, curQuestionId, interviewProceedState);
         }
 
         return recoverWhenRedisStateMissing(interviewId, curQuestionId);
@@ -154,12 +154,12 @@ public class InterviewFacadeService {
     private InterviewProceedStateResponse recoverWhenRedisStateMissing(Long interviewId, Long curQuestionId) {
         return answerService.findByQuestionId(curQuestionId)
                 .map(answer -> createCompletedResponse(interviewId, curQuestionId))
-                .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(LlmProceedState.FAILED));
+                .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(InterviewProceedState.LLM_FAILED));
     }
 
-    private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, LlmProceedState llmProceedState) {
-        if (llmProceedState == LlmProceedState.PENDING || llmProceedState == LlmProceedState.FAILED) {
-            return InterviewProceedStateResponse.createPendingOrFailed(llmProceedState);
+    private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, InterviewProceedState interviewProceedState) {
+        if (interviewProceedState != InterviewProceedState.COMPLETED) {
+            return InterviewProceedStateResponse.createPendingOrFailed(interviewProceedState);
         }
         return createCompletedResponse(interviewId, curQuestionId);
     }

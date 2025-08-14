@@ -21,8 +21,8 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
@@ -152,7 +152,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
         assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question1.getId(), InterviewMode.TEXT,
@@ -176,7 +176,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).answerRank(AnswerRank.A).build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question3.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
         assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), InterviewMode.TEXT,
@@ -201,7 +201,7 @@ class InterviewFacadeServiceTest extends BaseTest {
                 interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(), InterviewMode.TEXT, new MemberAuth(member.getId()));
 
         // then
-        assertThat(interviewProceedState.llmProceedState()).isEqualTo(LlmProceedState.FAILED);
+        assertThat(interviewProceedState.proceedState()).isEqualTo(InterviewProceedState.LLM_FAILED);
     }
 
     @Test
