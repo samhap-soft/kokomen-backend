@@ -16,7 +16,9 @@ scrape_configs:
           host: ${HOSTNAME}
           __path__: /logs/app/app.log
     pipeline_stages:
+      - multiline:
+          firstline: '^\[[^\]]+\]\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3}\s[^\[]+\s\[[^\]]+\]'
       - regex:
-          expression: '\[.*?\] [\d\-:.\s]+ \[.*?\] (?P<level>[A-Z]+)\s'
+          expression: '\[.*?\] [\d\-:.\s]+ [^\[\]]+ \[.*?\]\s+(?P<level>[A-Z]+)\s+[^\s]+'
       - labels:
           level:

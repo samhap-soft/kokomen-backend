@@ -5,7 +5,7 @@ import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.NotificationClient;
-import com.samhap.kokomen.interview.external.TypecastClient;
+import com.samhap.kokomen.interview.external.SupertoneClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 public abstract class BaseTest {
 
     @MockitoBean
-    protected TypecastClient typecastClient;
+    protected SupertoneClient supertoneClient;
 
     @MockitoBean
     protected NotificationClient notificationClient;

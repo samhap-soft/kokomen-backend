@@ -1,13 +1,13 @@
 package com.samhap.kokomen.interview.service;
 
-import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
-import com.samhap.kokomen.interview.external.TypecastClient;
-import com.samhap.kokomen.interview.external.dto.request.TypecastRequest;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
+import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
+import com.samhap.kokomen.interview.external.SupertoneClient;
+import com.samhap.kokomen.interview.external.dto.request.SupertoneRequest;
+import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
-import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,11 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QuestionService {
 
-    public static final String QUESTION_VOICE_URL_KEY_FORMAT = "question:%d:voice_url";
-    private static final int TYPECAST_FORCED_TTL_HOURS = 24;
-
-    private final TypecastClient typecastClient;
-    private final RedisService redisService;
+    private final S3Service s3Service;
+    private final SupertoneClient supertoneClient;
+    private final QuestionVoicePathResolver questionVoicePathResolver;
     private final QuestionRepository questionRepository;
 
     @Transactional
@@ -38,19 +36,13 @@ public class QuestionService {
     }
 
     public String resolveQuestionVoiceUrl(Question question) {
-        String questionVoiceUrlKey = createQuestionVoiceUrlKey(question.getId());
-        return redisService.get(questionVoiceUrlKey, String.class)
-                .orElseGet(() -> createQuestionVoiceUrl(question));
+        return questionVoicePathResolver.resolveNextQuestionCdnPath(question.getId());
     }
 
-    public String createQuestionVoiceUrl(Question question) {
-        TypecastResponse typecastResponse = typecastClient.request(new TypecastRequest(question.getContent()));
-        String questionVoiceUrl = typecastResponse.getSpeakV2Url();
-        redisService.setValue(createQuestionVoiceUrlKey(question.getId()), questionVoiceUrl, Duration.ofHours(TYPECAST_FORCED_TTL_HOURS - 1));
-        return questionVoiceUrl;
-    }
+    public String createAndUploadQuestionVoice(Question question) {
+        SupertoneResponse supertoneResponse = supertoneClient.request(new SupertoneRequest(question.getContent()));
+        s3Service.uploadS3File(questionVoicePathResolver.resolveNextQuestionS3Key(question.getId()), supertoneResponse.voiceData(), "audio/wav");
 
-    public static String createQuestionVoiceUrlKey(Long questionId) {
-        return QUESTION_VOICE_URL_KEY_FORMAT.formatted(questionId);
+        return questionVoicePathResolver.resolveNextQuestionCdnPath(question.getId());
     }
 }

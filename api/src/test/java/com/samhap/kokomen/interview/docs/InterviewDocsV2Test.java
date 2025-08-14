@@ -22,8 +22,8 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -72,7 +72,7 @@ public class InterviewDocsV2Test extends DocsTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question3.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String exceptionMessage = """
                 {
@@ -117,7 +117,7 @@ public class InterviewDocsV2Test extends DocsTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String exceptionMessage = """
                 {

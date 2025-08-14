@@ -43,8 +43,7 @@ import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResult;
+import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
@@ -150,7 +149,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                 	"interview_id": 1,
                 	"question_id": 1,
-                	"root_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/1.mp3"
+                	"root_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/1.wav"
                 }
                 """;
 
@@ -342,7 +341,7 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 인터뷰_현황_체크_IN_PROGRESS_VOICE_MODE() throws Exception {
         // given
-        when(typecastClient.request(any())).thenReturn(new TypecastResponse(new TypecastResult("mock-url")));
+        when(supertoneClient.request(any())).thenReturn(new SupertoneResponse(new byte[0]));
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
@@ -357,7 +356,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                 	"interview_state": "IN_PROGRESS",
                 	"cur_question_id": %d,
-                	"cur_question_voice_url": "mock-url",
+                	"cur_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/2.wav",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"prev_questions_and_answers": [

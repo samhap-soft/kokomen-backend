@@ -2,13 +2,13 @@ package com.samhap.kokomen.interview.service.dto.proceedstate;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 
 
 public record InterviewProceedStateTextModeResponse(
-        LlmProceedState llmProceedState,
+        InterviewProceedState proceedState,
         InterviewState interviewState,
         AnswerRank curAnswerRank,
         Long nextQuestionId,
@@ -17,11 +17,16 @@ public record InterviewProceedStateTextModeResponse(
 
     public static InterviewProceedStateTextModeResponse createCompletedAndInProgress(Answer curAnswer, Question nextQuestion) {
         return new InterviewProceedStateTextModeResponse(
-                LlmProceedState.COMPLETED,
+                InterviewProceedState.COMPLETED,
                 InterviewState.IN_PROGRESS,
                 curAnswer.getAnswerRank(),
                 nextQuestion.getId(),
                 nextQuestion.getContent()
         );
+    }
+
+    @Override
+    public InterviewProceedState proceedState() {
+        return proceedState;
     }
 }
