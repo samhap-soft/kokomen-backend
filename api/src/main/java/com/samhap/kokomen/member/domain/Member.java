@@ -33,7 +33,7 @@ public class Member extends BaseEntity {
     @Column(name = "kakao_id", unique = true)
     private Long kakaoId;
 
-    @Column(name = "nickname")
+    @Column(name = "nickname", length = 255)
     private String nickname;
 
     @Column(name = "score", nullable = false)

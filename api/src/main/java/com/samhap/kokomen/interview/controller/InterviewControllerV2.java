@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +28,7 @@ public class InterviewControllerV2 {
     public ResponseEntity<Void> proceedInterviewBlockAsync(
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
-            @RequestBody AnswerRequest answerRequest,
+            @RequestBody @Valid AnswerRequest answerRequest,
             @Authentication MemberAuth memberAuth
     ) {
         interviewFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth);

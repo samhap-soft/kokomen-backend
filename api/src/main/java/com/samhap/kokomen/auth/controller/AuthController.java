@@ -9,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,7 @@ public class AuthController {
 
     @PostMapping("/kakao-login")
     public ResponseEntity<MemberResponse> kakaoLogin(
-            @RequestBody KakaoLoginRequest kakaoLoginRequest,
+            @RequestBody @Valid KakaoLoginRequest kakaoLoginRequest,
             HttpServletRequest request
     ) {
         MemberResponse memberResponse = authService.kakaoLogin(kakaoLoginRequest);
