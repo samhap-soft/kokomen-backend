@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: kokomen-interview-api
   datasource:
     hikari:
       connection-timeout: 10000
