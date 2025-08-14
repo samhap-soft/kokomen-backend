@@ -30,10 +30,10 @@ public class Member extends BaseEntity {
     @Id
     private Long id;
 
-    @Column(name = "kakao_id", nullable = false, unique = true)
+    @Column(name = "kakao_id", unique = true)
     private Long kakaoId;
 
-    @Column(name = "nickname", nullable = false)
+    @Column(name = "nickname")
     private String nickname;
 
     @Column(name = "score", nullable = false)
@@ -75,5 +75,11 @@ public class Member extends BaseEntity {
     public void updateProfile(String nickname) {
         this.profileCompleted = true;
         this.nickname = nickname;
+    }
+
+    public void withdraw() {
+        this.kakaoId = null;
+        this.nickname = null;
+        this.score = 0;
     }
 }
