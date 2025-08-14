@@ -2,9 +2,12 @@ package com.samhap.kokomen.auth.controller;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.cookies.CookieDocumentation.cookieWithName;
+import static org.springframework.restdocs.cookies.CookieDocumentation.requestCookies;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.responseHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -13,21 +16,31 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.auth.external.dto.KakaoAccount;
+import com.samhap.kokomen.auth.external.dto.KakaoUnlinkResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoUserInfoResponse;
 import com.samhap.kokomen.auth.external.dto.Profile;
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.MemberRepository;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mock.web.MockHttpSession;
 
 class AuthControllerTest extends BaseControllerTest {
 
     @Value("${oauth.kakao.client-id}")
     private String clientId;
+    @Autowired
+    private MemberRepository memberRepository;
 
     @Test
     void 카카오_로그인_페이지로_리다이렉트한다() throws Exception {
@@ -97,6 +110,28 @@ class AuthControllerTest extends BaseControllerTest {
                                 fieldWithPath("id").description("멤버 id"),
                                 fieldWithPath("nickname").description("멤버 닉네임"),
                                 fieldWithPath("profile_completed").description("프로필을 완성했는지 여부")
+                        )
+                ));
+    }
+
+    @Test
+    void 회원_탈퇴_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        when(kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId())).thenReturn(new KakaoUnlinkResponse(member.getKakaoId()));
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/auth")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-withdraw",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )
                 ));
     }
