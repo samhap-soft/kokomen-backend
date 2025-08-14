@@ -4,7 +4,7 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.InterviewProceedResult;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
@@ -57,7 +57,7 @@ public class InterviewProceedBedrockFlowAsyncService {
         try {
             bedrockAgentRuntimeAsyncClient.invokeFlow(InterviewInvokeFlowRequestFactory.createInterviewProceedInvokeFlowRequest(questionAndAnswers),
                     createInterviewProceedInvokeFlowResponseHandler(memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext));
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(300));
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(), Duration.ofSeconds(300));
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
             throw e;
@@ -90,7 +90,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             setMdcContext(mdcContext);
             log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
             redisService.releaseLock(lockKey);
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(), Duration.ofSeconds(300));
         } finally {
             MDC.clear();
         }
@@ -99,6 +99,20 @@ public class InterviewProceedBedrockFlowAsyncService {
     private void callbackInterviewProceedBedrockFlow(FlowOutputEvent outputEvent, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
                                                      String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
         try {
+            InterviewProceedResult result = submitAnswerToLlm(outputEvent, memberId, questionAndAnswers, interviewId, interviewProceedStateKey, mdcContext);
+            if (result.isInProgress() && interviewProceedService.isVoiceMode(interviewId)) {
+                createNextQuestionTtsAndUploadToS3(memberId, interviewProceedStateKey, result);
+            }
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(300));
+        } finally {
+            redisService.releaseLock(lockKey);
+            MDC.clear();
+        }
+    }
+
+    private InterviewProceedResult submitAnswerToLlm(FlowOutputEvent outputEvent, Long memberId, QuestionAndAnswers questionAndAnswers,
+                                                     Long interviewId, String interviewProceedStateKey, Map<String, String> mdcContext) {
+        try {
             setMdcContext(mdcContext);
             String jsonPayload = outputEvent.content()
                     .document()
@@ -106,22 +120,23 @@ public class InterviewProceedBedrockFlowAsyncService {
             LlmResponse llmResponse = new BedrockResponse(jsonPayload);
             InterviewProceedResult result =
                     interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers, llmResponse, interviewId);
-
-            if (result.isInProgress() && interviewProceedService.isVoiceMode(interviewId)) {
-                questionService.createQuestionVoiceUrl(result.getNextQuestion());
-                memberService.useToken(memberId);
-            }
-
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(300));
-
             Answer curAnswer = result.getCurAnswer();
             requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext, curAnswer.getAnswerRank(), curAnswer.getId());
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(), Duration.ofSeconds(300));
+            return result;
         } catch (Exception e) {
-            redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(300));
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(), Duration.ofSeconds(300));
             throw e;
-        } finally {
-            redisService.releaseLock(lockKey);
-            MDC.clear();
+        }
+    }
+
+    private void createNextQuestionTtsAndUploadToS3(Long memberId, String interviewProceedStateKey, InterviewProceedResult result) {
+        try {
+            questionService.createAndUploadQuestionVoice(result.getNextQuestion());
+            memberService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
+        } catch (Exception e) {
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(), Duration.ofSeconds(300));
+            throw e;
         }
     }
 

@@ -10,25 +10,25 @@ import org.springframework.web.client.RestClient;
 
 @Getter
 @Component
-public class TypecastClientBuilder {
+public class SupertoneClientBuilder {
 
-    private static final String TYPECAST_API_URL = "https://typecast.ai/api/speak";
+    private static final String SUPERTONE_API_URL = "https://supertoneapi.com/v1";
 
-    private final RestClient.Builder typecastClientBuilder;
+    private final RestClient.Builder supertoneClientBuilder;
 
-    public TypecastClientBuilder(
+    public SupertoneClientBuilder(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
-            @Value("${typecast.api-token}") String typecastApiToken
+            @Value("${typecast.api-token}") String supertoneApiToken
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(3000);
         requestFactory.setReadTimeout(3000);
 
-        this.typecastClientBuilder = builder
+        this.supertoneClientBuilder = builder
                 .requestFactory(requestFactory)
-                .baseUrl(TYPECAST_API_URL)
-                .defaultHeader("Authorization", "Bearer " + typecastApiToken)
+                .baseUrl(SUPERTONE_API_URL)
+                .defaultHeader("x-sup-api-key", supertoneApiToken)
                 .messageConverters(converters -> {
                     converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
                     converters.add(new MappingJackson2HttpMessageConverter(objectMapper));

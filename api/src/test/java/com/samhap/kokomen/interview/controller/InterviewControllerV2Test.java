@@ -26,12 +26,11 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.LlmProceedState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResponse;
-import com.samhap.kokomen.interview.external.dto.response.TypecastResult;
+import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -104,7 +103,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰_폴링_응답_PENDING() throws Exception {
+    void 인터뷰_폴링_응답_LLM_PENDING() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -116,11 +115,11 @@ class InterviewControllerV2Test extends BaseControllerTest {
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.PENDING.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(), Duration.ofSeconds(10));
 
         String responseJson = """
                 {
-                    "llm_proceed_state": "PENDING"
+                    "proceed_state": "LLM_PENDING"
                 }
                 """;
 
@@ -135,7 +134,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-getPolling-PENDING-V2",
+                .andDo(document("interview-getPolling-LLM-PENDING-V2",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID"),
                                 parameterWithName("cur_question_id").description("질문 ID")
@@ -144,13 +143,13 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
-                                fieldWithPath("llm_proceed_state").description("LLM 진행 상태")
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태")
                         )
                 ));
     }
 
     @Test
-    void 인터뷰_폴링_응답_FAILED() throws Exception {
+    void 인터뷰_폴링_응답_LLM_FAILED() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -162,11 +161,11 @@ class InterviewControllerV2Test extends BaseControllerTest {
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.FAILED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
                 {
-                    "llm_proceed_state": "FAILED"
+                    "proceed_state": "LLM_FAILED"
                 }
                 """;
 
@@ -181,7 +180,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
-                .andDo(document("interview-getPolling-FAILED-V2",
+                .andDo(document("interview-getPolling-LLM-FAILED-V2",
                         pathParameters(
                                 parameterWithName("interview_id").description("인터뷰 ID"),
                                 parameterWithName("cur_question_id").description("질문 ID")
@@ -190,7 +189,101 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
-                                fieldWithPath("llm_proceed_state").description("LLM 진행 상태")
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_폴링_응답_TTS_PENDING() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(), Duration.ofSeconds(10));
+
+        String responseJson = """
+                {
+                    "proceed_state": "TTS_PENDING"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=VOICE",
+                        interview.getId(),
+                        question2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-getPolling-LLM-PENDING-V2",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID"),
+                                parameterWithName("cur_question_id").description("질문 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        responseFields(
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태")
+                        )
+                ));
+    }
+
+    @Test
+    void 인터뷰_폴링_응답_TTS_FAILED() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(), Duration.ofSeconds(10));
+
+        String responseJson = """
+                {
+                    "proceed_state": "TTS_FAILED"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}?mode=VOICE",
+                        interview.getId(),
+                        question2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-getPolling-LLM-FAILED-V2",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID"),
+                                parameterWithName("cur_question_id").description("질문 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        responseFields(
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태")
                         )
                 ));
     }
@@ -210,11 +303,11 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
                 {
-                    "llm_proceed_state": "COMPLETED",
+                    "proceed_state": "COMPLETED",
                     "interview_state": "FINISHED"
                 }
                 """;
@@ -239,7 +332,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
-                                fieldWithPath("llm_proceed_state").description("LLM 진행 상태"),
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태"),
                                 fieldWithPath("interview_state").description("인터뷰 상태")
                         )
                 ));
@@ -263,11 +356,11 @@ class InterviewControllerV2Test extends BaseControllerTest {
         System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
                 {
-                    "llm_proceed_state": "COMPLETED",
+                    "proceed_state": "COMPLETED",
                     "interview_state": "IN_PROGRESS",
                     "cur_answer_rank": "C",
                     "next_question_id": 3,
@@ -295,7 +388,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
-                                fieldWithPath("llm_proceed_state").description("LLM 진행 상태"),
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태"),
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_answer_rank").description("현재 답변 순위"),
                                 fieldWithPath("next_question_id").description("다음 질문 ID"),
@@ -307,7 +400,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
     @Test
     void 종료된_인터뷰_폴링_응답_COMPLETED_IN_PROGRESS_음성모드() throws Exception {
         // given
-        when(typecastClient.request(any())).thenReturn(new TypecastResponse(new TypecastResult("mock-url")));
+        when(supertoneClient.request(any())).thenReturn(new SupertoneResponse(new byte[0]));
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
@@ -323,15 +416,15 @@ class InterviewControllerV2Test extends BaseControllerTest {
         System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, LlmProceedState.COMPLETED.name(), Duration.ofSeconds(10));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
                 {
-                    "llm_proceed_state": "COMPLETED",
+                    "proceed_state": "COMPLETED",
                     "interview_state": "IN_PROGRESS",
                     "cur_answer_rank": "C",
                     "next_question_id": 3,
-                    "next_question_voice_url": "mock-url"
+                    "next_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/3.wav"
                 }
                 """;
 
@@ -355,7 +448,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
-                                fieldWithPath("llm_proceed_state").description("LLM 진행 상태"),
+                                fieldWithPath("proceed_state").description("답변 제출 진행 상태"),
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_answer_rank").description("현재 답변 순위"),
                                 fieldWithPath("next_question_id").description("다음 질문 ID"),

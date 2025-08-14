@@ -17,7 +17,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
-import com.samhap.kokomen.interview.domain.RootQuestionVoicePathResolver;
+import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewService {
 
-    private final RootQuestionVoicePathResolver rootQuestionVoicePathResolver;
+    private final QuestionVoicePathResolver questionVoicePathResolver;
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -77,7 +77,7 @@ public class InterviewService {
     private String resolveQuestionVoiceUrl(List<Question> questions, Interview interview) {
         // TODO: 답변하고 LLM 응답이 오기 전에 나갔다가 바로 다시 들어오는 경우에는 questions.size()가 당장은 1일텐데 RootQuestion부터 다시 시작?
         if (questions.size() == 1) {
-            return rootQuestionVoicePathResolver.resolvePath(interview.getRootQuestion().getId());
+            return questionVoicePathResolver.resolveRootQuestionCdnPath(interview.getRootQuestion().getId());
         }
 
         Question curQuestion = questions.get(questions.size() - 1);
