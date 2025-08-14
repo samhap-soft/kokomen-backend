@@ -112,6 +112,7 @@ jobs:
           OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
           KAKAO_CLIENT_ID_DEV: ${{ secrets.KAKAO_CLIENT_ID_DEV }}
           KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
+          KAKAO_ADMIN_KEY_DEV: ${{ secrets.KAKAO_ADMIN_KEY_DEV }}
           MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }} # docker-compose-dev.yml에서 kokomen-mysql-dev를 실행시킬 때 필요
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
           TYPECAST_API_TOKEN: ${{ secrets.TYPECAST_API_TOKEN }}
