@@ -19,6 +19,7 @@ import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
@@ -89,7 +90,7 @@ public class InterviewFacadeService {
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest.answer());
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
             return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse, interviewId);
         } finally {
@@ -97,14 +98,14 @@ public class InterviewFacadeService {
         }
     }
 
-    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest, MemberAuth memberAuth) {
         memberService.validateEnoughTokenCount(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest);
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest.answer());
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
@@ -122,13 +123,13 @@ public class InterviewFacadeService {
         }
     }
 
-    private QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, AnswerRequest answerRequest) {
+    private QuestionAndAnswers createQuestionAndAnswers(Long interviewId, Long curQuestionId, String answerContent) {
         Interview interview = interviewService.readInterview(interviewId);
 
         List<Question> questions = questionService.findByInterview(interview);
         List<Answer> prevAnswers = answerService.findByQuestionIn(questions);
 
-        return new QuestionAndAnswers(questions, prevAnswers, answerRequest.answer(), curQuestionId, interview);
+        return new QuestionAndAnswers(questions, prevAnswers, answerContent, curQuestionId, interview);
     }
 
     @Transactional(readOnly = true)
