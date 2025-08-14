@@ -62,8 +62,8 @@ public class AuthController {
         return ResponseEntity.ok(memberResponse);
     }
 
-    @DeleteMapping
-    public ResponseEntity<Void> withdraw(
+    @DeleteMapping("/kakao-withdraw")
+    public ResponseEntity<Void> kakaoWithdraw(
             @Authentication MemberAuth memberAuth,
             HttpServletRequest request,
             HttpServletResponse response

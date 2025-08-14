@@ -124,12 +124,12 @@ class AuthControllerTest extends BaseControllerTest {
         when(kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId())).thenReturn(new KakaoUnlinkResponse(member.getKakaoId()));
 
         // when & then
-        mockMvc.perform(delete("/api/v1/auth")
+        mockMvc.perform(delete("/api/v1/auth/kakao-withdraw")
                         .session(session)
                         .cookie(new Cookie("JSESSIONID", session.getId())))
                 .andExpect(status().isNoContent())
                 .andExpect(cookie().maxAge("JSESSIONID", 0))
-                .andDo(document("auth-withdraw",
+                .andDo(document("auth-kakaoWithdraw",
                         requestCookies(
                                 cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )
