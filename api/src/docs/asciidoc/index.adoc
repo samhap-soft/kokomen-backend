@@ -120,21 +120,37 @@ include::{snippetsDir}/interview-proceedInterview-V2/path-parameters.adoc[]
 include::{snippetsDir}/interview-proceedInterview-V2/http-response.adoc[]
 include::{snippetsDir}/interview-proceedInterview-V2/curl-request.adoc[]
 
-=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - PENDING
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - LLM_PENDING
 
-include::{snippetsDir}/interview-getPolling-PENDING-V2/http-request.adoc[]
-include::{snippetsDir}/interview-getPolling-PENDING-V2/path-parameters.adoc[]
-include::{snippetsDir}/interview-getPolling-PENDING-V2/http-response.adoc[]
-include::{snippetsDir}/interview-getPolling-PENDING-V2/response-fields.adoc[]
-include::{snippetsDir}/interview-getPolling-PENDING-V2/curl-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/curl-request.adoc[]
 
-=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - FAILED
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - LLM_FAILED
 
-include::{snippetsDir}/interview-getPolling-FAILED-V2/http-request.adoc[]
-include::{snippetsDir}/interview-getPolling-FAILED-V2/path-parameters.adoc[]
-include::{snippetsDir}/interview-getPolling-FAILED-V2/http-response.adoc[]
-include::{snippetsDir}/interview-getPolling-FAILED-V2/response-fields.adoc[]
-include::{snippetsDir}/interview-getPolling-FAILED-V2/curl-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - TTS_PENDING
+
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - TTS_FAILED
+
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/curl-request.adoc[]
 
 === 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED - 종료된 인터뷰
 

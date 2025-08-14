@@ -29,11 +29,12 @@ notification:
   connect-timeout: 3s
   read-timeout: 3s
 
-typecast:
+supertone:
   api-token: mock-token
 
 aws:
   root-question-s3-path: mock-path/
+  next-question-s3-path: mock-path/
 
 ---
 # test

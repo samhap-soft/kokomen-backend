@@ -32,8 +32,8 @@ public class AsyncConfig implements AsyncConfigurer {
     @Bean("bedrockFlowCallbackExecutor")
     public ThreadPoolTaskExecutor bedrockFlowCallbackExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(20);
-        executor.setMaxPoolSize(20);
+        executor.setCorePoolSize(100); // TODO: Supertone 호출도 1~2초 걸리므로, 이를 논블로킹으로 전환한 뒤에 다시 크기 조정
+        executor.setMaxPoolSize(100);
         executor.setQueueCapacity(1000);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);

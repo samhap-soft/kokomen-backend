@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: kokomen-interview-api
   datasource:
     hikari:
       connection-timeout: 10000
@@ -67,8 +69,8 @@ management:
 notification:
   connect-timeout: 3s
   read-timeout: 3s
-typecast:
-  api-token: ${TYPECAST_API_TOKEN}
+supertone:
+  api-token: ${SUPERTONE_API_TOKEN}
 
 ---
 # local profile
@@ -107,6 +109,7 @@ notification:
   base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
 aws:
   root-question-s3-path: local/root-question-voice/
+  next-question-s3-path: local/next-question-voice/
 
 ---
 # dev profile
@@ -146,6 +149,7 @@ notification:
   base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
 aws:
   root-question-s3-path: dev/root-question-voice/
+  next-question-s3-path: dev/next-question-voice/
 ---
 
 # prod profile
@@ -189,6 +193,7 @@ notification:
 
 aws:
   root-question-s3-path: prod/root-question-voice/
+  next-question-s3-path: prod/next-question-voice/
 ---
 # load-test profile
 spring:
@@ -231,3 +236,4 @@ notification:
 
 aws:
   root-question-s3-path: dev/root-question-voice/
+  next-question-s3-path: dev/next-question-voice/
