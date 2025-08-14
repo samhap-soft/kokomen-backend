@@ -126,9 +126,9 @@ public class InterviewProceedBedrockFlowAsyncService {
             LlmResponse llmResponse = new BedrockResponse(jsonPayload);
             InterviewProceedResult result =
                     interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers, llmResponse, interviewId);
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(), Duration.ofSeconds(300));
             Answer curAnswer = result.getCurAnswer();
             requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext, curAnswer.getAnswerRank(), curAnswer.getId());
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(), Duration.ofSeconds(300));
             return result;
         } catch (Exception e) {
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(), Duration.ofSeconds(300));
