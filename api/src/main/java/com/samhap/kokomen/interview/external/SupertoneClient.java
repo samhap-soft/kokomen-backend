@@ -15,7 +15,8 @@ import org.springframework.web.client.RestClientResponseException;
 @Component
 public class SupertoneClient {
 
-    private static final String VOICE_ID = "xkWjpC3HjjTG6NdLNGMNd6";
+    //    private static final String VOICE_ID = "xkWjpC3HjjTG6NdLNGMNd6";
+    private static final String VOICE_ID = "91992bbd4758bdcf9c9b01";
 
     private final RestClient restClient;
 
