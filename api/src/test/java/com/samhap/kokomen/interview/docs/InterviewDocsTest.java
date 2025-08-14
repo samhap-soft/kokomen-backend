@@ -95,7 +95,7 @@ public class InterviewDocsTest extends DocsTest {
         mockMvc.perform(post(
                         "/api/v1/interviews/{interview_id}/questions/{question_id}/answers", interviewId, questionId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변", InterviewMode.TEXT)))
+                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변")))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andDo(document("interview-proceedInterview-exception" + docsNo));
