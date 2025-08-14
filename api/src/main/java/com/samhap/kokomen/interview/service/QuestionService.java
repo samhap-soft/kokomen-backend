@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
-import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
@@ -12,21 +12,14 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @RequiredArgsConstructor
 @Service
 public class QuestionService {
 
-    public static final String QUESTION_VOICE_URL_KEY_FORMAT = "question:%d:voice_url";
-    private static final int TYPECAST_FORCED_TTL_HOURS = 24;
-
-    private final S3Client s3Client;
-    private final QuestionVoicePathResolver questionVoicePathResolver;
+    private final S3Service s3Service;
     private final SupertoneClient supertoneClient;
-    private final RedisService redisService;
+    private final QuestionVoicePathResolver questionVoicePathResolver;
     private final QuestionRepository questionRepository;
 
     @Transactional
@@ -43,22 +36,13 @@ public class QuestionService {
     }
 
     public String resolveQuestionVoiceUrl(Question question) {
-        return questionVoicePathResolver.resolveQuestionCdnPath(question.getId());
+        return questionVoicePathResolver.resolveNextQuestionCdnPath(question.getId());
     }
 
     public String createAndUploadQuestionVoice(Question question) {
         SupertoneResponse supertoneResponse = supertoneClient.request(new SupertoneRequest(question.getContent()));
+        s3Service.uploadS3File(questionVoicePathResolver.resolveNextQuestionS3Key(question.getId()), supertoneResponse.voiceData(), "audio/wav");
 
-        // TODO: S3Client에 ExecutionTimer 적용
-        PutObjectRequest s3Request = PutObjectRequest.builder()
-                .bucket(QuestionVoicePathResolver.bucketName)
-                .key(questionVoicePathResolver.resolveNextQuestionS3Key(question.getId()))
-                .contentType("audio/wav")
-                .contentLength((long) supertoneResponse.voiceData().length)
-                .build();
-
-        s3Client.putObject(s3Request, RequestBody.fromBytes(supertoneResponse.voiceData()));
-
-        return questionVoicePathResolver.resolveQuestionCdnPath(question.getId());
+        return questionVoicePathResolver.resolveNextQuestionCdnPath(question.getId());
     }
 }

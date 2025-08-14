@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class QuestionVoicePathResolver {
 
-    public static final String bucketName = "kokomen";
     private static final String AUDIO_FILE_EXTENSION = ".wav";
 
     private final String rootQuestionS3Path;
@@ -29,7 +28,7 @@ public class QuestionVoicePathResolver {
         return CLOUD_FRONT_DOMAIN_URL + rootQuestionS3Path + rootQuestionId + AUDIO_FILE_EXTENSION;
     }
 
-    public String resolveQuestionCdnPath(Long nextQuestionId) {
+    public String resolveNextQuestionCdnPath(Long nextQuestionId) {
         return CLOUD_FRONT_DOMAIN_URL + nextQuestionS3Path + nextQuestionId + AUDIO_FILE_EXTENSION;
     }
 
