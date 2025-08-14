@@ -1,7 +1,7 @@
 name: CD API DEV
 
 on:
-  pull_request:
+  push:
     branches: [ develop ]
 
 jobs:
@@ -86,10 +86,10 @@ jobs:
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
-          git fetch origin feature/#203
-          git checkout feature/#203
+          git fetch origin develop
+          git checkout develop
           git sparse-checkout set docker/dev
-          git pull origin feature/#203
+          git pull origin develop
 
       - name: Stop existing container
         run: sudo docker rm -f kokomen-interview-api-dev
