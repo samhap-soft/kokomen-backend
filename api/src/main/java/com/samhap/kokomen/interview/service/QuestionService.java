@@ -49,6 +49,7 @@ public class QuestionService {
     public String createAndUploadQuestionVoice(Question question) {
         SupertoneResponse supertoneResponse = supertoneClient.request(new SupertoneRequest(question.getContent()));
 
+        // TODO: S3Client에 ExecutionTimer 적용
         PutObjectRequest s3Request = PutObjectRequest.builder()
                 .bucket(QuestionVoicePathResolver.bucketName)
                 .key(questionVoicePathResolver.resolveNextQuestionS3Key(question.getId()))

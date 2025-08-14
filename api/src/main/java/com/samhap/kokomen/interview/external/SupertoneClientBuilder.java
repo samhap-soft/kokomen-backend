@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 @Component
 public class SupertoneClientBuilder {
 
-    private static final String SUPERTONE_API_URL = "https://supertoneapi.com/v1";
+    private static final String SUPERTONE_API_URL = "https://supertoneapi.com";
 
     private final RestClient.Builder supertoneClientBuilder;
 
