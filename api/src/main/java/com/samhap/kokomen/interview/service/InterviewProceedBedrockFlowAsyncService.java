@@ -15,6 +15,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
@@ -80,8 +81,15 @@ public class InterviewProceedBedrockFlowAsyncService {
     // TODO: FlowFailureEvent 이 있던데 베드락 흐름 실패 시 어떻게 처리해야하는지 다시 확인하기
     private void callbackInterviewProceedBedrockFlow(FlowResponseStream event, Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
                                                      String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
-        if (event instanceof FlowOutputEvent outputEvent) {
-            callbackInterviewProceedBedrockFlow(outputEvent, memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext);
+        try {
+            setMdcContext(mdcContext);
+            if (event instanceof FlowOutputEvent outputEvent) {
+                callbackInterviewProceedBedrockFlow(outputEvent, memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey, mdcContext);
+            }
+        } catch (Exception e) {
+            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
+        } finally {
+            MDC.clear();
         }
     }
 
@@ -106,14 +114,12 @@ public class InterviewProceedBedrockFlowAsyncService {
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(300));
         } finally {
             redisService.releaseLock(lockKey);
-            MDC.clear();
         }
     }
 
     private InterviewProceedResult submitAnswerToLlm(FlowOutputEvent outputEvent, Long memberId, QuestionAndAnswers questionAndAnswers,
                                                      Long interviewId, String interviewProceedStateKey, Map<String, String> mdcContext) {
         try {
-            setMdcContext(mdcContext);
             String jsonPayload = outputEvent.content()
                     .document()
                     .toString();
@@ -162,21 +168,23 @@ public class InterviewProceedBedrockFlowAsyncService {
     }
 
     private void callbackAnswerFeedbackBedrockFlow(FlowResponseStream event, Long curAnswerId, Map<String, String> mdcContext) {
-        if (event instanceof FlowOutputEvent outputEvent) {
-            callbackAnswerFeedbackBedrockFlow(outputEvent, curAnswerId, mdcContext);
-        }
-    }
-
-    private void callbackAnswerFeedbackBedrockFlow(FlowOutputEvent outputEvent, Long curAnswerId, Map<String, String> mdcContext) {
         try {
             setMdcContext(mdcContext);
-            String curAnswerFeedback = outputEvent.content()
-                    .document()
-                    .asString();
-            interviewProceedService.saveAnswerFeedback(curAnswerId, curAnswerFeedback);
+            if (event instanceof FlowOutputEvent outputEvent) {
+                callbackAnswerFeedbackBedrockFlow(outputEvent, curAnswerId);
+            }
+        } catch (Exception e) {
+            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
         } finally {
             MDC.clear();
         }
+    }
+
+    private void callbackAnswerFeedbackBedrockFlow(FlowOutputEvent outputEvent, Long curAnswerId) {
+        String curAnswerFeedback = outputEvent.content()
+                .document()
+                .asString();
+        interviewProceedService.saveAnswerFeedback(curAnswerId, curAnswerFeedback);
     }
 
     private void handleAnswerFeedbackBedrockFlowException(Throwable ex, Long curAnswerId, Map<String, String> mdcContext) {
