@@ -1,0 +1,5 @@
+ALTER TABLE root_question
+    ADD COLUMN state ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE';
+
+ALTER TABLE root_question
+    ALTER COLUMN state DROP DEFAULT;
