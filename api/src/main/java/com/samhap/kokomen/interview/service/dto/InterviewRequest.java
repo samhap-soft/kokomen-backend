@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 public record InterviewRequest(
         @NotNull(message = "category는 null일 수 없습니다.")
         Category category,
-        @NotNull(message = "maxQuestionCount는 null일 수 없습니다.")
+        @NotNull(message = "max_question_count는 null일 수 없습니다.")
         Integer maxQuestionCount,
         @NotNull(message = "mode는 null일 수 없습니다.")
         InterviewMode mode
