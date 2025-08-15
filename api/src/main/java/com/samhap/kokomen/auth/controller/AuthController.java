@@ -69,7 +69,7 @@ public class AuthController {
     ) {
         SessionInvalidator.logout(request, response);
 
-        authService.withdraw(memberAuth);
+        authService.kakaoLogout(memberAuth);
         return ResponseEntity.noContent().build();
     }
 
