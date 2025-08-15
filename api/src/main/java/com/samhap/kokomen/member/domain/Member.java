@@ -54,6 +54,10 @@ public class Member extends BaseEntity {
     }
 
     public void addScore(Integer addendScore) {
+        if (this.score + addendScore < 0) {
+            this.score = 0;
+            return;
+        }
         this.score += addendScore;
     }
 
