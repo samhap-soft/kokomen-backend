@@ -1,17 +1,16 @@
 package com.samhap.kokomen.auth.controller;
 
+import com.samhap.kokomen.auth.infrastructure.SessionInvalidator;
 import com.samhap.kokomen.auth.service.AuthService;
 import com.samhap.kokomen.auth.service.dto.KakaoLoginRequest;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -68,14 +67,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        request.getSession(false).invalidate();
-        Cookie jSessionIdCookie = Arrays.stream(request.getCookies())
-                .filter(cookie -> "JSESSIONID".equals(cookie.getName()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("JSESSIONID 쿠키가 요청에 존재하지 않습니다."));
-        jSessionIdCookie.setValue("");
-        jSessionIdCookie.setMaxAge(0);
-        response.addCookie(jSessionIdCookie);
+        SessionInvalidator.logout(request, response);
 
         authService.withdraw(memberAuth);
         return ResponseEntity.noContent().build();
@@ -87,14 +79,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        request.getSession(false).invalidate();
-        Cookie jSessionIdCookie = Arrays.stream(request.getCookies())
-                .filter(cookie -> "JSESSIONID".equals(cookie.getName()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("JSESSIONID 쿠키가 요청에 존재하지 않습니다."));
-        jSessionIdCookie.setValue("");
-        jSessionIdCookie.setMaxAge(0);
-        response.addCookie(jSessionIdCookie);
+        SessionInvalidator.logout(request, response);
 
         authService.withdraw(memberAuth);
         return ResponseEntity.noContent().build();
