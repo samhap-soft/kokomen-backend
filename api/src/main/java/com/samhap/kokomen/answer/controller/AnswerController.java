@@ -6,6 +6,7 @@ import com.samhap.kokomen.answer.service.dto.AnswerMemoResponse;
 import com.samhap.kokomen.answer.service.dto.AnswerMemoUpdateRequest;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,7 +36,7 @@ public class AnswerController {
     @PostMapping("/{answerId}/memo")
     public ResponseEntity<AnswerMemoResponse> createAnswerMemo(
             @PathVariable Long answerId,
-            @RequestBody AnswerMemoCreateRequest answerMemoCreateRequest,
+            @RequestBody @Valid AnswerMemoCreateRequest answerMemoCreateRequest,
             @Authentication MemberAuth memberAuth
     ) {
         AnswerMemoResponse answerMemoResponse = answerFacadeService.createAnswerMemo(answerId, answerMemoCreateRequest, memberAuth);
@@ -45,7 +46,7 @@ public class AnswerController {
     @PatchMapping("/{answerId}/memo")
     public ResponseEntity<Void> updateAnswerMemo(
             @PathVariable Long answerId,
-            @RequestBody AnswerMemoUpdateRequest answerMemoUpdateRequest,
+            @RequestBody @Valid AnswerMemoUpdateRequest answerMemoUpdateRequest,
             @Authentication MemberAuth memberAuth
     ) {
         answerFacadeService.updateAnswerMemo(answerId, answerMemoUpdateRequest, memberAuth);

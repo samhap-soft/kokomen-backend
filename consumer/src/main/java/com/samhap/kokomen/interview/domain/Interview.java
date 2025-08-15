@@ -51,6 +51,10 @@ public class Interview extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private InterviewState interviewState;
 
+    @Column(name = "interview_mode", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private InterviewMode interviewMode;
+
     @Column(name = "total_feedback", length = 2_000)
     private String totalFeedback;
 
@@ -69,6 +73,7 @@ public class Interview extends BaseEntity {
             RootQuestion rootQuestion,
             Integer maxQuestionCount,
             InterviewState interviewState,
+            InterviewMode interviewMode,
             String totalFeedback,
             Integer totalScore,
             Long likeCount,
@@ -80,14 +85,15 @@ public class Interview extends BaseEntity {
         this.rootQuestion = rootQuestion;
         this.maxQuestionCount = maxQuestionCount;
         this.interviewState = interviewState;
+        this.interviewMode = interviewMode;
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;
         this.likeCount = likeCount;
         this.viewCount = viewCount;
     }
 
-    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, null, null, 0L, 0L);
+    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode, null, null, 0L, 0L);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {

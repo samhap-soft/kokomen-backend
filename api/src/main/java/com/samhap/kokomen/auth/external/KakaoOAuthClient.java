@@ -1,6 +1,7 @@
 package com.samhap.kokomen.auth.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.auth.external.dto.KakaoIdResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoTokenResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoUserInfoResponse;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
@@ -20,12 +21,14 @@ public class KakaoOAuthClient {
     private final RestClient restClient;
     private final String clientId;
     private final String clientSecret;
+    private final String adminKey;
 
     public KakaoOAuthClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${oauth.kakao.client-id}") String clientId,
-            @Value("${oauth.kakao.client-secret}") String clientSecret
+            @Value("${oauth.kakao.client-secret}") String clientSecret,
+            @Value("${oauth.kakao.admin-key}") String adminKey
     ) {
         this.restClient = builder
                 .messageConverters(converters -> {
@@ -35,6 +38,7 @@ public class KakaoOAuthClient {
                 .build();
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.adminKey = adminKey;
     }
 
     public KakaoUserInfoResponse requestKakaoUserInfo(String code, String redirectUri) {
@@ -71,4 +75,34 @@ public class KakaoOAuthClient {
                 .retrieve()
                 .body(KakaoUserInfoResponse.class);
     }
+
+    public KakaoIdResponse unlinkKakaoUser(Long kakaoId) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("target_id_type", "user_id");
+        formData.add("target_id", String.valueOf(kakaoId));
+
+        return restClient.post()
+                .uri("https://kapi.kakao.com/v1/user/unlink")
+                .header(HttpHeaders.AUTHORIZATION, "KakaoAK " + adminKey)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE + ";charset=UTF-8")
+                .body(formData)
+                .retrieve()
+                .body(KakaoIdResponse.class);
+    }
+
+    public KakaoIdResponse logoutKakaoUser(Long kakaoId) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("target_id_type", "user_id");
+        formData.add("target_id", String.valueOf(kakaoId));
+
+        return restClient.post()
+                .uri("https://kapi.kakao.com/v1/user/logout")
+                .header(HttpHeaders.AUTHORIZATION, "KakaoAK " + adminKey)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE + ";charset=UTF-8")
+                .body(formData)
+                .retrieve()
+                .body(KakaoIdResponse.class);
+    }
+
+
 }

@@ -35,7 +35,7 @@ public class MemberController {
 
     @PatchMapping("/me/profile")
     public ResponseEntity<Void> updateProfile(
-            @Valid @RequestBody ProfileUpdateRequest profileUpdateRequest,
+            @RequestBody @Valid ProfileUpdateRequest profileUpdateRequest,
             @Authentication MemberAuth memberAuth
     ) {
         memberService.updateProfile(memberAuth, profileUpdateRequest);

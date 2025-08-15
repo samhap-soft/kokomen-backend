@@ -64,4 +64,9 @@ public class MemberService {
         Member member = readById(memberId);
         member.useToken();
     }
+
+    @Transactional
+    public void withdraw(Member member) {
+        member.withdraw();
+    }
 }
