@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.auth.external.dto.KakaoAccount;
-import com.samhap.kokomen.auth.external.dto.KakaoUnlinkResponse;
+import com.samhap.kokomen.auth.external.dto.KakaoIdResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoUserInfoResponse;
 import com.samhap.kokomen.auth.external.dto.Profile;
 import com.samhap.kokomen.global.BaseControllerTest;
@@ -121,7 +121,7 @@ class AuthControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        when(kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId())).thenReturn(new KakaoUnlinkResponse(member.getKakaoId()));
+        when(kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId())).thenReturn(new KakaoIdResponse(member.getKakaoId()));
 
         // when & then
         mockMvc.perform(delete("/api/v1/auth/kakao-withdraw")
@@ -130,6 +130,28 @@ class AuthControllerTest extends BaseControllerTest {
                 .andExpect(status().isNoContent())
                 .andExpect(cookie().maxAge("JSESSIONID", 0))
                 .andDo(document("auth-kakaoWithdraw",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 회원_로그아웃_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        when(kakaoOAuthClient.logoutKakaoUser(member.getKakaoId())).thenReturn(new KakaoIdResponse(member.getKakaoId()));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/auth/kakao-logout")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-kakaoLogout",
                         requestCookies(
                                 cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )

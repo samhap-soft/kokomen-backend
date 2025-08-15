@@ -62,6 +62,25 @@ public class AuthController {
         return ResponseEntity.ok(memberResponse);
     }
 
+    @PostMapping("/kakao-logout")
+    public ResponseEntity<Void> kakaoLogout(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        request.getSession(false).invalidate();
+        Cookie jSessionIdCookie = Arrays.stream(request.getCookies())
+                .filter(cookie -> "JSESSIONID".equals(cookie.getName()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("JSESSIONID 쿠키가 요청에 존재하지 않습니다."));
+        jSessionIdCookie.setValue("");
+        jSessionIdCookie.setMaxAge(0);
+        response.addCookie(jSessionIdCookie);
+
+        authService.withdraw(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/kakao-withdraw")
     public ResponseEntity<Void> kakaoWithdraw(
             @Authentication MemberAuth memberAuth,

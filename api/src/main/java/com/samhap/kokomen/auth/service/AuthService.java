@@ -30,4 +30,10 @@ public class AuthService {
         kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId());
         memberService.withdraw(member);
     }
+
+    @Transactional
+    public void kakaoLogout(MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+        kakaoOAuthClient.logoutKakaoUser(member.getKakaoId());
+    }
 }
