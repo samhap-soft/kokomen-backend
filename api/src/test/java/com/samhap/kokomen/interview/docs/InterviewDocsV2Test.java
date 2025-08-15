@@ -30,7 +30,7 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
+import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
@@ -84,7 +84,7 @@ public class InterviewDocsV2Test extends DocsTest {
         mockMvc.perform(get(
                         "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변", InterviewMode.TEXT)))
+                        .content(objectMapper.writeValueAsString(new AnswerRequestV2("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isBadRequest())
@@ -129,7 +129,7 @@ public class InterviewDocsV2Test extends DocsTest {
         mockMvc.perform(get(
                         "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AnswerRequest("사용자 답변", InterviewMode.TEXT)))
+                        .content(objectMapper.writeValueAsString(new AnswerRequestV2("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isBadRequest())

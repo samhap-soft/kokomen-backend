@@ -1,14 +1,20 @@
 package com.samhap.kokomen.auth.controller;
 
+import com.samhap.kokomen.auth.infrastructure.SessionInvalidator;
 import com.samhap.kokomen.auth.service.AuthService;
 import com.samhap.kokomen.auth.service.dto.KakaoLoginRequest;
+import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,7 +50,7 @@ public class AuthController {
 
     @PostMapping("/kakao-login")
     public ResponseEntity<MemberResponse> kakaoLogin(
-            @RequestBody KakaoLoginRequest kakaoLoginRequest,
+            @RequestBody @Valid KakaoLoginRequest kakaoLoginRequest,
             HttpServletRequest request
     ) {
         MemberResponse memberResponse = authService.kakaoLogin(kakaoLoginRequest);
@@ -53,5 +59,29 @@ public class AuthController {
         session.setAttribute("MEMBER_ID", memberResponse.id());
 
         return ResponseEntity.ok(memberResponse);
+    }
+
+    @PostMapping("/kakao-logout")
+    public ResponseEntity<Void> kakaoLogout(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.kakaoLogout(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/kakao-withdraw")
+    public ResponseEntity<Void> kakaoWithdraw(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.withdraw(memberAuth);
+        return ResponseEntity.noContent().build();
     }
 }

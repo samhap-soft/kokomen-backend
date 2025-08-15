@@ -88,7 +88,7 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요.", InterviewMode.TEXT), new MemberAuth(member.getId()));
+                interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then
         assertAll(
@@ -126,7 +126,7 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요.", InterviewMode.TEXT), new MemberAuth(member.getId()));
+                interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."), new MemberAuth(member.getId()));
 
         // then
         assertAll(

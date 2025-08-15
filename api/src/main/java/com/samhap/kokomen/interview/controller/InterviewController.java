@@ -13,6 +13,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -38,7 +39,7 @@ public class InterviewController {
 
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
-            @RequestBody InterviewRequest interviewRequest,
+            @RequestBody @Valid InterviewRequest interviewRequest,
             @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.ok(interviewFacadeService.startInterview(interviewRequest, memberAuth));
@@ -48,7 +49,7 @@ public class InterviewController {
     public ResponseEntity<?> proceedInterview(
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
-            @RequestBody AnswerRequest answerRequest,
+            @RequestBody @Valid AnswerRequest answerRequest,
             @Authentication MemberAuth memberAuth
     ) {
         return interviewFacadeService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
