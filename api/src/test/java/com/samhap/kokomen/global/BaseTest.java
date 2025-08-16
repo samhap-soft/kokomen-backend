@@ -15,6 +15,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import software.amazon.awssdk.services.s3.S3Client;
 
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
@@ -22,7 +23,8 @@ public abstract class BaseTest {
 
     @MockitoBean
     protected SupertoneClient supertoneClient;
-
+    @MockitoBean
+    protected S3Client s3Client;
     @MockitoBean
     protected NotificationClient notificationClient;
     @MockitoBean

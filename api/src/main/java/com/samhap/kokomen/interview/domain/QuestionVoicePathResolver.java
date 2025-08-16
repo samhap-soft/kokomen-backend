@@ -28,6 +28,10 @@ public class QuestionVoicePathResolver {
         return CLOUD_FRONT_DOMAIN_URL + rootQuestionS3Path + rootQuestionId + AUDIO_FILE_EXTENSION;
     }
 
+    public String resolveRootQuestionS3Key(Long rootQuestionId) {
+        return rootQuestionS3Path + rootQuestionId + AUDIO_FILE_EXTENSION;
+    }
+
     public String resolveNextQuestionCdnPath(Long nextQuestionId) {
         return CLOUD_FRONT_DOMAIN_URL + nextQuestionS3Path + nextQuestionId + AUDIO_FILE_EXTENSION;
     }
