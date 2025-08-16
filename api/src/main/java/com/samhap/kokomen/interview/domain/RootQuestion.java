@@ -9,6 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,6 +20,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
+@Table(name = "root_question", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_root_question_category_question_order", columnNames = {"category", "question_order"})
+})
 public class RootQuestion extends BaseEntity {
 
     @Column(name = "id")
@@ -32,6 +37,9 @@ public class RootQuestion extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false)
     private RootQuestionState state;
+
+    @Column(name = "question_order")
+    private Integer questionOrder;
 
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
