@@ -35,6 +35,7 @@ include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
 === 카카오 회원 로그아웃
+
 include::{snippetsDir}/auth-kakaoLogout/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/request-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/request-cookies.adoc[]
@@ -43,6 +44,7 @@ include::{snippetsDir}/auth-kakaoLogout/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/curl-request.adoc[]
 
 === 카카오 회원 탈퇴
+
 include::{snippetsDir}/auth-kakaoWithdraw/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/request-fields.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/request-cookies.adoc[]
@@ -334,3 +336,12 @@ include::{snippetsDir}/answer-deleteAnswerMemo/http-request.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]
+
+== 어드민
+
+=== 루트 질문 음성 등록
+
+include::{snippetsDir}/admin-uploadRootQuestionVoice/http-request.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/path-parameters.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/http-response.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/curl-request.adoc[]
