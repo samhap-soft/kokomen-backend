@@ -19,4 +19,12 @@ public class AdminService {
         String rootQuestionVoiceCdnUrl = rootQuestionService.createAndUploadRootQuestionVoice(rootQuestionId);
         return new RootQuestionVoiceResponse(rootQuestionVoiceCdnUrl);
     }
+
+    public RootQuestionVoiceResponse uploadRootQuestionVoiceWithApiKey(Long rootQuestionId, String oneTimeApiKey) {
+        if (rootQuestionService.isRootQuestionVoiceExists(rootQuestionId)) {
+            throw new BadRequestException("이미 S3에 올라가있는 음성파일입니다. rootQuestionId = " + rootQuestionId);
+        }
+        String rootQuestionVoiceCdnUrl = rootQuestionService.createAndUploadRootQuestionVoiceWithApiKey(rootQuestionId, oneTimeApiKey);
+        return new RootQuestionVoiceResponse(rootQuestionVoiceCdnUrl);
+    }
 }

@@ -21,4 +21,9 @@ public class AdminController {
     public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoice(@PathVariable Long rootQuestionId) {
         return ResponseEntity.ok(adminService.uploadRootQuestionVoice(rootQuestionId));
     }
+
+    @PostMapping("/root-question/{rootQuestionId}/upload-voice-with-api-key")
+    public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoiceWithApiKey(@PathVariable Long rootQuestionId, @PathVariable String oneTimeApiKey) {
+        return ResponseEntity.ok(adminService.uploadRootQuestionVoiceWithApiKey(rootQuestionId, oneTimeApiKey));
+    }
 }
