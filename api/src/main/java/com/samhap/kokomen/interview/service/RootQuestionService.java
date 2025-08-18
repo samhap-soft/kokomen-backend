@@ -59,6 +59,14 @@ public class RootQuestionService {
         return questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestionId);
     }
 
+    public String createAndUploadRootQuestionVoiceWithApiKey(Long rootQuestionId, String oneTimeApiKey) {
+        RootQuestion rootQuestion = readRootQuestion(rootQuestionId);
+        SupertoneResponse supertoneResponse = supertoneClient.requestWithApiKey(new SupertoneRequest(rootQuestion.getContent()), oneTimeApiKey);
+        s3Service.uploadS3File(questionVoicePathResolver.resolveRootQuestionS3Key(rootQuestionId), supertoneResponse.voiceData(), "audio/wav");
+
+        return questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestionId);
+    }
+
     public RootQuestion readRootQuestion(Long rootQuestionId) {
         return rootQuestionRepository.findById(rootQuestionId)
                 .orElseThrow(() -> new IllegalArgumentException("루트 질문이 존재하지 않습니다. rootQuestionId = " + rootQuestionId));
