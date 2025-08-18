@@ -1,13 +1,13 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
-import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.RootQuestionState;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.external.dto.request.SupertoneRequest;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
-import com.samhap.kokomen.interview.domain.RootQuestionState;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.member.domain.Member;
@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Service
 public class RootQuestionService {
-
-    private static final int EXCLUDED_RECENT_ROOT_QUESTION_COUNT = 50;
 
     private final S3Service s3Service;
     private final RootQuestionRepository rootQuestionRepository;
