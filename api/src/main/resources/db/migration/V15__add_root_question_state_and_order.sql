@@ -6,5 +6,8 @@ ALTER TABLE root_question
 ALTER TABLE root_question
     ADD CONSTRAINT uk_root_question_category_question_order UNIQUE (category, question_order);
 
+ALTER TABLE interview
+    ADD INDEX idx_interview_member_id_root_question_id (member_id, root_question_id);
+
 ALTER TABLE root_question
     ALTER COLUMN state DROP DEFAULT;
