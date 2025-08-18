@@ -60,6 +60,7 @@ public class MemberService {
         member.updateProfile(profileUpdateRequest.nickname());
     }
 
+    @Transactional
     public void useToken(Long memberId) {
         Member member = readById(memberId);
         member.useToken();
