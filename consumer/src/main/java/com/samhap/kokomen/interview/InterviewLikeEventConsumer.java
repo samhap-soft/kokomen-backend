@@ -1,0 +1,50 @@
+package com.samhap.kokomen.interview;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.interview.repository.InterviewBatchRepository;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+@Slf4j
+@RequiredArgsConstructor
+@Component
+public class InterviewLikeEventConsumer {
+
+    private final InterviewBatchRepository InterviewBatchRepository;
+    private final ObjectMapper objectMapper;
+
+    @KafkaListener(
+            topics = "#{environment.getProperty('spring.profiles.active', 'local') + '-interview-like'}",
+            groupId = "interview-like-consumer-group",
+            containerFactory = "kafkaBatchListenerContainerFactory"
+    )
+    public void consumeBatch(List<ConsumerRecord<String, String>> records) {
+        if (records.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Long> interviewLikeCountMap = records.stream()
+                .map(this::extractInterviewId)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+        InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
+        log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
+    }
+
+    private Long extractInterviewId(ConsumerRecord<String, String> record) {
+        try {
+            Map<String, Object> payload = objectMapper.readValue(record.value(), Map.class);
+            return Long.valueOf(payload.get("interviewId").toString());
+        } catch (Exception e) {
+            log.error("Kafka 메시지 파싱 실패: {}", record.value(), e);
+            throw new IllegalStateException(e);
+        }
+    }
+}

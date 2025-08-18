@@ -1,0 +1,347 @@
+= Kokomen API Guide
+:doctype: book
+:icons: font
+:toc: left
+:toc-title: Table of Contents
+:toclevels: 2
+:source-highlighter: highlightjs
+:sectlinks:
+:sectnums:
+
+== 카테고리
+
+=== 카테고리 목록 조회
+
+include::{snippetsDir}/category-findCategories/http-request.adoc[]
+include::{snippetsDir}/category-findCategories/http-response.adoc[]
+include::{snippetsDir}/category-findCategories/response-fields.adoc[]
+include::{snippetsDir}/category-findCategories/curl-request.adoc[]
+
+== 인증/인가
+
+=== 카카오 로그인 페이지 리다이렉트 요청
+
+include::{snippetsDir}/auth-redirectKakaoLoginPage/http-request.adoc[]
+include::{snippetsDir}/auth-redirectKakaoLoginPage/query-parameters.adoc[]
+include::{snippetsDir}/auth-redirectKakaoLoginPage/http-response.adoc[]
+include::{snippetsDir}/auth-redirectKakaoLoginPage/curl-request.adoc[]
+
+=== 카카오 인가코드로 로그인 요청
+
+include::{snippetsDir}/auth-kakaoLogin/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/request-fields.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
+include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
+
+=== 카카오 회원 로그아웃
+
+include::{snippetsDir}/auth-kakaoLogout/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoLogout/request-fields.adoc[]
+include::{snippetsDir}/auth-kakaoLogout/request-cookies.adoc[]
+include::{snippetsDir}/auth-kakaoLogout/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoLogout/response-fields.adoc[]
+include::{snippetsDir}/auth-kakaoLogout/curl-request.adoc[]
+
+=== 카카오 회원 탈퇴
+
+include::{snippetsDir}/auth-kakaoWithdraw/http-request.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/request-fields.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/request-cookies.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/http-response.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/response-fields.adoc[]
+include::{snippetsDir}/auth-kakaoWithdraw/curl-request.adoc[]
+
+== 멤버
+
+=== 멤버 프로필 조회
+
+include::{snippetsDir}/member-findMyProfile/http-request.adoc[]
+include::{snippetsDir}/member-findMyProfile/http-response.adoc[]
+include::{snippetsDir}/member-findMyProfile/response-fields.adoc[]
+include::{snippetsDir}/member-findMyProfile/curl-request.adoc[]
+
+=== 랭킹 조회
+
+include::{snippetsDir}/member-findRanking/http-request.adoc[]
+include::{snippetsDir}/member-findRanking/query-parameters.adoc[]
+include::{snippetsDir}/member-findRanking/http-response.adoc[]
+include::{snippetsDir}/member-findRanking/response-fields.adoc[]
+include::{snippetsDir}/member-findRanking/curl-request.adoc[]
+
+=== 멤버 프로필 변경
+
+include::{snippetsDir}/member-updateProfile/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile/curl-request.adoc[]
+
+=== 멤버 프로필 변경 예외
+
+include::{snippetsDir}/member-updateProfile-error/http-request.adoc[]
+include::{snippetsDir}/member-updateProfile-error/request-fields.adoc[]
+include::{snippetsDir}/member-updateProfile-error/http-response.adoc[]
+include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
+
+== 인터뷰
+
+=== 인터뷰 시작 텍스트모드
+
+include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-text-mode/curl-request.adoc[]
+
+=== 인터뷰 시작 음성모드
+
+include::{snippetsDir}/interview-startInterview-voice-mode/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/request-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/http-response.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-startInterview-voice-mode/curl-request.adoc[]
+
+==== 인터뷰 시작 예외 1
+
+include::{snippetsDir}/interview-startInterview-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-startInterview-exception1/http-response.adoc[]
+
+=== 인터뷰 진행
+
+include::{snippetsDir}/interview-proceedInterview/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview/request-fields.adoc[]
+include::{snippetsDir}/interview-proceedInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-proceedInterview/http-response.adoc[]
+include::{snippetsDir}/interview-proceedInterview/response-fields.adoc[]
+include::{snippetsDir}/interview-proceedInterview/curl-request.adoc[]
+
+==== 인터뷰 진행 예외 1
+
+include::{snippetsDir}/interview-proceedInterview-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview-exception1/http-response.adoc[]
+
+==== 인터뷰 진행 예외 2
+
+include::{snippetsDir}/interview-proceedInterview-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview-exception2/http-response.adoc[]
+
+==== 인터뷰 진행 예외 3
+
+include::{snippetsDir}/interview-proceedInterview-exception3/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview-exception3/http-response.adoc[]
+
+=== 인터뷰 진행 V2
+
+include::{snippetsDir}/interview-proceedInterview-V2/http-request.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/request-fields.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/http-response.adoc[]
+include::{snippetsDir}/interview-proceedInterview-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - LLM_PENDING
+
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-PENDING-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - LLM_FAILED
+
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-LLM-FAILED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - TTS_PENDING
+
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-PENDING-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - TTS_FAILED
+
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-TTS-FAILED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED - 종료된 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-FINISHED-V2/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED 텍스트모드 - 진행중인 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-text-mode/curl-request.adoc[]
+
+=== 인터뷰 LLM 응답 상황 폴링 조회 V2 - COMPLETED 음성모드 - 진행중인 인터뷰
+
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/path-parameters.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/interview-getPolling-COMPLETED-IN-PROGRESS-V2-voice-mode/curl-request.adoc[]
+
+==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 1
+
+include::{snippetsDir}/interview-getPolling-exception1-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-exception1-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-exception1-V2/response-fields.adoc[]
+
+==== 인터뷰 LLM 응답 상황 폴링 조회 V2 예외 2
+
+include::{snippetsDir}/interview-getPolling-exception2-V2/http-request.adoc[]
+include::{snippetsDir}/interview-getPolling-exception2-V2/http-response.adoc[]
+include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]
+
+=== 인터뷰 좋아요 요청
+
+include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
+include::{snippetsDir}/interview-likeInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-likeInterview/http-response.adoc[]
+include::{snippetsDir}/interview-likeInterview/curl-request.adoc[]
+
+=== 인터뷰 현황 체크 - IN_PROGRESS (TEXT MODE)
+
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-textMode/curl-request.adoc[]
+
+=== 인터뷰 현황 체크 - IN_PROGRESS (VOICE MODE)
+
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-request.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/path-parameters.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/http-response.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/response-fields.adoc[]
+include::{snippetsDir}/interview-checkInterview-inProgress-voiceMode/curl-request.adoc[]
+
+==== 인터뷰 현황 체크 - FINISHED
+
+include::{snippetsDir}/interview-checkInterview-finished/http-response.adoc[]
+
+=== 자신의 인터뷰 목록 조회
+
+include::{snippetsDir}/interview-findMyInterviews/http-request.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/query-parameters.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/http-response.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyInterviews/curl-request.adoc[]
+
+=== 다른 사용자의 완료된 인터뷰 목록 조회 - 로그인 버전
+
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/query-parameters.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/response-fields.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviews-authenticated/curl-request.adoc[]
+
+==== 다른 사용자의 완료된 인터뷰 목록 조회 - 비회원 버전
+
+include::{snippetsDir}/interview-findOtherMemberInterviews-unauthenticated/http-request.adoc[]
+
+=== 자신의 인터뷰 결과 조회
+
+include::{snippetsDir}/interview-findMyResult/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult/path-parameters.adoc[]
+include::{snippetsDir}/interview-findMyResult/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResult/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyResult/curl-request.adoc[]
+
+==== 자신의 인터뷰 결과 조회 예외 1
+
+include::{snippetsDir}/interview-findMyResult-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception1/http-response.adoc[]
+
+==== 자신의 인터뷰 결과 조회 예외 2
+
+include::{snippetsDir}/interview-findMyResult-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult-exception2/http-response.adoc[]
+
+=== 다른 사용자의 완료된 인터뷰 결과 조회 - 로그인 버전
+
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/path-parameters.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/http-response.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/response-fields.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-authenticated/curl-request.adoc[]
+
+==== 다른 사용자의 완료된 인터뷰 결과 조회 - 비회원 버전
+
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-unauthenticated/http-request.adoc[]
+
+==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 1
+
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception1/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception1/http-response.adoc[]
+
+==== 다른 사용자의 완료된 인터뷰 결과 조회 예외 2
+
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception2/http-request.adoc[]
+include::{snippetsDir}/interview-findOtherMemberInterviewResult-exception2/http-response.adoc[]
+
+=== 인터뷰 좋아요 취소 요청
+
+include::{snippetsDir}/interview-unlikeInterview/http-request.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/path-parameters.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/http-response.adoc[]
+include::{snippetsDir}/interview-unlikeInterview/curl-request.adoc[]
+
+== 답변
+
+=== 답변 좋아요 요청
+
+include::{snippetsDir}/answer-likeAnswer/http-request.adoc[]
+include::{snippetsDir}/answer-likeAnswer/path-parameters.adoc[]
+include::{snippetsDir}/answer-likeAnswer/http-response.adoc[]
+include::{snippetsDir}/answer-likeAnswer/curl-request.adoc[]
+
+=== 답변 메모 생성
+
+include::{snippetsDir}/answer-createAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-createAnswerMemo/curl-request.adoc[]
+
+=== 답변 메모 수정
+
+include::{snippetsDir}/answer-updateAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-updateAnswerMemo/curl-request.adoc[]
+
+=== 답변 좋아요 취소 요청
+
+include::{snippetsDir}/answer-unlikeAnswer/http-request.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/path-parameters.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/http-response.adoc[]
+include::{snippetsDir}/answer-unlikeAnswer/curl-request.adoc[]
+
+=== 답변 메모 삭제
+
+include::{snippetsDir}/answer-deleteAnswerMemo/http-request.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
+include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]
+
+== 어드민
+
+=== 루트 질문 음성 등록
+
+include::{snippetsDir}/admin-uploadRootQuestionVoice/http-request.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/path-parameters.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/http-response.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/curl-request.adoc[]

@@ -1,0 +1,32 @@
+package com.samhap.kokomen.interview.service.dto.proceedstate;
+
+import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.interview.domain.InterviewProceedState;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.Question;
+
+
+public record InterviewProceedStateTextModeResponse(
+        InterviewProceedState proceedState,
+        InterviewState interviewState,
+        AnswerRank curAnswerRank,
+        Long nextQuestionId,
+        String nextQuestion // 음성 모드일 때, nextQuestionVoiceUrl이 되어야 함.
+) implements InterviewProceedStateResponse {
+
+    public static InterviewProceedStateTextModeResponse createCompletedAndInProgress(Answer curAnswer, Question nextQuestion) {
+        return new InterviewProceedStateTextModeResponse(
+                InterviewProceedState.COMPLETED,
+                InterviewState.IN_PROGRESS,
+                curAnswer.getAnswerRank(),
+                nextQuestion.getId(),
+                nextQuestion.getContent()
+        );
+    }
+
+    @Override
+    public InterviewProceedState proceedState() {
+        return proceedState;
+    }
+}
