@@ -22,7 +22,7 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
             ORDER BY r.questionOrder ASC
             LIMIT 1
             """)
-    Optional<RootQuestion> findFirstQuestionMemberNotReceivedByCategory(
+    Optional<RootQuestion> findFirstRootQuestionMemberNotReceivedByCategory(
             @Param("category") Category category,
             @Param("memberId") Long memberId,
             @Param("rootQuestionState") RootQuestionState rootQuestionState
@@ -36,9 +36,11 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
             ORDER BY i.id DESC
             LIMIT 1
             """)
-    Optional<RootQuestion> findLastQuestionMemberReceivedByCategory(
+    Optional<RootQuestion> findLastRootQuestionMemberReceivedByCategory(
             @Param("category") Category category,
             @Param("memberId") Long memberId,
             @Param("rootQuestionState") RootQuestionState rootQuestionState
     );
+
+    Optional<RootQuestion> findRootQuestionByCategoryAndStateAndQuestionOrder(Category category, RootQuestionState state, Integer questionOrder);
 }
