@@ -38,11 +38,11 @@ public class RootQuestion extends BaseEntity {
     @Column(name = "state", nullable = false)
     private RootQuestionState state;
 
-    @Column(name = "question_order")
-    private Integer questionOrder;
-
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
+
+    @Column(name = "question_order")
+    private Integer questionOrder;
 
     public RootQuestion(Category category, String content) {
         this.category = category;

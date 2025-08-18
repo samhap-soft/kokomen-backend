@@ -10,6 +10,7 @@ public class RootQuestionFixtureBuilder {
     private Category category;
     private RootQuestionState rootQuestionState;
     private String content;
+    private Integer questionOrder;
 
     public static RootQuestionFixtureBuilder builder() {
         return new RootQuestionFixtureBuilder();
@@ -35,12 +36,18 @@ public class RootQuestionFixtureBuilder {
         return this;
     }
 
+    public RootQuestionFixtureBuilder questionOrder(Integer questionOrder) {
+        this.questionOrder = questionOrder;
+        return this;
+    }
+
     public RootQuestion build() {
         return new RootQuestion(
                 id,
                 category != null ? category : Category.OPERATING_SYSTEM,
                 rootQuestionState != null ? rootQuestionState : RootQuestionState.ACTIVE,
-                content != null ? content : "프로세스와 스레드 차이 설명해주세요."
+                content != null ? content : "프로세스와 스레드 차이 설명해주세요.",
+                questionOrder != null ? questionOrder : 1
         );
     }
 }

@@ -483,8 +483,10 @@ class InterviewControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
-        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
+        RootQuestion rootQuestion1 =
+                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").questionOrder(1).build());
+        RootQuestion rootQuestion2 =
+                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").questionOrder(2).build());
 
         Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
@@ -589,9 +591,10 @@ class InterviewControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
-        RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
-        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
-        RootQuestion rootQuestion3 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 공간복잡도는?").build());
+        RootQuestion rootQuestion1 =
+                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").questionOrder(1).build());
+        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").questionOrder(2).build());
+        RootQuestion rootQuestion3 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 공간복잡도는?").questionOrder(3).build());
 
         Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(interviewee).rootQuestion(rootQuestion1).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
@@ -719,9 +722,10 @@ class InterviewControllerTest extends BaseControllerTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
 
-        RootQuestion rootQuestion1 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").build());
-        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").build());
-        RootQuestion rootQuestion3 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 공간복잡도는?").build());
+        RootQuestion rootQuestion1 =
+                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("최단 경로 알고리즘에 대해 설명해주세요.").questionOrder(1).build());
+        RootQuestion rootQuestion2 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 시간복잡도는?").questionOrder(2).build());
+        RootQuestion rootQuestion3 = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("알고리즘의 공간복잡도는?").questionOrder(3).build());
 
         Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion1).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).content(rootQuestion1.getContent()).build());
