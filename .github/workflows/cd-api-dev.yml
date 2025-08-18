@@ -1,0 +1,122 @@
+name: CD API DEV
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api_changed: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: develop
+          filters: |
+            api:
+              - 'api/**'
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.api_changed == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Grant execute permission for run-test-mysql-redis.sh
+        run: chmod +x run-test-mysql-redis.sh
+        working-directory: ./api
+
+      - name: Start MySQL for testing
+        run: ./run-test-mysql-redis.sh
+        working-directory: ./api
+
+      - name: Test & Build api only
+        run: ./gradlew :api:build
+
+      - name: Sign in Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build the Docker image
+        run: docker build -f ./Dockerfile --platform linux/amd64 --no-cache -t samhap/kokomen-interview-api:dev .
+        working-directory: ./api
+
+      - name: Push the Docker Image to Dockerhub
+        run: docker push samhap/kokomen-interview-api:dev
+        working-directory: ./api
+
+  deploy:
+    needs: build
+    runs-on: [ self-hosted, dev ] # 규칙대로는 dev-api가 더 자연스럽지만, 기존 runner 사용하기 위해 dev 유지
+
+    steps:
+      - name: Create dev-kokomen-net Docker network
+        run: |
+          NETWORK_NAME="dev-kokomen-net"
+          if ! sudo docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+            echo "Creating Docker network: $NETWORK_NAME"
+            sudo docker network create --driver bridge "$NETWORK_NAME"
+          else
+            echo "Docker network '$NETWORK_NAME' already exists. Skipping."
+          fi
+
+      - name: pull docker compose yaml files
+        working-directory: /home/ubuntu
+        run: |
+          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
+          cd kokomen-backend
+          git sparse-checkout init --cone
+          git fetch origin develop
+          git checkout develop
+          git sparse-checkout set docker/dev
+          git pull origin develop
+
+      - name: Stop existing container
+        run: sudo docker rm -f kokomen-interview-api-dev
+
+      - name: Remove old API Docker image
+        run: |
+          if sudo docker images samhap/kokomen-interview-api:dev -q | grep -q .; then
+            sudo docker rmi -f samhap/kokomen-interview-api:dev || true
+          fi
+
+      - name: Docker Image pull
+        run: sudo docker pull samhap/kokomen-interview-api:dev
+
+      - name: Docker run
+        working-directory: /home/ubuntu
+        env:
+          SPRING_DATASOURCE_URL_DEV: ${{ secrets.SPRING_DATASOURCE_URL_DEV }}
+          SPRING_DATASOURCE_USERNAME_DEV: ${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }}
+          SPRING_DATASOURCE_PASSWORD_DEV: ${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }}
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+          KAKAO_CLIENT_ID_DEV: ${{ secrets.KAKAO_CLIENT_ID_DEV }}
+          KAKAO_CLIENT_SECRET_DEV: ${{ secrets.KAKAO_CLIENT_SECRET_DEV }}
+          KAKAO_ADMIN_KEY_DEV: ${{ secrets.KAKAO_ADMIN_KEY_DEV }}
+          MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }} # docker-compose-dev.yml에서 kokomen-mysql-dev를 실행시킬 때 필요
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
+        run: |
+          export HOSTNAME=$(hostname)
+          cd kokomen-backend/docker/dev
+          sudo -E docker compose -f docker-compose-dev.yml up -d

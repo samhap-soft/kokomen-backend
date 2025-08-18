@@ -1,0 +1,243 @@
+spring:
+  application:
+    name: kokomen-interview-api
+  datasource:
+    hikari:
+      connection-timeout: 10000
+  jpa:
+    open-in-view: false
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true
+  session:
+    store-type: redis
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+    properties:
+      security.protocol: PLAINTEXT
+server:
+  servlet:
+    session:
+      timeout: 24h
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        same-site: lax
+        max-age: 86400
+  tomcat:
+    threads:
+      min-spare: 20
+      max: 30
+    max-connections: 1024
+    mbeanregistry:
+      enabled: true
+open-ai:
+  api-key: ${OPEN_AI_API_KEY}
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoint:
+    health:
+      show-components: always
+      access: read_only
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, info, health, metrics
+notification:
+  connect-timeout: 3s
+  read-timeout: 3s
+supertone:
+  api-token: ${SUPERTONE_API_TOKEN}
+
+---
+# local profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:mysql://kokomen-interview-local-mysql:3306/kokomen-local
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: kokomen-local-redis
+      port: 6379
+  kafka:
+    bootstrap-servers: kokomen-local-kafka:9092
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    admin-key: ${KAKAO_ADMIN_KEY}
+cors:
+  allowed-origins: http://localhost:8080
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+notification:
+  base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
+aws:
+  root-question-s3-path: local/root-question-voice/
+  next-question-s3-path: local/next-question-voice/
+
+---
+# dev profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_DEV}
+    username: ${SPRING_DATASOURCE_USERNAME_DEV}
+    password: ${SPRING_DATASOURCE_PASSWORD_DEV}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: kokomen-redis-dev
+      port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_DEV}
+    client-secret: ${KAKAO_CLIENT_SECRET_DEV}
+    admin-key: ${KAKAO_ADMIN_KEY_DEV}
+cors:
+  allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000, https://www.webview-dev.kokomen.kr, https://webview-dev.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: false
+notification:
+  base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
+aws:
+  root-question-s3-path: dev/root-question-voice/
+  next-question-s3-path: dev/next-question-voice/
+---
+
+# prod profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_PROD}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS_PRIMARY_HOST_PROD}
+      port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+    admin-key: ${KAKAO_ADMIN_KEY_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
+
+aws:
+  root-question-s3-path: prod/root-question-voice/
+  next-question-s3-path: prod/next-question-voice/
+---
+# load-test profile
+spring:
+  config:
+    activate:
+      on-profile: load-test
+  datasource:
+    url: ${SPRING_DATASOURCE_URL_LOAD_TEST}
+    username: ${SPRING_DATASOURCE_USERNAME_PROD}
+    password: ${SPRING_DATASOURCE_PASSWORD_PROD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database: mysql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${REDIS_PRIMARY_HOST_PROD}
+      port: 6379
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+    admin-key: ${KAKAO_ADMIN_KEY_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+
+notification:
+  base-url: ${NOTIFICATION_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
+
+aws:
+  root-question-s3-path: dev/root-question-voice/
+  next-question-s3-path: dev/next-question-voice/

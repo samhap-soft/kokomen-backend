@@ -1,0 +1,110 @@
+name: CD CONSUMER DEV
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      consumer_changed: ${{ steps.filter.outputs.consumer }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: develop
+          filters: |
+            consumer:
+              - 'consumer/**'
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.consumer_changed == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 아직 consumer는 테스트가 없음
+
+      - name: Test & Build consumer only
+        run: ./gradlew :consumer:build
+
+      - name: Sign in Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build the Docker image
+        run: docker build -f ./Dockerfile --platform linux/amd64 --no-cache -t samhap/kokomen-interview-consumer:dev .
+        working-directory: ./consumer
+
+      - name: Push the Docker Image to Dockerhub
+        run: docker push samhap/kokomen-interview-consumer:dev
+        working-directory: ./consumer
+
+  deploy:
+    needs: build
+    runs-on: [ self-hosted, dev ]
+
+    steps:
+      - name: Create dev-kokomen-net Docker network
+        run: |
+          NETWORK_NAME="dev-kokomen-net"
+          if ! sudo docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+            echo "Creating Docker network: $NETWORK_NAME"
+            sudo docker network create --driver bridge "$NETWORK_NAME"
+          else
+            echo "Docker network '$NETWORK_NAME' already exists. Skipping."
+          fi
+
+      - name: Stop existing container
+        run: sudo docker rm -f kokomen-interview-consumer-dev
+
+      - name: Remove old API Docker image
+        run: |
+          if sudo docker images samhap/kokomen-interview-consumer:dev -q | grep -q .; then
+            sudo docker rmi -f samhap/kokomen-interview-consumer:dev || true
+          fi
+
+      - name: pull docker compose yaml files
+        working-directory: /home/ubuntu
+        run: |
+          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
+          cd kokomen-backend
+          git sparse-checkout init --cone
+          git fetch origin develop
+          git checkout develop
+          git sparse-checkout set docker/dev
+          git pull origin develop
+
+      - name: Docker Image pull
+        run: sudo docker pull samhap/kokomen-interview-consumer:dev
+
+      - name: Docker run
+        working-directory: /home/ubuntu
+        env:
+          SPRING_DATASOURCE_URL_DEV: ${{ secrets.SPRING_DATASOURCE_URL_DEV }}
+          SPRING_DATASOURCE_USERNAME_DEV: ${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }}
+          SPRING_DATASOURCE_PASSWORD_DEV: ${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+        run: |
+          export HOSTNAME=$(hostname)
+          cd kokomen-backend/docker/dev
+          sudo -E docker compose -f docker-compose-dev.yml up -d
