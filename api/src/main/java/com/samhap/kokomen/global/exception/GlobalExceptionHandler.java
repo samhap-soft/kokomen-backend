@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExternalApiException.class)
     public ResponseEntity<ErrorResponse> handleExternalApiException(ExternalApiException e) {
         log.warn("ExternalApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
-        return ResponseEntity.status(e.getHttpStatusCode())
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(e.getMessage()));
     }
 
