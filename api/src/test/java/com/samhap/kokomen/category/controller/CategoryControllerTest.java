@@ -47,19 +47,51 @@ class CategoryControllerTest extends BaseControllerTest {
                     "title": "%s",
                     "description": "%s",
                     "image_url": "%s"
+                  },
+                  {
+                    "key": "%s",
+                    "title": "%s",
+                    "description": "%s",
+                    "image_url": "%s"
+                  },
+                  {
+                    "key": "%s",
+                    "title": "%s",
+                    "description": "%s",
+                    "image_url": "%s"
+                  },
+                  {
+                    "key": "%s",
+                    "title": "%s",
+                    "description": "%s",
+                    "image_url": "%s"
+                  },
+                  {
+                    "key": "%s",
+                    "title": "%s",
+                    "description": "%s",
+                    "image_url": "%s"
                   }
                 ]
                 """.formatted(
-                Category.ALGORITHM.name(), Category.ALGORITHM.getTitle(),
-                Category.ALGORITHM.getDescription(), Category.ALGORITHM.getImageUrl(),
-                Category.DATA_STRUCTURE.name(), Category.DATA_STRUCTURE.getTitle(),
-                Category.DATA_STRUCTURE.getDescription(), Category.DATA_STRUCTURE.getImageUrl(),
+                Category.ALGORITHM_DATA_STRUCTURE.name(), Category.ALGORITHM_DATA_STRUCTURE.getTitle(),
+                Category.ALGORITHM_DATA_STRUCTURE.getDescription(), Category.ALGORITHM_DATA_STRUCTURE.getImageUrl(),
                 Category.DATABASE.name(), Category.DATABASE.getTitle(),
                 Category.DATABASE.getDescription(), Category.DATABASE.getImageUrl(),
                 Category.NETWORK.name(), Category.NETWORK.getTitle(),
                 Category.NETWORK.getDescription(), Category.NETWORK.getImageUrl(),
                 Category.OPERATING_SYSTEM.name(), Category.OPERATING_SYSTEM.getTitle(),
-                Category.OPERATING_SYSTEM.getDescription(), Category.OPERATING_SYSTEM.getImageUrl());
+                Category.OPERATING_SYSTEM.getDescription(), Category.OPERATING_SYSTEM.getImageUrl(),
+                Category.JAVA_SPRING.name(), Category.JAVA_SPRING.getTitle(),
+                Category.JAVA_SPRING.getDescription(), Category.JAVA_SPRING.getImageUrl(),
+                Category.INFRA.name(), Category.INFRA.getTitle(),
+                Category.INFRA.getDescription(), Category.INFRA.getImageUrl(),
+                Category.REACT.name(), Category.REACT.getTitle(),
+                Category.REACT.getDescription(), Category.REACT.getImageUrl(),
+                Category.FRONTEND.name(), Category.FRONTEND.getTitle(),
+                Category.FRONTEND.getDescription(), Category.FRONTEND.getImageUrl(),
+                Category.JAVASCRIPT_TYPESCRIPT.name(), Category.JAVASCRIPT_TYPESCRIPT.getTitle(),
+                Category.JAVASCRIPT_TYPESCRIPT.getDescription(), Category.JAVASCRIPT_TYPESCRIPT.getImageUrl());
 
         // when & then
         mockMvc.perform(get("/api/v1/categories"))
