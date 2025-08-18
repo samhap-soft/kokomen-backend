@@ -15,6 +15,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @ActiveProfiles("test")
@@ -33,6 +34,8 @@ public abstract class BaseTest {
     protected KafkaTemplate<String, String> kafkaTemplate;
     @MockitoBean
     protected BedrockClient bedrockClient;
+    @MockitoBean
+    protected BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     @MockitoBean
     protected KakaoOAuthClient kakaoOAuthClient;
     @MockitoSpyBean

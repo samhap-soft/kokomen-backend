@@ -74,7 +74,7 @@ public class InterviewFacadeService {
         int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount() - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         memberService.validateEnoughTokenCount(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
-        RootQuestion rootQuestion = rootQuestionService.readRandomRootQuestion(member, interviewRequest);
+        RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
         Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 

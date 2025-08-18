@@ -29,11 +29,16 @@ public class RootQuestion extends BaseEntity {
     @Column(name = "category", nullable = false)
     private Category category;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state", nullable = false)
+    private RootQuestionState state;
+
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
 
     public RootQuestion(Category category, String content) {
         this.category = category;
+        this.state = RootQuestionState.ACTIVE;
         this.content = content;
     }
 }
