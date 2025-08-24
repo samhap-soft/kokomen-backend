@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -25,17 +26,26 @@ public class InterviewLikeEventConsumer {
             groupId = "interview-like-consumer-group",
             containerFactory = "kafkaBatchListenerContainerFactory"
     )
-    public void consumeBatch(List<ConsumerRecord<String, String>> records) {
+    public void consumeBatch(List<ConsumerRecord<String, String>> records, Acknowledgment ack) {
         if (records.isEmpty()) {
+            ack.acknowledge();
             return;
         }
 
-        Map<Long, Long> interviewLikeCountMap = records.stream()
-                .map(this::extractInterviewId)
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        try {
+            Map<Long, Long> interviewLikeCountMap = records.stream()
+                    .map(this::extractInterviewId)
+                    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-        InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
-        log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
+            InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
+            log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
+            
+            ack.acknowledge(); // 수동 커밋
+        } catch (Exception e) {
+            log.error("배치 처리 중 오류 발생", e);
+            // 커밋하지 않으면 메시지 재처리됨
+            throw e;
+        }
     }
 
     private Long extractInterviewId(ConsumerRecord<String, String> record) {
