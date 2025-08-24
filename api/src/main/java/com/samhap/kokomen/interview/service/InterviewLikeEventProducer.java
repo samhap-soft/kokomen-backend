@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.interview.service.dto.InterviewLikeEventPayload;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,7 @@ public class InterviewLikeEventProducer {
     private final String topic;
 
     public InterviewLikeEventProducer(
-            KafkaTemplate<String, String> kafkaTemplate,
+            @Qualifier("interviewLikeKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
             ObjectMapper objectMapper,
             Environment environment
     ) {
