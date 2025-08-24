@@ -4,6 +4,8 @@ spring:
   datasource:
     hikari:
       connection-timeout: 10000
+      maximum-pool-size: 6
+      minimum-idle: 6
   jpa:
     open-in-view: false
   jackson:
@@ -14,16 +16,16 @@ spring:
       group-id: default-consumer-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
     properties:
       security.protocol: PLAINTEXT
 server:
   tomcat:
     threads:
-      min-spare: 20
-      max: 30
-    max-connections: 1024
-    mbeanregistry:
-      enabled: true
+      min-spare: 1
+      max: 2
+    max-connections: 10
+    accept-count: 5
 management:
   server:
     port: 8081
