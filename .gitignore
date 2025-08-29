@@ -43,3 +43,4 @@ hs_err_pid*
 replay_pid*
 
 api/local-app-run.sh
+consumer/local-app-run.sh
