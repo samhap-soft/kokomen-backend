@@ -8,6 +8,8 @@ spring:
     redis:
       host: localhost
       port: 16379
+  kafka:
+    bootstrap-servers: localhost:9092
 
 open-ai:
   api-key: test_api_key
