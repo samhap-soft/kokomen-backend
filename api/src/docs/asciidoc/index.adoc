@@ -337,6 +337,16 @@ include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]
 
+== 토큰
+
+=== 토큰 구매
+
+include::{snippetsDir}/token-purchase-success/http-request.adoc[]
+include::{snippetsDir}/token-purchase-success/request-headers.adoc[]
+include::{snippetsDir}/token-purchase-success/request-fields.adoc[]
+include::{snippetsDir}/token-purchase-success/http-response.adoc[]
+include::{snippetsDir}/token-purchase-success/curl-request.adoc[]
+
 == 어드민
 
 === 루트 질문 음성 등록

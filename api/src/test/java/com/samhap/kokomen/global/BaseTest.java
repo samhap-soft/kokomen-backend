@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
+import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,8 @@ public abstract class BaseTest {
     protected S3Client s3Client;
     @MockitoBean
     protected NotificationClient notificationClient;
+    @MockitoBean
+    protected PaymentClient paymentClient;
     @MockitoBean
     protected GptClient gptClient;
     @MockitoBean
