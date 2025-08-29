@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(./gradlew:*)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Bash(./init)",
+      "Bash(./local-app-run.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
