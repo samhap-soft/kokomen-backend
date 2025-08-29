@@ -16,7 +16,6 @@ spring:
       group-id: default-consumer-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      enable-auto-commit: false
     properties:
       security.protocol: PLAINTEXT
 server:

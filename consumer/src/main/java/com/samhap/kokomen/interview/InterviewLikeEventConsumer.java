@@ -39,10 +39,10 @@ public class InterviewLikeEventConsumer {
 
             InterviewBatchRepository.batchUpdateInterviewLikeCount(interviewLikeCountMap, interviewLikeCountMap.size());
             log.info("인터뷰 좋아요 카운트 일괄 업데이트 완료: {}건", interviewLikeCountMap.size());
-            
-            ack.acknowledge(); // 수동 커밋
+
+            ack.acknowledge(); // TODO: 수동 커밋이 실패하는 경우 멱등성 보장 필요
         } catch (Exception e) {
-            log.error("배치 처리 중 오류 발생", e);
+            log.error("인터뷰 좋아요 카운트 일괄 업데이트 중 오류 발생", e);
             // 커밋하지 않으면 메시지 재처리됨
             throw e;
         }
