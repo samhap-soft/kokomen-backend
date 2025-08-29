@@ -1,13 +1,12 @@
 spring:
+  profiles:
+    include:
+      - common-test
   main:
     lazy-initialization: true
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
-  data:
-    redis:
-      host: localhost
-      port: 16379
   kafka:
     bootstrap-servers: localhost:9092
 
@@ -21,10 +20,6 @@ oauth:
   kakao:
     client-id: test_client_id
     client-secret: test_client_secret
-
-logging:
-  level:
-    org.springframework.jdbc.core.JdbcTemplate: trace
 
 notification:
   base-url: http://kokomen-notification-test
@@ -44,31 +39,10 @@ spring:
   config:
     activate:
       on-profile: test
-  datasource:
-    url: jdbc:mysql://localhost:13306/kokomen-test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: root
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+
 ---
 # docs
 spring:
-  flyway:
-    enabled: false
   config:
     activate:
       on-profile: docs
-  datasource:
-    url: jdbc:h2:mem:docsdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    database-platform: org.hibernate.dialect.H2Dialect
