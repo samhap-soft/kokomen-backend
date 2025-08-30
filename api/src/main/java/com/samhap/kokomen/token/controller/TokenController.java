@@ -3,6 +3,7 @@ package com.samhap.kokomen.token.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
+import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,15 @@ public class TokenController {
             @Valid @RequestBody TokenPurchaseRequest request
     ) {
         tokenFacadeService.purchaseTokens(memberAuth.memberId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/refund")
+    public ResponseEntity<Void> refundTokens(
+            @Authentication MemberAuth memberAuth,
+            @Valid @RequestBody TokenRefundRequest request
+    ) {
+        tokenFacadeService.refundTokens(memberAuth.memberId(), request);
         return ResponseEntity.noContent().build();
     }
 }

@@ -19,5 +19,15 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             WHERE t.memberId = :memberId 
             AND t.type = :type
             """)
-    int incrementTokenCount(@Param("memberId") Long memberId, @Param("type") TokenType type, @Param("count") int count);
+    int incrementTokenCountModifying(@Param("memberId") Long memberId, @Param("type") TokenType type, @Param("count") int count);
+
+    @Modifying
+    @Query("""
+            UPDATE Token t 
+            SET t.tokenCount = t.tokenCount - :count 
+            WHERE t.memberId = :memberId 
+            AND t.type = :type
+            AND t.tokenCount >= :count
+            """)
+    int decrementTokenCountModifying(@Param("memberId") Long memberId, @Param("type") TokenType type, @Param("count") int count);
 }

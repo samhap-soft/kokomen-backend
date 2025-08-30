@@ -2,7 +2,10 @@ package com.samhap.kokomen.token.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.token.domain.TokenPrice;
+import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.dto.RefundRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
+import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.external.PaymentClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,5 +72,32 @@ public class TokenFacadeService {
         }
 
         throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+    }
+
+    @Transactional
+    public void refundTokens(Long memberId, TokenRefundRequest tokenRefundRequest) {
+        Long tokenPurchaseId = tokenRefundRequest.tokenPurchaseId();
+        TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);
+
+        if (tokenPurchase.isNotOwnedBy(memberId)) {
+            throw new BadRequestException("본인의 토큰 구매 내역만 환불할 수 있습니다.");
+        }
+
+        if (tokenPurchase.isNotRefundable()) {
+            throw new BadRequestException("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
+        }
+
+        int refundTokenCount = tokenPurchase.getCount();
+        String paymentKey = tokenPurchase.getPaymentKey();
+
+        log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}",
+                memberId, tokenPurchaseId, paymentKey, refundTokenCount);
+
+        paymentClient.refundPayment(new RefundRequest(paymentKey, tokenRefundRequest.reason()));
+
+        tokenPurchaseService.refundTokenPurchase(tokenPurchase);
+        tokenService.refundPaidTokenCount(memberId, refundTokenCount);
+
+        log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId, refundTokenCount);
     }
 }
