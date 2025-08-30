@@ -17,7 +17,9 @@
       "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
       "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
       "Bash(./init)",
-      "Bash(./local-app-run.sh:*)"
+      "Bash(./local-app-run.sh:*)",
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)"
     ],
     "deny": [],
     "ask": []

@@ -5,10 +5,8 @@ import com.samhap.kokomen.member.service.dto.RankingProjection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
@@ -21,15 +19,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             """, nativeQuery = true)
     long findRankByScore(@Param("score") int score);
 
-    @Transactional
-    @Modifying
-    @Query("UPDATE Member m SET m.freeTokenCount = m.freeTokenCount - 1 WHERE m.id = :memberId AND m.freeTokenCount > 0")
-    int decreaseFreeTokenCount(Long memberId);
-
-    @Transactional
-    @Modifying
-    @Query("UPDATE Member m SET m.freeTokenCount = :dailyFreeTokenCount")
-    int rechargeDailyFreeToken(int dailyFreeTokenCount);
 
     @Query(value = """
                 SELECT 
@@ -49,4 +38,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                 ORDER BY m.score DESC
             """, nativeQuery = true)
     List<RankingProjection> findRankings(@Param("limit") int limit, @Param("offset") int offset);
+
+    boolean existsByKakaoId(Long kakaoId);
 }

@@ -36,6 +36,7 @@ import com.samhap.kokomen.global.fixture.interview.InterviewLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
@@ -50,6 +51,9 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.Token;
+import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
@@ -76,11 +80,15 @@ class InterviewControllerTest extends BaseControllerTest {
     private AnswerLikeRepository answerLikeRepository;
     @Autowired
     private AnswerMemoRepository answerMemoRepository;
+    @Autowired
+    private TokenRepository tokenRepository;
 
     @Test
     void 인터뷰_시작_텍스트모드() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
@@ -133,6 +141,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰_시작_음성모드() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
@@ -184,6 +194,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 인터뷰_진행() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());

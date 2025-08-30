@@ -1,12 +1,9 @@
 package com.samhap.kokomen.token.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.member.domain.Member;
-import com.samhap.kokomen.member.service.MemberService;
-import com.samhap.kokomen.token.domain.TokenPrice;
-import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
-import com.samhap.kokomen.token.external.PaymentClient;
-import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
+import com.samhap.kokomen.token.domain.Token;
+import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,45 +14,78 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TokenService {
 
-    private final PaymentClient paymentClient;
-    private final MemberService memberService;
-    private final TokenPurchaseRepository tokenPurchaseRepository;
+    public static final int DAILY_FREE_TOKEN_COUNT = 20;
+
+    private final TokenRepository tokenRepository;
 
     @Transactional
-    public void purchaseTokens(Long memberId, TokenPurchaseRequest request) {
-        int tokenCount = request.metadata().count();
-        long totalAmount = request.totalAmount();
-
-        validateTokenPrice(request);
-        log.info("토큰 구매 요청 - memberId: {}, paymentKey: {}, tokenCount: {}, amount: {}", memberId, request.paymentKey(), tokenCount, totalAmount);
-
-        paymentClient.confirmPayment(request.toConfirmRequest(memberId));
-        tokenPurchaseRepository.save(request.toTokenPurchase(memberId));
-
-        Member member = memberService.readById(memberId);
-        member.addFreeTokenCount(tokenCount);
-
-        log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);
+    public void createTokensForNewMember(Long memberId) {
+        Token freeToken = new Token(memberId, TokenType.FREE, DAILY_FREE_TOKEN_COUNT);
+        Token paidToken = new Token(memberId, TokenType.PAID, 0);
+        tokenRepository.save(freeToken);
+        tokenRepository.save(paidToken);
     }
 
-    private void validateTokenPrice(TokenPurchaseRequest request) {
-        int tokenCount = request.metadata().count();
-        long unitPrice = request.metadata().unitPrice();
-        long totalAmount = request.totalAmount();
-        String productName = request.metadata().productName();
+    public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
+        return tokenRepository.findByMemberIdAndType(memberId, type)
+                .orElseThrow(() -> new IllegalStateException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
+    }
 
-        if (!"token".equals(productName)) {
-            throw new BadRequestException("올바르지 않은 상품명입니다. 상품명은 'token'이어야 합니다.");
+    @Transactional
+    public void addFreeTokens(Long memberId, int count) {
+        Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
+        freeToken.addTokens(count);
+    }
+
+    @Transactional
+    public void addPaidTokens(Long memberId, int count) {
+        Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
+        paidToken.addTokens(count);
+    }
+
+    @Transactional
+    public void setFreeTokens(Long memberId, int count) {
+        Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
+        freeToken.setTokenCount(count);
+    }
+
+    @Transactional
+    public void useToken(Long memberId) {
+        Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
+        Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
+
+        if (freeToken.hasTokens()) {
+            freeToken.useToken();
+            return;
         }
 
-        if (unitPrice != TokenPrice.SINGLE_TOKEN.getPrice()) {
-            throw new BadRequestException(String.format("토큰 단가는 %d원이어야 합니다. 요청된 단가: %d원", TokenPrice.SINGLE_TOKEN.getPrice(), unitPrice));
+        if (paidToken.hasTokens()) {
+            paidToken.useToken();
+            return;
         }
 
-        long expectedTotalAmount = unitPrice * tokenCount;
-        if (totalAmount != expectedTotalAmount) {
-            throw new BadRequestException(String.format("총 금액이 올바르지 않습니다. 예상 금액: %d원 (단가 %d원 × %d개), 요청된 금액: %d원",
-                    expectedTotalAmount, unitPrice, tokenCount, totalAmount));
+        throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+    }
+
+    public void validateEnoughTokens(Long memberId, int requiredCount) {
+        if (!hasEnoughTokens(memberId, requiredCount)) {
+            throw new BadRequestException("토큰 갯수가 부족합니다.");
         }
+    }
+
+    public boolean hasEnoughTokens(Long memberId, int requiredCount) {
+        return getTotalTokenCount(memberId) >= requiredCount;
+    }
+
+    public int getTotalTokenCount(Long memberId) {
+        return getFreeTokenCount(memberId) + getPaidTokenCount(memberId);
+    }
+
+    public int getFreeTokenCount(Long memberId) {
+        return readTokenByMemberIdAndType(memberId, TokenType.FREE).getTokenCount();
+    }
+
+    public int getPaidTokenCount(Long memberId) {
+        return readTokenByMemberIdAndType(memberId, TokenType.PAID).getTokenCount();
     }
 }

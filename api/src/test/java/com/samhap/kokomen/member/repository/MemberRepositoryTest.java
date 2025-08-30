@@ -40,50 +40,6 @@ class MemberRepositoryTest extends BaseTest {
         assertThat(rank).isEqualTo(2L);
     }
 
-    @Test
-    void free_token_count를_1_감소시킨다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(1).build());
-
-        // when
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
-
-        // then
-        assertAll(
-                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isZero(),
-                () -> assertThat(affectedRows).isEqualTo(1)
-        );
-    }
-
-    @Test
-    void free_token_count가_부족하면_0을_반환한다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(0).build());
-
-        // when
-        int affectedRows = memberRepository.decreaseFreeTokenCount(member.getId());
-
-        // then
-        assertAll(
-                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isZero(),
-                () -> assertThat(affectedRows).isEqualTo(0)
-        );
-    }
-
-    @Test
-    void daily_free_token_count를_재충전한다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().freeTokenCount(0).build());
-
-        // when
-        int affectedRows = memberRepository.rechargeDailyFreeToken(Member.DAILY_FREE_TOKEN_COUNT);
-
-        // then
-        assertAll(
-                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(Member.DAILY_FREE_TOKEN_COUNT),
-                () -> assertThat(affectedRows).isEqualTo(1)
-        );
-    }
 
     @Test
     void 완료한_총_인터뷰_수와_함께_랭킹을_조회한다() {
