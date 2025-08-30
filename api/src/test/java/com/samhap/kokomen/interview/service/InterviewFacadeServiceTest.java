@@ -36,6 +36,7 @@ import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedSta
 import com.samhap.kokomen.interview.service.event.InterviewLikedEvent;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.service.TokenService;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -62,11 +63,15 @@ class InterviewFacadeServiceTest extends BaseTest {
     private RedisService redisService;
     @Autowired
     private TestInterviewLikedEventListener testInterviewLikedEventListener;
+    @Autowired
+    private TokenService tokenService;
 
     @Test
     void 인터뷰를_진행할_때_마지막_답변이_아니면_다음_꼬리_질문과_현재_답변에_대한_피드백을_응답한다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+        int freeTokenCount = tokenService.getFreeTokenCount(member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().build());
@@ -94,7 +99,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         assertAll(
                 () -> assertThat(actual).contains(expected),
                 () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue(),
-                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
+                () -> assertThat(tokenService.getFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
         );
     }
 
@@ -103,6 +108,8 @@ class InterviewFacadeServiceTest extends BaseTest {
         // given
         AnswerRank answerRank = AnswerRank.B;
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+        int freeTokenCount = tokenService.getFreeTokenCount(member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
@@ -135,7 +142,7 @@ class InterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalFeedback()).isEqualTo(totalFeedback),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalScore()).isEqualTo(answerRank.getScore() * 3),
                 () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3),
-                () -> assertThat(memberRepository.findById(member.getId()).get().getFreeTokenCount()).isEqualTo(member.getFreeTokenCount() - 1)
+                () -> assertThat(tokenService.getFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
         );
     }
 

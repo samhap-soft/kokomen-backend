@@ -24,6 +24,7 @@ import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -37,11 +38,14 @@ class MemberControllerTest extends BaseControllerTest {
     private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private InterviewRepository interviewRepository;
+    @Autowired
+    private TokenService tokenService;
 
     @Test
     void 멤버_프로필_조회() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
@@ -52,10 +56,10 @@ class MemberControllerTest extends BaseControllerTest {
                     "score": %d,
                     "total_member_count": 1,
                     "rank": 1,
-                    "token_count": %d,
+                    "token_count": 20,
                     "profile_completed": %s
                 }
-                """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getFreeTokenCount(), member.getProfileCompleted());
+                """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getProfileCompleted());
 
         // when & then
         mockMvc.perform(get("/api/v1/members/me/profile")
