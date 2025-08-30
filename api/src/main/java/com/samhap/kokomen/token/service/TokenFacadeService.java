@@ -3,12 +3,17 @@ package com.samhap.kokomen.token.service;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.token.domain.TokenPrice;
 import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.RefundRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
+import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.external.PaymentClient;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,5 +104,13 @@ public class TokenFacadeService {
         tokenService.refundPaidTokenCount(memberId, refundTokenCount);
 
         log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId, refundTokenCount);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TokenPurchaseResponse> readMyTokenPurchases(Long memberId, TokenPurchaseState state, Pageable pageable) {
+        Page<TokenPurchase> tokenPurchases = tokenPurchaseService.findTokenPurchasesByMemberId(memberId, state, pageable);
+        return tokenPurchases.stream()
+                .map(TokenPurchaseResponse::from)
+                .toList();
     }
 }
