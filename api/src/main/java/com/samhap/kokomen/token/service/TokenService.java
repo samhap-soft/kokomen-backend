@@ -26,21 +26,12 @@ public class TokenService {
         tokenRepository.save(paidToken);
     }
 
-    public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
-        return tokenRepository.findByMemberIdAndType(memberId, type)
-                .orElseThrow(() -> new IllegalStateException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
-    }
-
-    @Transactional
-    public void addFreeTokens(Long memberId, int count) {
-        Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
-        freeToken.addTokens(count);
-    }
-
     @Transactional
     public void addPaidTokens(Long memberId, int count) {
-        Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
-        paidToken.addTokens(count);
+        int updatedRows = tokenRepository.incrementTokenCount(memberId, TokenType.PAID, count);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("유료 토큰 구매에 실패했습니다. memberId: " + memberId);
+        }
     }
 
     @Transactional
@@ -50,21 +41,15 @@ public class TokenService {
     }
 
     @Transactional
-    public void useToken(Long memberId) {
+    public void useFreeToken(Long memberId) {
         Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
+        freeToken.useToken();
+    }
+
+    @Transactional
+    public void usePaidToken(Long memberId) {
         Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
-
-        if (freeToken.hasTokens()) {
-            freeToken.useToken();
-            return;
-        }
-
-        if (paidToken.hasTokens()) {
-            paidToken.useToken();
-            return;
-        }
-
-        throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
+        paidToken.useToken();
     }
 
     public void validateEnoughTokens(Long memberId, int requiredCount) {
@@ -74,18 +59,23 @@ public class TokenService {
     }
 
     public boolean hasEnoughTokens(Long memberId, int requiredCount) {
-        return getTotalTokenCount(memberId) >= requiredCount;
+        return calculateTotalTokenCount(memberId) >= requiredCount;
     }
 
-    public int getTotalTokenCount(Long memberId) {
-        return getFreeTokenCount(memberId) + getPaidTokenCount(memberId);
+    public int calculateTotalTokenCount(Long memberId) {
+        return readFreeTokenCount(memberId) + readPaidTokenCount(memberId);
     }
 
-    public int getFreeTokenCount(Long memberId) {
+    public int readFreeTokenCount(Long memberId) {
         return readTokenByMemberIdAndType(memberId, TokenType.FREE).getTokenCount();
     }
 
-    public int getPaidTokenCount(Long memberId) {
+    public int readPaidTokenCount(Long memberId) {
         return readTokenByMemberIdAndType(memberId, TokenType.PAID).getTokenCount();
+    }
+
+    public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
+        return tokenRepository.findByMemberIdAndType(memberId, type)
+                .orElseThrow(() -> new IllegalStateException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
     }
 }

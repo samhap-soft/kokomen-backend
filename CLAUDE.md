@@ -126,3 +126,104 @@ Tests use JUnit 5 with Spring Boot Test framework. Key test utilities:
 - **Event Sourcing** - Kafka events for statistics and notifications
 - **Repository Pattern** - JPA repositories for data access
 - **DTO Pattern** - Separate request/response objects from domain models
+
+## Service Architecture Guidelines
+
+### Single Repository Principle
+- **Each Service should manage only ONE Repository**
+- This ensures clear separation of concerns and single responsibility
+- Services should focus on business logic for a specific domain
+
+### Multiple Repository Usage
+- **When multiple Repositories are needed, create a FacadeService**
+- FacadeService orchestrates multiple Services and ensures transaction consistency
+- Example: `TokenFacadeService` manages both `TokenService` and `TokenPurchaseService`
+- Use `@Transactional` annotation on FacadeService methods to ensure data consistency
+
+### Service Structure Pattern
+```
+TokenService (manages TokenRepository only)
+TokenPurchaseService (manages TokenPurchaseRepository only)  
+TokenFacadeService (orchestrates both services with @Transactional)
+```
+
+### Benefits
+- Clear boundaries between services
+- Easier testing and maintenance
+- Better transaction management
+- Reduced coupling between domain models
+
+## Method Organization Guidelines
+
+### CRUD Method Ordering
+- **Service and Controller methods should be organized in CRUD order**
+- **C**reate methods first (save, create, register, etc.)
+- **R**ead methods second (find, get, read, validate, etc.)
+- **U**pdate methods third (update, modify, use, etc.)
+- **D**elete methods last (delete, remove, etc.)
+
+### Private Method Placement
+- **Private methods should be placed immediately after the last public method that calls them**
+- If multiple public methods call the same private method, place it after the last one in the file order
+- This maintains logical grouping and readability
+
+### Example Method Order
+```java
+// CREATE methods
+public void createUser() { ... }
+public void registerMember() { ... }
+
+// READ methods  
+public User findById() { ... }
+public boolean validateUser() { ... }
+private boolean isValidEmail() { ... } // called by validateUser
+
+// UPDATE methods
+public void updateUser() { ... }
+public void useToken() { ... }
+
+// DELETE methods
+public void deleteUser() { ... }
+```
+
+## Method Naming Guidelines
+
+### getXXX() Method Usage
+- **Use getXXX() ONLY when retrieving a field from a specific entity or object**
+- **DO NOT use getXXX() when computing, calculating, or aggregating values**
+- Use appropriate verbs for computed values: `calculate`, `compute`, `determine`, `count`, etc.
+
+### Examples
+```java
+// CORRECT - Getting field from entity
+public String getName() { return this.name; }
+public Long getId() { return this.id; }
+
+// INCORRECT - Computing/calculating values  
+public int getTotalCount() { ... } // ❌
+public boolean getIsValid() { ... } // ❌
+
+// CORRECT - Computing/calculating values
+public int calculateTotalCount() { ... } // ✅
+public int countTotalTokens() { ... } // ✅  
+public boolean isValid() { ... } // ✅
+public boolean hasEnoughTokens() { ... } // ✅
+```
+
+### Recommended Verbs for Computed Values
+- **calculate** - for mathematical computations
+- **compute** - for algorithmic calculations  
+- **count** - for counting items
+- **determine** - for decision-making logic
+- **check** - for validation checks
+- **is/has** - for boolean conditions
+
+## File Creation Guidelines
+
+- **End of Line**: ALWAYS add a newline character at the end of every file to avoid "No newline at end of file" warnings
+- This applies to all file types: .sql, .java, .yml, .md, etc.
+
+## Code Formatting Guidelines
+
+- **Line Length**: Keep code lines under 120 characters. Do not break lines unless they exceed 120 characters
+- This ensures code consistency and prevents unnecessary line breaks that reduce readability

@@ -19,7 +19,8 @@
       "Bash(./init)",
       "Bash(./local-app-run.sh:*)",
       "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
-      "Read(/Users/minho/soma/samhap/kokomen-backend/**)"
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
+      "Bash(docker volume prune:*)"
     ],
     "deny": [],
     "ask": []

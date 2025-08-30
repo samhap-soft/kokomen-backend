@@ -3,7 +3,7 @@ package com.samhap.kokomen.token.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
-import com.samhap.kokomen.token.service.TokenPurchaseService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,14 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class TokenController {
 
-    private final TokenPurchaseService tokenPurchaseService;
+    private final TokenFacadeService tokenFacadeService;
 
     @PostMapping("/purchase")
     public ResponseEntity<Void> purchaseTokens(
             @Authentication MemberAuth memberAuth,
             @Valid @RequestBody TokenPurchaseRequest request
     ) {
-        tokenPurchaseService.purchaseTokens(memberAuth.memberId(), request);
+        tokenFacadeService.purchaseTokens(memberAuth.memberId(), request);
         return ResponseEntity.noContent().build();
     }
 }
