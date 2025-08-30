@@ -16,8 +16,10 @@ import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,8 @@ class TokenControllerTest extends BaseControllerTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenService tokenService;
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
 
     @Test
     void 토큰_구매_성공() throws Exception {
@@ -49,12 +53,8 @@ class TokenControllerTest extends BaseControllerTest {
                 "토큰 10개 구매",
                 metadata
         );
-
-        // PaymentClient mock - 결제 성공 시뮬레이션
         willDoNothing().given(paymentClient).confirmPayment(any());
-
-        // 구매 전 토큰 수 확인
-        long initialPaidTokens = tokenService.getPaidTokenCount(member.getId());
+        long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
 
         // when & then
         mockMvc.perform(post("/api/v1/tokens/purchase")
@@ -80,6 +80,7 @@ class TokenControllerTest extends BaseControllerTest {
                 ));
 
         // 유료 토큰 수 증가 확인
-        assertThat(tokenService.getPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens + 10);
+        assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens + 10);
+        assertThat(tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.REFUNDABLE)).isPresent();
     }
 }

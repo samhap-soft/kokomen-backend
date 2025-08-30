@@ -16,7 +16,7 @@ import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
-import com.samhap.kokomen.token.service.TokenService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class InterviewProceedService {
     private final InterviewService interviewService;
     private final AnswerService answerService;
     private final QuestionService questionService;
-    private final TokenService tokenService;
+    private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -41,7 +41,7 @@ public class InterviewProceedService {
             Long interviewId
     ) {
         Member member = memberService.readById(memberId);
-        tokenService.useToken(memberId);
+        tokenFacadeService.useToken(memberId);
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
@@ -60,7 +60,7 @@ public class InterviewProceedService {
             Long interviewId
     ) {
         Member member = memberService.readById(memberId);
-        tokenService.useToken(memberId);
+        tokenFacadeService.useToken(memberId);
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
             Question nextQuestion = saveNextQuestion(llmResponse, interview);

@@ -7,22 +7,26 @@ import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class TokenServiceTest extends BaseTest {
+class TokenFacadeServiceTest extends BaseTest {
 
     @Autowired
-    private TokenService tokenService;
+    private TokenFacadeService tokenFacadeService;
     @Autowired
     private TokenRepository tokenRepository;
     @Autowired
     private MemberRepository memberRepository;
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
 
     @Test
     void FREE_토큰이_있을_때_FREE_토큰을_사용한다() {
@@ -40,7 +44,7 @@ class TokenServiceTest extends BaseTest {
                 .build());
 
         // when
-        tokenService.useToken(member.getId());
+        tokenFacadeService.useToken(member.getId());
 
         // then
         Token updatedFreeToken = tokenRepository.findById(freeToken.getId()).get();
@@ -64,9 +68,10 @@ class TokenServiceTest extends BaseTest {
                 .type(TokenType.PAID)
                 .tokenCount(5)
                 .build());
+        tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder().memberId(member.getId()).build());
 
         // when
-        tokenService.useToken(member.getId());
+        tokenFacadeService.useToken(member.getId());
 
         // then
         Token updatedFreeToken = tokenRepository.findById(freeToken.getId()).get();
@@ -92,7 +97,7 @@ class TokenServiceTest extends BaseTest {
                 .build());
 
         // when & then
-        assertThatThrownBy(() -> tokenService.useToken(member.getId()))
+        assertThatThrownBy(() -> tokenFacadeService.useToken(member.getId()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("토큰을 이미 모두 소진하였습니다.");
     }

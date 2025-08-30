@@ -71,7 +71,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenService.createTokensForNewMember(member.getId());
-        int freeTokenCount = tokenService.getFreeTokenCount(member.getId());
+        int freeTokenCount = tokenService.readFreeTokenCount(member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().build());
@@ -99,7 +99,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         assertAll(
                 () -> assertThat(actual).contains(expected),
                 () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue(),
-                () -> assertThat(tokenService.getFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
+                () -> assertThat(tokenService.readFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
         );
     }
 
@@ -109,7 +109,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         AnswerRank answerRank = AnswerRank.B;
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenService.createTokensForNewMember(member.getId());
-        int freeTokenCount = tokenService.getFreeTokenCount(member.getId());
+        int freeTokenCount = tokenService.readFreeTokenCount(member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
@@ -142,7 +142,7 @@ class InterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalFeedback()).isEqualTo(totalFeedback),
                 () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalScore()).isEqualTo(answerRank.getScore() * 3),
                 () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(member.getScore() + answerRank.getScore() * 3),
-                () -> assertThat(tokenService.getFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
+                () -> assertThat(tokenService.readFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
         );
     }
 
