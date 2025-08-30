@@ -347,6 +347,30 @@ include::{snippetsDir}/token-purchase-success/request-fields.adoc[]
 include::{snippetsDir}/token-purchase-success/http-response.adoc[]
 include::{snippetsDir}/token-purchase-success/curl-request.adoc[]
 
+=== 토큰 환불
+
+include::{snippetsDir}/token-refund-success/http-request.adoc[]
+include::{snippetsDir}/token-refund-success/request-headers.adoc[]
+include::{snippetsDir}/token-refund-success/request-fields.adoc[]
+include::{snippetsDir}/token-refund-success/http-response.adoc[]
+include::{snippetsDir}/token-refund-success/curl-request.adoc[]
+
+==== 토큰 환불 - 환불 불가능한 상태
+
+include::{snippetsDir}/token-refund-fail-not-refundable/http-request.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/request-headers.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/request-fields.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/http-response.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/curl-request.adoc[]
+
+==== 토큰 환불 - 다른 사용자의 토큰 환불 시도
+
+include::{snippetsDir}/token-refund-fail-not-owner/http-request.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/request-headers.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/request-fields.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/http-response.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/curl-request.adoc[]
+
 == 어드민
 
 === 루트 질문 음성 등록

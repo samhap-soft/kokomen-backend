@@ -38,4 +38,15 @@ public class TokenPurchaseService {
 
         throw new BadRequestException("사용 가능한 유료 토큰이 없습니다.");
     }
+
+    @Transactional(readOnly = true)
+    public TokenPurchase readTokenPurchaseById(Long tokenPurchaseId) {
+        return tokenPurchaseRepository.findById(tokenPurchaseId)
+                .orElseThrow(() -> new BadRequestException("토큰 구매 내역을 찾을 수 없습니다."));
+    }
+
+    @Transactional
+    public void refundTokenPurchase(TokenPurchase tokenPurchase) {
+        tokenPurchase.refund();
+    }
 }

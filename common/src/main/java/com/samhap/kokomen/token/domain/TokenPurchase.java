@@ -111,4 +111,24 @@ public class TokenPurchase extends BaseEntity {
     public boolean hasRemainingTokens() {
         return remainingCount > 0;
     }
+
+    public void refund() {
+        if (!isRefundable()) {
+            throw new IllegalStateException("환불 불가능한 상태입니다.");
+        }
+        this.state = TokenPurchaseState.REFUNDED;
+        this.remainingCount = 0;
+    }
+
+    public boolean isNotRefundable() {
+        return !isRefundable();
+    }
+
+    public boolean isRefundable() {
+        return state == TokenPurchaseState.REFUNDABLE && count.equals(remainingCount);
+    }
+
+    public boolean isNotOwnedBy(Long memberId) {
+        return !this.memberId.equals(memberId);
+    }
 }

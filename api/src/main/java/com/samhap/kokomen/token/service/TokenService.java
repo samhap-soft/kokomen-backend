@@ -28,7 +28,7 @@ public class TokenService {
 
     @Transactional
     public void addPaidTokens(Long memberId, int count) {
-        int updatedRows = tokenRepository.incrementTokenCount(memberId, TokenType.PAID, count);
+        int updatedRows = tokenRepository.incrementTokenCountModifying(memberId, TokenType.PAID, count);
         if (updatedRows == 0) {
             throw new IllegalStateException("유료 토큰 구매에 실패했습니다. memberId: " + memberId);
         }
@@ -50,6 +50,14 @@ public class TokenService {
     public void usePaidToken(Long memberId) {
         Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
         paidToken.useToken();
+    }
+
+    @Transactional
+    public void refundPaidTokenCount(Long memberId, int count) {
+        int updatedRows = tokenRepository.decrementTokenCountModifying(memberId, TokenType.PAID, count);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("유료 토큰 환불에 실패했습니다. memberId: " + memberId);
+        }
     }
 
     public void validateEnoughTokens(Long memberId, int requiredCount) {
