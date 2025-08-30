@@ -4,9 +4,12 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,5 +51,13 @@ public class TokenPurchaseService {
     @Transactional
     public void refundTokenPurchase(TokenPurchase tokenPurchase) {
         tokenPurchase.refund();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TokenPurchase> findTokenPurchasesByMemberId(Long memberId, TokenPurchaseState state, Pageable pageable) {
+        if (state == null) {
+            return tokenPurchaseRepository.findByMemberId(memberId, pageable);
+        }
+        return tokenPurchaseRepository.findByMemberIdAndState(memberId, state, pageable);
     }
 }

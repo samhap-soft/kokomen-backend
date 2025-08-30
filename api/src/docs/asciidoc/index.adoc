@@ -371,6 +371,24 @@ include::{snippetsDir}/token-refund-fail-not-owner/request-fields.adoc[]
 include::{snippetsDir}/token-refund-fail-not-owner/http-response.adoc[]
 include::{snippetsDir}/token-refund-fail-not-owner/curl-request.adoc[]
 
+=== 내 토큰 구매 내역 조회
+
+include::{snippetsDir}/token-purchases-list/http-request.adoc[]
+include::{snippetsDir}/token-purchases-list/request-headers.adoc[]
+include::{snippetsDir}/token-purchases-list/query-parameters.adoc[]
+include::{snippetsDir}/token-purchases-list/http-response.adoc[]
+include::{snippetsDir}/token-purchases-list/response-fields.adoc[]
+include::{snippetsDir}/token-purchases-list/curl-request.adoc[]
+
+=== 내 토큰 구매 내역 조회 (필터링)
+
+include::{snippetsDir}/token-purchases-list-filtered/http-request.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/request-headers.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/query-parameters.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/http-response.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/response-fields.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/curl-request.adoc[]
+
 == 어드민
 
 === 루트 질문 음성 등록
