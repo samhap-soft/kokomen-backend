@@ -28,7 +28,7 @@ public class TokenController {
 
     private final TokenFacadeService tokenFacadeService;
 
-    @PostMapping("/purchase")
+    @PostMapping("/purchases")
     public ResponseEntity<Void> purchaseTokens(
             @Authentication MemberAuth memberAuth,
             @Valid @RequestBody TokenPurchaseRequest request
