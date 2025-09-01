@@ -10,8 +10,6 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-
-import org.springframework.restdocs.payload.JsonFieldType;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.restdocs.payload.JsonFieldType;
 
 class TokenControllerTest extends BaseControllerTest {
 
@@ -49,6 +48,47 @@ class TokenControllerTest extends BaseControllerTest {
     private TokenService tokenService;
     @Autowired
     private TokenPurchaseRepository tokenPurchaseRepository;
+
+    @Test
+    void 토큰_구매_중첩된_DTO_검증_실패() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String invalidRequestJson = """
+                {
+                    "payment_key": "payment-key-123",
+                    "order_id": "order-id-123",
+                    "total_amount": 1000,
+                    "order_name": "토큰 구매",
+                    "metadata": {
+                        "product_name": "",
+                        "count": -10,
+                        "unit_price": 0
+                    }
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/token-purchases")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidRequestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String response = result.getResponse().getContentAsString();
+
+                    // 중첩된 DTO 검증이 동작함을 증명
+                    // PurchaseMetadata의 필드 검증이 정상 동작
+                    assertThat(response).containsAnyOf(
+                            "product_name은 비어있거나 공백일 수 없습니다.",
+                            "count는 양수여야 합니다.",
+                            "unit_price는 양수여야 합니다."
+                    );
+                });
+    }
 
     @Test
     void 토큰_구매_성공() throws Exception {
@@ -409,7 +449,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                        .optional()
                         )
                 ));
 
@@ -458,7 +499,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                        .optional()
                         )
                 ));
     }
@@ -504,7 +546,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                        .optional()
                         )
                 ));
     }
