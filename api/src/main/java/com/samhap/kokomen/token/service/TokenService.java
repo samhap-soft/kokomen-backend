@@ -60,28 +60,33 @@ public class TokenService {
         }
     }
 
+    @Transactional(readOnly = true)
     public void validateEnoughTokens(Long memberId, int requiredCount) {
         if (!hasEnoughTokens(memberId, requiredCount)) {
             throw new BadRequestException("토큰 갯수가 부족합니다.");
         }
     }
 
+    @Transactional(readOnly = true)
     public boolean hasEnoughTokens(Long memberId, int requiredCount) {
         return calculateTotalTokenCount(memberId) >= requiredCount;
     }
 
-    public int calculateTotalTokenCount(Long memberId) {
+    private int calculateTotalTokenCount(Long memberId) {
         return readFreeTokenCount(memberId) + readPaidTokenCount(memberId);
     }
 
+    @Transactional(readOnly = true)
     public int readFreeTokenCount(Long memberId) {
         return readTokenByMemberIdAndType(memberId, TokenType.FREE).getTokenCount();
     }
 
+    @Transactional(readOnly = true)
     public int readPaidTokenCount(Long memberId) {
         return readTokenByMemberIdAndType(memberId, TokenType.PAID).getTokenCount();
     }
 
+    @Transactional(readOnly = true)
     public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
         return tokenRepository.findByMemberIdAndType(memberId, type)
                 .orElseThrow(() -> new IllegalStateException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
