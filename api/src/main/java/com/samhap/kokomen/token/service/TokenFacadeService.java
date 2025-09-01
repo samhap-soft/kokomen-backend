@@ -80,8 +80,7 @@ public class TokenFacadeService {
     }
 
     @Transactional
-    public void refundTokens(Long memberId, TokenRefundRequest tokenRefundRequest) {
-        Long tokenPurchaseId = tokenRefundRequest.tokenPurchaseId();
+    public void refundTokens(Long memberId, Long tokenPurchaseId, String reason) {
         TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);
 
         if (tokenPurchase.isNotOwnedBy(memberId)) {
@@ -98,7 +97,7 @@ public class TokenFacadeService {
         log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}",
                 memberId, tokenPurchaseId, paymentKey, refundTokenCount);
 
-        paymentClient.refundPayment(new RefundRequest(paymentKey, tokenRefundRequest.reason()));
+        paymentClient.refundPayment(new RefundRequest(paymentKey, reason));
 
         tokenPurchaseService.refundTokenPurchase(tokenPurchase);
         tokenService.refundPaidTokenCount(memberId, refundTokenCount);

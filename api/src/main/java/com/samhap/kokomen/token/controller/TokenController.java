@@ -15,6 +15,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,13 +24,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/tokens")
+@RequestMapping("/api/v1/token-purchases")
 @RestController
 public class TokenController {
 
     private final TokenFacadeService tokenFacadeService;
 
-    @PostMapping("/purchases")
+    @PostMapping
     public ResponseEntity<Void> purchaseTokens(
             @Authentication MemberAuth memberAuth,
             @Valid @RequestBody TokenPurchaseRequest request
@@ -37,7 +39,7 @@ public class TokenController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/purchases")
+    @GetMapping
     public ResponseEntity<List<TokenPurchaseResponse>> readMyTokenPurchases(
             @RequestParam(required = false) TokenPurchaseState state,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -47,12 +49,13 @@ public class TokenController {
         return ResponseEntity.ok(purchases);
     }
 
-    @PostMapping("/refund")
+    @PatchMapping("/{tokenPurchaseId}/refund")
     public ResponseEntity<Void> refundTokens(
+            @PathVariable Long tokenPurchaseId,
             @Authentication MemberAuth memberAuth,
             @Valid @RequestBody TokenRefundRequest request
     ) {
-        tokenFacadeService.refundTokens(memberAuth.memberId(), request);
+        tokenFacadeService.refundTokens(memberAuth.memberId(), tokenPurchaseId, request.reason());
         return ResponseEntity.noContent().build();
     }
 }
