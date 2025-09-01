@@ -6,7 +6,7 @@ CREATE TABLE token_purchase (
     total_amount BIGINT NOT NULL,
     order_name VARCHAR(255) NOT NULL,
     product_name VARCHAR(255) NOT NULL,
-    count INT NOT NULL,
+    purchase_count INT NOT NULL,
     unit_price BIGINT NOT NULL,
     remaining_count INTEGER NOT NULL,
     state ENUM('REFUNDABLE', 'USABLE', 'EXHAUSTED', 'REFUNDED') NOT NULL,

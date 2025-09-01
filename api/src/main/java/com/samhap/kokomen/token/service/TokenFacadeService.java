@@ -95,7 +95,7 @@ public class TokenFacadeService {
         RefundReasonCode refundReasonCode = request.refundReasonCode();
         refundReasonCode.validateRefundReasonText(request.refundReasonText());
 
-        int refundTokenCount = tokenPurchase.getCount();
+        int refundTokenCount = tokenPurchase.getPurchaseCount();
         String paymentKey = tokenPurchase.getPaymentKey();
 
         String refundReasonText = refundReasonCode.getRefundReason(request.refundReasonText());
