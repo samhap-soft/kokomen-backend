@@ -37,7 +37,7 @@ public class PaymentClient {
     public void refundPayment(RefundRequest refundRequest) {
         try {
             restClient.post()
-                    .uri("/internal/v1/payments/refund")
+                    .uri("/internal/v1/payments/cancel")
                     .body(refundRequest)
                     .retrieve()
                     .toBodilessEntity();
