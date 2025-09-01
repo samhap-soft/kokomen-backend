@@ -92,10 +92,12 @@ public class TokenFacadeService {
             throw new BadRequestException("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
         }
 
+        RefundReasonCode refundReasonCode = request.refundReasonCode();
+        refundReasonCode.validateRefundReasonText(request.refundReasonText());
+
         int refundTokenCount = tokenPurchase.getCount();
         String paymentKey = tokenPurchase.getPaymentKey();
 
-        RefundReasonCode refundReasonCode = request.refundReasonCode();
         String refundReasonText = refundReasonCode.getRefundReason(request.refundReasonText());
         log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
                 memberId, tokenPurchaseId, paymentKey, refundTokenCount, refundReasonCode, refundReasonText);
