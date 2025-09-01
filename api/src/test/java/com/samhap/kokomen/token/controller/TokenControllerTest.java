@@ -10,8 +10,10 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -65,7 +67,7 @@ class TokenControllerTest extends BaseControllerTest {
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
 
         // when & then
-        mockMvc.perform(post("/api/v1/tokens/purchase")
+        mockMvc.perform(post("/api/v1/token-purchases")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .header("Cookie", "JSESSIONID=" + session.getId())
@@ -90,139 +92,6 @@ class TokenControllerTest extends BaseControllerTest {
         // 유료 토큰 수 증가 확인
         assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens + 10);
         assertThat(tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.REFUNDABLE)).isPresent();
-    }
-
-    @Test
-    void 토큰_환불_성공() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenService.createTokensForNewMember(member.getId());
-
-        // 환불 가능한 토큰 구매 내역 생성 
-        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
-                TokenPurchaseFixtureBuilder.builder()
-                        .memberId(member.getId())
-                        .paymentKey("test-payment-key")
-                        .count(10)
-                        .remainingCount(10)
-                        .state(TokenPurchaseState.REFUNDABLE)
-                        .build()
-        );
-
-        // 유료 토큰 추가 (환불할 토큰이 있어야 함)
-        tokenService.addPaidTokens(member.getId(), 10);
-
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-
-        TokenRefundRequest request = new TokenRefundRequest(tokenPurchase.getId(), "단순 변심");
-        willDoNothing().given(paymentClient).refundPayment(any());
-
-        long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
-
-        // when & then
-        mockMvc.perform(post("/api/v1/tokens/refund")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session))
-                .andExpect(status().isNoContent())
-                .andDo(document("token-refund-success",
-                        requestHeaders(
-                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        requestFields(
-                                fieldWithPath("token_purchase_id").description("환불할 토큰 구매 내역의 ID"),
-                                fieldWithPath("reason").description("환불 사유")
-                        )
-                ));
-
-        // 환불 처리 확인
-        TokenPurchase refundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId()).get();
-        assertThat(refundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDED);
-        assertThat(refundedTokenPurchase.getRemainingCount()).isEqualTo(0);
-        assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens - 10);
-    }
-
-    @Test
-    void 환불_불가능한_상태_토큰_환불_실패() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenService.createTokensForNewMember(member.getId());
-
-        // 이미 사용된 토큰 구매 내역 생성 (환불 불가능)
-        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
-                TokenPurchaseFixtureBuilder.builder()
-                        .memberId(member.getId())
-                        .count(10)
-                        .remainingCount(5)  // 5개 사용됨
-                        .state(TokenPurchaseState.USABLE)
-                        .build()
-        );
-
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-
-        TokenRefundRequest request = new TokenRefundRequest(tokenPurchase.getId(), "단순 변심");
-
-        // when & then
-        mockMvc.perform(post("/api/v1/tokens/refund")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session))
-                .andExpect(status().isBadRequest())
-                .andDo(document("token-refund-fail-not-refundable",
-                        requestHeaders(
-                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        requestFields(
-                                fieldWithPath("token_purchase_id").description("환불할 토큰 구매 내역의 ID"),
-                                fieldWithPath("reason").description("환불 사유")
-                        )
-                ));
-    }
-
-    @Test
-    void 타인의_토큰_환불_실패() throws Exception {
-        // given
-        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1001L).build());
-        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1002L).build());
-        tokenService.createTokensForNewMember(member1.getId());
-        tokenService.createTokensForNewMember(member2.getId());
-
-        // member2의 토큰 구매 내역
-        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
-                TokenPurchaseFixtureBuilder.builder()
-                        .memberId(member2.getId())
-                        .count(10)
-                        .remainingCount(10)
-                        .state(TokenPurchaseState.REFUNDABLE)
-                        .build()
-        );
-
-        // member1로 로그인 시도
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member1.getId());
-
-        TokenRefundRequest request = new TokenRefundRequest(tokenPurchase.getId(), "단순 변심");
-
-        // when & then
-        mockMvc.perform(post("/api/v1/tokens/refund")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session))
-                .andExpect(status().isBadRequest())
-                .andDo(document("token-refund-fail-not-owner",
-                        requestHeaders(
-                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        requestFields(
-                                fieldWithPath("token_purchase_id").description("환불할 토큰 구매 내역의 ID"),
-                                fieldWithPath("reason").description("환불 사유")
-                        )
-                ));
     }
 
     @Test
@@ -284,7 +153,7 @@ class TokenControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/tokens/purchases")
+        mockMvc.perform(get("/api/v1/token-purchases")
                         .param("page", "0")
                         .param("size", "10")
                         .header("Cookie", "JSESSIONID=" + session.getId())
@@ -299,7 +168,8 @@ class TokenControllerTest extends BaseControllerTest {
                         queryParameters(
                                 parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
-                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional()
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
+                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
@@ -349,7 +219,7 @@ class TokenControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then - REFUNDABLE 상태만 조회
-        mockMvc.perform(get("/api/v1/tokens/purchases")
+        mockMvc.perform(get("/api/v1/token-purchases")
                         .param("state", "REFUNDABLE")
                         .param("page", "0")
                         .param("size", "10")
@@ -366,7 +236,8 @@ class TokenControllerTest extends BaseControllerTest {
                         queryParameters(
                                 parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
-                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional()
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
+                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
@@ -376,6 +247,227 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
                                 fieldWithPath("[].unit_price").description("토큰 단가")
+                        )
+                ));
+    }
+
+    @Test
+    void 내_토큰_구매_내역_페이지네이션_정렬_조회_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+
+        // EXHAUSTED 상태의 토큰 구매 내역 3개 생성 (totalAmount DESC 정렬 테스트용)
+        TokenPurchase purchase1 = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .totalAmount(300L) // 가장 높은 금액 (첫번째)
+                        .productName("token")
+                        .count(10)
+                        .remainingCount(0)
+                        .unitPrice(30L)
+                        .state(TokenPurchaseState.EXHAUSTED)
+                        .build()
+        );
+
+        TokenPurchase purchase2 = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .totalAmount(90L) // 가장 낮은 금액 (세번째)
+                        .productName("token")
+                        .count(3)
+                        .remainingCount(0)
+                        .unitPrice(30L)
+                        .state(TokenPurchaseState.EXHAUSTED)
+                        .build()
+        );
+
+        TokenPurchase purchase3 = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .totalAmount(150L) // 중간 금액 (두번째)
+                        .productName("token")
+                        .count(5)
+                        .remainingCount(0)
+                        .unitPrice(30L)
+                        .state(TokenPurchaseState.EXHAUSTED)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then - 여러 파라미터 조합으로 조회 (EXHAUSTED 상태, page=0, size=5, totalAmount DESC 정렬)
+        mockMvc.perform(get("/api/v1/token-purchases")
+                        .param("state", "EXHAUSTED")
+                        .param("page", "0")
+                        .param("size", "5")
+                        .param("sort", "totalAmount,desc")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].total_amount").value(300)) // 첫번째: 가장 높은 금액
+                .andExpect(jsonPath("$[1].total_amount").value(150)) // 두번째: 중간 금액
+                .andExpect(jsonPath("$[2].total_amount").value(90))  // 세번째: 가장 낮은 금액
+                .andDo(document("token-purchases-list-with-pagination-and-sorting",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("page").description("페이지 번호 (0부터 시작, 기본값: 0)").optional(),
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
+                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
+                        ),
+                        responseFields(
+                                fieldWithPath("[].id").description("토큰 구매 내역 ID"),
+                                fieldWithPath("[].total_amount").description("총 결제 금액"),
+                                fieldWithPath("[].product_name").description("상품명"),
+                                fieldWithPath("[].count").description("구매한 토큰 개수"),
+                                fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
+                                fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("[].unit_price").description("토큰 단가")
+                        )
+                ));
+    }
+
+    @Test
+    void 토큰_환불_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+
+        // 환불 가능한 토큰 구매 내역 생성
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .paymentKey("test-payment-key")
+                        .count(10)
+                        .remainingCount(10)
+                        .state(TokenPurchaseState.REFUNDABLE)
+                        .build()
+        );
+
+        // 유료 토큰 추가 (환불할 토큰이 있어야 함)
+        tokenService.addPaidTokens(member.getId(), 10);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+        willDoNothing().given(paymentClient).refundPayment(any());
+
+        long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isNoContent())
+                .andDo(document("token-refund-success",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
+                        ),
+                        requestFields(
+                                fieldWithPath("reason").description("환불 사유")
+                        )
+                ));
+
+        // 환불 처리 확인
+        TokenPurchase refundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId()).get();
+        assertThat(refundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDED);
+        assertThat(refundedTokenPurchase.getRemainingCount()).isEqualTo(0);
+        assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens - 10);
+    }
+
+    @Test
+    void 환불_불가능한_상태_토큰_환불_실패() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+
+        // 이미 사용된 토큰 구매 내역 생성 (환불 불가능)
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .count(10)
+                        .remainingCount(5)  // 5개 사용됨
+                        .state(TokenPurchaseState.USABLE)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isBadRequest())
+                .andDo(document("token-refund-fail-not-refundable",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
+                        ),
+                        requestFields(
+                                fieldWithPath("reason").description("환불 사유")
+                        )
+                ));
+    }
+
+    @Test
+    void 타인의_토큰_환불_실패() throws Exception {
+        // given
+        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1001L).build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1002L).build());
+        tokenService.createTokensForNewMember(member1.getId());
+        tokenService.createTokensForNewMember(member2.getId());
+
+        // member2의 토큰 구매 내역
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member2.getId())
+                        .count(10)
+                        .remainingCount(10)
+                        .state(TokenPurchaseState.REFUNDABLE)
+                        .build()
+        );
+
+        // member1로 로그인 시도
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member1.getId());
+
+        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isBadRequest())
+                .andDo(document("token-refund-fail-not-owner",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
+                        ),
+                        requestFields(
+                                fieldWithPath("reason").description("환불 사유")
                         )
                 ));
     }
