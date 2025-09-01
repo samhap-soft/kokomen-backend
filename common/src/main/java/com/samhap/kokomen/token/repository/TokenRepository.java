@@ -30,4 +30,12 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             AND t.tokenCount >= :count
             """)
     int decrementTokenCountModifying(@Param("memberId") Long memberId, @Param("type") TokenType type, @Param("count") int count);
+
+    @Modifying
+    @Query("""
+            UPDATE Token t 
+            SET t.tokenCount = :tokenCount 
+            WHERE t.type = :type
+            """)
+    int updateAllMembersFreeTokens(@Param("tokenCount") int tokenCount, @Param("type") TokenType type);
 }
