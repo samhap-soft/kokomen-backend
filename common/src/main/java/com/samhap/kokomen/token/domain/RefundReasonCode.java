@@ -1,5 +1,6 @@
 package com.samhap.kokomen.token.domain;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import lombok.Getter;
 
 @Getter
@@ -17,14 +18,26 @@ public enum RefundReasonCode {
         this.message = message;
     }
 
-    public boolean requiresReasonText() {
-        return this == OTHER;
-    }
-
     public String getRefundReason(String refundReasonText) {
         if (this == OTHER && refundReasonText != null && !refundReasonText.trim().isEmpty()) {
             return refundReasonText;
         }
         return this.message;
+    }
+
+    public void validateRefundReasonText(String refundReasonText) {
+        if (this == OTHER) {
+            if (refundReasonText == null || refundReasonText.trim().isEmpty()) {
+                throw new BadRequestException("OTHER 선택 시 환불 사유를 입력해야 합니다.");
+            }
+        }
+
+        if (refundReasonText != null && refundReasonText.length() > 200) {
+            throw new BadRequestException("환불 사유는 200자를 초과할 수 없습니다.");
+        }
+    }
+
+    public boolean requiresReasonText() {
+        return this == OTHER;
     }
 }
