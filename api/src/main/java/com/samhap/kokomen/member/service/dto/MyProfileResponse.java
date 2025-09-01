@@ -11,7 +11,7 @@ public record MyProfileResponse(
         Integer tokenCount,
         Boolean profileCompleted
 ) {
-    public MyProfileResponse(Member member, Long totalMemberCount, Long rank) {
-        this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, member.getFreeTokenCount(), member.getProfileCompleted());
+    public MyProfileResponse(Member member, Long totalMemberCount, Long rank, Integer totalTokenCount) {
+        this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, totalTokenCount, member.getProfileCompleted());
     }
 }

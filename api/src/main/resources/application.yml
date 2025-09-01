@@ -71,6 +71,8 @@ server:
         secure: true
 notification:
   base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
+payment:
+  base-url: http://kokomen-payment-local-internal:8080
 aws:
   root-question-s3-path: local/root-question-voice/
   next-question-s3-path: local/next-question-voice/
@@ -98,6 +100,8 @@ server:
         secure: false
 notification:
   base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
+payment:
+  base-url: http://kokomen-payment-dev-internal:8080
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
@@ -126,9 +130,8 @@ server:
 
 notification:
   base-url: ${NOTIFICATION_BASE_URL_PROD}
-  connect-timeout: 3s
-  read-timeout: 3s
-
+payment:
+  base-url: ${PAYMENT_BASE_URL_PROD}
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
@@ -156,9 +159,8 @@ server:
 
 notification:
   base-url: ${NOTIFICATION_BASE_URL_PROD}
-  connect-timeout: 3s
-  read-timeout: 3s
-
+payment:
+  base-url: ${PAYMENT_BASE_URL_LOAD_TEST}
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/

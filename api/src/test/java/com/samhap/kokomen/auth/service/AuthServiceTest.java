@@ -7,7 +7,6 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.MemberService;
-import com.samhap.kokomen.member.service.dto.MemberResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -25,9 +24,9 @@ class AuthServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(kakaoId).build());
 
         // when
-        MemberResponse memberResponse = memberService.findOrCreateByKakaoId(kakaoId, member.getNickname());
+        Member readMember = memberService.readByKakaoId(kakaoId);
 
         // then
-        assertThat(memberResponse.profileCompleted()).isFalse();
+        assertThat(readMember.getProfileCompleted()).isFalse();
     }
 }
