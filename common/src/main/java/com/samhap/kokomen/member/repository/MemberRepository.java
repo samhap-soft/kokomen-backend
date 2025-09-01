@@ -38,6 +38,4 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                 ORDER BY m.score DESC
             """, nativeQuery = true)
     List<RankingProjection> findRankings(@Param("limit") int limit, @Param("offset") int offset);
-
-    boolean existsByKakaoId(Long kakaoId);
 }

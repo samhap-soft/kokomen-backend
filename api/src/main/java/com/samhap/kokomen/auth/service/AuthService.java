@@ -20,17 +20,17 @@ public class AuthService {
     private final MemberService memberService;
     private final TokenService tokenService;
 
+    @Transactional
     public MemberResponse kakaoLogin(KakaoLoginRequest kakaoLoginRequest) {
         KakaoUserInfoResponse kakaoUserInfoResponse = kakaoOAuthClient.requestKakaoUserInfo(kakaoLoginRequest.code(), kakaoLoginRequest.redirectUri());
 
-        boolean existsByKakaoId = memberService.existsByKakaoId(kakaoUserInfoResponse.id());
-        if (existsByKakaoId) {
-            Member member = memberService.readByKakaoId(kakaoUserInfoResponse.id());
-            return new MemberResponse(member);
-        }
-        Member member = memberService.saveKakaoMember(kakaoUserInfoResponse.id(), kakaoUserInfoResponse.kakaoAccount().profile().nickname());
-        tokenService.createTokensForNewMember(member.getId());
-        return new MemberResponse(member);
+        return memberService.findByKakaoId(kakaoUserInfoResponse.id())
+                .map(MemberResponse::new)
+                .orElseGet(() -> {
+                    Member member = memberService.saveKakaoMember(kakaoUserInfoResponse.id(), kakaoUserInfoResponse.kakaoAccount().profile().nickname());
+                    tokenService.createTokensForNewMember(member.getId());
+                    return new MemberResponse(member);
+                });
     }
 
     @Transactional
