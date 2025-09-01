@@ -10,6 +10,8 @@ CREATE TABLE token_purchase (
     unit_price BIGINT NOT NULL,
     remaining_count INTEGER NOT NULL,
     state ENUM('REFUNDABLE', 'USABLE', 'EXHAUSTED', 'REFUNDED') NOT NULL,
+    refund_reason_code VARCHAR(50),
+    refund_reason_text TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

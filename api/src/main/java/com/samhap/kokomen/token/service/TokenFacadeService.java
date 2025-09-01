@@ -1,6 +1,7 @@
 package com.samhap.kokomen.token.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPrice;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
@@ -80,7 +81,7 @@ public class TokenFacadeService {
     }
 
     @Transactional
-    public void refundTokens(Long memberId, Long tokenPurchaseId, String reason) {
+    public void refundTokens(Long memberId, Long tokenPurchaseId, TokenRefundRequest request) {
         TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);
 
         if (tokenPurchase.isNotOwnedBy(memberId)) {
@@ -94,12 +95,14 @@ public class TokenFacadeService {
         int refundTokenCount = tokenPurchase.getCount();
         String paymentKey = tokenPurchase.getPaymentKey();
 
-        log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}",
-                memberId, tokenPurchaseId, paymentKey, refundTokenCount);
+        RefundReasonCode refundReasonCode = request.refundReasonCode();
+        String refundReasonText = refundReasonCode.getRefundReason(request.refundReasonText());
+        log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
+                memberId, tokenPurchaseId, paymentKey, refundTokenCount, refundReasonCode, refundReasonText);
 
-        paymentClient.refundPayment(new RefundRequest(paymentKey, reason));
+        paymentClient.refundPayment(new RefundRequest(paymentKey, refundReasonText));
 
-        tokenPurchaseService.refundTokenPurchase(tokenPurchase);
+        tokenPurchaseService.refundTokenPurchase(tokenPurchase, refundReasonCode, request.refundReasonText());
         tokenService.refundPaidTokenCount(memberId, refundTokenCount);
 
         log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId, refundTokenCount);

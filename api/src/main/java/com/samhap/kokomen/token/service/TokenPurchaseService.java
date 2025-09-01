@@ -1,6 +1,7 @@
 package com.samhap.kokomen.token.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
@@ -49,8 +50,8 @@ public class TokenPurchaseService {
     }
 
     @Transactional
-    public void refundTokenPurchase(TokenPurchase tokenPurchase) {
-        tokenPurchase.refund();
+    public void refundTokenPurchase(TokenPurchase tokenPurchase, RefundReasonCode refundReasonCode, String refundReasonText) {
+        tokenPurchase.refund(refundReasonCode, refundReasonText);
     }
 
     @Transactional(readOnly = true)
