@@ -9,7 +9,7 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.member.service.MemberService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class InterviewProceedBedrockFlowAsyncService {
 
     private final InterviewProceedService interviewProceedService;
     private final QuestionService questionService;
-    private final MemberService memberService;
+    private final TokenFacadeService tokenFacadeService;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
@@ -37,14 +37,14 @@ public class InterviewProceedBedrockFlowAsyncService {
     public InterviewProceedBedrockFlowAsyncService(
             InterviewProceedService interviewProceedService,
             QuestionService questionService,
-            MemberService memberService,
+            TokenFacadeService tokenFacadeService,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             RedisService redisService,
             @Qualifier("bedrockFlowCallbackExecutor")
             ThreadPoolTaskExecutor threadPoolTaskExecutor) {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
-        this.memberService = memberService;
+        this.tokenFacadeService = tokenFacadeService;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.redisService = redisService;
         this.executor = threadPoolTaskExecutor;
@@ -139,7 +139,7 @@ public class InterviewProceedBedrockFlowAsyncService {
     private void createNextQuestionTtsAndUploadToS3(Long memberId, String interviewProceedStateKey, InterviewProceedResult result) {
         try {
             questionService.createAndUploadQuestionVoice(result.getNextQuestion());
-            memberService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
+            tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
         } catch (Exception e) {
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(), Duration.ofSeconds(300));
             throw e;
