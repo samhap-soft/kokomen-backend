@@ -4,6 +4,7 @@ import com.samhap.kokomen.token.domain.TokenPurchase;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record TokenPurchaseRequest(
         @NotBlank(message = "payment_key는 비어있거나 공백일 수 없습니다.")
@@ -11,6 +12,7 @@ public record TokenPurchaseRequest(
         @NotBlank(message = "order_id는 비어있거나 공백일 수 없습니다.")
         String orderId,
         @NotNull(message = "total_amount는 null일 수 없습니다.")
+        @Positive(message = "total_amount는 양수여야 합니다.")
         Long totalAmount,
         @NotBlank(message = "order_name은 비어있거나 공백일 수 없습니다.")
         String orderName,
