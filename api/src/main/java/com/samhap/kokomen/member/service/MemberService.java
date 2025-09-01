@@ -35,12 +35,12 @@ public class MemberService {
 
     public Member readById(Long memberId) {
         return memberRepository.findById(memberId)
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다. memberId: " + memberId));
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
     public Member readByKakaoId(Long kakaoId) {
         return memberRepository.findById(kakaoId)
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다. kakaoId: " + kakaoId));
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
     public MyProfileResponse findMember(MemberAuth memberAuth) {
