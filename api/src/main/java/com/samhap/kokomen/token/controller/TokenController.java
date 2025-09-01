@@ -2,12 +2,15 @@ package com.samhap.kokomen.token.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import com.samhap.kokomen.token.dto.RefundReasonResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import jakarta.validation.Valid;
+import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -49,13 +52,21 @@ public class TokenController {
         return ResponseEntity.ok(purchases);
     }
 
+    @GetMapping("/refund-reasons")
+    public ResponseEntity<List<RefundReasonResponse>> getRefundReasons() {
+        List<RefundReasonResponse> refundReasons = Arrays.stream(RefundReasonCode.values())
+                .map(RefundReasonResponse::from)
+                .toList();
+        return ResponseEntity.ok(refundReasons);
+    }
+
     @PatchMapping("/{tokenPurchaseId}/refund")
     public ResponseEntity<Void> refundTokens(
             @PathVariable Long tokenPurchaseId,
             @Authentication MemberAuth memberAuth,
             @Valid @RequestBody TokenRefundRequest request
     ) {
-        tokenFacadeService.refundTokens(memberAuth.memberId(), tokenPurchaseId, request.reason());
+        tokenFacadeService.refundTokens(memberAuth.memberId(), tokenPurchaseId, request);
         return ResponseEntity.noContent().build();
     }
 }

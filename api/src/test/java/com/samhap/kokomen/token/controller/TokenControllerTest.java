@@ -10,6 +10,8 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+
+import org.springframework.restdocs.payload.JsonFieldType;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,6 +26,7 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
@@ -169,7 +172,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
-                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
+                                parameterWithName("sort").description(
+                                                "정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)")
+                                        .optional()
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
@@ -237,7 +242,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
-                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
+                                parameterWithName("sort").description(
+                                                "정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)")
+                                        .optional()
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
@@ -319,7 +326,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작, 기본값: 0)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
-                                parameterWithName("sort").description("정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)").optional()
+                                parameterWithName("sort").description(
+                                                "정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)")
+                                        .optional()
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
@@ -329,6 +338,28 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
                                 fieldWithPath("[].unit_price").description("토큰 단가")
+                        )
+                ));
+    }
+
+    @Test
+    void 환불_사유_조회_성공() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/token-purchases/refund-reasons"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(6))
+                .andExpect(jsonPath("$[0].code").value("CHANGE_OF_MIND"))
+                .andExpect(jsonPath("$[0].message").value("단순 변심"))
+                .andExpect(jsonPath("$[0].requires_reason_text").value(false))
+                .andExpect(jsonPath("$[5].code").value("OTHER"))
+                .andExpect(jsonPath("$[5].message").value("기타"))
+                .andExpect(jsonPath("$[5].requires_reason_text").value(true))
+                .andDo(document("refund-reasons-list",
+                        responseFields(
+                                fieldWithPath("[].code").description("환불 사유 코드"),
+                                fieldWithPath("[].message").description("환불 사유 메시지"),
+                                fieldWithPath("[].requires_reason_text").description("상세 사유 입력 필요 여부")
                         )
                 ));
     }
@@ -356,7 +387,7 @@ class TokenControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+        TokenRefundRequest request = new TokenRefundRequest(RefundReasonCode.CHANGE_OF_MIND, null);
         willDoNothing().given(paymentClient).refundPayment(any());
 
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
@@ -376,7 +407,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
                         ),
                         requestFields(
-                                fieldWithPath("reason").description("환불 사유")
+                                fieldWithPath("refund_reason_code").description(
+                                        "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
                         )
                 ));
 
@@ -406,7 +439,7 @@ class TokenControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+        TokenRefundRequest request = new TokenRefundRequest(RefundReasonCode.CHANGE_OF_MIND, null);
 
         // when & then
         mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
@@ -423,7 +456,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
                         ),
                         requestFields(
-                                fieldWithPath("reason").description("환불 사유")
+                                fieldWithPath("refund_reason_code").description(
+                                        "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
                         )
                 ));
     }
@@ -450,7 +485,7 @@ class TokenControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member1.getId());
 
-        TokenRefundRequest request = new TokenRefundRequest("단순 변심");
+        TokenRefundRequest request = new TokenRefundRequest(RefundReasonCode.CHANGE_OF_MIND, null);
 
         // when & then
         mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
@@ -467,7 +502,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 parameterWithName("tokenPurchaseId").description("환불할 토큰 구매 내역의 ID")
                         ),
                         requestFields(
-                                fieldWithPath("reason").description("환불 사유")
+                                fieldWithPath("refund_reason_code").description(
+                                        "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)").optional()
                         )
                 ));
     }

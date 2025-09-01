@@ -60,6 +60,13 @@ public class TokenPurchase extends BaseEntity {
     @Column(nullable = false)
     private Long unitPrice;
 
+    @Enumerated(EnumType.STRING)
+    @Column
+    private RefundReasonCode refundReasonCode;
+
+    @Column
+    private String refundReasonText;
+
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
@@ -112,12 +119,23 @@ public class TokenPurchase extends BaseEntity {
         return remainingCount > 0;
     }
 
-    public void refund() {
+    public void refund(RefundReasonCode refundReasonCode, String refundReasonText) {
         if (!isRefundable()) {
             throw new IllegalStateException("환불 불가능한 상태입니다.");
         }
+        
+        if (refundReasonCode == null) {
+            throw new IllegalArgumentException("환불 사유 코드는 필수입니다.");
+        }
+        
+        if (refundReasonCode.requiresReasonText() && (refundReasonText == null || refundReasonText.trim().isEmpty())) {
+            throw new IllegalArgumentException("기타 환불 사유일 때는 상세한 사유를 입력해야 합니다.");
+        }
+        
         this.state = TokenPurchaseState.REFUNDED;
         this.remainingCount = 0;
+        this.refundReasonCode = refundReasonCode;
+        this.refundReasonText = refundReasonText;
     }
 
     public boolean isNotRefundable() {
