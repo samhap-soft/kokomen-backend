@@ -48,7 +48,7 @@ public class TokenPurchase extends BaseEntity {
     private String productName;
 
     @Column(nullable = false)
-    private Integer count;
+    private Integer purchaseCount;
 
     @Column(nullable = false)
     private Integer remainingCount;
@@ -73,21 +73,21 @@ public class TokenPurchase extends BaseEntity {
 
     @Builder
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
-                         String orderName, String productName, Integer count, Long unitPrice) {
+                         String orderName, String productName, Integer purchaseCount, Long unitPrice) {
         this.memberId = memberId;
         this.paymentKey = paymentKey;
         this.orderId = orderId;
         this.totalAmount = totalAmount;
         this.orderName = orderName;
         this.productName = productName;
-        this.count = count;
-        this.remainingCount = count;
+        this.purchaseCount = purchaseCount;
+        this.remainingCount = purchaseCount;
         this.state = TokenPurchaseState.REFUNDABLE;
         this.unitPrice = unitPrice;
     }
 
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
-                         String orderName, String productName, Integer count, Long unitPrice,
+                         String orderName, String productName, Integer purchaseCount, Long unitPrice,
                          Integer remainingCount, TokenPurchaseState state) {
         this.memberId = memberId;
         this.paymentKey = paymentKey;
@@ -95,7 +95,7 @@ public class TokenPurchase extends BaseEntity {
         this.totalAmount = totalAmount;
         this.orderName = orderName;
         this.productName = productName;
-        this.count = count;
+        this.purchaseCount = purchaseCount;
         this.remainingCount = remainingCount;
         this.state = state;
         this.unitPrice = unitPrice;
@@ -123,15 +123,15 @@ public class TokenPurchase extends BaseEntity {
         if (!isRefundable()) {
             throw new IllegalStateException("환불 불가능한 상태입니다.");
         }
-        
+
         if (refundReasonCode == null) {
             throw new IllegalArgumentException("환불 사유 코드는 필수입니다.");
         }
-        
+
         if (refundReasonCode.requiresReasonText() && (refundReasonText == null || refundReasonText.trim().isEmpty())) {
             throw new IllegalArgumentException("기타 환불 사유일 때는 상세한 사유를 입력해야 합니다.");
         }
-        
+
         this.state = TokenPurchaseState.REFUNDED;
         this.remainingCount = 0;
         this.refundReasonCode = refundReasonCode;
@@ -143,7 +143,7 @@ public class TokenPurchase extends BaseEntity {
     }
 
     public boolean isRefundable() {
-        return state == TokenPurchaseState.REFUNDABLE && count.equals(remainingCount);
+        return state == TokenPurchaseState.REFUNDABLE && purchaseCount.equals(remainingCount);
     }
 
     public boolean isNotOwnedBy(Long memberId) {

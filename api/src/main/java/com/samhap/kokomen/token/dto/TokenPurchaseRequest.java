@@ -39,7 +39,7 @@ public record TokenPurchaseRequest(
                 .totalAmount(totalAmount)
                 .orderName(orderName)
                 .productName(metadata.productName())
-                .count(metadata.count())
+                .purchaseCount(metadata.count())
                 .unitPrice(metadata.unitPrice())
                 .build();
     }

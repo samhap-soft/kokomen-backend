@@ -16,7 +16,7 @@ public record TokenPurchaseResponse(
                 tokenPurchase.getId(),
                 tokenPurchase.getTotalAmount(),
                 tokenPurchase.getProductName(),
-                tokenPurchase.getCount(),
+                tokenPurchase.getPurchaseCount(),
                 tokenPurchase.getRemainingCount(),
                 tokenPurchase.getState().getDisplayMessage(),
                 tokenPurchase.getUnitPrice()

@@ -12,7 +12,7 @@ public class TokenPurchaseFixtureBuilder {
     private Long totalAmount;
     private String orderName;
     private String productName;
-    private Integer count;
+    private Integer purchaseCount;
     private Long unitPrice;
     private TokenPurchaseState state;
     private Integer remainingCount;
@@ -56,8 +56,13 @@ public class TokenPurchaseFixtureBuilder {
         return this;
     }
 
+    public TokenPurchaseFixtureBuilder purchaseCount(Integer purchaseCount) {
+        this.purchaseCount = purchaseCount;
+        return this;
+    }
+
     public TokenPurchaseFixtureBuilder count(Integer count) {
-        this.count = count;
+        this.purchaseCount = count;
         return this;
     }
 
@@ -84,9 +89,9 @@ public class TokenPurchaseFixtureBuilder {
                 totalAmount != null ? totalAmount : 1000L,
                 orderName != null ? orderName : "테스트 주문",
                 productName != null ? productName : "token",
-                count != null ? count : 10,
+                purchaseCount != null ? purchaseCount : 10,
                 unitPrice != null ? unitPrice : 100L,
-                remainingCount != null ? remainingCount : (count != null ? count : 10),
+                remainingCount != null ? remainingCount : (purchaseCount != null ? purchaseCount : 10),
                 state != null ? state : TokenPurchaseState.REFUNDABLE
         );
     }
