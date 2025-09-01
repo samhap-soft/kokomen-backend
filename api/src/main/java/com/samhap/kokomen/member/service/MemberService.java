@@ -13,6 +13,7 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.service.TokenService;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,18 +30,18 @@ public class MemberService {
         return memberRepository.save(new Member(kakaoId, nickname));
     }
 
-    public boolean existsByKakaoId(Long kakaoId) {
-        return memberRepository.existsByKakaoId(kakaoId);
-    }
-
     public Member readById(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
     public Member readByKakaoId(Long kakaoId) {
-        return memberRepository.findById(kakaoId)
+        return memberRepository.findByKakaoId(kakaoId)
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+    }
+
+    public Optional<Member> findByKakaoId(Long kakaoId) {
+        return memberRepository.findByKakaoId(kakaoId);
     }
 
     public MyProfileResponse findMember(MemberAuth memberAuth) {
