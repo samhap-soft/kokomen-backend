@@ -548,10 +548,10 @@ class InterviewControllerTest extends BaseControllerTest {
                 	}
                 ]
                 """.formatted(
-                finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory(),
+                finishedInterview.getId(), finishedInterview.getInterviewState(), finishedInterview.getRootQuestion().getCategory().getTitle(),
                 finishedInterview.getRootQuestion().getContent(), finishedInterview.getMaxQuestionCount(), 3, finishedInterview.getTotalScore(),
                 finishedInterview.getViewCount(),
-                inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory(),
+                inProgressInterview.getId(), inProgressInterview.getInterviewState(), inProgressInterview.getRootQuestion().getCategory().getTitle(),
                 inProgressInterview.getRootQuestion().getContent(), inProgressInterview.getMaxQuestionCount(), 0, inProgressInterview.getLikeCount()
         );
 
@@ -681,9 +681,9 @@ class InterviewControllerTest extends BaseControllerTest {
                     "total_page_count": 1
                 }
                 """.formatted(
-                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(), finishedInterview2.getRootQuestion().getContent(),
+                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory().getTitle(), finishedInterview2.getRootQuestion().getContent(),
                 finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(), finishedInterview2.getViewCount(),
-                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory(), finishedInterview1.getRootQuestion().getContent(),
+                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory().getTitle(), finishedInterview1.getRootQuestion().getContent(),
                 finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore(), finishedInterview1.getViewCount()
         );
 
@@ -808,9 +808,9 @@ class InterviewControllerTest extends BaseControllerTest {
                     "total_page_count": 1
                 }
                 """.formatted(
-                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory(), finishedInterview2.getRootQuestion().getContent(),
+                finishedInterview2.getId(), finishedInterview2.getRootQuestion().getCategory().getTitle(), finishedInterview2.getRootQuestion().getContent(),
                 finishedInterview2.getMaxQuestionCount(), finishedInterview2.getTotalScore(), finishedInterview2.getViewCount(),
-                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory(), finishedInterview1.getRootQuestion().getContent(),
+                finishedInterview1.getId(), finishedInterview1.getRootQuestion().getCategory().getTitle(), finishedInterview1.getRootQuestion().getContent(),
                 finishedInterview1.getMaxQuestionCount(), finishedInterview1.getTotalScore(), finishedInterview1.getViewCount());
 
         // when & then
