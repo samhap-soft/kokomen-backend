@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,9 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final TokenService tokenService;
+    
+    @Value("${spring.profiles.active:local}")
+    private String activeProfile;
 
     @Transactional
     public Member saveKakaoMember(Long kakaoId, String nickname) {
@@ -50,7 +54,8 @@ public class MemberService {
         long totalMemberCount = memberRepository.count();
         Token freeToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
         Token paidToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
-        return new MyProfileResponse(member, totalMemberCount, rank, freeToken.getTokenCount() + paidToken.getTokenCount());
+        boolean isTestUser = isTestUser(memberAuth.memberId());
+        return new MyProfileResponse(member, totalMemberCount, rank, freeToken.getTokenCount() + paidToken.getTokenCount(), isTestUser);
     }
 
     public MyProfileResponseV2 findMemberV2(MemberAuth memberAuth) {
@@ -77,5 +82,14 @@ public class MemberService {
     @Transactional
     public void withdraw(Member member) {
         member.withdraw();
+    }
+    
+    private boolean isTestUser(Long memberId) {
+        if ("dev".equals(activeProfile)) {
+            return memberId.equals(34L);
+        } else if ("prod".equals(activeProfile)) {
+            return memberId.equals(302L);
+        }
+        return false;
     }
 }
