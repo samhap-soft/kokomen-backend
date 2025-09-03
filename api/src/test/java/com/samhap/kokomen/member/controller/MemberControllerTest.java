@@ -220,7 +220,7 @@ class MemberControllerTest extends BaseControllerTest {
                 .interviewState(InterviewState.FINISHED)
                 .totalFeedback("피드백1")
                 .totalScore(85)
-                .finishedAt(LocalDateTime.of(2024, 1, 1, 10, 0))
+                .finishedAt(LocalDateTime.of(2024, 1, 1, 12, 0, 0))
                 .build());
         interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member)
@@ -228,7 +228,7 @@ class MemberControllerTest extends BaseControllerTest {
                 .interviewState(InterviewState.FINISHED)
                 .totalFeedback("피드백2")
                 .totalScore(90)
-                .finishedAt(LocalDateTime.of(2024, 1, 3, 15, 0))
+                .finishedAt(LocalDateTime.of(2024, 1, 3, 12, 0, 0))
                 .build());
 
         String responseJson = """
