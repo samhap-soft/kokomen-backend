@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.repository;
 
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.dto.DailyInterviewCount;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -41,4 +42,17 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
     @Query("SELECT i.rootQuestion.id FROM Interview i WHERE i.id = :interviewId")
     Long findRootQuestionIdByInterviewId(@Param("interviewId") Long interviewId);
+
+    @Query("""
+            SELECT new com.samhap.kokomen.interview.dto.DailyInterviewCount(
+                CAST(i.finishedAt AS LocalDate),
+                COUNT(i)
+            )
+            FROM Interview i
+            WHERE i.member.id = :memberId
+            AND i.interviewState = 'FINISHED'
+            GROUP BY CAST(i.finishedAt AS LocalDate)
+            ORDER BY CAST(i.finishedAt AS LocalDate)
+            """)
+    List<DailyInterviewCount> countFinishedInterviewsByMemberId(@Param("memberId") Long memberId);
 }
