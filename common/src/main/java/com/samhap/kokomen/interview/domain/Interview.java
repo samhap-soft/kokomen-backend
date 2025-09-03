@@ -15,6 +15,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -68,6 +69,9 @@ public class Interview extends BaseEntity {
     @Column(name = "view_count", nullable = false)
     private Long viewCount;
 
+    @Column(name = "finished_at")
+    private LocalDateTime finishedAt;
+
     public Interview(
             Long id,
             Member member,
@@ -78,7 +82,8 @@ public class Interview extends BaseEntity {
             String totalFeedback,
             Integer totalScore,
             Long likeCount,
-            Long viewCount
+            Long viewCount,
+            LocalDateTime finishedAt
     ) {
         validateMaxQuestionCount(maxQuestionCount);
         this.id = id;
@@ -91,10 +96,11 @@ public class Interview extends BaseEntity {
         this.totalScore = totalScore;
         this.likeCount = likeCount;
         this.viewCount = viewCount;
+        this.finishedAt = finishedAt;
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode, null, null, 0L, 0L);
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode, null, null, 0L, 0L, null);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
@@ -116,6 +122,7 @@ public class Interview extends BaseEntity {
             this.interviewState = InterviewState.FINISHED;
             this.totalFeedback = totalFeedback;
             this.totalScore = totalScore;
+            this.finishedAt = LocalDateTime.now();
             return;
         }
         throw new BadRequestException("이미 종료된 인터뷰입니다.");

@@ -42,7 +42,7 @@ public class MemberFixtureBuilder {
     public Member build() {
         return new Member(
                 id,
-                kakaoId != null ? kakaoId : 1L,
+                kakaoId != null ? kakaoId : System.nanoTime() + (long)(Math.random() * 1000),
                 nickname != null ? nickname : "오상훈",
                 score != null ? score : 0,
                 profileCompleted != null ? profileCompleted : false
