@@ -25,6 +25,7 @@ import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.service.TokenService;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -197,6 +198,77 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].nickname").description("회원 닉네임"),
                                 fieldWithPath("[].score").description("회원 점수"),
                                 fieldWithPath("[].finished_interview_count").description("회원의 완료한 인터뷰 수")
+                        )
+                ));
+    }
+
+    @Test
+    void 멤버_스트릭_조회에_성공한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        // 2024-01-01과 2024-01-03에 완료된 인터뷰 생성 (1일 건너뛰어서 연속성 테스트)
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalFeedback("피드백1")
+                .totalScore(85)
+                .finishedAt(LocalDateTime.of(2024, 1, 1, 10, 0))
+                .build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalFeedback("피드백2")
+                .totalScore(90)
+                .finishedAt(LocalDateTime.of(2024, 1, 3, 15, 0))
+                .build());
+
+        String responseJson = """
+                {
+                    "daily_counts": [
+                        {
+                            "date": "2024-01-01",
+                            "count": 1
+                        },
+                        {
+                            "date": "2024-01-03",
+                            "count": 1
+                        }
+                    ],
+                    "max_streak": 1,
+                    "current_streak": 0
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get("/api/v1/members/me/streaks")
+                        .param("start_date", "2024-01-01")
+                        .param("end_date", "2024-12-31")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("member-findMemberStreaks",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("start_date").description("조회 시작 날짜 (YYYY-MM-DD 형식)"),
+                                parameterWithName("end_date").description("조회 종료 날짜 (YYYY-MM-DD 형식)")
+                        ),
+                        responseFields(
+                                fieldWithPath("daily_counts").description("일별 인터뷰 완료 횟수 목록"),
+                                fieldWithPath("daily_counts[].date").description("날짜 (YYYY-MM-DD 형식)"),
+                                fieldWithPath("daily_counts[].count").description("해당 날짜의 완료된 인터뷰 수"),
+                                fieldWithPath("max_streak").description("최대 연속 스트릭 일수"),
+                                fieldWithPath("current_streak").description("현재 연속 스트릭 일수")
                         )
                 ));
     }
