@@ -11,9 +11,6 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     clean-disabled: true
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration
 
 management:
   endpoint:
