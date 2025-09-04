@@ -2,6 +2,7 @@ package com.samhap.kokomen.token.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
@@ -27,6 +28,8 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import com.samhap.kokomen.token.dto.PaymentResponse;
+import com.samhap.kokomen.token.dto.PaymentResponse.EasyPay;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
@@ -106,7 +109,7 @@ class TokenControllerTest extends BaseControllerTest {
                 "토큰 10개 구매",
                 metadata
         );
-        willDoNothing().given(paymentClient).confirmPayment(any());
+        given(paymentClient.confirmPayment(any())).willReturn(new PaymentResponse("간편결제", new EasyPay("카카오페이")));
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
 
         // when & then
@@ -135,6 +138,8 @@ class TokenControllerTest extends BaseControllerTest {
         // 유료 토큰 수 증가 확인
         assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens + 10);
         assertThat(tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.REFUNDABLE)).isPresent();
+        assertThat(tokenPurchaseRepository.findById(1L).get().getEasyPayProvider()).isEqualTo("카카오페이");
+        assertThat(tokenPurchaseRepository.findById(1L).get().getPaymentMethod()).isEqualTo("간편결제");
     }
 
     @Test
