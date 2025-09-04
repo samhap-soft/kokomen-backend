@@ -53,7 +53,7 @@ class TokenControllerTest extends BaseControllerTest {
     private TokenPurchaseRepository tokenPurchaseRepository;
 
     @Test
-    void 토큰_구매_중첩된_DTO_검증_실패() throws Exception {
+    void 토큰_구매_DTO_검증_실패() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
@@ -63,13 +63,9 @@ class TokenControllerTest extends BaseControllerTest {
                 {
                     "payment_key": "payment-key-123",
                     "order_id": "order-id-123",
-                    "total_amount": 1000,
-                    "order_name": "토큰 구매",
-                    "metadata": {
-                        "product_name": "",
-                        "count": -10,
-                        "unit_price": 0
-                    }
+                    "price": -1000,
+                    "order_name": "",
+                    "product_name": ""
                 }
                 """;
 
@@ -83,12 +79,11 @@ class TokenControllerTest extends BaseControllerTest {
                 .andExpect(result -> {
                     String response = result.getResponse().getContentAsString();
 
-                    // 중첩된 DTO 검증이 동작함을 증명
-                    // PurchaseMetadata의 필드 검증이 정상 동작
+                    // DTO 필드 검증이 정상 동작
                     assertThat(response).containsAnyOf(
                             "product_name은 비어있거나 공백일 수 없습니다.",
-                            "count는 양수여야 합니다.",
-                            "unit_price는 양수여야 합니다."
+                            "order_name은 비어있거나 공백일 수 없습니다.",
+                            "price는 양수여야 합니다."
                     );
                 });
     }
@@ -101,13 +96,12 @@ class TokenControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        PurchaseMetadata metadata = new PurchaseMetadata("token", 10, 30L);
         TokenPurchaseRequest request = new TokenPurchaseRequest(
                 "payment_key_123",
                 "order_123",
-                300L,
-                "토큰 10개 구매",
-                metadata
+                500L,
+                "토큰 10개",
+                "TOKEN_10"
         );
         given(paymentClient.confirmPayment(any())).willReturn(new PaymentResponse("간편결제", new EasyPay("카카오페이")));
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
@@ -126,12 +120,9 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("payment_key").description("토스페이먼츠 결제 키"),
                                 fieldWithPath("order_id").description("주문 ID"),
-                                fieldWithPath("total_amount").description("총 결제 금액"),
+                                fieldWithPath("price").description("결제 금액"),
                                 fieldWithPath("order_name").description("주문명"),
-                                fieldWithPath("metadata").description("구매 메타데이터"),
-                                fieldWithPath("metadata.product_name").description("상품명 (반드시 'token')"),
-                                fieldWithPath("metadata.count").description("구매할 토큰 개수"),
-                                fieldWithPath("metadata.unit_price").description("토큰 단가 (30원 고정)")
+                                fieldWithPath("product_name").description("상품명 (예: TOKEN_10)")
                         )
                 ));
 
