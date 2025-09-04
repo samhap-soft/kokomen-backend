@@ -16,6 +16,8 @@ public class TokenPurchaseFixtureBuilder {
     private Long unitPrice;
     private TokenPurchaseState state;
     private Integer remainingCount;
+    private String paymentMethod;
+    private String easyPayProvider;
 
     public static TokenPurchaseFixtureBuilder builder() {
         return new TokenPurchaseFixtureBuilder();
@@ -81,7 +83,20 @@ public class TokenPurchaseFixtureBuilder {
         return this;
     }
 
+    public TokenPurchaseFixtureBuilder paymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+        return this;
+    }
+
+    public TokenPurchaseFixtureBuilder easyPayProvider(String easyPayProvider) {
+        this.easyPayProvider = easyPayProvider;
+        return this;
+    }
+
     public TokenPurchase build() {
+        if ("간편결제".equals(paymentMethod) && easyPayProvider == null) {
+            easyPayProvider = "카카오페이";
+        }
         return new TokenPurchase(
                 memberId != null ? memberId : 1L,
                 paymentKey != null ? paymentKey : "test-payment-key-" + System.currentTimeMillis(),
@@ -92,7 +107,9 @@ public class TokenPurchaseFixtureBuilder {
                 purchaseCount != null ? purchaseCount : 10,
                 unitPrice != null ? unitPrice : 100L,
                 remainingCount != null ? remainingCount : (purchaseCount != null ? purchaseCount : 10),
-                state != null ? state : TokenPurchaseState.REFUNDABLE
+                state != null ? state : TokenPurchaseState.REFUNDABLE,
+                paymentMethod != null ? paymentMethod : "간편결제",
+                easyPayProvider
         );
     }
 }

@@ -158,6 +158,8 @@ class TokenControllerTest extends BaseControllerTest {
                         .remainingCount(5)
                         .unitPrice(30L)
                         .state(TokenPurchaseState.REFUNDABLE)
+                        .paymentMethod("간편결제")
+                        .easyPayProvider("카카오페이")
                         .build()
         );
 
@@ -170,6 +172,8 @@ class TokenControllerTest extends BaseControllerTest {
                         .remainingCount(8)
                         .unitPrice(30L)
                         .state(TokenPurchaseState.USABLE)
+                        .paymentMethod("간편결제")
+                        .easyPayProvider("카카오페이")
                         .build()
         );
 
@@ -182,6 +186,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .remainingCount(0)
                         .unitPrice(30L)
                         .state(TokenPurchaseState.EXHAUSTED)
+                        .paymentMethod("카드결제")
                         .build()
         );
 
@@ -194,6 +199,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .remainingCount(0)
                         .unitPrice(30L)
                         .state(TokenPurchaseState.REFUNDED)
+                        .paymentMethod("카드결제")
                         .build()
         );
 
@@ -228,7 +234,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가")
+                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
                 ));
     }
@@ -298,7 +306,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가")
+                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
                 ));
     }
@@ -382,7 +392,9 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가")
+                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
                 ));
     }

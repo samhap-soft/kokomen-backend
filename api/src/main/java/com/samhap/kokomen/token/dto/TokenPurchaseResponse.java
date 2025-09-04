@@ -9,7 +9,9 @@ public record TokenPurchaseResponse(
         Integer count,
         Integer remainingCount,
         String state,
-        Long unitPrice
+        Long unitPrice,
+        String paymentMethod,
+        String easyPayProvider
 ) {
     public static TokenPurchaseResponse from(TokenPurchase tokenPurchase) {
         return new TokenPurchaseResponse(
@@ -19,7 +21,9 @@ public record TokenPurchaseResponse(
                 tokenPurchase.getPurchaseCount(),
                 tokenPurchase.getRemainingCount(),
                 tokenPurchase.getState().getDisplayMessage(),
-                tokenPurchase.getUnitPrice()
+                tokenPurchase.getUnitPrice(),
+                tokenPurchase.getPaymentMethod(),
+                tokenPurchase.getEasyPayProvider()
         );
     }
 }

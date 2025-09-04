@@ -97,7 +97,7 @@ public class TokenPurchase extends BaseEntity {
 
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
                          String orderName, String productName, Integer purchaseCount, Long unitPrice,
-                         Integer remainingCount, TokenPurchaseState state) {
+                         Integer remainingCount, TokenPurchaseState state, String paymentMethod, String easyPayProvider) {
         this.memberId = memberId;
         this.paymentKey = paymentKey;
         this.orderId = orderId;
@@ -108,9 +108,8 @@ public class TokenPurchase extends BaseEntity {
         this.remainingCount = remainingCount;
         this.state = state;
         this.unitPrice = unitPrice;
-        // 기존 데이터 호환성을 위해 기본값 설정
-        this.paymentMethod = "Unknown";
-        this.easyPayProvider = null;
+        this.paymentMethod = paymentMethod;
+        this.easyPayProvider = easyPayProvider;
     }
 
     public void useToken() {
