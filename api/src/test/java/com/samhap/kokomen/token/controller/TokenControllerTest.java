@@ -25,12 +25,12 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.PaymentResponse;
 import com.samhap.kokomen.token.dto.PaymentResponse.EasyPay;
-import com.samhap.kokomen.token.dto.PurchaseMetadata;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
@@ -143,11 +143,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase refundable = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(150L)
-                        .productName("token")
-                        .count(5)
-                        .remainingCount(5)
-                        .unitPrice(30L)
+                        .totalAmount(TokenProduct.TOKEN_10.getPrice())
+                        .productName(TokenProduct.TOKEN_10.name())
+                        .count(TokenProduct.TOKEN_10.getTokenCount())
+                        .remainingCount(TokenProduct.TOKEN_10.getTokenCount())
+                        .unitPrice(TokenProduct.TOKEN_10.getUnitPrice())
                         .state(TokenPurchaseState.REFUNDABLE)
                         .paymentMethod("간편결제")
                         .easyPayProvider("카카오페이")
@@ -157,11 +157,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase usable = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(300L)
-                        .productName("token")
-                        .count(10)
-                        .remainingCount(8)
-                        .unitPrice(30L)
+                        .totalAmount(TokenProduct.TOKEN_20.getPrice())
+                        .productName(TokenProduct.TOKEN_20.name())
+                        .count(TokenProduct.TOKEN_20.getTokenCount())
+                        .remainingCount(TokenProduct.TOKEN_20.getTokenCount() - 2)
+                        .unitPrice(TokenProduct.TOKEN_20.getUnitPrice())
                         .state(TokenPurchaseState.USABLE)
                         .paymentMethod("간편결제")
                         .easyPayProvider("카카오페이")
@@ -171,11 +171,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase exhausted = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(150L)
-                        .productName("token")
-                        .count(5)
+                        .totalAmount(TokenProduct.TOKEN_50.getPrice())
+                        .productName(TokenProduct.TOKEN_50.name())
+                        .count(TokenProduct.TOKEN_50.getTokenCount())
                         .remainingCount(0)
-                        .unitPrice(30L)
+                        .unitPrice(TokenProduct.TOKEN_50.getUnitPrice())
                         .state(TokenPurchaseState.EXHAUSTED)
                         .paymentMethod("카드결제")
                         .build()
@@ -184,11 +184,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase refunded = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(150L)
-                        .productName("token")
-                        .count(5)
+                        .totalAmount(TokenProduct.TOKEN_100.getPrice())
+                        .productName(TokenProduct.TOKEN_100.name())
+                        .count(TokenProduct.TOKEN_100.getTokenCount())
                         .remainingCount(0)
-                        .unitPrice(30L)
+                        .unitPrice(TokenProduct.TOKEN_100.getUnitPrice())
                         .state(TokenPurchaseState.REFUNDED)
                         .paymentMethod("카드결제")
                         .build()
@@ -220,12 +220,12 @@ class TokenControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].total_amount").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명"),
+                                fieldWithPath("[].price").description("총 결제 금액"),
+                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
                                 fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
                                 fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
@@ -242,11 +242,11 @@ class TokenControllerTest extends BaseControllerTest {
         tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(150L)
-                        .productName("token")
-                        .count(5)
-                        .remainingCount(5)
-                        .unitPrice(30L)
+                        .totalAmount(TokenProduct.TOKEN_10.getPrice())
+                        .productName(TokenProduct.TOKEN_10.name())
+                        .count(TokenProduct.TOKEN_10.getTokenCount())
+                        .remainingCount(TokenProduct.TOKEN_10.getTokenCount())
+                        .unitPrice(TokenProduct.TOKEN_10.getUnitPrice())
                         .state(TokenPurchaseState.REFUNDABLE)
                         .build()
         );
@@ -255,11 +255,11 @@ class TokenControllerTest extends BaseControllerTest {
         tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(300L)
-                        .productName("token")
-                        .count(10)
-                        .remainingCount(8)
-                        .unitPrice(30L)
+                        .totalAmount(TokenProduct.TOKEN_20.getPrice())
+                        .productName(TokenProduct.TOKEN_20.name())
+                        .count(TokenProduct.TOKEN_20.getTokenCount())
+                        .remainingCount(TokenProduct.TOKEN_20.getTokenCount() - 2)
+                        .unitPrice(TokenProduct.TOKEN_20.getUnitPrice())
                         .state(TokenPurchaseState.USABLE)
                         .build()
         );
@@ -292,12 +292,12 @@ class TokenControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].total_amount").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명"),
+                                fieldWithPath("[].price").description("총 결제 금액"),
+                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
                                 fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
                                 fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
@@ -314,11 +314,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase purchase1 = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(300L) // 가장 높은 금액 (첫번째)
-                        .productName("token")
-                        .count(10)
+                        .totalAmount(TokenProduct.TOKEN_200.getPrice()) // 가장 높은 금액 (첫번째)
+                        .productName(TokenProduct.TOKEN_200.name())
+                        .count(TokenProduct.TOKEN_200.getTokenCount())
                         .remainingCount(0)
-                        .unitPrice(30L)
+                        .unitPrice(TokenProduct.TOKEN_200.getUnitPrice())
                         .state(TokenPurchaseState.EXHAUSTED)
                         .build()
         );
@@ -326,11 +326,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase purchase2 = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(90L) // 가장 낮은 금액 (세번째)
-                        .productName("token")
-                        .count(3)
+                        .totalAmount(TokenProduct.TOKEN_10.getPrice()) // 가장 낮은 금액 (세번째)
+                        .productName(TokenProduct.TOKEN_10.name())
+                        .count(TokenProduct.TOKEN_10.getTokenCount())
                         .remainingCount(0)
-                        .unitPrice(30L)
+                        .unitPrice(TokenProduct.TOKEN_10.getUnitPrice())
                         .state(TokenPurchaseState.EXHAUSTED)
                         .build()
         );
@@ -338,11 +338,11 @@ class TokenControllerTest extends BaseControllerTest {
         TokenPurchase purchase3 = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
-                        .totalAmount(150L) // 중간 금액 (두번째)
-                        .productName("token")
-                        .count(5)
+                        .totalAmount(TokenProduct.TOKEN_100.getPrice()) // 중간 금액 (두번째)
+                        .productName(TokenProduct.TOKEN_100.name())
+                        .count(TokenProduct.TOKEN_100.getTokenCount())
                         .remainingCount(0)
-                        .unitPrice(30L)
+                        .unitPrice(TokenProduct.TOKEN_100.getUnitPrice())
                         .state(TokenPurchaseState.EXHAUSTED)
                         .build()
         );
@@ -361,9 +361,9 @@ class TokenControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].total_amount").value(300)) // 첫번째: 가장 높은 금액
-                .andExpect(jsonPath("$[1].total_amount").value(150)) // 두번째: 중간 금액
-                .andExpect(jsonPath("$[2].total_amount").value(90))  // 세번째: 가장 낮은 금액
+                .andExpect(jsonPath("$[0].price").value(TokenProduct.TOKEN_200.getPrice())) // 첫번째: 가장 높은 금액
+                .andExpect(jsonPath("$[1].price").value(TokenProduct.TOKEN_100.getPrice())) // 두번째: 중간 금액
+                .andExpect(jsonPath("$[2].price").value(TokenProduct.TOKEN_10.getPrice()))  // 세번째: 가장 낮은 금액
                 .andDo(document("token-purchases-list-with-pagination-and-sorting",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -378,12 +378,12 @@ class TokenControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].total_amount").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명"),
+                                fieldWithPath("[].price").description("총 결제 금액"),
+                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
                                 fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].unit_price").description("토큰 단가"),
+                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
                                 fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
                                 fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
                         )
