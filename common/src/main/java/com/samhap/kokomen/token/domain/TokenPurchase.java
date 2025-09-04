@@ -67,13 +67,20 @@ public class TokenPurchase extends BaseEntity {
     @Column
     private String refundReasonText;
 
+    @Column(nullable = false)
+    private String paymentMethod;
+
+    @Column
+    private String easyPayProvider;
+
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Builder
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
-                         String orderName, String productName, Integer purchaseCount, Long unitPrice) {
+                         String orderName, String productName, Integer purchaseCount, Long unitPrice,
+                         String paymentMethod, String easyPayProvider) {
         this.memberId = memberId;
         this.paymentKey = paymentKey;
         this.orderId = orderId;
@@ -84,6 +91,8 @@ public class TokenPurchase extends BaseEntity {
         this.remainingCount = purchaseCount;
         this.state = TokenPurchaseState.REFUNDABLE;
         this.unitPrice = unitPrice;
+        this.paymentMethod = paymentMethod;
+        this.easyPayProvider = easyPayProvider;
     }
 
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
@@ -99,6 +108,9 @@ public class TokenPurchase extends BaseEntity {
         this.remainingCount = remainingCount;
         this.state = state;
         this.unitPrice = unitPrice;
+        // 기존 데이터 호환성을 위해 기본값 설정
+        this.paymentMethod = "Unknown";
+        this.easyPayProvider = null;
     }
 
     public void useToken() {

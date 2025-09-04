@@ -43,6 +43,23 @@ public record TokenPurchaseRequest(
                 .productName(metadata.productName())
                 .purchaseCount(metadata.count())
                 .unitPrice(metadata.unitPrice())
+                .paymentMethod("Unknown")
+                .easyPayProvider(null)
+                .build();
+    }
+
+    public TokenPurchase toTokenPurchase(Long memberId, PaymentResponse paymentResponse) {
+        return TokenPurchase.builder()
+                .memberId(memberId)
+                .paymentKey(paymentKey)
+                .orderId(orderId)
+                .totalAmount(totalAmount)
+                .orderName(orderName)
+                .productName(metadata.productName())
+                .purchaseCount(metadata.count())
+                .unitPrice(metadata.unitPrice())
+                .paymentMethod(paymentResponse.method())
+                .easyPayProvider(paymentResponse.easyPay() != null ? paymentResponse.easyPay().provider() : null)
                 .build();
     }
 }

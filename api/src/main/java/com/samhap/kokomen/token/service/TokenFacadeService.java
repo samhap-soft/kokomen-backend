@@ -5,6 +5,7 @@ import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPrice;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import com.samhap.kokomen.token.dto.PaymentResponse;
 import com.samhap.kokomen.token.dto.RefundRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
@@ -35,8 +36,8 @@ public class TokenFacadeService {
         validateTokenPrice(request);
         log.info("토큰 구매 요청 - memberId: {}, paymentKey: {}, tokenCount: {}, amount: {}", memberId, request.paymentKey(), tokenCount, totalAmount);
 
-        paymentClient.confirmPayment(request.toConfirmRequest(memberId));
-        tokenPurchaseService.saveTokenPurchase(request.toTokenPurchase(memberId));
+        PaymentResponse paymentResponse = paymentClient.confirmPayment(request.toConfirmRequest(memberId));
+        tokenPurchaseService.saveTokenPurchase(request.toTokenPurchase(memberId, paymentResponse));
         tokenService.addPaidTokens(memberId, tokenCount);
 
         log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);
