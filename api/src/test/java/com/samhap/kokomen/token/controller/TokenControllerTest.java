@@ -204,8 +204,9 @@ class TokenControllerTest extends BaseControllerTest {
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$.token_purchases").isArray())
+                .andExpect(jsonPath("$.token_purchases.length()").value(4))
+                .andExpect(jsonPath("$.total_page_count").value(1))
                 .andDo(document("token-purchases-list",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -219,15 +220,17 @@ class TokenControllerTest extends BaseControllerTest {
                                         .optional()
                         ),
                         responseFields(
-                                fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].price").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
-                                fieldWithPath("[].count").description("구매한 토큰 개수"),
-                                fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
-                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
+                                fieldWithPath("token_purchases").description("토큰 구매 내역 리스트"),
+                                fieldWithPath("token_purchases[].id").description("토큰 구매 내역 ID"),
+                                fieldWithPath("token_purchases[].price").description("총 결제 금액"),
+                                fieldWithPath("token_purchases[].order_name").description("상품 주문명 (예: 토큰 10개)"),
+                                fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
+                                fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
+                                fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
+                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
     }
@@ -275,9 +278,10 @@ class TokenControllerTest extends BaseControllerTest {
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].state").value("환불 가능"))
+                .andExpect(jsonPath("$.token_purchases").isArray())
+                .andExpect(jsonPath("$.token_purchases.length()").value(1))
+                .andExpect(jsonPath("$.token_purchases[0].state").value("환불 가능"))
+                .andExpect(jsonPath("$.total_page_count").value(1))
                 .andDo(document("token-purchases-list-filtered",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -291,15 +295,17 @@ class TokenControllerTest extends BaseControllerTest {
                                         .optional()
                         ),
                         responseFields(
-                                fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].price").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
-                                fieldWithPath("[].count").description("구매한 토큰 개수"),
-                                fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
-                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
+                                fieldWithPath("token_purchases").description("토큰 구매 내역 리스트"),
+                                fieldWithPath("token_purchases[].id").description("토큰 구매 내역 ID"),
+                                fieldWithPath("token_purchases[].price").description("총 결제 금액"),
+                                fieldWithPath("token_purchases[].order_name").description("상품 주문명 (예: 토큰 10개)"),
+                                fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
+                                fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
+                                fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
+                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
     }
@@ -359,11 +365,12 @@ class TokenControllerTest extends BaseControllerTest {
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].price").value(TokenProduct.TOKEN_200.getPrice())) // 첫번째: 가장 높은 금액
-                .andExpect(jsonPath("$[1].price").value(TokenProduct.TOKEN_100.getPrice())) // 두번째: 중간 금액
-                .andExpect(jsonPath("$[2].price").value(TokenProduct.TOKEN_10.getPrice()))  // 세번째: 가장 낮은 금액
+                .andExpect(jsonPath("$.token_purchases").isArray())
+                .andExpect(jsonPath("$.token_purchases.length()").value(3))
+                .andExpect(jsonPath("$.token_purchases[0].price").value(TokenProduct.TOKEN_200.getPrice())) // 첫번째: 가장 높은 금액
+                .andExpect(jsonPath("$.token_purchases[1].price").value(TokenProduct.TOKEN_100.getPrice())) // 두번째: 중간 금액
+                .andExpect(jsonPath("$.token_purchases[2].price").value(TokenProduct.TOKEN_10.getPrice()))  // 세번째: 가장 낮은 금액
+                .andExpect(jsonPath("$.total_page_count").value(1))
                 .andDo(document("token-purchases-list-with-pagination-and-sorting",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -377,17 +384,94 @@ class TokenControllerTest extends BaseControllerTest {
                                         .optional()
                         ),
                         responseFields(
-                                fieldWithPath("[].id").description("토큰 구매 내역 ID"),
-                                fieldWithPath("[].price").description("총 결제 금액"),
-                                fieldWithPath("[].product_name").description("상품명 (예: TOKEN_10)"),
-                                fieldWithPath("[].count").description("구매한 토큰 개수"),
-                                fieldWithPath("[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("[].order_name").description("상품 주문명 (예: 토큰 10개)"),
-                                fieldWithPath("[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional()
+                                fieldWithPath("token_purchases").description("토큰 구매 내역 리스트"),
+                                fieldWithPath("token_purchases[].id").description("토큰 구매 내역 ID"),
+                                fieldWithPath("token_purchases[].price").description("총 결제 금액"),
+                                fieldWithPath("token_purchases[].order_name").description("상품 주문명 (예: 토큰 10개)"),
+                                fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
+                                fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
+                                fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
+                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
+    }
+
+    @Test
+    void 내_토큰_구매_내역_여러_페이지_조회_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+
+        // 15개의 토큰 구매 내역 생성 (페이지 크기 10으로 나누면 2페이지)
+        for (int i = 0; i < 15; i++) {
+            tokenPurchaseRepository.save(
+                    TokenPurchaseFixtureBuilder.builder()
+                            .memberId(member.getId())
+                            .totalAmount(TokenProduct.TOKEN_10.getPrice())
+                            .productName(TokenProduct.TOKEN_10.name())
+                            .count(TokenProduct.TOKEN_10.getTokenCount())
+                            .remainingCount(TokenProduct.TOKEN_10.getTokenCount())
+                            .unitPrice(TokenProduct.TOKEN_10.getUnitPrice())
+                            .state(TokenPurchaseState.REFUNDABLE)
+                            .paymentMethod("간편결제")
+                            .easyPayProvider("카카오페이")
+                            .build()
+            );
+        }
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/token-purchases")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token_purchases").isArray())
+                .andExpect(jsonPath("$.token_purchases.length()").value(10)) // 첫 번째 페이지는 10개
+                .andExpect(jsonPath("$.total_page_count").value(2)) // 15개 데이터, 10개씩 → 2페이지
+                .andDo(document("token-purchases-multiple-pages",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
+                                parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
+                                parameterWithName("sort").description(
+                                                "정렬 기준 (필드명,방향). 사용 가능한 필드: id, totalAmount, count, remainingCount, unitPrice, createdAt, updatedAt. 방향: asc, desc. 예: id,desc, totalAmount,asc, createdAt,desc (기본값: id,desc)")
+                                        .optional()
+                        ),
+                        responseFields(
+                                fieldWithPath("token_purchases").description("토큰 구매 내역 리스트"),
+                                fieldWithPath("token_purchases[].id").description("토큰 구매 내역 ID"),
+                                fieldWithPath("token_purchases[].price").description("총 결제 금액"),
+                                fieldWithPath("token_purchases[].order_name").description("상품 주문명 (예: 토큰 10개)"),
+                                fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
+                                fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
+                                fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
+                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("total_page_count").description("전체 페이지 수 (이 예시에서는 15개 데이터를 10개씩 나누어 2페이지)")
+                        )
+                ));
+
+        // 두 번째 페이지도 확인
+        mockMvc.perform(get("/api/v1/token-purchases")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token_purchases").isArray())
+                .andExpect(jsonPath("$.token_purchases.length()").value(5)) // 두 번째 페이지는 5개
+                .andExpect(jsonPath("$.total_page_count").value(2)); // 여전히 2페이지
     }
 
     @Test
