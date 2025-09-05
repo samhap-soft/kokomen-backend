@@ -9,6 +9,7 @@ import com.samhap.kokomen.token.dto.PaymentResponse;
 import com.samhap.kokomen.token.dto.RefundRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
+import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.external.PaymentClient;
 import java.util.List;
@@ -113,10 +114,13 @@ public class TokenFacadeService {
     }
 
     @Transactional(readOnly = true)
-    public List<TokenPurchaseResponse> readMyTokenPurchases(Long memberId, TokenPurchaseState state, Pageable pageable) {
-        Page<TokenPurchase> tokenPurchases = tokenPurchaseService.findTokenPurchasesByMemberId(memberId, state, pageable);
-        return tokenPurchases.stream()
+    public TokenPurchaseResponses readMyTokenPurchases(Long memberId, TokenPurchaseState state, Pageable pageable) {
+        Page<TokenPurchase> tokenPurchasePage = tokenPurchaseService.findTokenPurchasesByMemberId(memberId, state, pageable);
+        List<TokenPurchaseResponse> tokenPurchases = tokenPurchasePage.stream()
                 .map(TokenPurchaseResponse::from)
                 .toList();
+        
+        long totalPageCount = tokenPurchasePage.getTotalPages();
+        return TokenPurchaseResponses.from(tokenPurchases, totalPageCount);
     }
 }
