@@ -2,7 +2,7 @@ name: CD CONSUMER DEV
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop-disabled-temporarily ]  # 임시로 비활성화
 
 jobs:
   detect-changes:

@@ -7,6 +7,7 @@ import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.RefundReasonResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
+import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import jakarta.validation.Valid;
@@ -43,12 +44,12 @@ public class TokenController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TokenPurchaseResponse>> readMyTokenPurchases(
+    public ResponseEntity<TokenPurchaseResponses> readMyTokenPurchases(
             @RequestParam(required = false) TokenPurchaseState state,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication MemberAuth memberAuth
     ) {
-        List<TokenPurchaseResponse> purchases = tokenFacadeService.readMyTokenPurchases(memberAuth.memberId(), state, pageable);
+        TokenPurchaseResponses purchases = tokenFacadeService.readMyTokenPurchases(memberAuth.memberId(), state, pageable);
         return ResponseEntity.ok(purchases);
     }
 
