@@ -3,6 +3,7 @@ package com.samhap.kokomen.token.external;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.InternalApiException;
 import com.samhap.kokomen.token.dto.ConfirmRequest;
+import com.samhap.kokomen.token.dto.PaymentResponse;
 import com.samhap.kokomen.token.dto.RefundRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,13 +21,13 @@ public class PaymentClient {
         this.restClient = paymentClientBuilder.getPaymentClientBuilder().build();
     }
 
-    public void confirmPayment(ConfirmRequest confirmRequest) {
+    public PaymentResponse confirmPayment(ConfirmRequest confirmRequest) {
         try {
-            restClient.post()
+            return restClient.post()
                     .uri("/internal/v1/payments/confirm")
                     .body(confirmRequest)
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(PaymentResponse.class);
         } catch (RestClientResponseException e) {
             throw new InternalApiException("Payment API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
         } catch (Exception e) {
