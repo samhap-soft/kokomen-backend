@@ -2,7 +2,7 @@ name: CD CONSUMER LOAD TEST
 
 on:
   pull_request:
-    branches: [ likecount-load-test ]
+    branches: [ likecount-load-test-disabled-temporarily ]
 
 jobs:
   detect-changes:
