@@ -26,7 +26,9 @@
       "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/repository/**)",
       "Read(/Users/nak/Desktop/pr/kokomen-backend/consumer/src/main/java/com/samhap/kokomen/interview/domain/**)",
       "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/dto/**)",
-      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/domain/**)"
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/domain/**)",
+      "Bash(curl:*)",
+      "Bash(../gradlew test)"
     ],
     "deny": [],
     "ask": []
