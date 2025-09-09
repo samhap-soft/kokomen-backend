@@ -1,6 +1,7 @@
 package com.samhap.kokomen.global;
 
 
+import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
@@ -41,6 +42,8 @@ public abstract class BaseTest {
     protected BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     @MockitoBean
     protected KakaoOAuthClient kakaoOAuthClient;
+    @MockitoBean
+    protected GoogleOAuthClient googleOAuthClient;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @Autowired

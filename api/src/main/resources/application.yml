@@ -62,6 +62,9 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID}
     client-secret: ${KAKAO_CLIENT_SECRET}
     admin-key: ${KAKAO_ADMIN_KEY}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
 cors:
   allowed-origins: http://localhost:8080
 server:
@@ -90,6 +93,9 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_DEV}
     client-secret: ${KAKAO_CLIENT_SECRET_DEV}
     admin-key: ${KAKAO_ADMIN_KEY_DEV}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID_DEV}
+    client-secret: ${GOOGLE_CLIENT_SECRET_DEV}
 cors:
   allowed-origins: https://dev.kokomen.kr, https://kokomen.kr:3000, https://local.kokomen.kr:3000, http://local.kokomen.kr:3000, https://www.webview-dev.kokomen.kr, https://webview-dev.kokomen.kr
 server:
@@ -119,6 +125,9 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_PROD}
     client-secret: ${KAKAO_CLIENT_SECRET_PROD}
     admin-key: ${KAKAO_ADMIN_KEY_PROD}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID_PROD}
+    client-secret: ${GOOGLE_CLIENT_SECRET_PROD}
 cors:
   allowed-origins: https://kokomen.kr, https://www.kokomen.kr
 server:
@@ -148,6 +157,9 @@ oauth:
     client-id: ${KAKAO_CLIENT_ID_PROD}
     client-secret: ${KAKAO_CLIENT_SECRET_PROD}
     admin-key: ${KAKAO_ADMIN_KEY_PROD}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID_PROD}
+    client-secret: ${GOOGLE_CLIENT_SECRET_PROD}
 cors:
   allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
 server:

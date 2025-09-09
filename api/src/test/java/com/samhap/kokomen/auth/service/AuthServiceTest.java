@@ -35,4 +35,18 @@ class AuthServiceTest extends BaseTest {
         // then
         assertThat(readMember.getProfileCompleted()).isFalse();
     }
+
+    @Test
+    void 구글_소셜로그인_회원도_프로필_완성을_못했다면_profileCompleted가_false이다() {
+        // given
+        String googleId = "123456789";
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        memberSocialLoginRepository.save(new MemberSocialLogin(member, SocialProvider.GOOGLE, googleId));
+
+        // when
+        Member readMember = memberService.readBySocialLogin(SocialProvider.GOOGLE, googleId);
+
+        // then
+        assertThat(readMember.getProfileCompleted()).isFalse();
+    }
 }
