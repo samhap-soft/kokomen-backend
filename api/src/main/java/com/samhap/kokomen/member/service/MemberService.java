@@ -5,7 +5,10 @@ import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.dto.DailyInterviewCount;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.domain.MemberSocialLogin;
+import com.samhap.kokomen.member.domain.SocialProvider;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponseV2;
@@ -31,6 +34,7 @@ import org.springframework.stereotype.Service;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final MemberSocialLoginRepository memberSocialLoginRepository;
     private final TokenService tokenService;
     private final InterviewRepository interviewRepository;
 
@@ -38,8 +42,10 @@ public class MemberService {
     private String activeProfile;
 
     @Transactional
-    public Member saveKakaoMember(Long kakaoId, String nickname) {
-        return memberRepository.save(new Member(kakaoId, nickname));
+    public Member saveSocialMember(SocialProvider provider, String socialId, String nickname) {
+        Member member = memberRepository.save(new Member(nickname));
+        memberSocialLoginRepository.save(new MemberSocialLogin(member, provider, socialId));
+        return member;
     }
 
     public Member readById(Long memberId) {
@@ -47,13 +53,15 @@ public class MemberService {
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
-    public Member readByKakaoId(Long kakaoId) {
-        return memberRepository.findByKakaoId(kakaoId)
+    public Member readBySocialLogin(SocialProvider provider, String socialId) {
+        MemberSocialLogin socialLogin = memberSocialLoginRepository.findByProviderAndSocialId(provider, socialId)
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+        return socialLogin.getMember();
     }
 
-    public Optional<Member> findByKakaoId(Long kakaoId) {
-        return memberRepository.findByKakaoId(kakaoId);
+    public Optional<Member> findBySocialLogin(SocialProvider provider, String socialId) {
+        return memberSocialLoginRepository.findByProviderAndSocialId(provider, socialId)
+                .map(MemberSocialLogin::getMember);
     }
 
     public MyProfileResponse findMember(MemberAuth memberAuth) {
@@ -89,6 +97,10 @@ public class MemberService {
 
     @Transactional
     public void withdraw(Member member) {
+        // 소셜로그인 정보들을 먼저 삭제
+        List<MemberSocialLogin> socialLogins = memberSocialLoginRepository.findByMember_Id(member.getId());
+        memberSocialLoginRepository.deleteAll(socialLogins);
+        // Member 엔티티 탈퇴 처리
         member.withdraw();
     }
 
