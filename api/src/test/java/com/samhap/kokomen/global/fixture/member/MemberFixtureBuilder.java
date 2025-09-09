@@ -1,6 +1,10 @@
 package com.samhap.kokomen.global.fixture.member;
 
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.domain.MemberSocialLogin;
+import com.samhap.kokomen.member.domain.SocialProvider;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemberFixtureBuilder {
 
@@ -19,6 +23,7 @@ public class MemberFixtureBuilder {
         return this;
     }
 
+    @Deprecated
     public MemberFixtureBuilder kakaoId(Long kakaoId) {
         this.kakaoId = kakaoId;
         return this;
@@ -42,7 +47,6 @@ public class MemberFixtureBuilder {
     public Member build() {
         return new Member(
                 id,
-                kakaoId != null ? kakaoId : System.nanoTime() + (long)(Math.random() * 1000),
                 nickname != null ? nickname : "오상훈",
                 score != null ? score : 0,
                 profileCompleted != null ? profileCompleted : false

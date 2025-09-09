@@ -27,7 +27,11 @@ import com.samhap.kokomen.auth.external.dto.Profile;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.domain.MemberSocialLogin;
+import com.samhap.kokomen.member.domain.SocialProvider;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
+import java.util.List;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
@@ -41,6 +45,8 @@ class AuthControllerTest extends BaseControllerTest {
     private String clientId;
     @Autowired
     private MemberRepository memberRepository;
+    @Autowired
+    private MemberSocialLoginRepository memberSocialLoginRepository;
 
     @Test
     void 카카오_로그인_페이지로_리다이렉트한다() throws Exception {
@@ -118,10 +124,14 @@ class AuthControllerTest extends BaseControllerTest {
     void 회원_탈퇴_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Long kakaoId = 12345L;
+        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
+        
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        when(kakaoOAuthClient.unlinkKakaoUser(member.getKakaoId())).thenReturn(new KakaoIdResponse(member.getKakaoId()));
+        when(kakaoOAuthClient.unlinkKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
 
         // when & then
         mockMvc.perform(delete("/api/v1/auth/kakao-withdraw")
@@ -140,10 +150,14 @@ class AuthControllerTest extends BaseControllerTest {
     void 회원_로그아웃_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Long kakaoId = 12345L;
+        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
+        
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        when(kakaoOAuthClient.logoutKakaoUser(member.getKakaoId())).thenReturn(new KakaoIdResponse(member.getKakaoId()));
+        when(kakaoOAuthClient.logoutKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
 
         // when & then
         mockMvc.perform(post("/api/v1/auth/kakao-logout")
