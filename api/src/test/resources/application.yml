@@ -20,6 +20,9 @@ oauth:
   kakao:
     client-id: test_client_id
     client-secret: test_client_secret
+  google:
+    client-id: test_google_client_id
+    client-secret: test_google_client_secret
 
 notification:
   base-url: http://kokomen-notification-test

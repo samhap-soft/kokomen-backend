@@ -1,7 +1,10 @@
 package com.samhap.kokomen.auth.service;
 
+import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
+import com.samhap.kokomen.auth.external.dto.GoogleUserInfoResponse;
 import com.samhap.kokomen.auth.external.dto.KakaoUserInfoResponse;
+import com.samhap.kokomen.auth.service.dto.GoogleLoginRequest;
 import com.samhap.kokomen.auth.service.dto.KakaoLoginRequest;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.domain.Member;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final GoogleOAuthClient googleOAuthClient;
     private final MemberService memberService;
     private final MemberSocialLoginRepository memberSocialLoginRepository;
     private final TokenService tokenService;
@@ -32,6 +36,20 @@ public class AuthService {
                 .orElseGet(() -> {
                     Member member = memberService.saveSocialMember(SocialProvider.KAKAO, String.valueOf(kakaoUserInfoResponse.id()),
                             kakaoUserInfoResponse.kakaoAccount().profile().nickname());
+                    tokenService.createTokensForNewMember(member.getId());
+                    return new MemberResponse(member);
+                });
+    }
+
+    @Transactional
+    public MemberResponse googleLogin(GoogleLoginRequest googleLoginRequest) {
+        GoogleUserInfoResponse googleUserInfoResponse = googleOAuthClient.requestGoogleUserInfo(googleLoginRequest.code(), googleLoginRequest.redirectUri());
+
+        return memberService.findBySocialLogin(SocialProvider.GOOGLE, googleUserInfoResponse.id())
+                .map(MemberResponse::new)
+                .orElseGet(() -> {
+                    Member member = memberService.saveSocialMember(SocialProvider.GOOGLE, googleUserInfoResponse.id(),
+                            googleUserInfoResponse.name());
                     tokenService.createTokensForNewMember(member.getId());
                     return new MemberResponse(member);
                 });
