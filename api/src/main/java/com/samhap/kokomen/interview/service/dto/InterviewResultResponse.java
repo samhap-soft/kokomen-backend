@@ -21,13 +21,15 @@ public record InterviewResultResponse(
         Long intervieweeRank,
         Integer userCurScore,
         Integer userPrevScore,
-        InterviewMode interviewMode
+        InterviewMode interviewMode,
+        List<RootQuestionReferenceAnswer> rootQuestionReferenceAnswers
 ) {
 
     public static InterviewResultResponse createMine(
             List<FeedbackResponse> feedbacks,
             Interview interview,
-            Member member
+            Member member,
+            List<RootQuestionReferenceAnswer> rootQuestionReferenceAnswers
     ) {
         return new InterviewResultResponse(
                 feedbacks,
@@ -41,7 +43,8 @@ public record InterviewResultResponse(
                 null,
                 member.getScore(),
                 member.getScore() - interview.getTotalScore(),
-                interview.getInterviewMode()
+                interview.getInterviewMode(),
+                rootQuestionReferenceAnswers
         );
     }
 
@@ -72,7 +75,8 @@ public record InterviewResultResponse(
                 intervieweeRank,
                 null,
                 null,
-                interview.getInterviewMode()
+                interview.getInterviewMode(),
+                null
         );
     }
 
@@ -101,7 +105,8 @@ public record InterviewResultResponse(
                 intervieweeRank,
                 null,
                 null,
-                interview.getInterviewMode()
+                interview.getInterviewMode(),
+                null
         );
     }
 }

@@ -67,7 +67,7 @@ class AnswerControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
 
         // when & then
         mockMvc.perform(post("/api/v1/answers/{answer_id}/like", answer.getId())
@@ -99,7 +99,7 @@ class AnswerControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
 
         String requestBody = """
                 {
@@ -142,7 +142,7 @@ class AnswerControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
         AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());
 
         String requestBody = """
@@ -185,7 +185,7 @@ class AnswerControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(1).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(1L).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer).member(member).build());
 
         // when & then
@@ -218,7 +218,7 @@ class AnswerControllerTest extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0).build());
+        Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
         AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());
 
         // when & then
