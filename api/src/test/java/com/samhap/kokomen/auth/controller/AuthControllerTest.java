@@ -249,4 +249,104 @@ class AuthControllerTest extends BaseControllerTest {
                         )
                 ));
     }
+
+    @Test
+    void 통합_회원_탈퇴_성공_카카오() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Long kakaoId = 12345L;
+        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
+        
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        when(kakaoOAuthClient.unlinkKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/auth/withdraw")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-withdraw",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 통합_회원_탈퇴_성공_구글() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        String googleId = "123456789";
+        MemberSocialLogin googleSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.GOOGLE, googleId));
+        
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/auth/withdraw")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-withdraw-google",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 통합_회원_로그아웃_성공_카카오() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Long kakaoId = 12345L;
+        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
+        
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        when(kakaoOAuthClient.logoutKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-logout",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 통합_회원_로그아웃_성공_구글() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        String googleId = "123456789";
+        MemberSocialLogin googleSocialLogin = memberSocialLoginRepository.save(
+                new MemberSocialLogin(member, SocialProvider.GOOGLE, googleId));
+        
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .session(session)
+                        .cookie(new Cookie("JSESSIONID", session.getId())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andDo(document("auth-logout-google",
+                        requestCookies(
+                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
 }
