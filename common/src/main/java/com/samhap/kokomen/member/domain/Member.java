@@ -27,9 +27,6 @@ public class Member extends BaseEntity {
     @Id
     private Long id;
 
-    @Column(name = "kakao_id", unique = true)
-    private Long kakaoId;
-
     @Column(name = "nickname", length = 255)
     private String nickname;
 
@@ -39,8 +36,7 @@ public class Member extends BaseEntity {
     @Column(name = "profile_completed", nullable = false)
     private Boolean profileCompleted;
 
-    public Member(Long kakaoId, String nickname) {
-        this.kakaoId = kakaoId;
+    public Member(String nickname) {
         this.nickname = nickname;
         this.score = 0;
         this.profileCompleted = false;
@@ -60,7 +56,6 @@ public class Member extends BaseEntity {
     }
 
     public void withdraw() {
-        this.kakaoId = null;
         this.nickname = null;
         this.score = 0;
     }
