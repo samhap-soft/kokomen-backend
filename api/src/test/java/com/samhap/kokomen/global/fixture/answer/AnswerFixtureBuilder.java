@@ -12,7 +12,7 @@ public class AnswerFixtureBuilder {
     private String content;
     private AnswerRank answerRank;
     private String feedback;
-    private Integer likeCount;
+    private Long likeCount;
 
     public static AnswerFixtureBuilder builder() {
         return new AnswerFixtureBuilder();
@@ -43,7 +43,7 @@ public class AnswerFixtureBuilder {
         return this;
     }
 
-    public AnswerFixtureBuilder likeCount(Integer likeCount) {
+    public AnswerFixtureBuilder likeCount(Long likeCount) {
         this.likeCount = likeCount;
         return this;
     }

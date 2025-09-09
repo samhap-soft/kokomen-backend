@@ -29,7 +29,11 @@
       "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/domain/**)",
       "Bash(curl:*)",
       "Bash(../gradlew test)",
-      "Bash(../gradlew:*)"
+      "Bash(../gradlew:*)",
+      "Read(//Users/nak/Desktop/pr/kokomen-backend/**)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
