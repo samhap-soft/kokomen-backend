@@ -33,7 +33,7 @@ public class TestDataInitializer {
 
     @EventListener(ApplicationReadyEvent.class)
     public void initData() {
-        Member member = memberRepository.save(new Member(1L, "NAK"));
+        Member member = memberRepository.save(new Member("NAK"));
         RootQuestion rootQuestion = rootQuestionRepository.save(new RootQuestion(Category.OPERATING_SYSTEM, "자바의 특징은 무엇인가요?"));
         Interview interview = interviewRepository.save(new Interview(member, rootQuestion, 3, InterviewMode.TEXT));
         Question question1 = questionRepository.save(new Question(interview, rootQuestion.getContent()));

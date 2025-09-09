@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
-    Optional<Member> findByKakaoId(Long kakaoId);
 
     @Query(value = """
             SELECT COUNT(*) + 1
