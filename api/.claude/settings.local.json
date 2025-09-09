@@ -30,6 +30,8 @@
       "Bash(curl:*)",
       "Bash(../gradlew test)",
       "Bash(../gradlew:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)"
       "Read(//Users/nak/Desktop/pr/kokomen-backend/**)",
       "Bash(cat:*)",
       "Bash(git add:*)",
