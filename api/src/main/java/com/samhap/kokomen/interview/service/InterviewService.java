@@ -4,6 +4,7 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.dto.AnswerMemos;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
@@ -25,11 +26,13 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.RootQuestionReferenceAnswer;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckTextModeResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckVoiceModeResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Service
 public class InterviewService {
+
+    private static final int MAX_REFERENCE_ANSWERS_COUNT = 3;
 
     private final QuestionVoicePathResolver questionVoicePathResolver;
     private final InterviewRepository interviewRepository;
@@ -177,7 +182,32 @@ public class InterviewService {
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
 
-        return InterviewResultResponse.createMine(feedbackResponses, interview, member);
+        List<RootQuestionReferenceAnswer> referenceAnswers = findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());
+
+        return InterviewResultResponse.createMine(feedbackResponses, interview, member, referenceAnswers);
+    }
+
+    private List<RootQuestionReferenceAnswer> findRootQuestionReferenceAnswers(Long rootQuestionId, Long excludeInterviewId) {
+
+        List<Answer> rankAAnswers = answerRepository.findTopAnswersByRootQuestionAndRank(
+                rootQuestionId, AnswerRank.A, excludeInterviewId, MAX_REFERENCE_ANSWERS_COUNT);
+        List<Answer> referenceAnswers = new ArrayList<>(rankAAnswers);
+
+        int remainingCount = MAX_REFERENCE_ANSWERS_COUNT - referenceAnswers.size();
+        if (remainingCount > 0) {
+            List<Answer> rankBAnswers = answerRepository.findTopAnswersByRootQuestionAndRank(
+                    rootQuestionId, AnswerRank.B, excludeInterviewId, remainingCount);
+            referenceAnswers.addAll(rankBAnswers);
+        }
+
+        return referenceAnswers.stream()
+                .map(answer -> new RootQuestionReferenceAnswer(
+                        answer.getQuestion().getInterview().getMember().getNickname(),
+                        answer.getQuestion().getInterview().getId(),
+                        answer.getContent(),
+                        answer.getAnswerRank()
+                ))
+                .toList();
     }
 
     @Transactional(readOnly = true)

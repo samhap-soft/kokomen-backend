@@ -883,6 +883,22 @@ class InterviewControllerTest extends BaseControllerTest {
         member.addScore(-30);
         memberRepository.save(member);
 
+        // Add reference answers from other members for the same root question
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
+        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).content(rootQuestion.getContent()).build());
+        Answer referenceAnswer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("자바는 플랫폼에 독립적이며 객체지향 언어입니다.").answerRank(AnswerRank.A).build());
+
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").build());
+        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L).build());
+        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).content(rootQuestion.getContent()).build());
+        Answer referenceAnswer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("자바는 JVM에서 실행되는 객체지향 프로그래밍 언어입니다.").answerRank(AnswerRank.A).build());
+
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").build());
+        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L).build());
+        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).content(rootQuestion.getContent()).build());
+        Answer referenceAnswer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("자바는 Write Once Run Anywhere 철학을 가진 언어입니다.").answerRank(AnswerRank.B).build());
+
         String responseJson = """
                 {
                 	"feedbacks": [
@@ -920,10 +936,31 @@ class InterviewControllerTest extends BaseControllerTest {
                 			"answer_memo_visibility": "PRIVATE"
                 		}
                 	],
+                	"total_feedback": "제대로 좀 공부 해라.",
                 	"total_score": -30,
                 	"user_cur_score": 70,
                 	"user_prev_score": 100,
-                	"interview_mode": "TEXT"
+                	"interview_mode": "TEXT",
+                	"root_question_reference_answers": [
+                		{
+                			"nickname": "김철수",
+                			"interview_id": 2,
+                			"answer_content": "자바는 플랫폼에 독립적이며 객체지향 언어입니다.",
+                			"answer_rank": "A"
+                		},
+                		{
+                			"nickname": "이영희", 
+                			"interview_id": 3,
+                			"answer_content": "자바는 JVM에서 실행되는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "A"
+                		},
+                		{
+                			"nickname": "박민수",
+                			"interview_id": 4,
+                			"answer_content": "자바는 Write Once Run Anywhere 철학을 가진 언어입니다.",
+                			"answer_rank": "B"
+                		}
+                	]
                 }
                 """;
 
@@ -957,7 +994,12 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
                                 fieldWithPath("user_prev_score").description("이전 사용자 점수"),
-                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("root_question_reference_answers").description("루트 질문에 대한 다른 사용자의 우수 답변 목록 (최대 3개)"),
+                                fieldWithPath("root_question_reference_answers[].nickname").description("답변자 닉네임"),
+                                fieldWithPath("root_question_reference_answers[].interview_id").description("답변이 속한 인터뷰 ID"),
+                                fieldWithPath("root_question_reference_answers[].answer_content").description("답변 내용"),
+                                fieldWithPath("root_question_reference_answers[].answer_rank").description("답변 등급")
                         )
                 ));
     }

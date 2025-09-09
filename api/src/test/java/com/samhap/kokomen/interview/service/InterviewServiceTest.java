@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
+import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
@@ -32,6 +33,7 @@ import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.RootQuestionReferenceAnswer;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
@@ -370,5 +372,165 @@ class InterviewServiceTest extends BaseTest {
         ).interviewSummaries();
         // then
         assertThat(responses.get(0).hasTempAnswerMemo()).isNull();
+    }
+
+    @Test
+    void 자신의_인터뷰_결과_조회시_참조_답변이_포함된다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(101).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(10L).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+        
+        // 다른 사용자들의 참조 답변 데이터
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(11L).build());
+        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
+        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("우수한 답변 1").answerRank(AnswerRank.A).build());
+
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(12L).build());
+        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L).build());
+        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("우수한 답변 2").answerRank(AnswerRank.A).build());
+
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(13L).build());
+        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L).build());
+        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("괜찮은 답변").answerRank(AnswerRank.B).build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
+        
+        List<RootQuestionReferenceAnswer> referenceAnswers = result.rootQuestionReferenceAnswers();
+        
+        // A 랭크가 먼저, 인터뷰 좋아요 수 높은 순으로 정렬
+        assertAll(
+                () -> assertThat(referenceAnswers.get(0).nickname()).isEqualTo("김철수"),
+                () -> assertThat(referenceAnswers.get(0).answerContent()).isEqualTo("우수한 답변 1"),
+                () -> assertThat(referenceAnswers.get(0).answerRank()).isEqualTo(AnswerRank.A),
+                () -> assertThat(referenceAnswers.get(1).nickname()).isEqualTo("이영희"),
+                () -> assertThat(referenceAnswers.get(1).answerContent()).isEqualTo("우수한 답변 2"),
+                () -> assertThat(referenceAnswers.get(1).answerRank()).isEqualTo(AnswerRank.A),
+                () -> assertThat(referenceAnswers.get(2).nickname()).isEqualTo("박민수"),
+                () -> assertThat(referenceAnswers.get(2).answerContent()).isEqualTo("괜찮은 답변"),
+                () -> assertThat(referenceAnswers.get(2).answerRank()).isEqualTo(AnswerRank.B)
+        );
+    }
+
+    @Test
+    void A랭크_답변이_3개_미만일_때_B랭크로_채운다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(102).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(20L).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+        
+        // A 랭크 답변 1개만
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(21L).build());
+        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
+        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("A 랭크 답변").answerRank(AnswerRank.A).build());
+
+        // B 랭크 답변 2개
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(22L).build());
+        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(8L).build());
+        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("B 랭크 답변 1").answerRank(AnswerRank.B).build());
+
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(23L).build());
+        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(5L).build());
+        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("B 랭크 답변 2").answerRank(AnswerRank.B).build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
+        
+        List<RootQuestionReferenceAnswer> referenceAnswers = result.rootQuestionReferenceAnswers();
+        
+        // A 랭크 1개 + B 랭크 2개 (인터뷰 좋아요 수 높은 순)
+        assertAll(
+                () -> assertThat(referenceAnswers.get(0).answerRank()).isEqualTo(AnswerRank.A),
+                () -> assertThat(referenceAnswers.get(0).answerContent()).isEqualTo("A 랭크 답변"),
+                () -> assertThat(referenceAnswers.get(1).answerRank()).isEqualTo(AnswerRank.B),
+                () -> assertThat(referenceAnswers.get(1).answerContent()).isEqualTo("B 랭크 답변 1"),
+                () -> assertThat(referenceAnswers.get(2).answerRank()).isEqualTo(AnswerRank.B),
+                () -> assertThat(referenceAnswers.get(2).answerContent()).isEqualTo("B 랭크 답변 2")
+        );
+    }
+
+    @Test
+    void 자신의_인터뷰는_참조_답변에서_제외된다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(103).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(30L).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(100L).build()); // 가장 높은 좋아요
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).content("내 답변").answerRank(AnswerRank.A).build());
+        
+        // 다른 사용자 답변
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(31L).build());
+        Interview otherInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember).rootQuestion(rootQuestion).likeCount(10L).build());
+        Question otherQuestion = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion).content("다른 사용자 답변").answerRank(AnswerRank.A).build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers()).hasSize(1);
+        assertThat(result.rootQuestionReferenceAnswers().get(0).answerContent()).isEqualTo("다른 사용자 답변");
+        assertThat(result.rootQuestionReferenceAnswers().get(0).nickname()).isEqualTo("김철수");
+    }
+
+    @Test
+    void A와_B랭크_답변이_없으면_빈_리스트를_반환한다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(104).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(40L).build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+        
+        // C, D, F 랭크 답변들만 존재
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(41L).build());
+        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
+        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("C 랭크 답변").answerRank(AnswerRank.C).build());
+
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(42L).build());
+        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L).build());
+        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("D 랭크 답변").answerRank(AnswerRank.D).build());
+
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(43L).build());
+        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L).build());
+        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("F 랭크 답변").answerRank(AnswerRank.F).build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+
+        // then - A, B 랭크가 없으므로 빈 리스트 반환
+        assertThat(result.rootQuestionReferenceAnswers()).isEmpty();
     }
 }
