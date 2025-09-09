@@ -52,6 +52,21 @@ include::{snippetsDir}/auth-kakaoWithdraw/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/curl-request.adoc[]
 
+=== 구글 로그인 페이지 리다이렉트 요청
+
+include::{snippetsDir}/auth-redirectGoogleLoginPage/http-request.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/query-parameters.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/http-response.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/curl-request.adoc[]
+
+=== 구글 인가코드로 로그인 요청
+
+include::{snippetsDir}/auth-googleLogin/http-request.adoc[]
+include::{snippetsDir}/auth-googleLogin/request-fields.adoc[]
+include::{snippetsDir}/auth-googleLogin/http-response.adoc[]
+include::{snippetsDir}/auth-googleLogin/response-fields.adoc[]
+include::{snippetsDir}/auth-googleLogin/curl-request.adoc[]
+
 == 멤버
 
 === 멤버 프로필 조회
