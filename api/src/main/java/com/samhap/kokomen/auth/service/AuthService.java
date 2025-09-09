@@ -65,6 +65,12 @@ public class AuthService {
                 .findFirst()
                 .ifPresent(kakaoLogin -> kakaoOAuthClient.unlinkKakaoUser(Long.valueOf(kakaoLogin.getSocialId())));
 
+        // 구글 소셜로그인 정보 조회하여 구글 연동해제
+        memberSocialLoginRepository.findByMember_Id(member.getId()).stream()
+                .filter(socialLogin -> socialLogin.getProvider() == SocialProvider.GOOGLE)
+                .findFirst()
+                .ifPresent(googleLogin -> googleOAuthClient.revokeGoogleToken(googleLogin.getSocialId()));
+
         memberService.withdraw(member);
     }
 
@@ -77,5 +83,30 @@ public class AuthService {
                 .filter(socialLogin -> socialLogin.getProvider() == SocialProvider.KAKAO)
                 .findFirst()
                 .ifPresent(kakaoLogin -> kakaoOAuthClient.logoutKakaoUser(Long.valueOf(kakaoLogin.getSocialId())));
+    }
+
+    @Transactional
+    public void googleLogout(MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+
+        // 구글 소셜로그인 정보 조회하여 구글 로그아웃
+        memberSocialLoginRepository.findByMember_Id(member.getId()).stream()
+                .filter(socialLogin -> socialLogin.getProvider() == SocialProvider.GOOGLE)
+                .findFirst()
+                .ifPresent(googleLogin -> googleOAuthClient.revokeGoogleToken(googleLogin.getSocialId()));
+    }
+
+    @Transactional
+    public void logout(MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+
+        // 모든 소셜로그인 제공자에 대해 로그아웃 처리
+        memberSocialLoginRepository.findByMember_Id(member.getId()).forEach(socialLogin -> {
+            if (socialLogin.getProvider() == SocialProvider.KAKAO) {
+                kakaoOAuthClient.logoutKakaoUser(Long.valueOf(socialLogin.getSocialId()));
+            } else if (socialLogin.getProvider() == SocialProvider.GOOGLE) {
+                googleOAuthClient.revokeGoogleToken(socialLogin.getSocialId());
+            }
+        });
     }
 }

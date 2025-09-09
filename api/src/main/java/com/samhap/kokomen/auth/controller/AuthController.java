@@ -114,4 +114,28 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.logout(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<Void> withdraw(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.withdraw(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
 }

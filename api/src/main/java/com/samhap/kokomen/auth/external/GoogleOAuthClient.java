@@ -66,4 +66,18 @@ public class GoogleOAuthClient {
                 .retrieve()
                 .body(GoogleUserInfoResponse.class);
     }
+
+    public void revokeGoogleToken(String googleId) {
+        // 구글 OAuth는 실제 access_token이 필요하므로 googleId만으로는 토큰 무효화 불가능
+        // 현재는 로컬 세션 무효화만 수행되며, 구글 측 토큰은 자연 만료됨
+        // TODO: 향후 토큰 저장 로직 구현 시 실제 토큰으로 무효화 처리
+        try {
+            // 실제로는 동작하지 않지만, 카카오와 동일한 패턴 유지를 위해 호출 형태만 유지
+            // MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            // formData.add("token", actualAccessToken); // 실제 토큰이 필요
+            // 현재는 googleId를 받았지만 실제 토큰이 아니므로 API 호출하지 않음
+        } catch (Exception e) {
+            // 무시: 로컬 세션 무효화는 이미 완료됨
+        }
+    }
 }

@@ -34,7 +34,7 @@ include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
-=== 카카오 회원 로그아웃
+=== 카카오 회원 로그아웃 (카카오 전용 API)
 
 include::{snippetsDir}/auth-kakaoLogout/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/request-fields.adoc[]
@@ -43,7 +43,7 @@ include::{snippetsDir}/auth-kakaoLogout/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/curl-request.adoc[]
 
-=== 카카오 회원 탈퇴
+=== 카카오 회원 탈퇴 (카카오 전용 API)
 
 include::{snippetsDir}/auth-kakaoWithdraw/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/request-fields.adoc[]
@@ -66,6 +66,20 @@ include::{snippetsDir}/auth-googleLogin/request-fields.adoc[]
 include::{snippetsDir}/auth-googleLogin/http-response.adoc[]
 include::{snippetsDir}/auth-googleLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-googleLogin/curl-request.adoc[]
+
+=== 통합 회원 로그아웃
+
+include::{snippetsDir}/auth-logout/http-request.adoc[]
+include::{snippetsDir}/auth-logout/request-cookies.adoc[]
+include::{snippetsDir}/auth-logout/http-response.adoc[]
+include::{snippetsDir}/auth-logout/curl-request.adoc[]
+
+=== 통합 회원 탈퇴
+
+include::{snippetsDir}/auth-withdraw/http-request.adoc[]
+include::{snippetsDir}/auth-withdraw/request-cookies.adoc[]
+include::{snippetsDir}/auth-withdraw/http-response.adoc[]
+include::{snippetsDir}/auth-withdraw/curl-request.adoc[]
 
 == 멤버
 
