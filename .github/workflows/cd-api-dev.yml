@@ -116,6 +116,8 @@ jobs:
           MYSQL_ROOT_PASSWORD_DEV: ${{ secrets.MYSQL_ROOT_PASSWORD_DEV }} # docker-compose-dev.yml에서 kokomen-mysql-dev를 실행시킬 때 필요
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
           SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
+          GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
+          GOOGLE_CLIENT_SECRET_DEV: ${{ secrets.GOOGLE_CLIENT_SECRET_DEV }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/dev

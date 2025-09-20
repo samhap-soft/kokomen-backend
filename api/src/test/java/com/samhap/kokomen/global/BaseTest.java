@@ -1,11 +1,13 @@
 package com.samhap.kokomen.global;
 
 
+import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
+import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +31,8 @@ public abstract class BaseTest {
     @MockitoBean
     protected NotificationClient notificationClient;
     @MockitoBean
+    protected PaymentClient paymentClient;
+    @MockitoBean
     protected GptClient gptClient;
     @MockitoBean
     protected KafkaTemplate<String, String> kafkaTemplate;
@@ -38,6 +42,8 @@ public abstract class BaseTest {
     protected BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     @MockitoBean
     protected KakaoOAuthClient kakaoOAuthClient;
+    @MockitoBean
+    protected GoogleOAuthClient googleOAuthClient;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @Autowired

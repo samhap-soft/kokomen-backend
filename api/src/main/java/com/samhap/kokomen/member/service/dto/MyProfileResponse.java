@@ -9,9 +9,10 @@ public record MyProfileResponse(
         Long totalMemberCount,
         Long rank,
         Integer tokenCount,
-        Boolean profileCompleted
+        Boolean profileCompleted,
+        Boolean isTestUser
 ) {
-    public MyProfileResponse(Member member, Long totalMemberCount, Long rank) {
-        this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, member.getFreeTokenCount(), member.getProfileCompleted());
+    public MyProfileResponse(Member member, Long totalMemberCount, Long rank, Integer totalTokenCount, Boolean isTestUser) {
+        this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, totalTokenCount, member.getProfileCompleted(), isTestUser);
     }
 }

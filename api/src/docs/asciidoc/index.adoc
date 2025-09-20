@@ -34,7 +34,7 @@ include::{snippetsDir}/auth-kakaoLogin/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogin/curl-request.adoc[]
 
-=== 카카오 회원 로그아웃
+=== 카카오 회원 로그아웃 (카카오 전용 API)
 
 include::{snippetsDir}/auth-kakaoLogout/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/request-fields.adoc[]
@@ -43,7 +43,7 @@ include::{snippetsDir}/auth-kakaoLogout/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoLogout/curl-request.adoc[]
 
-=== 카카오 회원 탈퇴
+=== 카카오 회원 탈퇴 (카카오 전용 API)
 
 include::{snippetsDir}/auth-kakaoWithdraw/http-request.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/request-fields.adoc[]
@@ -51,6 +51,35 @@ include::{snippetsDir}/auth-kakaoWithdraw/request-cookies.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/http-response.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/response-fields.adoc[]
 include::{snippetsDir}/auth-kakaoWithdraw/curl-request.adoc[]
+
+=== 구글 로그인 페이지 리다이렉트 요청
+
+include::{snippetsDir}/auth-redirectGoogleLoginPage/http-request.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/query-parameters.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/http-response.adoc[]
+include::{snippetsDir}/auth-redirectGoogleLoginPage/curl-request.adoc[]
+
+=== 구글 인가코드로 로그인 요청
+
+include::{snippetsDir}/auth-googleLogin/http-request.adoc[]
+include::{snippetsDir}/auth-googleLogin/request-fields.adoc[]
+include::{snippetsDir}/auth-googleLogin/http-response.adoc[]
+include::{snippetsDir}/auth-googleLogin/response-fields.adoc[]
+include::{snippetsDir}/auth-googleLogin/curl-request.adoc[]
+
+=== 통합 회원 로그아웃
+
+include::{snippetsDir}/auth-logout/http-request.adoc[]
+include::{snippetsDir}/auth-logout/request-cookies.adoc[]
+include::{snippetsDir}/auth-logout/http-response.adoc[]
+include::{snippetsDir}/auth-logout/curl-request.adoc[]
+
+=== 통합 회원 탈퇴
+
+include::{snippetsDir}/auth-withdraw/http-request.adoc[]
+include::{snippetsDir}/auth-withdraw/request-cookies.adoc[]
+include::{snippetsDir}/auth-withdraw/http-response.adoc[]
+include::{snippetsDir}/auth-withdraw/curl-request.adoc[]
 
 == 멤버
 
@@ -82,6 +111,15 @@ include::{snippetsDir}/member-updateProfile-error/http-request.adoc[]
 include::{snippetsDir}/member-updateProfile-error/request-fields.adoc[]
 include::{snippetsDir}/member-updateProfile-error/http-response.adoc[]
 include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
+
+=== 멤버 스트릭 조회
+
+include::{snippetsDir}/member-findMemberStreaks/http-request.adoc[]
+include::{snippetsDir}/member-findMemberStreaks/request-headers.adoc[]
+include::{snippetsDir}/member-findMemberStreaks/query-parameters.adoc[]
+include::{snippetsDir}/member-findMemberStreaks/http-response.adoc[]
+include::{snippetsDir}/member-findMemberStreaks/response-fields.adoc[]
+include::{snippetsDir}/member-findMemberStreaks/curl-request.adoc[]
 
 == 인터뷰
 
@@ -336,6 +374,83 @@ include::{snippetsDir}/answer-deleteAnswerMemo/http-request.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/path-parameters.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/http-response.adoc[]
 include::{snippetsDir}/answer-deleteAnswerMemo/curl-request.adoc[]
+
+== 상품
+
+=== 상품 목록 조회
+
+include::{snippetsDir}/product-findProducts/http-request.adoc[]
+include::{snippetsDir}/product-findProducts/http-response.adoc[]
+include::{snippetsDir}/product-findProducts/response-fields.adoc[]
+include::{snippetsDir}/product-findProducts/curl-request.adoc[]
+
+== 토큰
+
+=== 토큰 구매
+
+include::{snippetsDir}/token-purchase-success/http-request.adoc[]
+include::{snippetsDir}/token-purchase-success/request-headers.adoc[]
+include::{snippetsDir}/token-purchase-success/request-fields.adoc[]
+include::{snippetsDir}/token-purchase-success/http-response.adoc[]
+include::{snippetsDir}/token-purchase-success/curl-request.adoc[]
+
+=== 내 토큰 구매 내역 조회
+
+include::{snippetsDir}/token-purchases-list/http-request.adoc[]
+include::{snippetsDir}/token-purchases-list/request-headers.adoc[]
+include::{snippetsDir}/token-purchases-list/query-parameters.adoc[]
+include::{snippetsDir}/token-purchases-list/http-response.adoc[]
+include::{snippetsDir}/token-purchases-list/response-fields.adoc[]
+include::{snippetsDir}/token-purchases-list/curl-request.adoc[]
+
+=== 내 토큰 구매 내역 조회 (필터링)
+
+include::{snippetsDir}/token-purchases-list-filtered/http-request.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/request-headers.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/query-parameters.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/http-response.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/response-fields.adoc[]
+include::{snippetsDir}/token-purchases-list-filtered/curl-request.adoc[]
+
+=== 내 토큰 구매 내역 조회 (페이지네이션 및 정렬)
+
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/http-request.adoc[]
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/request-headers.adoc[]
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/query-parameters.adoc[]
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/http-response.adoc[]
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/response-fields.adoc[]
+include::{snippetsDir}/token-purchases-list-with-pagination-and-sorting/curl-request.adoc[]
+
+=== 환불 사유 조회
+
+include::{snippetsDir}/refund-reasons-list/http-request.adoc[]
+include::{snippetsDir}/refund-reasons-list/http-response.adoc[]
+include::{snippetsDir}/refund-reasons-list/response-fields.adoc[]
+include::{snippetsDir}/refund-reasons-list/curl-request.adoc[]
+
+=== 토큰 환불
+
+include::{snippetsDir}/token-refund-success/http-request.adoc[]
+include::{snippetsDir}/token-refund-success/request-headers.adoc[]
+include::{snippetsDir}/token-refund-success/request-fields.adoc[]
+include::{snippetsDir}/token-refund-success/http-response.adoc[]
+include::{snippetsDir}/token-refund-success/curl-request.adoc[]
+
+==== 토큰 환불 - 환불 불가능한 상태
+
+include::{snippetsDir}/token-refund-fail-not-refundable/http-request.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/request-headers.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/request-fields.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/http-response.adoc[]
+include::{snippetsDir}/token-refund-fail-not-refundable/curl-request.adoc[]
+
+==== 토큰 환불 - 다른 사용자의 토큰 환불 시도
+
+include::{snippetsDir}/token-refund-fail-not-owner/http-request.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/request-headers.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/request-fields.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/http-response.adoc[]
+include::{snippetsDir}/token-refund-fail-not-owner/curl-request.adoc[]
 
 == 어드민
 

@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
+import java.time.LocalDateTime;
 
 public class InterviewFixtureBuilder {
 
@@ -19,6 +20,7 @@ public class InterviewFixtureBuilder {
     private Integer totalScore;
     private Long likeCount;
     private Long viewCount;
+    private LocalDateTime finishedAt;
 
     public static InterviewFixtureBuilder builder() {
         return new InterviewFixtureBuilder();
@@ -74,6 +76,11 @@ public class InterviewFixtureBuilder {
         return this;
     }
 
+    public InterviewFixtureBuilder finishedAt(LocalDateTime finishedAt) {
+        this.finishedAt = finishedAt;
+        return this;
+    }
+
     public Interview build() {
         return new Interview(
                 id,
@@ -85,7 +92,8 @@ public class InterviewFixtureBuilder {
                 totalFeedback,
                 totalScore,
                 likeCount != null ? likeCount : 0L,
-                viewCount != null ? viewCount : 0L
+                viewCount != null ? viewCount : 0L,
+                finishedAt
         );
     }
 

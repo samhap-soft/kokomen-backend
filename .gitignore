@@ -31,6 +31,7 @@ mysql_data/
 # build
 api/build/
 consumer/build/
+common/build/
 /build/
 /.gradle/
 
@@ -42,3 +43,4 @@ hs_err_pid*
 replay_pid*
 
 api/local-app-run.sh
+consumer/local-app-run.sh

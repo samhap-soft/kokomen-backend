@@ -2,6 +2,7 @@ package com.samhap.kokomen.auth.controller;
 
 import com.samhap.kokomen.auth.infrastructure.SessionInvalidator;
 import com.samhap.kokomen.auth.service.AuthService;
+import com.samhap.kokomen.auth.service.dto.GoogleLoginRequest;
 import com.samhap.kokomen.auth.service.dto.KakaoLoginRequest;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -27,14 +28,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
-    private final String clientId;
+    private final String kakaoClientId;
+    private final String googleClientId;
 
     public AuthController(
             AuthService authService,
-            @Value("${oauth.kakao.client-id}") String clientId
+            @Value("${oauth.kakao.client-id}") String kakaoClientId,
+            @Value("${oauth.google.client-id}") String googleClientId
     ) {
         this.authService = authService;
-        this.clientId = clientId;
+        this.kakaoClientId = kakaoClientId;
+        this.googleClientId = googleClientId;
     }
 
     @GetMapping("/kakao-login")
@@ -44,7 +48,7 @@ public class AuthController {
     ) {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create("https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
-                        .formatted(clientId, redirectUri, state)))
+                        .formatted(kakaoClientId, redirectUri, state)))
                 .build();
     }
 
@@ -54,6 +58,31 @@ public class AuthController {
             HttpServletRequest request
     ) {
         MemberResponse memberResponse = authService.kakaoLogin(kakaoLoginRequest);
+
+        HttpSession session = request.getSession(true);
+        session.setAttribute("MEMBER_ID", memberResponse.id());
+
+        return ResponseEntity.ok(memberResponse);
+    }
+
+    @GetMapping("/google-login")
+    public ResponseEntity<Void> redirectGoogleLoginPage(
+            @RequestParam String redirectUri,
+            @RequestParam String state
+    ) {
+        String scope = "openid%20profile%20email";
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create("https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s"
+                        .formatted(googleClientId, redirectUri, scope, state)))
+                .build();
+    }
+
+    @PostMapping("/google-login")
+    public ResponseEntity<MemberResponse> googleLogin(
+            @RequestBody @Valid GoogleLoginRequest googleLoginRequest,
+            HttpServletRequest request
+    ) {
+        MemberResponse memberResponse = authService.googleLogin(googleLoginRequest);
 
         HttpSession session = request.getSession(true);
         session.setAttribute("MEMBER_ID", memberResponse.id());
@@ -84,4 +113,29 @@ public class AuthController {
         authService.withdraw(memberAuth);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.logout(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<Void> withdraw(
+            @Authentication MemberAuth memberAuth,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        SessionInvalidator.logout(request, response);
+
+        authService.withdraw(memberAuth);
+        return ResponseEntity.noContent().build();
+    }
+
 }
