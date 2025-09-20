@@ -140,7 +140,8 @@ server:
 notification:
   base-url: ${NOTIFICATION_BASE_URL_PROD}
 payment:
-  base-url: ${PAYMENT_BASE_URL_PROD}
+  base-url: localhost:8080
+#  base-url: ${PAYMENT_BASE_URL_PROD}
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
