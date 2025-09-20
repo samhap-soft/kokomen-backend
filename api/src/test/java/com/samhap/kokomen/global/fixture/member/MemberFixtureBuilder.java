@@ -1,6 +1,10 @@
 package com.samhap.kokomen.global.fixture.member;
 
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.domain.MemberSocialLogin;
+import com.samhap.kokomen.member.domain.SocialProvider;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemberFixtureBuilder {
 
@@ -8,7 +12,6 @@ public class MemberFixtureBuilder {
     private Long kakaoId;
     private String nickname;
     private Integer score;
-    private Integer freeTokenCount;
     private Boolean profileCompleted;
 
     public static MemberFixtureBuilder builder() {
@@ -20,6 +23,7 @@ public class MemberFixtureBuilder {
         return this;
     }
 
+    @Deprecated
     public MemberFixtureBuilder kakaoId(Long kakaoId) {
         this.kakaoId = kakaoId;
         return this;
@@ -35,24 +39,16 @@ public class MemberFixtureBuilder {
         return this;
     }
 
-    public MemberFixtureBuilder freeTokenCount(Integer freeTokenCount) {
-        this.freeTokenCount = freeTokenCount;
-        return this;
-    }
-
     public MemberFixtureBuilder profileCompleted(Boolean profileCompleted) {
         this.profileCompleted = profileCompleted;
         return this;
     }
 
-
     public Member build() {
         return new Member(
                 id,
-                kakaoId != null ? kakaoId : 1L,
                 nickname != null ? nickname : "오상훈",
                 score != null ? score : 0,
-                freeTokenCount != null ? freeTokenCount : 10,
                 profileCompleted != null ? profileCompleted : false
         );
     }

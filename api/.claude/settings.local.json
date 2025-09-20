@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(./gradlew:*)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(//Users/minho/soma/samhap/kokomen-backend/**)",
+      "Bash(./init)",
+      "Bash(./local-app-run.sh:*)",
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
+      "Bash(docker volume prune:*)",
+      "Read(/Users/minho/soma/samhap/kokomen-backend/**)",
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/domain/**)",
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/repository/**)",
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/consumer/src/main/java/com/samhap/kokomen/interview/domain/**)",
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/dto/**)",
+      "Read(/Users/nak/Desktop/pr/kokomen-backend/common/src/main/java/com/samhap/kokomen/interview/domain/**)",
+      "Bash(curl:*)",
+      "Bash(../gradlew test)",
+      "Bash(../gradlew:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)"
+      "Read(//Users/nak/Desktop/pr/kokomen-backend/**)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

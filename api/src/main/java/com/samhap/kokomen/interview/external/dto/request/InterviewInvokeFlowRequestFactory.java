@@ -12,11 +12,11 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowReque
 public class InterviewInvokeFlowRequestFactory {
 
     private static final String IN_PROGRESS_INTERVIEW_PROCEED_FLOW_ID = "EFP2KPF1KA";
-    private static final String IN_PORGRESS_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "6OH93Y3MXT";
+    private static final String IN_PORGRESS_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "5BDDAF8XFW";
     private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ID = "2Y5R698F4O";
-    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "HKL57YENO1";
+    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "U68M2IXVYC";
     private static final String ANSWER_FEEDBACK_FLOW_ID = "ZM3ILHZCC3";
-    private static final String ANSWER_FEEDBACK_FLOW_ALIAS_ID = "ME3WL5EGE5";
+    private static final String ANSWER_FEEDBACK_FLOW_ALIAS_ID = "H8WX8W1J7W";
 
     private InterviewInvokeFlowRequestFactory() {
     }

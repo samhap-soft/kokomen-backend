@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
@@ -10,7 +9,7 @@ public record InterviewSummaryResponse(
         Long interviewId,
         InterviewState interviewState,
         InterviewMode interviewMode,
-        Category interviewCategory,
+        String interviewCategory,
         LocalDateTime createdAt,
         String rootQuestion,
         Integer maxQuestionCount,
@@ -29,7 +28,7 @@ public record InterviewSummaryResponse(
                 interview.getId(),
                 interviewState,
                 interview.getInterviewMode(),
-                interview.getRootQuestion().getCategory(),
+                interview.getRootQuestion().getCategory().getTitle(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),
                 interview.getMaxQuestionCount(),
@@ -59,7 +58,7 @@ public record InterviewSummaryResponse(
                     interview.getId(),
                     interview.getInterviewState(),
                     interview.getInterviewMode(),
-                    interview.getRootQuestion().getCategory(),
+                    interview.getRootQuestion().getCategory().getTitle(),
                     interview.getCreatedAt(),
                     interview.getRootQuestion().getContent(),
                     interview.getMaxQuestionCount(),
@@ -76,7 +75,7 @@ public record InterviewSummaryResponse(
                 interview.getId(),
                 interview.getInterviewState(),
                 interview.getInterviewMode(),
-                interview.getRootQuestion().getCategory(),
+                interview.getRootQuestion().getCategory().getTitle(),
                 interview.getCreatedAt(),
                 interview.getRootQuestion().getContent(),
                 interview.getMaxQuestionCount(),
