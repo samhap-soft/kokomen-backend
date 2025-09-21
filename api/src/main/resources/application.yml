@@ -129,7 +129,7 @@ oauth:
     client-id: ${GOOGLE_CLIENT_ID_PROD}
     client-secret: ${GOOGLE_CLIENT_SECRET_PROD}
 cors:
-  allowed-origins: https://kokomen.kr, https://www.kokomen.kr
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
 server:
   servlet:
     session:
