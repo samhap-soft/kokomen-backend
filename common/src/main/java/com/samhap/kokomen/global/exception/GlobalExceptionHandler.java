@@ -16,6 +16,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(InternalApiException.class)
+    public ResponseEntity<ErrorResponse> handleInternalApiException(InternalApiException e) {
+        log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
+        return ResponseEntity.status(e.getHttpStatusCode())
+                .body(new ErrorResponse(e.getMessage()));
+    }
+
     @ExceptionHandler(KokomenException.class)
     public ResponseEntity<ErrorResponse> handleKokomenException(KokomenException e) {
         log.warn("KokomenException :: status: {}, message: {}", e.getHttpStatusCode(), e.getMessage());
