@@ -3,6 +3,7 @@ package com.samhap.kokomen.token.external;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -10,6 +11,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Getter
 @Component
 public class PaymentClientBuilder {
@@ -23,6 +25,7 @@ public class PaymentClientBuilder {
             @Value("${notification.connect-timeout}") Duration connectTimeout,
             @Value("${notification.read-timeout}") Duration readTimeout
     ) {
+        log.info("paymentBaseUrl = " + paymentBaseUrl);
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeout);
         requestFactory.setReadTimeout(readTimeout);
