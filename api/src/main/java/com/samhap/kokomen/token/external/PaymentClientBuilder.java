@@ -25,7 +25,6 @@ public class PaymentClientBuilder {
             @Value("${notification.connect-timeout}") Duration connectTimeout,
             @Value("${notification.read-timeout}") Duration readTimeout
     ) {
-        log.info("paymentBaseUrl = " + paymentBaseUrl);
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeout);
         requestFactory.setReadTimeout(readTimeout);
