@@ -14,4 +14,5 @@ public class KokomenApplication {
     public static void main(String[] args) {
         SpringApplication.run(KokomenApplication.class, args);
     }
+
 }
