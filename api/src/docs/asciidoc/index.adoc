@@ -98,6 +98,14 @@ include::{snippetsDir}/member-findRanking/http-response.adoc[]
 include::{snippetsDir}/member-findRanking/response-fields.adoc[]
 include::{snippetsDir}/member-findRanking/curl-request.adoc[]
 
+=== 랭킹 조회 V2
+
+include::{snippetsDir}/member-findRankingV2/http-request.adoc[]
+include::{snippetsDir}/member-findRankingV2/query-parameters.adoc[]
+include::{snippetsDir}/member-findRankingV2/http-response.adoc[]
+include::{snippetsDir}/member-findRankingV2/response-fields.adoc[]
+include::{snippetsDir}/member-findRankingV2/curl-request.adoc[]
+
 === 멤버 프로필 변경
 
 include::{snippetsDir}/member-updateProfile/http-request.adoc[]
