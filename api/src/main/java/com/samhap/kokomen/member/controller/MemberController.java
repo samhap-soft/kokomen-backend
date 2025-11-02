@@ -53,7 +53,7 @@ public class MemberController {
         return ResponseEntity.ok(memberService.findRanking(pageable));
     }
 
-    @GetMapping("v2/ranking")
+    @GetMapping("/v2/ranking")
     public ResponseEntity<RankingPageResponse> findRankingPage(
             @PageableDefault(size = 30, sort = "score", direction = Sort.Direction.DESC) Pageable pageable
     ) {

@@ -233,10 +233,10 @@ class MemberControllerTest extends BaseControllerTest {
                       "finished_interview_count": 1
                     }
                   ],
-                  "currentPage": 0,
-                  "totalRankingCount": 3,
-                  "totalPages": 2,
-                  "hasNext": true
+                  "current_page": 0,
+                  "total_ranking_count": 3,
+                  "total_pages": 2,
+                  "has_next": true
                 }
                 """.formatted(member3.getId(), member2.getId());
 
@@ -257,10 +257,10 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("data[].nickname").description("회원 닉네임"),
                                 fieldWithPath("data[].score").description("회원 점수"),
                                 fieldWithPath("data[].finished_interview_count").description("회원의 완료한 인터뷰 수"),
-                                fieldWithPath("currentPage").description("현재 페이지 번호 (0부터 시작)"),
-                                fieldWithPath("totalRankingCount").description("전체 랭킹(회원) 수"),
-                                fieldWithPath("totalPages").description("전체 페이지 수"),
-                                fieldWithPath("hasNext").description("다음 페이지 존재 여부")
+                                fieldWithPath("current_page").description("현재 페이지 번호 (0부터 시작)"),
+                                fieldWithPath("total_ranking_count").description("전체 랭킹(회원) 수"),
+                                fieldWithPath("total_pages").description("전체 페이지 수"),
+                                fieldWithPath("has_next").description("다음 페이지 존재 여부")
                         )
                 ));
     }
