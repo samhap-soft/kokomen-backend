@@ -6,6 +6,7 @@ import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
+import com.samhap.kokomen.member.service.dto.RankingPageResponse;
 import com.samhap.kokomen.member.service.dto.RankingResponse;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -50,6 +51,20 @@ public class MemberController {
             @PageableDefault(size = 30, sort = "score", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(memberService.findRanking(pageable));
+    }
+
+    @GetMapping("/v2/ranking")
+    public ResponseEntity<RankingPageResponse> findRankingPage(
+            @PageableDefault(size = 30, sort = "score", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(memberService.findRankingPage(pageable));
+    }
+
+    @GetMapping("/ranking/v3")
+    public ResponseEntity<RankingPageResponse> findRankingPageV3(
+            @PageableDefault(size = 30, sort = "score", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(memberService.findRankingPageV3(pageable));
     }
 
     @GetMapping("/me/streaks")

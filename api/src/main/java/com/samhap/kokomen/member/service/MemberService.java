@@ -13,6 +13,8 @@ import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponseV2;
 import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
+import com.samhap.kokomen.member.service.dto.RankingPageResponse;
+import com.samhap.kokomen.member.service.dto.RankingProjection;
 import com.samhap.kokomen.member.service.dto.RankingResponse;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -87,6 +90,33 @@ public class MemberService {
         int limit = pageable.getPageSize();
         int offset = (int) pageable.getOffset();
         return RankingResponse.createRankingResponses(memberRepository.findRankings(limit, offset));
+    }
+
+    // 페이지네이션용
+    public RankingPageResponse findRankingPage(Pageable pageable) {
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        int currentPage = pageable.getPageNumber();
+
+        List<RankingResponse> rankings = RankingResponse.createRankingResponses(
+                memberRepository.findRankings(limit, offset)
+        );
+        long totalElements = memberRepository.countTotalMembers();
+
+        return RankingPageResponse.of(rankings, currentPage, limit, totalElements);
+    }
+
+    // 페이지네이션용 v3(Pageable을 활용한 코드)
+    public RankingPageResponse findRankingPageV3(Pageable pageable) {
+        Page<RankingProjection> page = memberRepository.findRankingsV3(pageable);
+        List<RankingResponse> rankings = RankingResponse.createRankingResponses(page.getContent());
+
+        return RankingPageResponse.of(
+                rankings,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements()
+        );
     }
 
     @Transactional
