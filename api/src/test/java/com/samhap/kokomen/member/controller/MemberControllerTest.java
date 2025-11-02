@@ -205,6 +205,67 @@ class MemberControllerTest extends BaseControllerTest {
     }
 
     @Test
+    void 랭킹_조회에_성공한다_V2() throws Exception {
+        // given
+        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).kakaoId(1L).build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("200점 회원").score(200).kakaoId(2L).build());
+        Member member3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("300점 회원").score(300).kakaoId(3L).build());
+
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+
+        String responseJson = """
+                {
+                  "data": [
+                    {
+                      "id": %d,
+                      "nickname": "300점 회원",
+                      "score": 300,
+                      "finished_interview_count": 2
+                    },
+                    {
+                      "id": %d,
+                      "nickname": "200점 회원",
+                      "score": 200,
+                      "finished_interview_count": 1
+                    }
+                  ],
+                  "currentPage": 0,
+                  "totalRankingCount": 3,
+                  "totalPages": 2,
+                  "hasNext": true
+                }
+                """.formatted(member3.getId(), member2.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/members/v2/ranking")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("member-findRankingV2",
+                        queryParameters(
+                                parameterWithName("page").description("페이지 번호 (0부터 시작)"),
+                                parameterWithName("size").description("한 페이지 크기")
+                        ),
+                        responseFields(
+                                fieldWithPath("data[]").description("랭킹 데이터 배열"),
+                                fieldWithPath("data[].id").description("회원 ID"),
+                                fieldWithPath("data[].nickname").description("회원 닉네임"),
+                                fieldWithPath("data[].score").description("회원 점수"),
+                                fieldWithPath("data[].finished_interview_count").description("회원의 완료한 인터뷰 수"),
+                                fieldWithPath("currentPage").description("현재 페이지 번호 (0부터 시작)"),
+                                fieldWithPath("totalRankingCount").description("전체 랭킹(회원) 수"),
+                                fieldWithPath("totalPages").description("전체 페이지 수"),
+                                fieldWithPath("hasNext").description("다음 페이지 존재 여부")
+                        )
+                ));
+    }
+
+    @Test
     void 멤버_스트릭_조회에_성공한다() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
