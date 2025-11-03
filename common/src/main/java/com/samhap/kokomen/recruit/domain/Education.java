@@ -1,5 +1,7 @@
 package com.samhap.kokomen.recruit.domain;
 
+import java.util.Arrays;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
@@ -16,5 +18,11 @@ public enum Education {
 
     Education(String name) {
         this.name = name;
+    }
+
+    public static List<String> getNames() {
+        return Arrays.stream(values())
+                .map(Education::getName)
+                .toList();
     }
 }

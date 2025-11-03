@@ -1,5 +1,7 @@
 package com.samhap.kokomen.recruit.domain;
 
+import java.util.Arrays;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
@@ -35,5 +37,11 @@ public enum Employment {
 
     Employment(String name) {
         this.name = name;
+    }
+
+    public static List<String> getNames() {
+        return Arrays.stream(values())
+                .map(Employment::getName)
+                .toList();
     }
 }
