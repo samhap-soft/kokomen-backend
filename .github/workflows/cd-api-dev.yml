@@ -21,7 +21,6 @@ jobs:
 
   build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.api_changed == 'true'
     runs-on: ubuntu-latest
 
     defaults:
