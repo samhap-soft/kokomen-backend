@@ -1,5 +1,7 @@
 package com.samhap.kokomen.recruit.domain;
 
+import java.util.Arrays;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
@@ -29,5 +31,11 @@ public enum Region {
 
     Region(String name) {
         this.name = name;
+    }
+
+    public static List<String> getNames() {
+        return Arrays.stream(values())
+                .map(Region::getName)
+                .toList();
     }
 }

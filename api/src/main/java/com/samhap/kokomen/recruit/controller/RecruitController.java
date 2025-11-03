@@ -1,9 +1,5 @@
 package com.samhap.kokomen.recruit.controller;
 
-import com.samhap.kokomen.global.annotation.Authentication;
-import com.samhap.kokomen.global.dto.MemberAuth;
-import com.samhap.kokomen.member.service.MemberService;
-import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.recruit.service.RecruitService;
 import com.samhap.kokomen.recruit.service.dto.FiltersResponse;
 import lombok.RequiredArgsConstructor;
