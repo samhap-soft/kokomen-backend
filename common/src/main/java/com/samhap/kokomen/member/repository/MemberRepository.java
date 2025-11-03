@@ -3,7 +3,6 @@ package com.samhap.kokomen.member.repository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.dto.RankingProjection;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,8 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
-
-
+    
     @Query(value = """
             SELECT COUNT(*) + 1
             FROM member
@@ -36,7 +34,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                 LEFT JOIN interview i
                     ON i.member_id = m.id AND i.interview_state = 'FINISHED'
                 GROUP BY m.id, m.nickname, m.score
-                ORDER BY m.score DESC
+                ORDER BY m.score DESC, m.id ASC
             """, nativeQuery = true)
     List<RankingProjection> findRankings(@Param("limit") int limit, @Param("offset") int offset);
 
@@ -53,7 +51,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                 LEFT JOIN interview i
                     ON i.member_id = m.id AND i.interview_state = 'FINISHED'
                 GROUP BY m.id, m.nickname, m.score
-                ORDER BY m.score DESC
+                ORDER BY m.score DESC, m.id ASC
             """,
             countQuery = "SELECT COUNT(*) FROM member",
             nativeQuery = true)
