@@ -28,7 +28,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                 FROM (
                     SELECT id, nickname, score
                     FROM member
-                    ORDER BY score DESC
+                    ORDER BY score DESC, m.id ASC 
                     LIMIT :limit OFFSET :offset
                 ) m
                 LEFT JOIN interview i
