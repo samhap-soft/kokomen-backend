@@ -123,7 +123,7 @@ class RecruitControllerTest extends BaseControllerTest {
         );
         recruitRepository.save(
                 RecruitFixtureBuilder.builder()
-                        .id("recruit-2")
+                        .externalId("recruit-2")
                         .affiliate(affiliate)
                         .company(company)
                         .regions(Set.of(Region.BUSAN))
@@ -150,7 +150,7 @@ class RecruitControllerTest extends BaseControllerTest {
         );
         recruitRepository.save(
                 RecruitFixtureBuilder.builder()
-                        .id("recruit-2")
+                        .externalId("recruit-2")
                         .affiliate(affiliate)
                         .company(company)
                         .regions(Set.of(Region.SEOUL))
@@ -179,7 +179,7 @@ class RecruitControllerTest extends BaseControllerTest {
         );
         recruitRepository.save(
                 RecruitFixtureBuilder.builder()
-                        .id("recruit-2")
+                        .externalId("recruit-2")
                         .affiliate(affiliate)
                         .company(company)
                         .careerMin(5)
@@ -201,7 +201,7 @@ class RecruitControllerTest extends BaseControllerTest {
         for (int i = 1; i <= 15; i++) {
             recruitRepository.save(
                     RecruitFixtureBuilder.builder()
-                            .id("recruit-" + i)
+                            .externalId("recruit-" + i)
                             .affiliate(affiliate)
                             .company(company)
                             .build()

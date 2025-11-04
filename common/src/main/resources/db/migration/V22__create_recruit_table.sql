@@ -1,23 +1,28 @@
 CREATE TABLE affiliate
 (
-    id    VARCHAR(255) NOT NULL,
+    id    BIGINT AUTO_INCREMENT NOT NULL,
+    name  VARCHAR(255) NOT NULL,
     image VARCHAR(255) NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_affiliate_name UNIQUE (name)
 );
 
 CREATE TABLE company
 (
-    id    VARCHAR(255) NOT NULL,
-    name  VARCHAR(255) NOT NULL,
-    image VARCHAR(255) NOT NULL,
-    PRIMARY KEY (id)
+    id          BIGINT AUTO_INCREMENT NOT NULL,
+    external_id VARCHAR(255) NOT NULL,
+    name        VARCHAR(255) NOT NULL,
+    image       VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_company_external_id UNIQUE (external_id)
 );
 
 CREATE TABLE recruit
 (
-    id            VARCHAR(255) NOT NULL,
-    affiliate_id  VARCHAR(255) NOT NULL,
-    company_id    VARCHAR(255) NOT NULL,
+    id            BIGINT AUTO_INCREMENT NOT NULL,
+    external_id   VARCHAR(255) NOT NULL,
+    affiliate_id  BIGINT       NOT NULL,
+    company_id    BIGINT       NOT NULL,
     title         VARCHAR(255) NOT NULL,
     end_date      DATETIME(6),
     deadline_type VARCHAR(50)  NOT NULL,
@@ -25,35 +30,36 @@ CREATE TABLE recruit
     career_max    INT,
     url           VARCHAR(500) NOT NULL,
     PRIMARY KEY (id),
+    CONSTRAINT uk_recruit_external_id UNIQUE (external_id),
     CONSTRAINT fk_recruit_affiliate FOREIGN KEY (affiliate_id) REFERENCES affiliate (id),
     CONSTRAINT fk_recruit_company FOREIGN KEY (company_id) REFERENCES company (id)
 );
 
 CREATE TABLE recruit_region
 (
-    recruit_id VARCHAR(255) NOT NULL,
-    region     VARCHAR(50)  NOT NULL,
+    recruit_id BIGINT      NOT NULL,
+    region     VARCHAR(50) NOT NULL,
     CONSTRAINT fk_recruit_region_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_employee_type
 (
-    recruit_id    VARCHAR(255) NOT NULL,
-    employee_type VARCHAR(50)  NOT NULL,
+    recruit_id    BIGINT      NOT NULL,
+    employee_type VARCHAR(50) NOT NULL,
     CONSTRAINT fk_recruit_employee_type_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_education
 (
-    recruit_id VARCHAR(255) NOT NULL,
-    education  VARCHAR(50)  NOT NULL,
+    recruit_id BIGINT      NOT NULL,
+    education  VARCHAR(50) NOT NULL,
     CONSTRAINT fk_recruit_education_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_employment
 (
-    recruit_id VARCHAR(255) NOT NULL,
-    employment VARCHAR(50)  NOT NULL,
+    recruit_id BIGINT      NOT NULL,
+    employment VARCHAR(50) NOT NULL,
     CONSTRAINT fk_recruit_employment_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
