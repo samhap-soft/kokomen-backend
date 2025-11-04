@@ -23,6 +23,6 @@ public class Affiliate {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "image", nullable = false)
+    @Column(name = "image")
     private String image;
 }
