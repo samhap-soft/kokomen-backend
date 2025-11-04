@@ -15,7 +15,7 @@ CREATE TABLE company
 
 CREATE TABLE recruit
 (
-    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    id            VARCHAR(255) NOT NULL,
     affiliate_id  VARCHAR(255) NOT NULL,
     company_id    VARCHAR(255) NOT NULL,
     title         VARCHAR(255) NOT NULL,
