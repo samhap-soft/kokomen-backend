@@ -31,29 +31,29 @@ CREATE TABLE recruit
 
 CREATE TABLE recruit_region
 (
-    recruit_id BIGINT       NOT NULL,
+    recruit_id VARCHAR(255) NOT NULL,
     region     VARCHAR(50)  NOT NULL,
     CONSTRAINT fk_recruit_region_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_employee_type
 (
-    recruit_id    BIGINT      NOT NULL,
-    employee_type VARCHAR(50) NOT NULL,
+    recruit_id    VARCHAR(255) NOT NULL,
+    employee_type VARCHAR(50)  NOT NULL,
     CONSTRAINT fk_recruit_employee_type_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_education
 (
-    recruit_id BIGINT      NOT NULL,
-    education  VARCHAR(50) NOT NULL,
+    recruit_id VARCHAR(255) NOT NULL,
+    education  VARCHAR(50)  NOT NULL,
     CONSTRAINT fk_recruit_education_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
 CREATE TABLE recruit_employment
 (
-    recruit_id BIGINT      NOT NULL,
-    employment VARCHAR(50) NOT NULL,
+    recruit_id VARCHAR(255) NOT NULL,
+    employment VARCHAR(50)  NOT NULL,
     CONSTRAINT fk_recruit_employment_recruit FOREIGN KEY (recruit_id) REFERENCES recruit (id)
 );
 
