@@ -30,8 +30,9 @@ public class Recruit {
     @Id
     private Long id;
 
-    @Column(name = "affiliate", nullable = false)
-    private String affiliate;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "affiliate_id", nullable = false)
+    private Affiliate affiliate;
 
     @Column(name = "title", nullable = false)
     private String title;

@@ -5,7 +5,7 @@ import java.util.List;
 public record RecruitSummaryResponse(
         String id,
         AffiliateResponse affiliate,
-        CompanyResponse companyResponse,
+        CompanyResponse company,
         String title,
         String endDate,
         String deadlineType,
