@@ -28,7 +28,7 @@ public record RecruitSummaryResponse(
             Recruit recruit
     ) {
         return new RecruitSummaryResponse(
-                recruit.getId(),
+                recruit.getExternalId(),
                 AffiliateResponse.from(recruit.getAffiliate()),
                 CompanyResponse.from(recruit.getCompany()),
                 recruit.getTitle(),

@@ -9,7 +9,7 @@ public record CompanyResponse(
 ) {
     public static CompanyResponse from(Company company) {
         return new CompanyResponse(
-                company.getId(),
+                company.getExternalId(),
                 company.getName(),
                 company.getImage()
         );

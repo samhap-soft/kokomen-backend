@@ -13,7 +13,8 @@ import java.util.Set;
 
 public class RecruitFixtureBuilder {
 
-    private String id;
+    private Long id;
+    private String externalId;
     private Affiliate affiliate;
     private String title;
     private LocalDateTime endDate;
@@ -31,8 +32,13 @@ public class RecruitFixtureBuilder {
         return new RecruitFixtureBuilder();
     }
 
-    public RecruitFixtureBuilder id(String id) {
+    public RecruitFixtureBuilder id(Long id) {
         this.id = id;
+        return this;
+    }
+
+    public RecruitFixtureBuilder externalId(String externalId) {
+        this.externalId = externalId;
         return this;
     }
 
@@ -98,7 +104,8 @@ public class RecruitFixtureBuilder {
 
     public Recruit build() {
         return new Recruit(
-                id != null ? id : "recruit-1",
+                id,
+                externalId != null ? externalId : "recruit-1",
                 affiliate != null ? affiliate : AffiliateFixtureBuilder.builder().build(),
                 title != null ? title : "백엔드 개발자 채용",
                 endDate != null ? endDate : LocalDateTime.of(2025, 12, 31, 23, 59, 59),
