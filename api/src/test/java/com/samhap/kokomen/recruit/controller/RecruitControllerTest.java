@@ -131,7 +131,7 @@ class RecruitControllerTest extends BaseControllerTest {
         );
 
         mockMvc.perform(get("/api/v1/recruits")
-                        .param("region", "SEOUL"))
+                        .param("region", "서울"))
                 .andExpect(status().isOk())
                 .andDo(document("recruit-list-filter-region"));
     }
@@ -159,8 +159,8 @@ class RecruitControllerTest extends BaseControllerTest {
         );
 
         mockMvc.perform(get("/api/v1/recruits")
-                        .param("region", "SEOUL")
-                        .param("employeeType", "FULL_TIME"))
+                        .param("region", "서울")
+                        .param("employeeType", "정규직"))
                 .andExpect(status().isOk())
                 .andDo(document("recruit-list-filter-multiple"));
     }
@@ -218,7 +218,7 @@ class RecruitControllerTest extends BaseControllerTest {
     @Test
     void 공고_조회_빈_결과() throws Exception {
         mockMvc.perform(get("/api/v1/recruits")
-                        .param("region", "SEOUL"))
+                        .param("region", "서울"))
                 .andExpect(status().isOk())
                 .andDo(document("recruit-list-empty"));
     }

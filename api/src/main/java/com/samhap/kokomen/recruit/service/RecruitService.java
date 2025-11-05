@@ -93,10 +93,10 @@ public class RecruitService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            addCollectionFilter(predicates, root, regionNames, Region::valueOf, "regions");
-            addCollectionFilter(predicates, root, employeeTypeNames, EmployeeType::valueOf, "employeeTypes");
-            addCollectionFilter(predicates, root, educationNames, Education::valueOf, "educations");
-            addCollectionFilter(predicates, root, employmentNames, Employment::valueOf, "employments");
+            addCollectionFilter(predicates, root, regionNames, Region::findByName, "regions");
+            addCollectionFilter(predicates, root, employeeTypeNames, EmployeeType::findByName, "employeeTypes");
+            addCollectionFilter(predicates, root, educationNames, Education::findByName, "educations");
+            addCollectionFilter(predicates, root, employmentNames, Employment::findByName, "employments");
             addDeadlineTypeFilter(predicates, root, deadlineTypeNames);
             addCareerFilter(predicates, root, cb, careerMin, careerMax);
 
