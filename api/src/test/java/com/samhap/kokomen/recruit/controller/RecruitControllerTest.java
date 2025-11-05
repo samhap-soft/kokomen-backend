@@ -121,14 +121,6 @@ class RecruitControllerTest extends BaseControllerTest {
                         .regions(Set.of(Region.SEOUL))
                         .build()
         );
-        recruitRepository.save(
-                RecruitFixtureBuilder.builder()
-                        .externalId("recruit-2")
-                        .affiliate(affiliate)
-                        .company(company)
-                        .regions(Set.of(Region.BUSAN))
-                        .build()
-        );
 
         String responseJson = """
                 {
