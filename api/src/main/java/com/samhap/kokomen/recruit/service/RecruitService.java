@@ -18,7 +18,6 @@ import jakarta.persistence.criteria.Root;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -71,7 +70,6 @@ public class RecruitService {
         Page<Recruit> recruitPage = recruitRepository.findAll(spec, pageable);
 
         List<RecruitSummaryResponse> data = recruitPage.getContent().stream()
-                .filter(recruit -> Objects.equals(recruit.getAffiliate().getName(), "V1"))
                 .map(RecruitSummaryResponse::from)
                 .toList();
 
@@ -101,6 +99,7 @@ public class RecruitService {
             addCollectionFilter(predicates, root, employmentNames, Employment::findByName, "employments");
             addDeadlineTypeFilter(predicates, root, deadlineTypeNames);
             addCareerFilter(predicates, root, cb, careerMin, careerMax);
+            addAffiliateFilter(predicates, root, cb);
 
             if (query != null) {
                 query.distinct(true);
@@ -185,5 +184,14 @@ public class RecruitService {
                         cb.lessThanOrEqualTo(root.get(CAREER_MIN_FIELD), careerMax)
                 )
         );
+    }
+
+    private void addAffiliateFilter(
+            List<Predicate> predicates,
+            Root<Recruit> root,
+            CriteriaBuilder cb
+    ) {
+        Join<Object, Object> affiliateJoin = root.join("affiliate", JoinType.INNER);
+        predicates.add(cb.equal(affiliateJoin.get("name"), "V1"));
     }
 }
