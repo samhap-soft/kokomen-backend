@@ -137,7 +137,7 @@ public class RecruitService {
         }
 
         List<DeadlineType> deadlineTypes = deadlineTypeNames.stream()
-                .map(DeadlineType::valueOf)
+                .map(DeadlineType::fromByName)
                 .toList();
         predicates.add(root.get("deadlineType").in(deadlineTypes));
     }
