@@ -36,7 +36,7 @@ public record RecruitSummaryResponse(
                 CompanyResponse.from(recruit.getCompany()),
                 recruit.getTitle(),
                 formatEndDate(recruit.getEndDate()),
-                recruit.getDeadlineType().name(),
+                recruit.getDeadlineType().getName(),
                 recruit.getCareerMin(),
                 recruit.getCareerMax(),
                 recruit.getRegions().stream()

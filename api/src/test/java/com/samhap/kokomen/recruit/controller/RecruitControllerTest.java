@@ -130,9 +130,40 @@ class RecruitControllerTest extends BaseControllerTest {
                         .build()
         );
 
+        String responseJson = """
+                {
+                  "data" : [ {
+                    "id" : "recruit-1",
+                    "affiliate" : {
+                      "name" : "사람인",
+                      "image" : "https://example.com/saramin.png"
+                    },
+                    "company" : {
+                      "id" : "company-1",
+                      "name" : "삼합소프트",
+                      "image" : "https://example.com/company.png"
+                    },
+                    "title" : "백엔드 개발자 채용",
+                    "end_date" : "2025-12-31T23:59:59",
+                    "deadline_type" : "기한 설정",
+                    "career_min" : 0,
+                    "career_max" : 3,
+                    "region" : [ "서울" ],
+                    "employee_type" : [ "정규직" ],
+                    "education" : [ "학사" ],
+                    "employment" : [ "서버·백엔드" ],
+                    "url" : "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=12345"
+                  } ],
+                  "current_page" : 0,
+                  "total_pages" : 1,
+                  "has_next" : false
+                }
+                """;
+
         mockMvc.perform(get("/api/v1/recruits")
                         .param("region", "서울"))
                 .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
                 .andDo(document("recruit-list-filter-region"));
     }
 
