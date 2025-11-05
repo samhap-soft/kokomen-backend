@@ -1,5 +1,6 @@
 package com.samhap.kokomen.recruit.domain;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
@@ -15,6 +16,13 @@ public enum DeadlineType {
 
     DeadlineType(String name) {
         this.name = name;
+    }
+
+    public static DeadlineType fromByName(String name) {
+        return Arrays.stream(values())
+                .filter(type -> type.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid DeadlineType name: " + name));
     }
 
     public static List<String> getNames() {
