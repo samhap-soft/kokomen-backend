@@ -30,7 +30,7 @@ public class AffiliateFixtureBuilder {
     public Affiliate build() {
         return new Affiliate(
                 id,
-                name != null ? name : "사람인",
+                name != null ? name : "V1",
                 image != null ? image : "https://example.com/saramin.png"
         );
     }

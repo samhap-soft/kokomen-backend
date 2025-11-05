@@ -18,6 +18,7 @@ import jakarta.persistence.criteria.Root;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -70,6 +71,7 @@ public class RecruitService {
         Page<Recruit> recruitPage = recruitRepository.findAll(spec, pageable);
 
         List<RecruitSummaryResponse> data = recruitPage.getContent().stream()
+                .filter(recruit -> Objects.equals(recruit.getAffiliate().getName(), "V1"))
                 .map(RecruitSummaryResponse::from)
                 .toList();
 
