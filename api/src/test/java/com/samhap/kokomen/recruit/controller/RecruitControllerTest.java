@@ -127,7 +127,7 @@ class RecruitControllerTest extends BaseControllerTest {
                   "data" : [ {
                     "id" : "recruit-1",
                     "affiliate" : {
-                      "name" : "사람인",
+                      "name" : "V1",
                       "image" : "https://example.com/saramin.png"
                     },
                     "company" : {
