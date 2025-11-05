@@ -1,10 +1,13 @@
 package com.samhap.kokomen.recruit.service.dto;
 
+import com.samhap.kokomen.recruit.domain.Education;
+import com.samhap.kokomen.recruit.domain.EmployeeType;
+import com.samhap.kokomen.recruit.domain.Employment;
 import com.samhap.kokomen.recruit.domain.Recruit;
+import com.samhap.kokomen.recruit.domain.Region;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Set;
 
 public record RecruitSummaryResponse(
         String id,
@@ -36,10 +39,18 @@ public record RecruitSummaryResponse(
                 recruit.getDeadlineType().name(),
                 recruit.getCareerMin(),
                 recruit.getCareerMax(),
-                convertEnumsToNames(recruit.getRegions()),
-                convertEnumsToNames(recruit.getEmployeeTypes()),
-                convertEnumsToNames(recruit.getEducations()),
-                convertEnumsToNames(recruit.getEmployments()),
+                recruit.getRegions().stream()
+                        .map(Region::getName)
+                        .toList(),
+                recruit.getEmployeeTypes().stream()
+                        .map(EmployeeType::getName)
+                        .toList(),
+                recruit.getEducations().stream()
+                        .map(Education::getName)
+                        .toList(),
+                recruit.getEmployments().stream()
+                        .map(Employment::getName)
+                        .toList(),
                 recruit.getUrl()
         );
     }
@@ -49,11 +60,5 @@ public record RecruitSummaryResponse(
             return null;
         }
         return endDate.format(ISO_FORMATTER);
-    }
-
-    private static <T extends Enum<T>> List<String> convertEnumsToNames(Set<T> enums) {
-        return enums.stream()
-                .map(Enum::name)
-                .toList();
     }
 }
