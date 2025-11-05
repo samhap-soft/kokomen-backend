@@ -1,5 +1,6 @@
 package com.samhap.kokomen.recruit.domain;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
@@ -37,6 +38,13 @@ public enum Employment {
 
     Employment(String name) {
         this.name = name;
+    }
+
+    public static Employment findByName(String name) {
+        return Arrays.stream(values())
+                .filter(employment -> employment.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("No enum constant with name: " + name));
     }
 
     public static List<String> getNames() {
