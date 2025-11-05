@@ -4,7 +4,8 @@
       "Bash(cp:*)",
       "Bash(mkdir:*)",
       "Bash(rm:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__sequential-thinking__sequentialthinking"
     ],
     "deny": [],
     "ask": []
