@@ -94,4 +94,10 @@ public class Recruit {
     @Column(name = "employment")
     @Enumerated(value = EnumType.STRING)
     private Set<Employment> employments;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "apply_url", nullable = false)
+    private String applyUrl;
 }
