@@ -1,6 +1,5 @@
 package com.samhap.kokomen.recruit.controller;
 
-import com.samhap.kokomen.recruit.schedular.service.RecruitmentDataService;
 import com.samhap.kokomen.recruit.service.RecruitService;
 import com.samhap.kokomen.recruit.service.dto.FiltersResponse;
 import com.samhap.kokomen.recruit.service.dto.RecruitPageResponse;
@@ -10,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,13 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecruitController {
 
     private final RecruitService recruitService;
-    private final RecruitmentDataService recruitmentDataService;
-
-    @PostMapping("/scrape")
-    public ResponseEntity<Void> scrapeRecruitmentData() {
-        recruitmentDataService.fetchAndSaveAllRecruitments();
-        return ResponseEntity.ok().build();
-    }
 
     @GetMapping("/filters")
     public ResponseEntity<FiltersResponse> getFilters() {
