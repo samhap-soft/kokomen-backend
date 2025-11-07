@@ -32,9 +32,7 @@ public class RecruitmentApiClient {
         List<RecruitmentDto> allRecruitments = new ArrayList<>();
         PaginationState state = new PaginationState();
 
-        int i = 0;
         while (state.hasMore()) {
-            log.info("페이지 {} 수집 시도 (반복 횟수: {})", state.getCurrentPage(), ++i);
             PagedData<RecruitmentDto> pagedData = fetchPageSafely(state.getCurrentPage());
 
             if (pagedData == null) {
