@@ -44,3 +44,7 @@ replay_pid*
 
 api/local-app-run.sh
 consumer/local-app-run.sh
+
+/**/bin/
+.serena
+.claude

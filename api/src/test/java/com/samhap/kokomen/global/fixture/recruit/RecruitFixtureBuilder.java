@@ -117,7 +117,9 @@ public class RecruitFixtureBuilder {
                 regions != null ? regions : Set.of(Region.SEOUL),
                 employeeTypes != null ? employeeTypes : Set.of(EmployeeType.FULL_TIME),
                 educations != null ? educations : Set.of(Education.BACHELOR),
-                employments != null ? employments : Set.of(Employment.SERVER_BACKEND)
+                employments != null ? employments : Set.of(Employment.SERVER_BACKEND),
+                null,
+                null
         );
     }
 }
