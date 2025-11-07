@@ -51,6 +51,9 @@ public class MySQLDatabaseCleaner implements BeforeEachCallback {
     private void truncateTables(EntityManager em) {
         em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
         for (String tableName : findTableNames(em)) {
+            if (tableName.equals("flyway_schema_history")) {
+                continue;
+            }
             em.createNativeQuery("TRUNCATE TABLE %s".formatted(tableName)).executeUpdate();
         }
         em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 1").executeUpdate();
