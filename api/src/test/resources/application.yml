@@ -9,6 +9,8 @@ spring:
     default-property-inclusion: non_null
   kafka:
     bootstrap-servers: localhost:9092
+  flyway:
+    enabled: false
 
 open-ai:
   api-key: test_api_key

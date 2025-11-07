@@ -1,69 +1,71 @@
 package com.samhap.kokomen.global;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.metamodel.EntityType;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
-public class MySQLDatabaseCleaner {
+public class MySQLDatabaseCleaner implements BeforeEachCallback {
 
-    public static final String CAMEL_CASE = "([a-z])([A-Z])";
-    public static final String SNAKE_CASE = "$1_$2";
+    private String databaseName;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Override
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+        ApplicationContext context = SpringExtension.getApplicationContext(extensionContext);
 
-    private List<String> tableNames;
-
-    @PostConstruct
-    public void findTableNames() {
-        tableNames = entityManager.getMetamodel().getEntities().stream()
-                .filter(e -> e.getJavaType().getAnnotation(Entity.class) != null)
-                .map(MySQLDatabaseCleaner::convertCamelToSnake)
-                .toList();
-    }
-
-    private static String convertCamelToSnake(final EntityType<?> e) {
-        return e.getName()
-                .replaceAll(CAMEL_CASE, SNAKE_CASE)
-                .toLowerCase();
-    }
-
-    @Transactional
-    public void executeTruncate() {
-        entityManager.flush();
-        entityManager.clear();
-
-        disableIntegrity();
-        for (String tableName : tableNames) {
-            truncateTable(tableName);
-            resetAutoIncrement(tableName);
+        if (databaseName == null) {
+            extractDatabaseName(context);
         }
-        enableIntegrity();
+
+        cleanup(context);
     }
 
-    private void disableIntegrity() {
-        entityManager.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0")
-                .executeUpdate();
+    private void extractDatabaseName(ApplicationContext context) {
+        DataSource dataSource = context.getBean(DataSource.class);
+        try (Connection conn = dataSource.getConnection()) {
+            databaseName = conn.getCatalog();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to extract database name", e);
+        }
     }
 
-    private void truncateTable(final String tableName) {
-        entityManager.createNativeQuery(String.format("TRUNCATE TABLE %s", tableName))
-                .executeUpdate();
+    private void cleanup(ApplicationContext context) {
+        EntityManager em = context.getBean(EntityManager.class);
+        TransactionTemplate transactionTemplate = context.getBean(TransactionTemplate.class);
+
+        transactionTemplate.execute(action -> {
+            em.clear();
+            truncateTables(em);
+            return null;
+        });
     }
 
-    private void resetAutoIncrement(final String tableName) {
-        entityManager.createNativeQuery(String.format("ALTER TABLE %s AUTO_INCREMENT = 1", tableName))
-                .executeUpdate();
+    private void truncateTables(EntityManager em) {
+        em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
+        for (String tableName : findTableNames(em)) {
+            em.createNativeQuery("TRUNCATE TABLE %s".formatted(tableName)).executeUpdate();
+        }
+        em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 1").executeUpdate();
     }
 
-    private void enableIntegrity() {
-        entityManager.createNativeQuery("SET FOREIGN_KEY_CHECKS = 1")
-                .executeUpdate();
+    @SuppressWarnings("unchecked")
+    private List<String> findTableNames(EntityManager em) {
+        String tableNameSelectQuery = String.format("""
+                SELECT TABLE_NAME
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = '%s'
+                AND TABLE_TYPE = 'BASE TABLE'
+                """, databaseName);
+
+        return em.createNativeQuery(tableNameSelectQuery)
+                .getResultList();
     }
 }
