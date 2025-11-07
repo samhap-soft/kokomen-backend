@@ -6,21 +6,21 @@ import com.samhap.kokomen.recruit.schedular.dto.RecruitmentDto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RecruitmentApiClient {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
+
+    public RecruitmentApiClient(RestClient.Builder builder) {
+        this.restClient = builder.build();
+    }
 
     private static final String BASE_URL = "https://v2-api.zighang.com/api/recruitments";
     private static final int PAGE_SIZE = 11;
@@ -78,19 +78,17 @@ public class RecruitmentApiClient {
 
         log.info("API 요청: {}", uri);
 
-        ResponseEntity<ApiResponse<PagedData<RecruitmentDto>>> response = restTemplate.exchange(
-                uri,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<>() {
-                }
-        );
-        log.info("받은 내용: {}", Objects.requireNonNull(response.getBody().getData().getContent()));
+        ApiResponse<PagedData<RecruitmentDto>> response = restClient.get()
+                .uri(uri)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+        log.info("받은 내용: {}", Objects.requireNonNull(response.getData().getContent()));
 
-        if (response.getBody() != null && response.getBody().getSuccess()) {
-            return response.getBody().getData();
+        if (response != null && response.getSuccess()) {
+            return response.getData();
         } else {
-            log.error("API 응답 실패: {}", response.getBody());
+            log.error("API 응답 실패: {}", response);
             return null;
         }
     }

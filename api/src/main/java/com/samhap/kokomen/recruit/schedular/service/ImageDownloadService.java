@@ -4,17 +4,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ImageDownloadService {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
+
+    public ImageDownloadService(RestClient.Builder builder) {
+        this.restClient = builder.build();
+    }
 
     private static final String BASE_URL = "https://d2juy7qzamcf56.cloudfront.net/";
     private static final String IMAGE_DIR = "image";
@@ -74,7 +76,10 @@ public class ImageDownloadService {
                 Files.createDirectories(targetDir);
             }
 
-            byte[] imageBytes = restTemplate.getForObject(fullUrl, byte[].class);
+            byte[] imageBytes = restClient.get()
+                    .uri(fullUrl)
+                    .retrieve()
+                    .body(byte[].class);
 
             if (imageBytes == null || imageBytes.length == 0) {
                 log.warn("이미지 다운로드 실패 (빈 데이터): {}", fullUrl);
