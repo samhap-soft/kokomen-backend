@@ -1,9 +1,8 @@
 package com.samhap.kokomen.recruit.schedular.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.samhap.kokomen.global.service.S3Service;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -12,68 +11,38 @@ import org.springframework.web.client.RestClient;
 @Service
 public class ImageDownloadService {
 
-    private final RestClient restClient;
-
-    public ImageDownloadService(RestClient.Builder builder) {
-        this.restClient = builder.build();
-    }
-
     private static final String BASE_URL = "https://d2juy7qzamcf56.cloudfront.net/";
-    private static final String IMAGE_DIR = "image";
+    private static final String S3_BASE_PATH = "recruit/company/";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String FOLDER_DELIMITER = "/";
+
+    private final RestClient restClient;
+    private final S3Service s3Service;
+
+    public ImageDownloadService(RestClient.Builder builder, S3Service s3Service) {
+        this.restClient = builder.build();
+        this.s3Service = s3Service;
+    }
 
     public String downloadAndSaveImage(String imagePathOrUrl, String companyId) {
         if (imagePathOrUrl == null || imagePathOrUrl.isBlank()) {
-            log.debug("이미지 경로가 null이거나 비어있어 다운로드 스킵");
             return null;
         }
 
         try {
-            boolean isAbsoluteUrl = imagePathOrUrl.startsWith("https://");
-            String fullUrl;
-            Path targetFile;
-            String relativePath;
+            String fullUrl = getFullUrl(imagePathOrUrl);
 
-            if (isAbsoluteUrl) {
-                fullUrl = imagePathOrUrl;
-                log.debug("절대 URL 이미지 다운로드 시도: {}", fullUrl);
+            log.debug("이미지 다운로드 시도: {}", fullUrl);
 
-                String extension = extractExtension(imagePathOrUrl);
-                String fileName = companyId + extension;
+            String dateFolder = LocalDate.now().format(DATE_FORMATTER);
+            String extension = extractExtension(fullUrl);
+            String fileName = companyId + extension;
+            String s3Key = S3_BASE_PATH + dateFolder + FOLDER_DELIMITER + fileName;
+            String relativePath = dateFolder + FOLDER_DELIMITER + fileName;
 
-                Path targetDir = Paths.get(IMAGE_DIR, "etc_image");
-                targetFile = targetDir.resolve(fileName);
-                relativePath = "etc_image/" + fileName;
-
-                if (Files.exists(targetFile)) {
-                    log.debug("이미지 파일이 이미 존재함: {}", targetFile);
-                    return relativePath;
-                }
-
-                Files.createDirectories(targetDir);
-
-            } else {
-                fullUrl = BASE_URL + imagePathOrUrl;
-                log.debug("상대 경로 이미지 다운로드 시도: {}", fullUrl);
-
-                int lastSlashIndex = imagePathOrUrl.lastIndexOf('/');
-                if (lastSlashIndex == -1) {
-                    log.warn("잘못된 이미지 경로 형식: {}", imagePathOrUrl);
-                    return null;
-                }
-
-                String folderName = imagePathOrUrl.substring(0, lastSlashIndex);
-                String fileName = imagePathOrUrl.substring(lastSlashIndex + 1);
-
-                Path targetDir = Paths.get(IMAGE_DIR, folderName);
-                targetFile = targetDir.resolve(fileName);
-                relativePath = folderName + "/" + fileName;
-
-                if (Files.exists(targetFile)) {
-                    log.debug("이미지 파일이 이미 존재함: {}", targetFile);
-                    return relativePath;
-                }
-
-                Files.createDirectories(targetDir);
+            if (s3Service.exists(s3Key)) {
+                log.debug("이미지 파일이 S3에 이미 존재함: {}", s3Key);
+                return relativePath;
             }
 
             byte[] imageBytes = restClient.get()
@@ -86,18 +55,23 @@ public class ImageDownloadService {
                 return null;
             }
 
-            Files.write(targetFile, imageBytes);
-            log.info("이미지 저장 완료: {} ({} bytes)", targetFile, imageBytes.length);
+            String contentType = determineContentType(extension);
+            s3Service.uploadS3File(s3Key, imageBytes, contentType);
+            log.info("S3 업로드 완료: {} ({} bytes)", s3Key, imageBytes.length);
 
             return relativePath;
 
-        } catch (IOException e) {
-            log.error("이미지 저장 중 IO 오류 발생: {} - {}", imagePathOrUrl, e.getMessage());
-            return null;
         } catch (Exception e) {
-            log.error("이미지 다운로드 실패: {} - {}", imagePathOrUrl, e.getMessage());
+            log.error("이미지 다운로드 및 업로드 실패: {} - {}", imagePathOrUrl, e.getMessage());
             return null;
         }
+    }
+
+    private String getFullUrl(String imagePathOrUrl) {
+        if (imagePathOrUrl.startsWith("https://")) {
+            return imagePathOrUrl;
+        }
+        return BASE_URL + imagePathOrUrl;
     }
 
     private String extractExtension(String url) {
@@ -111,4 +85,14 @@ public class ImageDownloadService {
 
         return ".jpg";
     }
+
+    private String determineContentType(String extension) {
+        return switch (extension.toLowerCase()) {
+            case ".png" -> "image/png";
+            case ".gif" -> "image/gif";
+            case ".webp" -> "image/webp";
+            default -> "image/jpeg";
+        };
+    }
 }
+

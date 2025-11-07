@@ -16,24 +16,22 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class RecruitmentApiClient {
 
-    private final RestClient restClient;
-
-    public RecruitmentApiClient(RestClient.Builder builder) {
-        this.restClient = builder.build();
-    }
-
     private static final String BASE_URL = "https://v2-api.zighang.com/api/recruitments";
     private static final int PAGE_SIZE = 11;
     private static final String DEPTH_ONE = "IT_개발";
     private static final String SORT_CONDITION = "LATEST";
     private static final String ORDER_CONDITION = "DESC";
 
+    private final RestClient restClient;
+
+    public RecruitmentApiClient(RestClient.Builder builder) {
+        this.restClient = builder.build();
+    }
+
     public List<RecruitmentDto> fetchAllRecruitments() {
         List<RecruitmentDto> allRecruitments = new ArrayList<>();
         int currentPage = 0;
         boolean hasMore = true;
-
-        log.info("=== API 데이터 수집 시작 ===");
 
         while (hasMore) {
             try {
@@ -83,9 +81,10 @@ public class RecruitmentApiClient {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
+        assert response != null;
         log.info("받은 내용: {}", Objects.requireNonNull(response.getData().getContent()));
 
-        if (response != null && response.getSuccess()) {
+        if (Boolean.TRUE.equals(response.getSuccess())) {
             return response.getData();
         } else {
             log.error("API 응답 실패: {}", response);
