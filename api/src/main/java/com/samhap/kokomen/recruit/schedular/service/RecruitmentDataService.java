@@ -55,6 +55,7 @@ public class RecruitmentDataService {
     public void fetchAndSaveAllRecruitments() {
         List<RecruitmentDto> recruitments = apiClient.fetchAllRecruitments();
 
+        log.info("총 {}개의 채용공고 수집 완료. 저장 작업 시작.", recruitments.size());
         for (RecruitmentDto dto : recruitments) {
             processRecruitment(dto);
         }

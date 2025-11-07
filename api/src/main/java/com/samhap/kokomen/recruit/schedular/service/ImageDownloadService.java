@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 public class ImageDownloadService {
 
     private static final String BASE_URL = "https://d2juy7qzamcf56.cloudfront.net/";
-    private static final String S3_BASE_PATH = "recruit/tmp/";
+    private static final String S3_BASE_PATH = "recruit/company/";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String FOLDER_DELIMITER = "/";
 
@@ -57,7 +57,6 @@ public class ImageDownloadService {
 
             String contentType = determineContentType(extension);
             s3Service.uploadS3File(s3Key, imageBytes, contentType);
-            log.info("S3 업로드 완료: {} ({} bytes)", s3Key, imageBytes.length);
 
             return relativePath;
 
