@@ -20,8 +20,8 @@ import com.samhap.kokomen.recruit.schedular.dto.mapper.EmploymentMapper;
 import com.samhap.kokomen.recruit.schedular.dto.mapper.RegionMapper;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -37,6 +37,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecruitmentDataService {
 
     private static final String RECRUITMENT_URL = "https://zighang.com/recruitment/";
+    private static final String COMPANY_IMAGE_CDN_BASE = "https://d2ftfzru2cd49g.cloudfront.net/recruit/company/";
+    private static final Map<String, String> AFFILIATE_IMAGE_MAP = Map.of(
+            "원티드", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/wanted.svg",
+            "그룹바이", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/groupby.svg",
+            "랠릿", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rallit.svg",
+            "로켓펀치", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rocket.svg"
+    );
 
     private final RecruitmentApiClient apiClient;
     private final AffiliateRepository affiliateRepository;
@@ -48,25 +55,32 @@ public class RecruitmentDataService {
     public void fetchAndSaveAllRecruitments() {
         List<RecruitmentDto> recruitments = apiClient.fetchAllRecruitments();
 
-        List<String> failedImageUrls = new ArrayList<>();
-
         for (RecruitmentDto dto : recruitments) {
-            try {
-                if (recruitRepository.existsByExternalId(dto.getId())) {
-                    log.debug("이미 존재하는 채용공고: {}", dto.getId());
-                    continue;
-                }
-
-                Affiliate affiliate = getOrCreateAffiliate(dto.getAffiliate());
-                Company company = getOrCreateCompany(dto.getCompany(), failedImageUrls);
-                Recruit recruit = convertToEntity(dto, affiliate, company);
-                recruitRepository.save(recruit);
-
-                log.debug("채용공고 저장 완료: {} - {}", dto.getId(), dto.getTitle());
-            } catch (Exception e) {
-                log.error("채용공고 처리 실패: {} - {}", dto.getId(), e.getMessage(), e);
-            }
+            processRecruitment(dto);
         }
+    }
+
+    private void processRecruitment(RecruitmentDto dto) {
+        try {
+            if (isDuplicate(dto.getId())) {
+                return;
+            }
+
+            Affiliate affiliate = getOrCreateAffiliate(dto.getAffiliate());
+            Company company = getOrCreateCompany(dto.getCompany());
+            Recruit recruit = convertToEntity(dto, affiliate, company);
+            recruitRepository.save(recruit);
+        } catch (Exception e) {
+            log.error("채용공고 처리 실패: {} - {}", dto.getId(), e.getMessage(), e);
+        }
+    }
+
+    private boolean isDuplicate(String externalId) {
+        boolean exists = recruitRepository.existsByExternalId(externalId);
+        if (exists) {
+            log.debug("이미 존재하는 채용공고: {}", externalId);
+        }
+        return exists;
     }
 
     private Affiliate getOrCreateAffiliate(String affiliateName) {
@@ -79,31 +93,34 @@ public class RecruitmentDataService {
     }
 
     private String getAffiliateImage(String affiliateName) {
-        return switch (affiliateName) {
-            case "원티드" -> "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/wanted.svg";
-            case "그룹바이" -> "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/groupby.svg";
-            case "랠릿" -> "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rallit.svg";
-            case "로켓펀치" -> "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rocket.svg";
-            default -> null;
-        };
+        return AFFILIATE_IMAGE_MAP.get(affiliateName);
     }
 
-    private Company getOrCreateCompany(CompanyDto dto, List<String> failedImageUrls) {
+    private Company getOrCreateCompany(CompanyDto dto) {
         return companyRepository.findByExternalId(dto.getId())
-                .orElseGet(() -> {
-                    String imageUrl = null;
-                    if (dto.getImage() != null && !dto.getImage().isEmpty()) {
-                        String relativePath = imageDownloadService.downloadAndSaveImage(dto.getImage(), dto.getId());
-                        if (relativePath != null) {
-                            imageUrl = "https://d2ftfzru2cd49g.cloudfront.net/recruit/company/" + relativePath;
-                        } else {
-                            failedImageUrls.add(dto.getImage());
-                        }
-                    }
+                .orElseGet(() -> createNewCompany(dto));
+    }
 
-                    Company newCompany = new Company(null, dto.getId(), dto.getName(), imageUrl);
-                    return companyRepository.save(newCompany);
-                });
+    private Company createNewCompany(CompanyDto dto) {
+        String imageUrl = processCompanyImage(dto);
+        Company newCompany = new Company(null, dto.getId(), dto.getName(), imageUrl);
+        return companyRepository.save(newCompany);
+    }
+
+    private String processCompanyImage(CompanyDto dto) {
+        if (dto.getImage() == null || dto.getImage().isEmpty()) {
+            return null;
+        }
+
+        String relativePath = imageDownloadService.downloadAndSaveImage(dto.getImage(), dto.getId());
+        if (relativePath != null) {
+            return buildCompanyImageUrl(relativePath);
+        }
+        return null;
+    }
+
+    private String buildCompanyImageUrl(String relativePath) {
+        return COMPANY_IMAGE_CDN_BASE + relativePath;
     }
 
     private Recruit convertToEntity(RecruitmentDto dto, Affiliate affiliate, Company company) {

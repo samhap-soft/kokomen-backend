@@ -3,9 +3,9 @@ package com.samhap.kokomen.recruit.schedular.service;
 import com.samhap.kokomen.recruit.schedular.dto.ApiResponse;
 import com.samhap.kokomen.recruit.schedular.dto.PagedData;
 import com.samhap.kokomen.recruit.schedular.dto.RecruitmentDto;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -30,41 +30,64 @@ public class RecruitmentApiClient {
 
     public List<RecruitmentDto> fetchAllRecruitments() {
         List<RecruitmentDto> allRecruitments = new ArrayList<>();
-        int currentPage = 0;
-        boolean hasMore = true;
+        PaginationState state = new PaginationState();
 
-        while (hasMore) {
-            try {
-                PagedData<RecruitmentDto> pagedData = fetchPage(currentPage);
+        while (state.hasMore()) {
+            PagedData<RecruitmentDto> pagedData = fetchPageSafely(state.getCurrentPage());
 
-                if (pagedData != null && pagedData.getContent() != null) {
-                    int fetchedCount = pagedData.getContent().size();
-                    allRecruitments.addAll(pagedData.getContent());
-
-                    log.info("페이지 {}/{} 수집 완료 - {} 건 (총 누적: {} 건)",
-                            currentPage + 1,
-                            pagedData.getTotalPages(),
-                            fetchedCount,
-                            allRecruitments.size());
-
-                    hasMore = !pagedData.getLast();
-                    currentPage++;
-                } else {
-                    log.info("페이지 {} 데이터가 비어있음", currentPage);
-                    hasMore = false;
-                }
-            } catch (Exception e) {
-                log.error("페이지 {} 수집 실패: {}", currentPage, e.getMessage(), e);
-                hasMore = false;
+            if (pagedData == null) {
+                state.stop();
+                continue;
             }
+
+            processPageData(pagedData, allRecruitments, state);
         }
 
-        log.info("=== API 데이터 수집 완료 - 총 {} 건 ===", allRecruitments.size());
         return allRecruitments;
     }
 
+    private PagedData<RecruitmentDto> fetchPageSafely(int page) {
+        try {
+            return fetchPage(page);
+        } catch (Exception e) {
+            log.error("페이지 {} 수집 실패: {}", page, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private void processPageData(PagedData<RecruitmentDto> pagedData, List<RecruitmentDto> accumulator,
+                                 PaginationState state) {
+        if (isEmptyPage(pagedData)) {
+            log.info("페이지 {} 데이터가 비어있음", state.getCurrentPage());
+            state.stop();
+            return;
+        }
+
+        List<RecruitmentDto> content = pagedData.getContent();
+        accumulator.addAll(content);
+
+        if (Boolean.TRUE.equals(pagedData.getLast())) {
+            state.stop();
+        } else {
+            state.nextPage();
+        }
+    }
+
+    private boolean isEmptyPage(PagedData<RecruitmentDto> pagedData) {
+        return pagedData == null || pagedData.getContent() == null || pagedData.getContent().isEmpty();
+    }
+
     private PagedData<RecruitmentDto> fetchPage(int page) {
-        java.net.URI uri = UriComponentsBuilder.fromUriString(BASE_URL)
+        URI uri = buildApiUri(page);
+
+        ApiResponse<PagedData<RecruitmentDto>> response = executeApiRequest(uri);
+        validateResponse(response, page);
+
+        return Boolean.TRUE.equals(response.getSuccess()) ? response.getData() : null;
+    }
+
+    private URI buildApiUri(int page) {
+        return UriComponentsBuilder.fromUriString(BASE_URL)
                 .queryParam("page", page)
                 .queryParam("size", PAGE_SIZE)
                 .queryParam("depthOnes[]", DEPTH_ONE)
@@ -73,22 +96,28 @@ public class RecruitmentApiClient {
                 .build()
                 .encode()
                 .toUri();
+    }
 
-        log.info("API 요청: {}", uri);
-
-        ApiResponse<PagedData<RecruitmentDto>> response = restClient.get()
+    private ApiResponse<PagedData<RecruitmentDto>> executeApiRequest(URI uri) {
+        return restClient.get()
                 .uri(uri)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
-        assert response != null;
-        log.info("받은 내용: {}", Objects.requireNonNull(response.getData().getContent()));
+    }
 
-        if (Boolean.TRUE.equals(response.getSuccess())) {
-            return response.getData();
-        } else {
-            log.error("API 응답 실패: {}", response);
-            return null;
+    private void validateResponse(ApiResponse<PagedData<RecruitmentDto>> response, int page) {
+        if (response == null) {
+            throw new IllegalStateException("API 응답이 null입니다 (페이지: " + page + ")");
+        }
+        if (response.getData() == null) {
+            throw new IllegalStateException("API 응답 데이터가 null입니다 (페이지: " + page + ")");
+        }
+        if (response.getData().getContent() == null) {
+            throw new IllegalStateException("API 응답 컨텐츠가 null입니다 (페이지: " + page + ")");
+        }
+        if (!Boolean.TRUE.equals(response.getSuccess())) {
+            log.error("API 응답 실패 (페이지: {}): {}", page, response);
         }
     }
 }
