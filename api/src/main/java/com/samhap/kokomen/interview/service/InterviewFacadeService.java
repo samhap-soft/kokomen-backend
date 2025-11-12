@@ -118,6 +118,7 @@ public class InterviewFacadeService {
         try {
             interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId);
+            redisService.releaseLock(lockKey);
         } catch (Exception ex) {
             log.error("Gpt API 호출 실패 - {}", ex);
             redisService.releaseLock(lockKey);
