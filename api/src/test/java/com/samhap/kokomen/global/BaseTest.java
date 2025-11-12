@@ -9,6 +9,7 @@ import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -21,6 +22,7 @@ import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAs
 import software.amazon.awssdk.services.s3.S3Client;
 
 @ActiveProfiles("test")
+@ExtendWith(MySQLDatabaseCleaner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
 public abstract class BaseTest {
 
@@ -54,7 +56,6 @@ public abstract class BaseTest {
 
     @BeforeEach
     void baseTestSetUp() {
-        mySQLDatabaseCleaner.executeTruncate();
         redisCleaner.clearAllRedisData();
     }
 }
