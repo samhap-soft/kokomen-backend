@@ -82,7 +82,7 @@ public class InterviewProceedBedrockFlowAsyncService {
 
         try {
             GptResponse response = interviewProceedGptFlowAsyncService.asyncRequestToGptFlow(questionAndAnswers);
-            log.debug("GPT 응답 받음: {}", response);
+            log.info("GPT 응답 받음: {}", response);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
                     Duration.ofSeconds(300));
         } catch (Exception e) {
