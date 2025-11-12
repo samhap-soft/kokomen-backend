@@ -5,7 +5,13 @@
       "Bash(mkdir:*)",
       "Bash(rm:*)",
       "Bash(find:*)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__serena__initial_instructions",
+      "mcp__serena__read_file",
+      "mcp__serena__activate_project",
+      "mcp__serena__insert_after_symbol",
+      "mcp__serena__find_symbol",
+      "mcp__serena__replace_regex"
     ],
     "deny": [],
     "ask": []

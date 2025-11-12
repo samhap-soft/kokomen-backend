@@ -43,6 +43,20 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    @Bean("gptCallbackExecutor")
+    public ThreadPoolTaskExecutor gptCallbackExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(100);
+        executor.setMaxPoolSize(100);
+        executor.setQueueCapacity(1000);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(10);
+        executor.setThreadNamePrefix("Async-Nonblock-GPT-");
+        executor.initialize();
+        executor.getThreadPoolExecutor().prestartAllCoreThreads();
+        return executor;
+    }
+
     @Override
     public Executor getAsyncExecutor() {
         return taskExecutor();
@@ -50,8 +64,7 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return (ex, method, params) -> {
-            log.error("Async error in method: {} with params: {}", method.getName(), params, ex);
-        };
+        return (ex, method, params) -> log.error("Async error in method: {} with params: {}", method.getName(), params,
+                ex);
     }
 }
