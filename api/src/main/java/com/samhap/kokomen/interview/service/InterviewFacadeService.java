@@ -116,17 +116,24 @@ public class InterviewFacadeService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
                 answerRequest.answer());
         try {
-            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
+            interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId);
-        } catch (Exception e) {
-            try {
-                interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
-                        questionAndAnswers, interviewId);
-            } catch (Exception ex) {
-                log.error("Gpt API 호출 실패 - {}", ex);
-                redisService.releaseLock(lockKey);
-            }
+        } catch (Exception ex) {
+            log.error("Gpt API 호출 실패 - {}", ex);
+            redisService.releaseLock(lockKey);
         }
+//        try {
+//            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
+//                    questionAndAnswers, interviewId);
+//        } catch (Exception e) {
+//            try {
+//                interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
+//                        questionAndAnswers, interviewId);
+//            } catch (Exception ex) {
+//                log.error("Gpt API 호출 실패 - {}", ex);
+//                redisService.releaseLock(lockKey);
+//            }
+//        }
     }
 
     public static String createInterviewProceedLockKey(Long memberId) {
