@@ -16,6 +16,8 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
+import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
@@ -56,6 +58,7 @@ public class InterviewFacadeService {
 
     private final QuestionVoicePathResolver questionVoicePathResolver;
     private final BedrockClient bedrockClient;
+    private final GptClient gptClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
@@ -73,42 +76,57 @@ public class InterviewFacadeService {
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         InterviewMode interviewMode = interviewRequest.mode();
-        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount() - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
+        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount()
+                - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
-        Interview interview = interviewService.saveInterview(new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
+        Interview interview = interviewService.saveInterview(
+                new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
-            return new InterviewStartVoiceModeResponse(interview, question, questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
+            return new InterviewStartVoiceModeResponse(interview, question,
+                    questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
     }
 
-    public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId, AnswerRequest answerRequest, MemberAuth memberAuth) {
+    public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId,
+                                                               AnswerRequest answerRequest, MemberAuth memberAuth) {
         tokenService.validateEnoughTokens(memberAuth.memberId(), 1);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest.answer());
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
+                    answerRequest.answer());
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
-            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse, interviewId);
+            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse,
+                    interviewId);
+        } catch (Exception e) {
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
+                    answerRequest.answer());
+            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, response,
+                    interviewId);
         } finally {
             redisService.releaseLock(lockKey);
         }
     }
 
-    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest, MemberAuth memberAuth) {
+    public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest,
+                                              MemberAuth memberAuth) {
         tokenService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
         try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId, answerRequest.answer());
-            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(), questionAndAnswers, interviewId);
+            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
+                    answerRequest.answer());
+            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
+                    questionAndAnswers, interviewId);
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
         }
@@ -135,14 +153,16 @@ public class InterviewFacadeService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId, InterviewMode mode, MemberAuth memberAuth) {
+    public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId,
+                                                                   InterviewMode mode, MemberAuth memberAuth) {
         interviewService.validateInterviewMode(interviewId, mode);
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
         Optional<String> interviewProceedStateOptional = redisService.get(interviewProceedStateKey, String.class);
         if (interviewProceedStateOptional.isPresent()) {
-            InterviewProceedState interviewProceedState = InterviewProceedState.valueOf(interviewProceedStateOptional.get());
+            InterviewProceedState interviewProceedState = InterviewProceedState.valueOf(
+                    interviewProceedStateOptional.get());
             return createResponseByLlmProceedState(interviewId, curQuestionId, interviewProceedState);
         }
 
@@ -159,7 +179,8 @@ public class InterviewFacadeService {
                 .orElseGet(() -> InterviewProceedStateResponse.createPendingOrFailed(InterviewProceedState.LLM_FAILED));
     }
 
-    private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId, InterviewProceedState interviewProceedState) {
+    private InterviewProceedStateResponse createResponseByLlmProceedState(Long interviewId, Long curQuestionId,
+                                                                          InterviewProceedState interviewProceedState) {
         if (interviewProceedState != InterviewProceedState.COMPLETED) {
             return InterviewProceedStateResponse.createPendingOrFailed(interviewProceedState);
         }
@@ -200,7 +221,8 @@ public class InterviewFacadeService {
 
         if (interview.getInterviewMode() == InterviewMode.VOICE) {
             String questionVoiceUrl = questionService.resolveQuestionVoiceUrl(lastQuestion);
-            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion, questionVoiceUrl);
+            return InterviewProceedStateVoiceModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion,
+                    questionVoiceUrl);
         }
 
         return InterviewProceedStateTextModeResponse.createCompletedAndInProgress(curAnswer, lastQuestion);
@@ -211,10 +233,14 @@ public class InterviewFacadeService {
         Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.readInterview(interviewId);
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
-        interviewService.increaseLikeCountModifying(interviewId); // X락을 사용하기 때문에 동시에 요청이 와도 올바른 likeCount 값으로 이벤트를 생성할 수 있다.
-        interview = interviewService.readInterview(interviewId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 읽어와야 최신 likeCount 값을 가져올 수 있다. 다른 트랜잭션에서 변경했을 수도 있기 때문
+        interviewService.increaseLikeCountModifying(
+                interviewId); // X락을 사용하기 때문에 동시에 요청이 와도 올바른 likeCount 값으로 이벤트를 생성할 수 있다.
+        interview = interviewService.readInterview(
+                interviewId); // @Modifying에서 영속성 컨텍스트를 비운 뒤, 다시 읽어와야 최신 likeCount 값을 가져올 수 있다. 다른 트랜잭션에서 변경했을 수도 있기 때문
 
-        eventPublisher.publishEvent(new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(), interview.getLikeCount()));
+        eventPublisher.publishEvent(
+                new InterviewLikedEvent(interviewId, memberAuth.memberId(), interview.getMember().getId(),
+                        interview.getLikeCount()));
     }
 
     // TODO: 하나로 합치기
@@ -225,7 +251,8 @@ public class InterviewFacadeService {
         interviewLikeService.likeInterview(new InterviewLike(member, interview));
 
         // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
-        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), interview.getLikeCount() + 1);
+        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(),
+                interview.getLikeCount() + 1);
     }
 
     @Transactional
@@ -236,7 +263,8 @@ public class InterviewFacadeService {
         Long likeCount = incrementAndGetLikeCountInRedis(interviewId, interview);
 
         // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
-        interviewLikeEventProducerV2.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(), likeCount);
+        interviewLikeEventProducerV2.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(),
+                likeCount);
     }
 
     private Long incrementAndGetLikeCountInRedis(Long interviewId, Interview interview) {
@@ -253,11 +281,13 @@ public class InterviewFacadeService {
         return interviewService.checkInterview(interviewId, mode, memberAuth);
     }
 
-    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state,
+                                                           Pageable pageable) {
         return interviewService.findMyInterviews(memberAuth, state, pageable);
     }
 
-    public InterviewSummaryResponses findOtherMemberInterviews(Long memberId, MemberAuth memberAuth, Pageable pageable) {
+    public InterviewSummaryResponses findOtherMemberInterviews(Long memberId, MemberAuth memberAuth,
+                                                               Pageable pageable) {
         return interviewService.findOtherMemberInterviews(memberId, memberAuth, pageable);
     }
 
@@ -265,7 +295,8 @@ public class InterviewFacadeService {
         return interviewService.findMyInterviewResult(interviewId, memberAuth);
     }
 
-    public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+    public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth,
+                                                                  ClientIp clientIp) {
         return interviewService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp);
     }
 
