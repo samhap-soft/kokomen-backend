@@ -128,7 +128,16 @@ public class InterviewFacadeService {
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId);
         } catch (Exception e) {
-            redisService.releaseLock(lockKey);
+            try {
+                QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
+                        answerRequest.answer());
+                GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+                interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, response,
+                        interviewId);
+            } catch (Exception ex) {
+                log.error("Gpt API 호출 실패 - {}", ex);
+                redisService.releaseLock(lockKey);
+            }
         }
     }
 
