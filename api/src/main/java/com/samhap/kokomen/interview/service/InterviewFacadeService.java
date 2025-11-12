@@ -16,8 +16,6 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
-import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.dto.AnswerRequest;
@@ -58,7 +56,6 @@ public class InterviewFacadeService {
 
     private final QuestionVoicePathResolver questionVoicePathResolver;
     private final BedrockClient bedrockClient;
-    private final GptClient gptClient;
     private final RedisService redisService;
     private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
@@ -104,12 +101,6 @@ public class InterviewFacadeService {
             LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
             return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse,
                     interviewId);
-        } catch (Exception e) {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
-                    answerRequest.answer());
-            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
-            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, response,
-                    interviewId);
         } finally {
             redisService.releaseLock(lockKey);
         }
@@ -129,9 +120,8 @@ public class InterviewFacadeService {
                     questionAndAnswers, interviewId);
         } catch (Exception e) {
             try {
-                GptResponse response = gptClient.requestToGpt(questionAndAnswers);
-                interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, response,
-                        interviewId);
+                interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
+                        questionAndAnswers, interviewId);
             } catch (Exception ex) {
                 log.error("Gpt API 호출 실패 - {}", ex);
                 redisService.releaseLock(lockKey);
