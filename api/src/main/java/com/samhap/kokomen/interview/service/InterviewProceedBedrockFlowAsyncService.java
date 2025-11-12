@@ -6,6 +6,7 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.InterviewProceedResult;
 import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.external.GptClient;
 import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
@@ -35,6 +36,7 @@ public class InterviewProceedBedrockFlowAsyncService {
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
     private final InterviewProceedGptFlowAsyncService interviewProceedGptFlowAsyncService;
+    private final GptClient gptClient;
 
     public InterviewProceedBedrockFlowAsyncService(
             InterviewProceedService interviewProceedService,
@@ -44,7 +46,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             RedisService redisService,
             @Qualifier("bedrockFlowCallbackExecutor")
             ThreadPoolTaskExecutor threadPoolTaskExecutor,
-            InterviewProceedGptFlowAsyncService interviewProceedGptFlowAsyncService) {
+            InterviewProceedGptFlowAsyncService interviewProceedGptFlowAsyncService, GptClient gptClient) {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
         this.tokenFacadeService = tokenFacadeService;
@@ -52,6 +54,7 @@ public class InterviewProceedBedrockFlowAsyncService {
         this.redisService = redisService;
         this.executor = threadPoolTaskExecutor;
         this.interviewProceedGptFlowAsyncService = interviewProceedGptFlowAsyncService;
+        this.gptClient = gptClient;
     }
 
     public void proceedInterviewByBedrockFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
@@ -81,9 +84,10 @@ public class InterviewProceedBedrockFlowAsyncService {
                 questionAndAnswers.readCurQuestion().getId());
 
         try {
-            GptResponse response = interviewProceedGptFlowAsyncService.asyncRequestToGptFlow(questionAndAnswers);
+            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+            interviewProceedService.proceedOrEndInterview(memberId, questionAndAnswers, response, interviewId);
             log.info("GPT 응답 받음: {}", response);
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
                     Duration.ofSeconds(300));
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
