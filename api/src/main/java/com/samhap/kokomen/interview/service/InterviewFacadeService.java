@@ -122,15 +122,13 @@ public class InterviewFacadeService {
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
         acquireLockForProceedInterview(lockKey);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
+                answerRequest.answer());
         try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
-                    answerRequest.answer());
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId);
         } catch (Exception e) {
             try {
-                QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
-                        answerRequest.answer());
                 GptResponse response = gptClient.requestToGpt(questionAndAnswers);
                 interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, response,
                         interviewId);
