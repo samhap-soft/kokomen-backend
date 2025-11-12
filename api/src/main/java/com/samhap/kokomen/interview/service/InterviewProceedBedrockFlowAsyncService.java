@@ -35,7 +35,7 @@ public class InterviewProceedBedrockFlowAsyncService {
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
-    private final InterviewProceedGptFlowAsyncService interviewProceedGptFlowAsyncService;
+    private final ThreadPoolTaskExecutor gptCallbackExecutor;
     private final GptClient gptClient;
 
     public InterviewProceedBedrockFlowAsyncService(
@@ -45,15 +45,17 @@ public class InterviewProceedBedrockFlowAsyncService {
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             RedisService redisService,
             @Qualifier("bedrockFlowCallbackExecutor")
-            ThreadPoolTaskExecutor threadPoolTaskExecutor,
-            InterviewProceedGptFlowAsyncService interviewProceedGptFlowAsyncService, GptClient gptClient) {
+            ThreadPoolTaskExecutor bedrockFlowCallbackExecutor,
+            @Qualifier("gptCallbackExecutor")
+            ThreadPoolTaskExecutor gptCallbackExecutor,
+            GptClient gptClient) {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
         this.tokenFacadeService = tokenFacadeService;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.redisService = redisService;
-        this.executor = threadPoolTaskExecutor;
-        this.interviewProceedGptFlowAsyncService = interviewProceedGptFlowAsyncService;
+        this.executor = bedrockFlowCallbackExecutor;
+        this.gptCallbackExecutor = gptCallbackExecutor;
         this.gptClient = gptClient;
     }
 
@@ -84,14 +86,38 @@ public class InterviewProceedBedrockFlowAsyncService {
                 questionAndAnswers.readCurQuestion().getId());
 
         try {
-            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
-            interviewProceedService.proceedOrEndInterview(memberId, questionAndAnswers, response, interviewId);
-            log.info("GPT 응답 받음: {}", response);
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
                     Duration.ofSeconds(300));
+
+            gptCallbackExecutor.execute(() ->
+                    callbackGptFlow(memberId, questionAndAnswers, interviewId, lockKey, interviewProceedStateKey,
+                            mdcContext));
         } catch (Exception e) {
             redisService.releaseLock(lockKey);
             throw e;
+        }
+    }
+
+    private void callbackGptFlow(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
+                                 String lockKey, String interviewProceedStateKey, Map<String, String> mdcContext) {
+        try {
+            setMdcContext(mdcContext);
+
+            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+            log.info("GPT 응답 받음: {}", response);
+
+            interviewProceedService.proceedOrEndInterview(
+                    memberId, questionAndAnswers, response, interviewId);
+
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
+                    Duration.ofSeconds(300));
+        } catch (Exception e) {
+            log.error("GPT 실패 - {}", interviewProceedStateKey, e);
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                    Duration.ofSeconds(300));
+        } finally {
+            redisService.releaseLock(lockKey);
+            MDC.clear();
         }
     }
 

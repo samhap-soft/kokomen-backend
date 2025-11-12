@@ -123,18 +123,6 @@ public class InterviewFacadeService {
             log.error("Gpt API 호출 실패 - {}", ex);
             redisService.releaseLock(lockKey);
         }
-//        try {
-//            interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
-//                    questionAndAnswers, interviewId);
-//        } catch (Exception e) {
-//            try {
-//                interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
-//                        questionAndAnswers, interviewId);
-//            } catch (Exception ex) {
-//                log.error("Gpt API 호출 실패 - {}", ex);
-//                redisService.releaseLock(lockKey);
-//            }
-//        }
     }
 
     public static String createInterviewProceedLockKey(Long memberId) {
@@ -278,8 +266,7 @@ public class InterviewFacadeService {
         if (!expireSuccess) {
             redisService.setIfAbsent(likeCountKey, String.valueOf(interview.getLikeCount()), Duration.ofDays(2));
         }
-        Long likeCount = redisService.incrementKey(likeCountKey);
-        return likeCount;
+        return redisService.incrementKey(likeCountKey);
     }
 
     public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
