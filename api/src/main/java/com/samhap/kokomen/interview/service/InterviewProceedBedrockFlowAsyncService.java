@@ -184,6 +184,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             String jsonPayload = outputEvent.content()
                     .document()
                     .toString();
+            log.info("Bedrock 응답 받음 interviewProceedStateKey={}, payload={}", interviewProceedStateKey, jsonPayload);
             LlmResponse llmResponse = new BedrockResponse(jsonPayload);
             InterviewProceedResult result =
                     interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers,

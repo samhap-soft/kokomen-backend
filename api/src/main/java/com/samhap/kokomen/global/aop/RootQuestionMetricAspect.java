@@ -15,12 +15,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @RequiredArgsConstructor
 @Component
 @Order(3)
@@ -53,7 +55,8 @@ public class RootQuestionMetricAspect {
     }
 
     @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseRootQuestionInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
+    public void increaseRootQuestionInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId,
+                                                      Long curQuestionId) {
         boolean isInterviewEnded = result.isEmpty();
         if (isInterviewEnded) {
             Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
@@ -65,7 +68,8 @@ public class RootQuestionMetricAspect {
     }
 
     @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseRootQuestionAnswerRankCount(Optional<InterviewProceedResponse> result, Long interviewId, Long curQuestionId) {
+    public void increaseRootQuestionAnswerRankCount(Optional<InterviewProceedResponse> result, Long interviewId,
+                                                    Long curQuestionId) {
         Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
         boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
         if (isRootQuestionAnswer) {
@@ -84,31 +88,42 @@ public class RootQuestionMetricAspect {
 
     // TODO: 테스트 코드 작성
     @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
-    public void increaseRootQuestionInterviewEndCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
-        Interview interview = interviewService.readInterview(interviewId);
-        if (interview.getInterviewState() == InterviewState.FINISHED) {
-            Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            meterRegistry.counter(
-                    "root_question_interview_end_count_total",
-                    "root_question_id", String.valueOf(rootQuestionId)
-            ).increment();
+    public void increaseRootQuestionInterviewEndCountByAsyncProceed(Long memberId,
+                                                                    QuestionAndAnswers questionAndAnswers,
+                                                                    Long interviewId) {
+        try {
+            Interview interview = interviewService.readInterview(interviewId);
+            if (interview.getInterviewState() == InterviewState.FINISHED) {
+                Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
+                meterRegistry.counter(
+                        "root_question_interview_end_count_total",
+                        "root_question_id", String.valueOf(rootQuestionId)
+                ).increment();
+            }
+        } catch (Exception e) {
+            log.error("increaseRootQuestionInterviewEndCountByAsyncProceed 실패, interviewId: {}", interviewId, e);
         }
     }
 
     // TODO: 테스트 코드 작성
     @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
-    public void increaseRootQuestionAnswerRankCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
-        Long curQuestionId = questionAndAnswers.readCurQuestion().getId();
-        Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
-        boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
-        if (isRootQuestionAnswer) {
-            Answer answer = answerService.readByQuestionId(curQuestionId);
-            AnswerRank answerRank = answer.getAnswerRank();
-            Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            meterRegistry.counter(
-                    "root_question_answer_rank_count_" + answerRank.name().toLowerCase(),
-                    "root_question_id", String.valueOf(rootQuestionId)
-            ).increment();
+    public void increaseRootQuestionAnswerRankCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers,
+                                                                  Long interviewId) {
+        try {
+            Long curQuestionId = questionAndAnswers.readCurQuestion().getId();
+            Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
+            boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
+            if (isRootQuestionAnswer) {
+                Answer answer = answerService.readByQuestionId(curQuestionId);
+                AnswerRank answerRank = answer.getAnswerRank();
+                Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
+                meterRegistry.counter(
+                        "root_question_answer_rank_count_" + answerRank.name().toLowerCase(),
+                        "root_question_id", String.valueOf(rootQuestionId)
+                ).increment();
+            }
+        } catch (Exception e) {
+            log.error("increaseRootQuestionAnswerRankCountByAsyncProceed 실패, interviewId: {}", interviewId, e);
         }
     }
 }

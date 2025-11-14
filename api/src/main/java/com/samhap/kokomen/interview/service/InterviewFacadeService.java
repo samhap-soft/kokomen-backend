@@ -124,6 +124,7 @@ public class InterviewFacadeService {
             try {
                 log.info("Gpt API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                         interviewId, curQuestionId, memberAuth.memberId());
+                log.error("Bedrock API 호출 실패, GPT 폴백에시 기록 - {}", e);
                 interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
                         questionAndAnswers, interviewId);
             } catch (Exception ex) {
