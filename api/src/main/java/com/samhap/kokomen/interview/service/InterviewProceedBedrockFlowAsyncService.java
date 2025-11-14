@@ -66,17 +66,12 @@ public class InterviewProceedBedrockFlowAsyncService {
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
-        try {
-            bedrockAgentRuntimeAsyncClient.invokeFlow(
-                    InterviewInvokeFlowRequestFactory.createInterviewProceedInvokeFlowRequest(questionAndAnswers),
-                    createInterviewProceedInvokeFlowResponseHandler(memberId, questionAndAnswers, interviewId, lockKey,
-                            interviewProceedStateKey, mdcContext));
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
-                    Duration.ofSeconds(300));
-        } catch (Exception e) {
-            redisService.releaseLock(lockKey);
-            throw e;
-        }
+        bedrockAgentRuntimeAsyncClient.invokeFlow(
+                InterviewInvokeFlowRequestFactory.createInterviewProceedInvokeFlowRequest(questionAndAnswers),
+                createInterviewProceedInvokeFlowResponseHandler(memberId, questionAndAnswers, interviewId, lockKey,
+                        interviewProceedStateKey, mdcContext));
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
+                Duration.ofSeconds(300));
     }
 
     public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
@@ -135,8 +130,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                                         mdcContext))))
                 .onError(ex ->
                         executor.execute(
-                                () -> handleInterviewProceedBedrockFlowException(ex, lockKey, interviewProceedStateKey,
-                                        mdcContext)))
+                                () -> handleInterviewProceedBedrockFlowException(ex, interviewProceedStateKey)))
                 .build();
     }
 
@@ -145,6 +139,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                                                      QuestionAndAnswers questionAndAnswers, Long interviewId,
                                                      String lockKey, String interviewProceedStateKey,
                                                      Map<String, String> mdcContext) {
+        log.info("callbackInterviewProceedBedrockFlow 호출됨 interviewProceedStateKey={}", interviewProceedStateKey);
         try {
             setMdcContext(mdcContext);
             if (event instanceof FlowOutputEvent outputEvent) {
@@ -159,18 +154,9 @@ public class InterviewProceedBedrockFlowAsyncService {
         }
     }
 
-    private void handleInterviewProceedBedrockFlowException(Throwable ex, String lockKey,
-                                                            String interviewProceedStateKey,
-                                                            Map<String, String> mdcContext) {
-        try {
-            setMdcContext(mdcContext);
-            log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
-            redisService.releaseLock(lockKey);
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
-                    Duration.ofSeconds(300));
-        } finally {
-            MDC.clear();
-        }
+    private void handleInterviewProceedBedrockFlowException(Throwable ex,
+                                                            String interviewProceedStateKey) {
+        log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
     }
 
     private void callbackInterviewProceedBedrockFlow(FlowOutputEvent outputEvent, Long memberId,
@@ -198,6 +184,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             String jsonPayload = outputEvent.content()
                     .document()
                     .toString();
+            log.info("Bedrock 응답 받음 interviewProceedStateKey={}, payload={}", interviewProceedStateKey, jsonPayload);
             LlmResponse llmResponse = new BedrockResponse(jsonPayload);
             InterviewProceedResult result =
                     interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers,
