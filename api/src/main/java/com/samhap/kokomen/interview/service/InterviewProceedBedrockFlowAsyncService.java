@@ -139,6 +139,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                                                      QuestionAndAnswers questionAndAnswers, Long interviewId,
                                                      String lockKey, String interviewProceedStateKey,
                                                      Map<String, String> mdcContext) {
+        log.info("callbackInterviewProceedBedrockFlow 호출됨 interviewProceedStateKey={}", interviewProceedStateKey);
         try {
             setMdcContext(mdcContext);
             if (event instanceof FlowOutputEvent outputEvent) {

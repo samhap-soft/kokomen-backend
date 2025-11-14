@@ -116,10 +116,14 @@ public class InterviewFacadeService {
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
                 answerRequest.answer());
         try {
+            log.info("Bedrock API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
+                    interviewId, curQuestionId, memberAuth.memberId());
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId);
         } catch (Exception e) {
             try {
+                log.info("Gpt API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
+                        interviewId, curQuestionId, memberAuth.memberId());
                 interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
                         questionAndAnswers, interviewId);
             } catch (Exception ex) {
