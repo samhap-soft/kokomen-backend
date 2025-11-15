@@ -67,12 +67,10 @@ public class RecruitmentDataService {
                 return;
             }
 
-            log.info("dto 데이터: {}", dto);
             Affiliate affiliate = getOrCreateAffiliate(dto.getAffiliate());
             Company company = getOrCreateCompany(dto.getCompany());
             Recruit recruit = convertToEntity(dto, affiliate, company);
-            Recruit save = recruitRepository.save(recruit);
-            log.info("Entity 데이터: {}", save);
+            recruitRepository.save(recruit);
         } catch (Exception e) {
             log.error("채용공고 처리 실패: {} - {}", dto.getId(), e.getMessage(), e);
         }

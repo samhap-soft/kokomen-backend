@@ -2,7 +2,7 @@ name: CD API DEV
 
 on:
   push:
-    branches: [ develop, fix/#265 ]
+    branches: [ develop ]
 
 jobs:
   detect-changes:
