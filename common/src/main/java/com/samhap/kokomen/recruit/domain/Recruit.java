@@ -100,26 +100,4 @@ public class Recruit {
 
     @Column(name = "apply_url", nullable = false)
     private String applyUrl;
-
-    @Override
-    public String toString() {
-        return "Recruit{" +
-                "id=" + id +
-                ", externalId='" + externalId + '\'' +
-                ", affiliate=" + affiliate +
-                ", title='" + title + '\'' +
-                ", endDate=" + endDate +
-                ", deadlineType=" + deadlineType +
-                ", careerMin=" + careerMin +
-                ", careerMax=" + careerMax +
-                ", url='" + url + '\'' +
-                ", company=" + company +
-                ", regions=" + regions +
-                ", employeeTypes=" + employeeTypes +
-                ", educations=" + educations +
-                ", employments=" + employments +
-                ", content='" + content + '\'' +
-                ", applyUrl='" + applyUrl + '\'' +
-                '}';
-    }
 }
