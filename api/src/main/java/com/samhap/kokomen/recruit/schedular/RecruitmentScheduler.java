@@ -13,7 +13,7 @@ public class RecruitmentScheduler {
 
     private final RecruitmentDataService recruitmentDataService;
 
-    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 */3 * * * *", zone = "Asia/Seoul")
     public void collectRecruitmentData() {
         try {
             log.info("채용 공고 수집 작업 시작");

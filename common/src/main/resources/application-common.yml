@@ -65,7 +65,7 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: ${SPRING_DATASOURCE_URL_DEV}
+    url: jdbc:mysql://kokomen-mysql-dev:3306/crawling_test
     username: ${SPRING_DATASOURCE_USERNAME_DEV}
     password: ${SPRING_DATASOURCE_PASSWORD_DEV}
     driver-class-name: com.mysql.cj.jdbc.Driver
