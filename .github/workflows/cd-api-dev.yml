@@ -82,7 +82,7 @@ jobs:
       - name: pull docker compose yaml files
         working-directory: /home/ubuntu
         run: |
-          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
+          [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://${{ secrets.GH_PAT }}@github.com/samhap-soft/kokomen-backend.git
           cd kokomen-backend
           git sparse-checkout init --cone
           git fetch origin develop
