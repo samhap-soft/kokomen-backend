@@ -7,8 +7,8 @@ import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,10 +21,10 @@ public class CareerMaterialsController {
 
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<Void> uploadResume(
-            @Valid @RequestBody ResumeSaveRequest request,
+            @Valid @ModelAttribute ResumeSaveRequest request,
             @Authentication MemberAuth memberAuth
     ) {
-        careerMaterialsFacadeService.saveResume(request, memberAuth);
+        careerMaterialsFacadeService.saveCareerMaterials(request, memberAuth);
         return ResponseEntity.noContent().build();
     }
 }
