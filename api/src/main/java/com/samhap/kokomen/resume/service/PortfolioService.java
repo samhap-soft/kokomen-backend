@@ -5,6 +5,7 @@ import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.CareerMaterialsPathResolver;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
@@ -17,12 +18,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class PortfolioService {
 
     private final CareerMaterialsPathResolver careerMaterialsPathResolver;
+    private final PdfValidator pdfValidator;
     private final MemberPortfolioRepository memberPortfolioRepository;
     private final S3Service s3Service;
 
     @Async
     @Transactional
     public void savePortfolio(MultipartFile portfolio, Member member) {
+        pdfValidator.validate(portfolio);
         String filename = portfolio.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), filename);
