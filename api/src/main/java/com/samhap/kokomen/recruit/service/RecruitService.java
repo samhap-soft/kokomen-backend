@@ -15,6 +15,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,6 +101,10 @@ public class RecruitService {
             addDeadlineTypeFilter(predicates, root, deadlineTypeNames);
             addCareerFilter(predicates, root, cb, careerMin, careerMax);
             addAffiliateFilter(predicates, root, cb);
+            predicates.add(cb.or(
+                    cb.isNull(root.get("endDate")),
+                    cb.greaterThanOrEqualTo(root.get("endDate"), LocalDateTime.now())
+            ));
 
             if (query != null) {
                 query.distinct(true);
