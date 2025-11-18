@@ -38,6 +38,8 @@ supertone:
 aws:
   root-question-s3-path: mock-path/
   next-question-s3-path: mock-path/
+  resume-s3-path: mock-path/
+  portfolio-s3-path: mock-path/
 
 ---
 # test
