@@ -20,7 +20,7 @@ public class CareerMaterialsController {
     private final CareerMaterialsFacadeService careerMaterialsFacadeService;
 
     @PostMapping(consumes = {"multipart/form-data"})
-    public ResponseEntity<Void> uploadResume(
+    public ResponseEntity<Void> uploadCareerMaterials(
             @Valid @ModelAttribute ResumeSaveRequest request,
             @Authentication MemberAuth memberAuth
     ) {
