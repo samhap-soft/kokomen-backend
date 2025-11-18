@@ -1,5 +1,6 @@
 package com.samhap.kokomen.recruit.schedular.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,14 +12,21 @@ public class RecruitmentDto {
     private String affiliate;
     private CompanyDto company;
     private String title;
+    @JsonProperty("endDate")
     private String endDate;
+    @JsonProperty("deadlineType")
     private String deadlineType;
+    @JsonProperty("careerMin")
     private Integer careerMin;
+    @JsonProperty("careerMax")
     private Integer careerMax;
     private List<String> region;
+    @JsonProperty("employeeType")
     private List<String> employeeType;
     private List<String> education;
+    @JsonProperty("depthOne")
     private List<String> depthOne;
+    @JsonProperty("depthTwo")
     private List<String> depthTwo;
     private Integer views;
 
