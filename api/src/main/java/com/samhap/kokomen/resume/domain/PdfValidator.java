@@ -23,7 +23,7 @@ public class PdfValidator {
 
     private void validateFileSize(MultipartFile file) {
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BadRequestException("파일 크기는 10MB를 초과할 수 없습니다.");
+            throw new BadRequestException("파일 크기는 50MB를 초과할 수 없습니다.");
         }
     }
 
