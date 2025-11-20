@@ -1,0 +1,42 @@
+package com.samhap.kokomen.resume.domain;
+
+import com.samhap.kokomen.global.constant.AwsConstant;
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Getter
+@Component
+public class CareerMaterialsPathResolver {
+
+    private static final String PDF_FILE_EXTENSION = ".pdf";
+    private static final String FOLDER_DELIMITER = "/";
+
+    private final String resumeS3Path;
+    private final String portfolioS3Path;
+
+    public CareerMaterialsPathResolver(
+            @Value("${aws.resume-s3-path}") String resumeS3Path,
+            @Value("${aws.portfolio-s3-path}") String portfolioS3Path) {
+        this.resumeS3Path = resumeS3Path;
+        this.portfolioS3Path = portfolioS3Path;
+    }
+
+    public String resolveResumeCdnPath(Long memberId, String title) {
+        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + resumeS3Path + memberId + FOLDER_DELIMITER + title
+                + PDF_FILE_EXTENSION;
+    }
+
+    public String resolveResumeS3Key(Long memberId, String title) {
+        return resumeS3Path + memberId + FOLDER_DELIMITER + title + PDF_FILE_EXTENSION;
+    }
+
+    public String resolvePortfolioCdnPath(Long memberId, String title) {
+        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + portfolioS3Path + memberId + FOLDER_DELIMITER + title
+                + PDF_FILE_EXTENSION;
+    }
+
+    public String resolvePortfolioS3Key(Long memberId, String title) {
+        return portfolioS3Path + memberId + FOLDER_DELIMITER + title + PDF_FILE_EXTENSION;
+    }
+}
