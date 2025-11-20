@@ -29,8 +29,10 @@ public class PortfolioService {
         String filename = portfolio.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), filename);
+
         MemberPortfolio memberPortfolio = new MemberPortfolio(member, cdnPath);
         memberPortfolioRepository.save(memberPortfolio);
+
         if (s3Service.exists(s3Key)) {
             return;
         }

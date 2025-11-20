@@ -29,8 +29,10 @@ public class ResumeService {
         String filename = resume.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), filename);
+
         MemberResume memberResume = new MemberResume(member, cdnPath);
         memberResumeRepository.save(memberResume);
+
         if (s3Service.exists(s3Key)) {
             return;
         }
