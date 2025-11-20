@@ -79,6 +79,8 @@ payment:
 aws:
   root-question-s3-path: local/root-question-voice/
   next-question-s3-path: local/next-question-voice/
+  resume-s3-path: local/resume/
+  portfolio-s3-path: local/portfolio/
 
 ---
 # dev profile
@@ -111,6 +113,8 @@ payment:
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
+  resume-s3-path: dev/resume/
+  portfolio-s3-path: dev/portfolio/
 ---
 
 # prod profile
@@ -144,6 +148,8 @@ payment:
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
+  resume-s3-path: prod/resume/
+  portfolio-s3-path: prod/portfolio/
 ---
 # load-test profile
 spring:
@@ -176,3 +182,5 @@ payment:
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
+  resume-s3-path: dev/resume/
+  portfolio-s3-path: dev/portfolio/
