@@ -514,3 +514,13 @@ include::{snippetsDir}/recruit-list-pagination/curl-request.adoc[]
 include::{snippetsDir}/recruit-list-empty/http-request.adoc[]
 include::{snippetsDir}/recruit-list-empty/http-response.adoc[]
 include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
+
+== 이력서
+
+=== 이력서 & 포트폴리오 저장
+
+include::{snippetsDir}/resume-upload/http-request.adoc[]
+include::{snippetsDir}/resume-upload/request-headers.adoc[]
+include::{snippetsDir}/resume-upload/request-parts.adoc[]
+include::{snippetsDir}/recruit-list-empty/http-response.adoc[]
+include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
