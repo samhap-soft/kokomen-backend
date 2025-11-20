@@ -7,6 +7,8 @@ import com.samhap.kokomen.resume.domain.CareerMaterialsPathResolver;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
+import com.samhap.kokomen.resume.service.dto.ResumeResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,17 @@ public class ResumeService {
     private final MemberResumeRepository memberResumeRepository;
     private final S3Service s3Service;
 
+    public List<ResumeResponse> getResumesByMemberId(Long memberId) {
+        return memberResumeRepository.findByMemberId(memberId).stream()
+                .map(resume -> new ResumeResponse(
+                        resume.getId(),
+                        resume.getTitle(),
+                        resume.getResumeUrl(),
+                        resume.getCreatedAt()
+                ))
+                .toList();
+    }
+
     @Async
     @Transactional
     public void saveResume(MultipartFile resume, Member member) {
@@ -30,7 +43,7 @@ public class ResumeService {
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), filename);
 
-        MemberResume memberResume = new MemberResume(member, cdnPath);
+        MemberResume memberResume = new MemberResume(member, filename, cdnPath);
         memberResumeRepository.save(memberResume);
 
         if (s3Service.exists(s3Key)) {

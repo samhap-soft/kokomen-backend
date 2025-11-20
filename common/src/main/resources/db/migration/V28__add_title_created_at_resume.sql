@@ -1,0 +1,7 @@
+ALTER TABLE member_resume
+    ADD COLUMN title VARCHAR(500) NOT NULL,
+    ADD COLUMN created_at DATETIME(6) NOT NULL;
+
+ALTER TABLE member_portfolio
+    ADD COLUMN title VARCHAR(500) NOT NULL,
+    ADD COLUMN created_at DATETIME(6) NOT NULL;
