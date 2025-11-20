@@ -3,6 +3,8 @@ package com.samhap.kokomen.recruit.controller;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -86,6 +88,17 @@ class RecruitControllerTest extends BaseControllerTest {
         mockMvc.perform(get("/api/v1/recruits"))
                 .andExpect(status().isOk())
                 .andDo(document("recruit-list",
+                        queryParameters(
+                                parameterWithName("region").description("지역 필터 (선택사항)").optional(),
+                                parameterWithName("employee_type").description("고용 형태 필터 (선택사항)").optional(),
+                                parameterWithName("education").description("학력 필터 (선택사항)").optional(),
+                                parameterWithName("employment").description("직무 필터 (선택사항)").optional(),
+                                parameterWithName("deadline_type").description("마감 유형 필터 (선택사항)").optional(),
+                                parameterWithName("career_min").description("최소 경력 필터 (선택사항)").optional(),
+                                parameterWithName("career_max").description("최대 경력 필터 (선택사항)").optional(),
+                                parameterWithName("page").description("페이지 번호 (기본값: 0)").optional(),
+                                parameterWithName("size").description("페이지 크기 (기본값: 20)").optional()
+                        ),
                         responseFields(
                                 fieldWithPath("data[].id").description("공고 ID"),
                                 fieldWithPath("data[].affiliate.name").description("제휴사 이름"),
