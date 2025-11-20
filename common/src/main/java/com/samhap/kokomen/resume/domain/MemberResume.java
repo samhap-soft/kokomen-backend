@@ -1,5 +1,6 @@
 package com.samhap.kokomen.resume.domain;
 
+import com.samhap.kokomen.global.domain.BaseEntity;
 import com.samhap.kokomen.member.domain.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,7 +26,7 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_member_resume_member_id", columnList = "member_id")
         }
 )
-public class MemberResume {
+public class MemberResume extends BaseEntity {
 
     @Id
     @Column(name = "id")
@@ -36,11 +37,15 @@ public class MemberResume {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
     @Column(name = "resume_url", nullable = false)
     private String resumeUrl;
 
-    public MemberResume(Member member, String resumeUrl) {
+    public MemberResume(Member member, String title, String resumeUrl) {
         this.member = member;
+        this.title = title;
         this.resumeUrl = resumeUrl;
     }
 }
