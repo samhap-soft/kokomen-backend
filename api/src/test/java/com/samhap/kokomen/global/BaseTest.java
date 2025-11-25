@@ -5,7 +5,6 @@ import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.interview.external.NotificationClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +29,6 @@ public abstract class BaseTest {
     protected SupertoneClient supertoneClient;
     @MockitoBean
     protected S3Client s3Client;
-    @MockitoBean
-    protected NotificationClient notificationClient;
     @MockitoBean
     protected PaymentClient paymentClient;
     @MockitoBean

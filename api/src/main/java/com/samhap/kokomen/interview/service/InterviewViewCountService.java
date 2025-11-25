@@ -5,7 +5,6 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.RedisException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.service.event.InterviewViewCountEvent;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +40,7 @@ public class InterviewViewCountService {
         if (!expireSuccess) {
             redisService.setIfAbsent(viewCountKey, String.valueOf(interview.getViewCount()), Duration.ofDays(2));
         }
-        Long viewCount = redisService.incrementKey(viewCountKey);
-        eventPublisher.publishEvent(new InterviewViewCountEvent(interview.getId(), interview.getMember().getId(), viewCount));
-        return viewCount;
+        return redisService.incrementKey(viewCountKey);
     }
 
     private boolean isInterviewee(MemberAuth memberAuth, Interview interview) {
@@ -59,7 +56,8 @@ public class InterviewViewCountService {
     }
 
     @Recover
-    public Long recoverIncrementViewCount(RedisException e, Interview interview, MemberAuth memberAuth, ClientIp clientIp) {
+    public Long recoverIncrementViewCount(RedisException e, Interview interview, MemberAuth memberAuth,
+                                          ClientIp clientIp) {
         log.error("Redis 조회수 업데이트 실패", e);
         return interview.getViewCount();
     }
