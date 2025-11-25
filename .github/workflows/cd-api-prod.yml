@@ -20,7 +20,6 @@ jobs:
               - 'api/**'
   build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.api_changed == 'true'
     runs-on: ubuntu-latest
 
     defaults:
@@ -66,11 +65,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [ self-hosted, prod ]
-
-    strategy:
-      matrix:
-        runner: [ prod-a, prod-b ]
+    runs-on: [ self-hosted, prod, new ]
 
     steps:
       - name: Stop existing container
@@ -104,7 +99,6 @@ jobs:
           KAKAO_CLIENT_SECRET_PROD: ${{ secrets.KAKAO_CLIENT_SECRET_PROD }}
           KAKAO_ADMIN_KEY_PROD: ${{ secrets.KAKAO_ADMIN_KEY_PROD }}
           REDIS_PRIMARY_HOST_PROD: ${{ secrets.REDIS_PRIMARY_HOST_PROD }}
-          NOTIFICATION_BASE_URL_PROD: ${{ secrets.NOTIFICATION_BASE_URL_PROD }}
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
           SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}

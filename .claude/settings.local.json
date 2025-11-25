@@ -11,7 +11,10 @@
       "mcp__serena__activate_project",
       "mcp__serena__insert_after_symbol",
       "mcp__serena__find_symbol",
-      "mcp__serena__replace_regex"
+      "mcp__serena__replace_regex",
+      "Bash(cat:*)",
+      "Bash(direnv status:*)",
+      "Bash(docker ps:*)"
     ],
     "deny": [],
     "ask": []
