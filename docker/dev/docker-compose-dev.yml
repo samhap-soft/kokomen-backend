@@ -69,8 +69,11 @@ services:
     image: prom/mysqld-exporter
     container_name: mysql-dev-exporter
     restart: unless-stopped
+    command:
+      - '--mysqld.address=${MYSQL_HOST}:3306'
+      - '--mysqld.username=${SPRING_DATASOURCE_USERNAME_DEV}'
     environment:
-      DATA_SOURCE_NAME: "${SPRING_DATASOURCE_USERNAME_DEV}:${SPRING_DATASOURCE_PASSWORD_DEV}@tcp(${MYSQL_HOST}:3306)/"
+      MYSQLD_EXPORTER_PASSWORD: "${SPRING_DATASOURCE_PASSWORD_DEV}"
       TZ: Asia/Seoul
     ports:
       - "9104:9104"
