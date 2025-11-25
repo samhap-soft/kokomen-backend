@@ -65,21 +65,6 @@ services:
     networks:
       - dev-kokomen-net
 
-  mysql-dev-exporter:
-    image: prom/mysqld-exporter
-    container_name: mysql-dev-exporter
-    restart: unless-stopped
-    command:
-      - '--mysqld.address=${MYSQL_HOST}:3306'
-      - '--mysqld.username=${SPRING_DATASOURCE_USERNAME_DEV}'
-    environment:
-      MYSQLD_EXPORTER_PASSWORD: "${SPRING_DATASOURCE_PASSWORD_DEV}"
-      TZ: Asia/Seoul
-    ports:
-      - "9104:9104"
-    networks:
-      - dev-kokomen-net
-
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
     container_name: kokomen-redis-dev
@@ -87,35 +72,6 @@ services:
       - 6379:6379
     volumes:
       - kokomen-redis-data:/data
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
-  nginx:
-    image: nginx:1.28.0
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/logs:/var/log/nginx
-      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
-      - /home/ubuntu/data/certbot/www:/var/www/certbot
-    restart: unless-stopped
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
-      - /home/ubuntu/data/certbot/www:/var/www/certbot
-    restart: unless-stopped
     environment:
       TZ: Asia/Seoul
     networks:
@@ -183,16 +139,6 @@ services:
             scrape_interval: 15s
             static_configs:
               - targets: ['node:9100']
-        
-          - job_name: 'mysql'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['mysql-dev-exporter:9104']
-        
-          - job_name: 'notification-mysql'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['notification-mysql-dev-exporter:9104']
         EOF
         /bin/prometheus
     environment:

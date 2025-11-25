@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,7 +63,6 @@ public class InterviewFacadeService {
     private final RootQuestionService rootQuestionService;
     private final QuestionService questionService;
     private final AnswerService answerService;
-    private final ApplicationEventPublisher eventPublisher;
     private final InterviewLikeEventProducer interviewLikeEventProducer;
     private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
     private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
