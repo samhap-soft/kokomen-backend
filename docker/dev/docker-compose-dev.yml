@@ -13,7 +13,7 @@ services:
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       HOSTNAME: ${HOSTNAME}
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL_DEV: ${SPRING_DATASOURCE_URL_DEV}
+      SPRING_DATASOURCE_URL_DEV: ${NEW_SPRING_DATASOURCE_URL_DEV}
       SPRING_DATASOURCE_USERNAME_DEV: ${SPRING_DATASOURCE_USERNAME_DEV}
       SPRING_DATASOURCE_PASSWORD_DEV: ${SPRING_DATASOURCE_PASSWORD_DEV}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY}
@@ -65,46 +65,6 @@ services:
     networks:
       - dev-kokomen-net
 
-  kokomen-mysql-dev:
-    image: mysql:8.4.5
-    container_name: kokomen-mysql-dev
-    command:
-      [
-        "mysqld",
-        "--character-set-server=utf8mb4",
-        "--collation-server=utf8mb4_general_ci"
-      ]
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - mysql-init:/docker-entrypoint-initdb.d
-    ports:
-      - 3306:3306
-    restart: always
-    environment:
-      TZ: Asia/Seoul
-      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
-      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
-      MYSQL_DATABASE: kokomen-dev
-      LANG: C.UTF-8
-      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
-    networks:
-      - dev-kokomen-net
-
-  mysql-dev-exporter:
-    image: prom/mysqld-exporter
-    container_name: mysql-dev-exporter
-    restart: unless-stopped
-    environment:
-      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD_DEV}@tcp(kokomen-mysql-dev:3306)/"
-      TZ: Asia/Seoul
-    ports:
-      - "9104:9104"
-    volumes:
-      - ./my.cnf:/.my.cnf
-    networks:
-      - dev-kokomen-net
-
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
     container_name: kokomen-redis-dev
@@ -112,35 +72,6 @@ services:
       - 6379:6379
     volumes:
       - kokomen-redis-data:/data
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
-  nginx:
-    image: nginx:1.28.0
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/logs:/var/log/nginx
-      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
-      - /home/ubuntu/data/certbot/www:/var/www/certbot
-    restart: unless-stopped
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - /home/ubuntu/data/certbot/conf:/etc/letsencrypt
-      - /home/ubuntu/data/certbot/www:/var/www/certbot
-    restart: unless-stopped
     environment:
       TZ: Asia/Seoul
     networks:
@@ -208,16 +139,6 @@ services:
             scrape_interval: 15s
             static_configs:
               - targets: ['node:9100']
-        
-          - job_name: 'mysql'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['mysql-dev-exporter:9104']
-        
-          - job_name: 'notification-mysql'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['notification-mysql-dev-exporter:9104']
         EOF
         /bin/prometheus
     environment:
@@ -270,9 +191,7 @@ services:
 
 volumes:
   promtail-tmp:
-  mysql-data:
   kokomen-redis-data:
-  mysql-init:
   loki:
   prometheus:
   grafana:

@@ -24,13 +24,10 @@ oauth:
     client-id: test_google_client_id
     client-secret: test_google_client_secret
 
-notification:
-  base-url: http://kokomen-notification-test
-  connect-timeout: 3s
-  read-timeout: 3s
-
 payment:
   base-url: http://kokomen-payment-test
+  connect-timeout: 3s
+  read-timeout: 3s
 
 supertone:
   api-token: mock-token
@@ -38,6 +35,8 @@ supertone:
 aws:
   root-question-s3-path: mock-path/
   next-question-s3-path: mock-path/
+  resume-s3-path: mock-path/
+  portfolio-s3-path: mock-path/
 
 ---
 # test

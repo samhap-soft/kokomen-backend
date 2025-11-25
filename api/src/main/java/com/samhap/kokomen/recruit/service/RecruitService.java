@@ -16,7 +16,6 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RecruitService {
 
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final String CAREER_MIN_FIELD = "careerMin";
     private static final String CAREER_MAX_FIELD = "careerMax";
 

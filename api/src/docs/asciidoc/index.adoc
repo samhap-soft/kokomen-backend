@@ -481,6 +481,7 @@ include::{snippetsDir}/recruit-filters/curl-request.adoc[]
 === 공고 목록 조회
 
 include::{snippetsDir}/recruit-list/http-request.adoc[]
+include::{snippetsDir}/recruit-list/query-parameters.adoc[]
 include::{snippetsDir}/recruit-list/http-response.adoc[]
 include::{snippetsDir}/recruit-list/response-fields.adoc[]
 include::{snippetsDir}/recruit-list/curl-request.adoc[]
@@ -514,3 +515,22 @@ include::{snippetsDir}/recruit-list-pagination/curl-request.adoc[]
 include::{snippetsDir}/recruit-list-empty/http-request.adoc[]
 include::{snippetsDir}/recruit-list-empty/http-response.adoc[]
 include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
+
+== 이력서
+
+=== 이력서 & 포트폴리오 저장
+
+include::{snippetsDir}/resume-upload/http-request.adoc[]
+include::{snippetsDir}/resume-upload/request-headers.adoc[]
+include::{snippetsDir}/resume-upload/request-parts.adoc[]
+include::{snippetsDir}/recruit-list-empty/http-response.adoc[]
+include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
+
+=== 이력서 & 포트폴리오 반환
+
+include::{snippetsDir}/resume-getCareerMaterials/http-request.adoc[]
+include::{snippetsDir}/resume-getCareerMaterials/request-headers.adoc[]
+include::{snippetsDir}/resume-getCareerMaterials/query-parameters.adoc[]
+include::{snippetsDir}/resume-getCareerMaterials/http-response.adoc[]
+include::{snippetsDir}/resume-getCareerMaterials/response-fields.adoc[]
+include::{snippetsDir}/resume-getCareerMaterials/curl-request.adoc[]
