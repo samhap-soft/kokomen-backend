@@ -105,6 +105,7 @@ jobs:
           SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_CLIENT_SECRET_PROD: ${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/load-test/api
