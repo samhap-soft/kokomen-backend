@@ -70,12 +70,10 @@ services:
     container_name: mysql-dev-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD_DEV}@tcp(kokomen-mysql-dev:3306)/"
+      DATA_SOURCE_NAME: "${SPRING_DATASOURCE_USERNAME_DEV}:${SPRING_DATASOURCE_PASSWORD_DEV}@tcp(${MYSQL_HOST}:3306)/"
       TZ: Asia/Seoul
     ports:
       - "9104:9104"
-    volumes:
-      - ./my.cnf:/.my.cnf
     networks:
       - dev-kokomen-net
 
