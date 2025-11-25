@@ -64,25 +64,31 @@ public class InterviewDocsV2Test extends DocsTest {
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Question question2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Question question3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question3.getId());
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question3.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
-        String exceptionMessage = """
+        String exceptionMessage = String.format("""
                 {
-                    "message": "현재 질문이 아닙니다. 현재 질문 id: 3"
+                    "message": "현재 질문이 아닙니다. 현재 질문 id: %d"
                 }
-                """;
+                """, question3.getId());
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
+                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(),
+                        question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AnswerRequestV2("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
@@ -110,24 +116,30 @@ public class InterviewDocsV2Test extends DocsTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Question question2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        Question question3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
-        String exceptionMessage = """
+        String exceptionMessage = String.format("""
                 {
-                    "message": "현재 질문이 아닙니다. 현재 질문 id: 2"
+                    "message": "현재 질문이 아닙니다. 현재 질문 id: %d"
                 }
-                """;
+                """, question2.getId());
 
         // when & then
         mockMvc.perform(get(
-                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(), question1.getId())
+                        "/api/v2/interviews/{interviewId}/questions/{curQuestionId}?mode=TEXT", interview.getId(),
+                        question1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AnswerRequestV2("사용자 답변", InterviewMode.TEXT)))
                         .header("Cookie", "JSESSIONID=" + session.getId())

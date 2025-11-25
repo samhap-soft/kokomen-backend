@@ -43,9 +43,6 @@ management:
   server:
     port: 8081
     address: 0.0.0.0
-notification:
-  connect-timeout: 3s
-  read-timeout: 3s
 supertone:
   api-token: ${SUPERTONE_API_TOKEN}
 
@@ -72,13 +69,15 @@ server:
     session:
       cookie:
         secure: true
-notification:
-  base-url: http://kokomen-notification-local-internal:8080 # 컨테이너 이름으로 직접 요청
 payment:
   base-url: http://kokomen-payment-local-internal:8080
+  connect-timeout: 3s
+  read-timeout: 3s
 aws:
   root-question-s3-path: local/root-question-voice/
   next-question-s3-path: local/next-question-voice/
+  resume-s3-path: local/resume/
+  portfolio-s3-path: local/portfolio/
 
 ---
 # dev profile
@@ -104,13 +103,15 @@ server:
       cookie:
         domain: kokomen.kr
         secure: false
-notification:
-  base-url: http://kokomen-notification-dev-internal:8080 # 컨테이너 이름으로 직접 요청
 payment:
   base-url: http://kokomen-payment-dev-internal:8080
+  connect-timeout: 3s
+  read-timeout: 3s
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
+  resume-s3-path: dev/resume/
+  portfolio-s3-path: dev/portfolio/
 ---
 
 # prod profile
@@ -137,13 +138,15 @@ server:
         domain: kokomen.kr
         secure: true
 
-notification:
-  base-url: ${NOTIFICATION_BASE_URL_PROD}
 payment:
   base-url: ${PAYMENT_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 3s
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
+  resume-s3-path: prod/resume/
+  portfolio-s3-path: prod/portfolio/
 ---
 # load-test profile
 spring:
@@ -169,10 +172,12 @@ server:
         domain: kokomen.kr
         secure: true
 
-notification:
-  base-url: ${NOTIFICATION_BASE_URL_PROD}
 payment:
   base-url: ${PAYMENT_BASE_URL_LOAD_TEST}
+  connect-timeout: 3s
+  read-timeout: 3s
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
+  resume-s3-path: dev/resume/
+  portfolio-s3-path: dev/portfolio/

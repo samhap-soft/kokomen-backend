@@ -100,11 +100,11 @@ jobs:
           KAKAO_CLIENT_SECRET_PROD: ${{ secrets.KAKAO_CLIENT_SECRET_PROD }}
           KAKAO_ADMIN_KEY_PROD: ${{ secrets.KAKAO_ADMIN_KEY_PROD }}
           REDIS_PRIMARY_HOST_PROD: ${{ secrets.REDIS_PRIMARY_HOST_PROD }}
-          NOTIFICATION_BASE_URL_PROD: ${{ secrets.NOTIFICATION_BASE_URL_PROD }}
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
           SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_CLIENT_SECRET_PROD: ${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/load-test/api

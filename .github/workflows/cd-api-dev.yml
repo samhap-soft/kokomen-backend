@@ -2,7 +2,7 @@ name: CD API DEV
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, feat/#274 ]
 
 jobs:
   detect-changes:
@@ -66,7 +66,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [ self-hosted, dev ] # 규칙대로는 dev-api가 더 자연스럽지만, 기존 runner 사용하기 위해 dev 유지
+    runs-on: [ self-hosted, dev, org, new ] # 규칙대로는 dev-api가 더 자연스럽지만, 기존 runner 사용하기 위해 dev 유지
 
     steps:
       - name: Create dev-kokomen-net Docker network
@@ -105,7 +105,7 @@ jobs:
       - name: Docker run
         working-directory: /home/ubuntu
         env:
-          SPRING_DATASOURCE_URL_DEV: ${{ secrets.SPRING_DATASOURCE_URL_DEV }}
+          SPRING_DATASOURCE_URL_DEV: ${{ secrets.NEW_SPRING_DATASOURCE_URL_DEV }}
           SPRING_DATASOURCE_USERNAME_DEV: ${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }}
           SPRING_DATASOURCE_PASSWORD_DEV: ${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }}
           OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}

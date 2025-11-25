@@ -22,8 +22,8 @@ public class PaymentClientBuilder {
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${payment.base-url}") String paymentBaseUrl,
-            @Value("${notification.connect-timeout}") Duration connectTimeout,
-            @Value("${notification.read-timeout}") Duration readTimeout
+            @Value("${payment.connect-timeout}") Duration connectTimeout,
+            @Value("${payment.read-timeout}") Duration readTimeout
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeout);
