@@ -37,12 +37,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecruitmentDataService {
 
     private static final String RECRUITMENT_URL = "https://zighang.com/recruitment/";
-    private static final String COMPANY_IMAGE_CDN_BASE = "https://d2ftfzru2cd49g.cloudfront.net/recruit/company/";
+    private static final String COMPANY_IMAGE_CDN_BASE = "https://dhtg8wzvkbfxr.cloudfront.net/recruit/company/";
     private static final Map<String, String> AFFILIATE_IMAGE_MAP = Map.of(
-            "원티드", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/wanted.svg",
-            "그룹바이", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/groupby.svg",
-            "랠릿", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rallit.svg",
-            "로켓펀치", "https://d2ftfzru2cd49g.cloudfront.net/recruit/affiliate/rocket.svg"
+            "원티드", "https://dhtg8wzvkbfxr.cloudfront.net/recruit/affiliate/wanted.svg",
+            "그룹바이", "https://dhtg8wzvkbfxr.cloudfront.net/recruit/affiliate/groupby.svg",
+            "랠릿", "https://dhtg8wzvkbfxr.cloudfront.net/recruit/affiliate/rallit.svg",
+            "로켓펀치", "https://dhtg8wzvkbfxr.cloudfront.net/recruit/affiliate/rocket.svg"
     );
 
     private final RecruitmentApiClient apiClient;
