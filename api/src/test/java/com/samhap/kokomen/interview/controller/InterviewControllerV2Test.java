@@ -38,7 +38,6 @@ import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.Duration;
@@ -68,13 +67,17 @@ class InterviewControllerV2Test extends BaseControllerTest {
     void 인터뷰_진행_V2() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
-        tokenRepository.save(TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
@@ -117,13 +120,17 @@ class InterviewControllerV2Test extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(), Duration.ofSeconds(10));
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
+                Duration.ofSeconds(10));
 
         String responseJson = """
                 {
@@ -163,13 +170,17 @@ class InterviewControllerV2Test extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(), Duration.ofSeconds(10));
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                Duration.ofSeconds(10));
 
         String responseJson = """
                 {
@@ -210,13 +221,17 @@ class InterviewControllerV2Test extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(), Duration.ofSeconds(10));
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(),
+                Duration.ofSeconds(10));
 
         String responseJson = """
                 {
@@ -257,13 +272,17 @@ class InterviewControllerV2Test extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
-        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(), Duration.ofSeconds(10));
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
+        redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
+                Duration.ofSeconds(10));
 
         String responseJson = """
                 {
@@ -304,13 +323,16 @@ class InterviewControllerV2Test extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
@@ -355,15 +377,18 @@ class InterviewControllerV2Test extends BaseControllerTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
                 InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.C).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
+        Question question3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
 
         System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
@@ -414,16 +439,20 @@ class InterviewControllerV2Test extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewMode(InterviewMode.VOICE).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewMode(InterviewMode.VOICE).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.C).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
+        Question question3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
 
         System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(), question2.getId());
+        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+                question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         String responseJson = """
@@ -432,7 +461,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
                     "interview_state": "IN_PROGRESS",
                     "cur_answer_rank": "C",
                     "next_question_id": 3,
-                    "next_question_voice_url": "https://d2ftfzru2cd49g.cloudfront.net/mock-path/3.wav"
+                    "next_question_voice_url": "https://dhtg8wzvkbfxr.cloudfront.net/mock-path/3.wav"
                 }
                 """;
 
@@ -460,7 +489,8 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_answer_rank").description("현재 답변 순위"),
                                 fieldWithPath("next_question_id").description("다음 질문 ID"),
-                                fieldWithPath("next_question_voice_url").description("다음 질문 음성 URL (루트 질문인 경우 CDN URL이 가지만, 루트 질문이 아닌 경우 polling 필요할 수 있음)")
+                                fieldWithPath("next_question_voice_url").description(
+                                        "다음 질문 음성 URL (루트 질문인 경우 CDN URL이 가지만, 루트 질문이 아닌 경우 polling 필요할 수 있음)")
                         )
                 ));
     }
