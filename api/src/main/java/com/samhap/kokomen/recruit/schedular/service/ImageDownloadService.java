@@ -2,8 +2,7 @@ package com.samhap.kokomen.recruit.schedular.service;
 
 import com.samhap.kokomen.global.constant.AwsConstant;
 import com.samhap.kokomen.global.service.S3Service;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import com.samhap.kokomen.recruit.schedular.domain.RecruitPathResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -12,16 +11,15 @@ import org.springframework.web.client.RestClient;
 @Service
 public class ImageDownloadService {
 
-    private static final String S3_BASE_PATH = "recruit/company/";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final String FOLDER_DELIMITER = "/";
-
     private final RestClient restClient;
     private final S3Service s3Service;
+    private final RecruitPathResolver recruitPathResolver;
 
-    public ImageDownloadService(RestClient.Builder builder, S3Service s3Service) {
+    public ImageDownloadService(RestClient.Builder builder, S3Service s3Service,
+                                RecruitPathResolver recruitPathResolver) {
         this.restClient = builder.build();
         this.s3Service = s3Service;
+        this.recruitPathResolver = recruitPathResolver;
     }
 
     public String downloadAndSaveImage(String imagePathOrUrl, String companyId) {
@@ -34,11 +32,10 @@ public class ImageDownloadService {
 
             log.debug("이미지 다운로드 시도: {}", fullUrl);
 
-            String dateFolder = LocalDate.now().format(DATE_FORMATTER);
             String extension = extractExtension(fullUrl);
             String fileName = companyId + extension;
-            String s3Key = S3_BASE_PATH + dateFolder + FOLDER_DELIMITER + fileName;
-            String relativePath = dateFolder + FOLDER_DELIMITER + fileName;
+            String s3Key = recruitPathResolver.resolveCompanyS3Key(fileName);
+            String relativePath = recruitPathResolver.resolveCompanyCdnPath(s3Key);
 
             if (s3Service.exists(s3Key)) {
                 log.debug("이미지 파일이 S3에 이미 존재함: {}", s3Key);
