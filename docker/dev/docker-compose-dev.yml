@@ -154,7 +154,7 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       TZ: Asia/Seoul
     ports:
-      - 3000:3000
+      - 3015:3000
     entrypoint:
       - sh
       - -euc
