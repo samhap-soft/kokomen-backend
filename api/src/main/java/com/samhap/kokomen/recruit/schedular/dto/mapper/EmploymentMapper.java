@@ -1,10 +1,11 @@
 package com.samhap.kokomen.recruit.schedular.dto.mapper;
 
-import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.recruit.domain.Employment;
 import java.util.Arrays;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Getter
 public enum EmploymentMapper {
 
@@ -50,7 +51,10 @@ public enum EmploymentMapper {
         return Arrays.stream(values())
                 .filter(employment -> employment.getName().equals(koreanName))
                 .findFirst()
-                .orElseThrow(() -> new BadRequestException("Unknown employment: " + koreanName))
-                .getEmployment();
+                .map(EmploymentMapper::getEmployment)
+                .orElseGet(() -> {
+                    log.warn("Unknown employment: {}", koreanName);
+                    return null;
+                });
     }
 }
