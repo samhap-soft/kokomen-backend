@@ -27,28 +27,6 @@ services:
     networks:
       - dev-kokomen-net
 
-  kokomen-interview-consumer-dev:
-    image: samhap/kokomen-interview-consumer:dev
-    container_name: kokomen-interview-consumer-dev
-    restart: on-failure:3
-    expose:
-      - 8080
-    ports:
-      - "8091:8081"
-    volumes:
-      - ./interview/consumer/app/logs:/logs
-    environment:
-      TZ: Asia/Seoul
-      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
-      HOSTNAME: ${HOSTNAME}
-      SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL_DEV: ${SPRING_DATASOURCE_URL_DEV}
-      SPRING_DATASOURCE_USERNAME_DEV: ${SPRING_DATASOURCE_USERNAME_DEV}
-      SPRING_DATASOURCE_PASSWORD_DEV: ${SPRING_DATASOURCE_PASSWORD_DEV}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
-    networks:
-      - dev-kokomen-net
-
   node:
     image: prom/node-exporter
     container_name: node
@@ -62,6 +40,32 @@ services:
       - '/:/host:ro'
     environment:
       TZ: Asia/Seoul
+    networks:
+      - dev-kokomen-net
+
+  kokomen-mysql-dev:
+    image: mysql:8.4.5
+    container_name: kokomen-mysql-dev
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci"
+      ]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    restart: always
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
+      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
+      MYSQL_DATABASE: kokomen-dev
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
     networks:
       - dev-kokomen-net
 
@@ -97,7 +101,6 @@ services:
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./interview/api/app/logs:/logs/interviews/api
-      - ./interview/consumer/app/logs:/logs/interviews/consumer
       - promtail-tmp:/tmp
     command:
       - "-config.file=/etc/promtail/promtail.yaml"
@@ -129,12 +132,6 @@ services:
             static_configs:
               - targets: ['kokomen-interview-api-dev:8081']
 
-          - job_name: 'consumer-actuator'
-            metrics_path: '/actuator/prometheus'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['kokomen-interview-consumer-dev:8081']
-
           - job_name: 'node'
             scrape_interval: 15s
             static_configs:
@@ -157,7 +154,7 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       TZ: Asia/Seoul
     ports:
-      - 3000:3000
+      - 3015:3000
     entrypoint:
       - sh
       - -euc
@@ -191,6 +188,8 @@ services:
 
 volumes:
   promtail-tmp:
+  mysql-data:
+  mysql-init:
   kokomen-redis-data:
   loki:
   prometheus:
