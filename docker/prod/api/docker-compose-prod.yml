@@ -26,6 +26,18 @@ services:
       GOOGLE_CLIENT_ID_PROD: ${GOOGLE_CLIENT_ID_PROD}
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
 
+  nginx:
+    image: nginx:1.28.0
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs:/var/log/nginx
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+
   node:
     image: prom/node-exporter
     container_name: node
