@@ -43,6 +43,32 @@ services:
     networks:
       - dev-kokomen-net
 
+  kokomen-mysql-dev:
+    image: mysql:8.4.5
+    container_name: kokomen-mysql-dev
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci"
+      ]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    restart: always
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_DEV}
+      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_DEV}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_DEV}
+      MYSQL_DATABASE: kokomen-dev
+      LANG: C.UTF-8
+      MYSQL_INIT_CONNECT: "SET NAMES utf8mb4"
+    networks:
+      - dev-kokomen-net
+
   kokomen-redis-dev:
     image: valkey/valkey:8.0.1
     container_name: kokomen-redis-dev
