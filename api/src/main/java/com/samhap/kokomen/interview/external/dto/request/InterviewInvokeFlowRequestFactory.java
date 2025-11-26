@@ -11,18 +11,19 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowReque
 
 public class InterviewInvokeFlowRequestFactory {
 
-    private static final String IN_PROGRESS_INTERVIEW_PROCEED_FLOW_ID = "EFP2KPF1KA";
-    private static final String IN_PORGRESS_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "5BDDAF8XFW";
-    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ID = "2Y5R698F4O";
-    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "U68M2IXVYC";
-    private static final String ANSWER_FEEDBACK_FLOW_ID = "ZM3ILHZCC3";
-    private static final String ANSWER_FEEDBACK_FLOW_ALIAS_ID = "H8WX8W1J7W";
+    private static final String IN_PROGRESS_INTERVIEW_PROCEED_FLOW_ID = "SOK4JJCJ4W";
+    private static final String IN_PORGRESS_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "BUY0SE9CTX";
+    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ID = "8OI2K15P0Z";
+    private static final String FINISHED_INTERVIEW_PROCEED_FLOW_ALIAS_ID = "99737SUQS3";
+    private static final String ANSWER_FEEDBACK_FLOW_ID = "6IU49F4L1H";
+    private static final String ANSWER_FEEDBACK_FLOW_ALIAS_ID = "P3OFASFORM";
 
     private InterviewInvokeFlowRequestFactory() {
     }
 
     public static InvokeFlowRequest createInterviewProceedInvokeFlowRequest(QuestionAndAnswers questionAndAnswers) {
-        FlowInputContent content = FlowInputContent.fromDocument(InterviewMessagesFactory.createInterviewProceedBedrockFlowDocument(questionAndAnswers));
+        FlowInputContent content = FlowInputContent.fromDocument(
+                InterviewMessagesFactory.createInterviewProceedBedrockFlowDocument(questionAndAnswers));
         FlowInput flowInput = FlowInput.builder()
                 .nodeName("FlowInputNode")
                 .nodeOutputName("document")
@@ -35,7 +36,8 @@ public class InterviewInvokeFlowRequestFactory {
         return createInterviewProceedInvokeFlowRequest(questionAndAnswers, builder);
     }
 
-    private static InvokeFlowRequest createInterviewProceedInvokeFlowRequest(QuestionAndAnswers questionAndAnswers, Builder builder) {
+    private static InvokeFlowRequest createInterviewProceedInvokeFlowRequest(QuestionAndAnswers questionAndAnswers,
+                                                                             Builder builder) {
         if (questionAndAnswers.isProceedRequest()) {
             return builder.flowIdentifier(IN_PROGRESS_INTERVIEW_PROCEED_FLOW_ID)
                     .flowAliasIdentifier(IN_PORGRESS_INTERVIEW_PROCEED_FLOW_ALIAS_ID)
@@ -47,8 +49,10 @@ public class InterviewInvokeFlowRequestFactory {
                 .build();
     }
 
-    public static InvokeFlowRequest createAnswerFeedbackInvokeFlowRequest(QuestionAndAnswers questionAndAnswers, AnswerRank curAnswerRank) {
-        Document document = InterviewMessagesFactory.createAnswerFeedbackBedrockFlowDocument(questionAndAnswers, curAnswerRank);
+    public static InvokeFlowRequest createAnswerFeedbackInvokeFlowRequest(QuestionAndAnswers questionAndAnswers,
+                                                                          AnswerRank curAnswerRank) {
+        Document document = InterviewMessagesFactory.createAnswerFeedbackBedrockFlowDocument(questionAndAnswers,
+                curAnswerRank);
         FlowInputContent content = FlowInputContent.fromDocument(document);
         FlowInput flowInput = FlowInput.builder()
                 .nodeName("FlowInputNode")

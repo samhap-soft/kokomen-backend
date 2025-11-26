@@ -1,6 +1,5 @@
 package com.samhap.kokomen.recruit.schedular.dto.mapper;
 
-import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.recruit.domain.Education;
 import java.util.Arrays;
 import lombok.Getter;
@@ -33,7 +32,10 @@ public enum EducationMapper {
         return Arrays.stream(values())
                 .filter(education -> education.getName().equals(koreanName))
                 .findFirst()
-                .orElseThrow(() -> new BadRequestException("Unknown education: " + koreanName))
-                .getEducation();
+                .map(EducationMapper::getEducation)
+                .orElseGet(() -> {
+                    log.warn("Unknown education: {}", koreanName);
+                    return null;
+                });
     }
 }
