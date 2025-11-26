@@ -1,10 +1,11 @@
 package com.samhap.kokomen.recruit.schedular.dto.mapper;
 
-import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.recruit.domain.Region;
 import java.util.Arrays;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Getter
 public enum RegionMapper {
 
@@ -44,7 +45,10 @@ public enum RegionMapper {
         return Arrays.stream(values())
                 .filter(region -> region.getName().equals(koreanName))
                 .findFirst()
-                .orElseThrow(() -> new BadRequestException("Unknown region: " + koreanName))
-                .getRegion();
+                .map(RegionMapper::getRegion)
+                .orElseGet(() -> {
+                    log.warn("Unknown region: {}", koreanName);
+                    return null;
+                });
     }
 }

@@ -1,10 +1,11 @@
 package com.samhap.kokomen.recruit.schedular.dto.mapper;
 
-import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.recruit.domain.EmployeeType;
 import java.util.Arrays;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Getter
 public enum EmployeeTypeMapper {
 
@@ -32,7 +33,10 @@ public enum EmployeeTypeMapper {
         return Arrays.stream(values())
                 .filter(type -> type.getName().equals(koreanName))
                 .findFirst()
-                .orElseThrow(() -> new BadRequestException("Unknown employeeType: " + koreanName))
-                .getEmployeeType();
+                .map(EmployeeTypeMapper::getEmployeeType)
+                .orElseGet(() -> {
+                    log.warn("Unknown employeeType: {}", koreanName);
+                    return null;
+                });
     }
 }
