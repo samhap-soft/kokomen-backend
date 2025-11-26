@@ -78,6 +78,7 @@ aws:
   next-question-s3-path: local/next-question-voice/
   resume-s3-path: local/resume/
   portfolio-s3-path: local/portfolio/
+  company-s3-path: recruit/local/company/
 
 ---
 # dev profile
@@ -112,6 +113,7 @@ aws:
   next-question-s3-path: dev/next-question-voice/
   resume-s3-path: dev/resume/
   portfolio-s3-path: dev/portfolio/
+  company-s3-path: recruit/dev/company/
 ---
 
 # prod profile
@@ -147,6 +149,7 @@ aws:
   next-question-s3-path: prod/next-question-voice/
   resume-s3-path: prod/resume/
   portfolio-s3-path: prod/portfolio/
+  company-s3-path: recruit/prod/company/
 ---
 # load-test profile
 spring:
@@ -181,3 +184,4 @@ aws:
   next-question-s3-path: dev/next-question-voice/
   resume-s3-path: dev/resume/
   portfolio-s3-path: dev/portfolio/
+  company-s3-path: recruit/dev/company/
