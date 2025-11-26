@@ -188,6 +188,7 @@ services:
 
 volumes:
   promtail-tmp:
+  mysql-data:
   kokomen-redis-data:
   loki:
   prometheus:
