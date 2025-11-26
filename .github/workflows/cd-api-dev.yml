@@ -105,7 +105,7 @@ jobs:
       - name: Docker run
         working-directory: /home/ubuntu
         env:
-          SPRING_DATASOURCE_URL_DEV: ${{ secrets.NEW_SPRING_DATASOURCE_URL_DEV }}
+          SPRING_DATASOURCE_URL_DEV: ${{ secrets.SPRING_DATASOURCE_URL_DEV }}
           SPRING_DATASOURCE_USERNAME_DEV: ${{ secrets.SPRING_DATASOURCE_USERNAME_DEV }}
           SPRING_DATASOURCE_PASSWORD_DEV: ${{ secrets.SPRING_DATASOURCE_PASSWORD_DEV }}
           OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
