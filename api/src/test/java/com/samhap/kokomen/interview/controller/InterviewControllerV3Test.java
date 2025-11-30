@@ -131,7 +131,7 @@ class InterviewControllerV3Test extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isCreated())
-                .andDo(document("interview-v3-createCustomInterview",
+                .andDo(document("interview-v3-createCustomInterview-textMode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
@@ -181,7 +181,7 @@ class InterviewControllerV3Test extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isCreated())
-                .andDo(document("interview-v3-createCustomInterview",
+                .andDo(document("interview-v3-createCustomInterview-voiceMode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
