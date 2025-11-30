@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -24,6 +25,8 @@ import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.RootQuestionCustomInterviewRequest;
+import com.samhap.kokomen.interview.service.dto.RootQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
@@ -77,6 +80,26 @@ public class InterviewFacadeService {
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
         Interview interview = interviewService.saveInterview(
                 new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
+        Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+
+        if (interviewMode == InterviewMode.VOICE) {
+            return new InterviewStartVoiceModeResponse(interview, question,
+                    questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
+        }
+        return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    @Transactional
+    public InterviewStartResponse startRootQuestionCustomInterview(RootQuestionCustomInterviewRequest request,
+                                                                   MemberAuth memberAuth) {
+        InterviewMode interviewMode = request.mode();
+        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount()
+                - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
+        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+        Member member = memberService.readById(memberAuth.memberId());
+        RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
+        Interview interview = interviewService.saveInterview(
+                new Interview(member, rootQuestion, request.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
@@ -296,4 +319,10 @@ public class InterviewFacadeService {
     public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.unlikeInterview(interviewId, memberAuth);
     }
-} 
+
+    public List<RootQuestionResponse> getRootQuestionsByCategory(Category category) {
+        return rootQuestionService.findAllRootQuestionByCategory(category).stream()
+                .map(RootQuestionResponse::from)
+                .toList();
+    }
+}
