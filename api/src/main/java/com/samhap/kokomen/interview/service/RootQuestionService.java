@@ -82,6 +82,6 @@ public class RootQuestionService {
     }
 
     public List<RootQuestion> findAllRootQuestionByCategory(Category category) {
-        return rootQuestionRepository.findAllByCategory(category);
+        return rootQuestionRepository.findAllByCategoryAndState(category, RootQuestionState.ACTIVE);
     }
 }
