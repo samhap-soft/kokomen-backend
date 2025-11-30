@@ -5,6 +5,8 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
+import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
+import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -44,5 +46,9 @@ public class CareerMaterialsFacadeService {
         if (request.portfolio() != null) {
             portfolioService.savePortfolio(request.portfolio(), member);
         }
+    }
+
+    public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
+        return null;
     }
 }
