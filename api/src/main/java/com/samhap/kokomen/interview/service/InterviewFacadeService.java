@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -24,6 +25,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.RootQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
@@ -296,4 +298,10 @@ public class InterviewFacadeService {
     public void unlikeInterview(Long interviewId, MemberAuth memberAuth) {
         interviewService.unlikeInterview(interviewId, memberAuth);
     }
-} 
+
+    public List<RootQuestionResponse> getRootQuestionsByCategory(Category category) {
+        return rootQuestionService.findAllRootQuestionByCategory(category).stream()
+                .map(RootQuestionResponse::from)
+                .toList();
+    }
+}
