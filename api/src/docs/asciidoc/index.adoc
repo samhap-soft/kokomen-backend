@@ -565,3 +565,13 @@ include::{snippetsDir}/resume-getCareerMaterials/query-parameters.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/http-response.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/response-fields.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/curl-request.adoc[]
+
+=== 이력서 평가
+
+include::{snippetsDir}/resume-evaluation/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation/request-body.adoc[]
+include::{snippetsDir}/resume-evaluation/request-fields.adoc[]
+include::{snippetsDir}/resume-evaluation/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation/curl-request.adoc[]
