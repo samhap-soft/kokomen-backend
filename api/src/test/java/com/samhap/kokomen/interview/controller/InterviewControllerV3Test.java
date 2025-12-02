@@ -117,8 +117,8 @@ class InterviewControllerV3Test extends BaseControllerTest {
 
         String requestJson = """
                 {
-                  "root_question_id": %d,
-                  "max_question_count": 5,
+                  "rootQuestionId": %d,
+                  "maxQuestionCount": 5,
                   "mode": "TEXT"
                 }
                 """.formatted(rootQuestion.getId());
@@ -136,8 +136,8 @@ class InterviewControllerV3Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
-                                fieldWithPath("root_question_id").description("선택한 루트 질문 ID"),
-                                fieldWithPath("max_question_count").description("최대 질문 수"),
+                                fieldWithPath("rootQuestionId").description("선택한 루트 질문 ID"),
+                                fieldWithPath("maxQuestionCount").description("최대 질문 수"),
                                 fieldWithPath("mode").description("인터뷰 모드 (TEXT, VOICE)")
                         ),
                         responseFields(
@@ -167,8 +167,8 @@ class InterviewControllerV3Test extends BaseControllerTest {
 
         String requestJson = """
                 {
-                  "root_question_id": %d,
-                  "max_question_count": 5,
+                  "rootQuestionId": %d,
+                  "maxQuestionCount": 5,
                   "mode": "VOICE"
                 }
                 """.formatted(rootQuestion.getId());
@@ -186,8 +186,8 @@ class InterviewControllerV3Test extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         requestFields(
-                                fieldWithPath("root_question_id").description("선택한 루트 질문 ID"),
-                                fieldWithPath("max_question_count").description("최대 질문 수"),
+                                fieldWithPath("rootQuestionId").description("선택한 루트 질문 ID"),
+                                fieldWithPath("maxQuestionCount").description("최대 질문 수"),
                                 fieldWithPath("mode").description("인터뷰 모드 (TEXT, VOICE)")
                         ),
                         responseFields(
