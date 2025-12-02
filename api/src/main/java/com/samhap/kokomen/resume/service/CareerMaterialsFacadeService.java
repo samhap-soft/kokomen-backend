@@ -19,6 +19,7 @@ public class CareerMaterialsFacadeService {
     private final ResumeService resumeService;
     private final PortfolioService portfolioService;
     private final MemberService memberService;
+    private final ResumeEvaluationService resumeEvaluationService;
 
     public CareerMaterialsResponse getCareerMaterials(CareerMaterialsType type, MemberAuth memberAuth) {
         return switch (type) {
@@ -49,6 +50,6 @@ public class CareerMaterialsFacadeService {
     }
 
     public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
-        return null;
+        return resumeEvaluationService.evaluate(request);
     }
 }
