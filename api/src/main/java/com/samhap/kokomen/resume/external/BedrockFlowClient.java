@@ -22,7 +22,7 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRespo
 @Component
 public class BedrockFlowClient {
 
-    private static final long TIMEOUT_SECONDS = 60L;
+    private static final long TIMEOUT_SECONDS = 180L;
 
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
 
