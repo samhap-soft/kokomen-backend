@@ -2,7 +2,6 @@ package com.samhap.kokomen.resume.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.resume.external.BedrockFlowClient;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
@@ -45,9 +44,7 @@ public class ResumeEvaluationService {
 
     private ResumeEvaluationResponse parseResponse(String jsonResponse) {
         try {
-            ObjectMapper snakeCaseMapper = objectMapper.copy()
-                    .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
-            return snakeCaseMapper.readValue(jsonResponse, ResumeEvaluationResponse.class);
+            return objectMapper.readValue(jsonResponse, ResumeEvaluationResponse.class);
         } catch (JsonProcessingException e) {
             log.error("이력서 평가 응답 파싱 실패: {}", jsonResponse, e);
             throw new ExternalApiException("이력서 평가 응답을 파싱하는데 실패했습니다.", e);

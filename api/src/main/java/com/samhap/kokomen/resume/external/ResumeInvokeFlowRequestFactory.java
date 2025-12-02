@@ -3,6 +3,7 @@ package com.samhap.kokomen.resume.external;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInput;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInputContent;
@@ -36,17 +37,10 @@ public class ResumeInvokeFlowRequestFactory {
     private static Document createResumeEvaluationDocument(ResumeEvaluationRequest request) {
         Map<String, Document> documentMap = new LinkedHashMap<>();
         documentMap.put("resume_text", Document.fromString(request.resume()));
-        documentMap.put("portfolio_text", Document.fromString(formatText(request.portfolio())));
+        documentMap.put("portfolio_text", Document.fromString(Objects.toString(request.portfolio(), "")));
         documentMap.put("job_position", Document.fromString(request.jobPosition()));
-        documentMap.put("job_description", Document.fromString(formatText(request.jobDescription())));
+        documentMap.put("job_description", Document.fromString(Objects.toString(request.jobDescription(), "")));
         documentMap.put("job_career", Document.fromString(request.jobCareer()));
         return Document.fromMap(documentMap);
-    }
-
-    private static String formatText(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text;
     }
 }

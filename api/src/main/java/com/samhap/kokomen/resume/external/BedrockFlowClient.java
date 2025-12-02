@@ -71,6 +71,7 @@ public class BedrockFlowClient {
             log.error("Bedrock Flow 호출 중 오류 발생", e.getCause());
             throw new ExternalApiException("Bedrock Flow 호출 중 오류가 발생했습니다.", e.getCause());
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             log.error("Bedrock Flow 호출이 인터럽트됨", e);
             throw new ExternalApiException("Bedrock Flow 호출이 중단되었습니다.", e);
         }
