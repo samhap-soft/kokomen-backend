@@ -5,6 +5,7 @@ import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.resume.external.ResumeGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,8 @@ public abstract class BaseTest {
     protected KakaoOAuthClient kakaoOAuthClient;
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
+    @MockitoBean
+    protected ResumeGptClient resumeGptClient;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @Autowired

@@ -255,7 +255,7 @@ include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]
 === 루트 질문 목록 조회
 
 include::{snippetsDir}/interview-v3-getRootQuestions/http-request.adoc[]
-include::{snippetsDir}/interview-v3-getRootQuestions/query_parameters.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/query-parameters.adoc[]
 include::{snippetsDir}/interview-v3-getRootQuestions/http-response.adoc[]
 include::{snippetsDir}/interview-v3-getRootQuestions/response-body.adoc[]
 include::{snippetsDir}/interview-v3-getRootQuestions/response-fields.adoc[]
