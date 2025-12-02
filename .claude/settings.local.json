@@ -14,7 +14,13 @@
       "mcp__serena__replace_regex",
       "Bash(cat:*)",
       "Bash(direnv status:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "WebSearch",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:sdk.amazonaws.com)",
+      "Bash(./gradlew :api:compileJava:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
