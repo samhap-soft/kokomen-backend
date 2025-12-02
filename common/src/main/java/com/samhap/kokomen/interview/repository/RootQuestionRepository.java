@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.repository;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -42,5 +43,9 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
             @Param("rootQuestionState") RootQuestionState rootQuestionState
     );
 
-    Optional<RootQuestion> findRootQuestionByCategoryAndStateAndQuestionOrder(Category category, RootQuestionState state, Integer questionOrder);
+    Optional<RootQuestion> findRootQuestionByCategoryAndStateAndQuestionOrder(Category category,
+                                                                              RootQuestionState state,
+                                                                              Integer questionOrder);
+
+    List<RootQuestion> findAllByCategoryAndState(Category category, RootQuestionState state);
 }

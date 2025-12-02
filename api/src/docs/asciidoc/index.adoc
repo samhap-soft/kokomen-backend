@@ -252,6 +252,37 @@ include::{snippetsDir}/interview-getPolling-exception2-V2/http-request.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/http-response.adoc[]
 include::{snippetsDir}/interview-getPolling-exception2-V2/response-fields.adoc[]
 
+=== 루트 질문 목록 조회
+
+include::{snippetsDir}/interview-v3-getRootQuestions/http-request.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/query-parameters.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/http-response.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/response-body.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/response-fields.adoc[]
+include::{snippetsDir}/interview-v3-getRootQuestions/curl-request.adoc[]
+
+=== 커스텀 루트 질문 인터뷰 시작(텍스트 모드)
+
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/http-request.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/request-headers.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/request-body.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/request-fields.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/http-response.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/response-body.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/response-fields.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-textMode/curl-request.adoc[]
+
+=== 커스텀 루트 질문 인터뷰 시작(보이스 모드)
+
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/http-request.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/request-headers.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/request-body.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/request-fields.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/http-response.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/response-body.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/response-fields.adoc[]
+include::{snippetsDir}/interview-v3-createCustomInterview-voiceMode/curl-request.adoc[]
+
 === 인터뷰 좋아요 요청
 
 include::{snippetsDir}/interview-likeInterview/http-request.adoc[]
@@ -534,3 +565,13 @@ include::{snippetsDir}/resume-getCareerMaterials/query-parameters.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/http-response.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/response-fields.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/curl-request.adoc[]
+
+=== 이력서 평가
+
+include::{snippetsDir}/resume-evaluation/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation/request-body.adoc[]
+include::{snippetsDir}/resume-evaluation/request-fields.adoc[]
+include::{snippetsDir}/resume-evaluation/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation/curl-request.adoc[]
