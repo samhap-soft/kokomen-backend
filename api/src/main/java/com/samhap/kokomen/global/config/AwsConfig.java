@@ -36,7 +36,7 @@ public class AwsConfig {
                         .maxConcurrency(1000)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(10))
                         .connectionTimeout(java.time.Duration.ofSeconds(3))
-                        .readTimeout(java.time.Duration.ofSeconds(20))
+                        .readTimeout(java.time.Duration.ofSeconds(180))
                 )
                 .region(Region.AP_NORTHEAST_2)
                 .build();

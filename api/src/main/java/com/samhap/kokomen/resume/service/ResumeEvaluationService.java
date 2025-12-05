@@ -44,10 +44,23 @@ public class ResumeEvaluationService {
 
     private ResumeEvaluationResponse parseResponse(String jsonResponse) {
         try {
-            return objectMapper.readValue(jsonResponse, ResumeEvaluationResponse.class);
+            String cleanedJson = unwrapJsonString(jsonResponse);
+            return objectMapper.readValue(cleanedJson, ResumeEvaluationResponse.class);
         } catch (JsonProcessingException e) {
             log.error("이력서 평가 응답 파싱 실패: {}", jsonResponse, e);
             throw new ExternalApiException("이력서 평가 응답을 파싱하는데 실패했습니다.", e);
         }
+    }
+
+    private String unwrapJsonString(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        String trimmed = json.trim();
+        if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            String unwrapped = trimmed.substring(1, trimmed.length() - 1);
+            return unwrapped.replace("\\\"", "\"");
+        }
+        return json;
     }
 }
