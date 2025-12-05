@@ -58,11 +58,8 @@ public class ResumeEvaluationService {
         }
         String trimmed = json.trim();
         if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-            try {
-                return objectMapper.readValue(trimmed, String.class);
-            } catch (JsonProcessingException e) {
-                return json;
-            }
+            String unwrapped = trimmed.substring(1, trimmed.length() - 1);
+            return unwrapped.replace("\\\"", "\"");
         }
         return json;
     }
