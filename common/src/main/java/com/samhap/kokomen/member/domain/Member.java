@@ -59,4 +59,8 @@ public class Member extends BaseEntity {
         this.nickname = null;
         this.score = 0;
     }
+
+    public boolean isOwner(Long memberId) {
+        return this.id.equals(memberId);
+    }
 }

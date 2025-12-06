@@ -57,6 +57,20 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    @Bean("resumeEvaluationExecutor")
+    public ThreadPoolTaskExecutor resumeEvaluationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(100);
+        executor.setMaxPoolSize(100);
+        executor.setQueueCapacity(1000);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setThreadNamePrefix("Async-Resume-Eval-");
+        executor.initialize();
+        executor.getThreadPoolExecutor().prestartAllCoreThreads();
+        return executor;
+    }
+
     @Override
     public Executor getAsyncExecutor() {
         return taskExecutor();
