@@ -1,0 +1,33 @@
+CREATE TABLE resume_evaluation (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    member_id BIGINT NOT NULL,
+    state VARCHAR(20) NOT NULL,
+    resume TEXT NOT NULL,
+    portfolio TEXT,
+    job_position VARCHAR(500) NOT NULL,
+    job_description TEXT,
+    job_career VARCHAR(100) NOT NULL,
+    technical_skills_score INT,
+    technical_skills_reason TEXT,
+    technical_skills_improvements TEXT,
+    project_experience_score INT,
+    project_experience_reason TEXT,
+    project_experience_improvements TEXT,
+    problem_solving_score INT,
+    problem_solving_reason TEXT,
+    problem_solving_improvements TEXT,
+    career_growth_score INT,
+    career_growth_reason TEXT,
+    career_growth_improvements TEXT,
+    documentation_score INT,
+    documentation_reason TEXT,
+    documentation_improvements TEXT,
+    total_score INT,
+    total_feedback TEXT,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_resume_evaluation_member FOREIGN KEY (member_id) REFERENCES member (id)
+);
+
+CREATE INDEX idx_resume_evaluation_member_id ON resume_evaluation(member_id);
