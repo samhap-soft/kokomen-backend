@@ -66,6 +66,6 @@ public class PdfTextExtractor {
     private String extractText(PDDocument document) throws IOException {
         PDFTextStripper stripper = new PDFTextStripper();
         stripper.setSortByPosition(true);
-        return stripper.getText(document);
+        return stripper.getText(document).trim();
     }
 }

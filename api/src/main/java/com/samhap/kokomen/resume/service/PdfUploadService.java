@@ -35,7 +35,7 @@ public class PdfUploadService {
         pdfValidator.validate(portfolio);
         String filename = portfolio.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
-        String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), filename);
+        String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), s3Key);
 
         MemberPortfolio memberPortfolio = new MemberPortfolio(member, filename, cdnPath, content);
         memberPortfolioRepository.save(memberPortfolio);
@@ -57,7 +57,7 @@ public class PdfUploadService {
         pdfValidator.validate(resume);
         String filename = resume.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
-        String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), filename);
+        String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), s3Key);
 
         MemberResume memberResume = new MemberResume(member, filename, cdnPath, content);
         memberResumeRepository.save(memberResume);

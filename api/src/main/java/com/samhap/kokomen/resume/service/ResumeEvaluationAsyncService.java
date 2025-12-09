@@ -150,7 +150,7 @@ public class ResumeEvaluationAsyncService {
         try {
             return pdfTextExtractor.extractText(file);
         } catch (Exception e) {
-            log.error("PDF 텍스트 추출 실패: {}", e.getMessage());
+            log.error("PDF 텍스트 추출 실패", e);
             return null;
         }
     }
