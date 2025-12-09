@@ -9,7 +9,7 @@ import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
-import com.samhap.kokomen.resume.service.dto.ResumeEvaluationAsyncRequest;
+import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
 import com.samhap.kokomen.resume.service.dto.TextExtractionResult;
@@ -21,7 +21,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowOutputEvent;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowResponseStream;
@@ -66,12 +66,16 @@ public class ResumeEvaluationAsyncService {
     }
 
     public void processAndEvaluateMemberAsync(Long evaluationId, Member member,
-                                              ResumeEvaluationAsyncRequest request) {
+                                              ResumeFileData resumeFileData,
+                                              ResumeFileData portfolioFileData,
+                                              String jobPosition,
+                                              String jobDescription,
+                                              String jobCareer) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                TextExtractionResult extraction = extractTexts(request);
+                TextExtractionResult extraction = extractTexts(resumeFileData, portfolioFileData);
 
                 if (!extraction.hasResumeText()) {
                     log.error("이력서 텍스트 추출 실패 - evaluationId: {}", evaluationId);
@@ -79,9 +83,11 @@ public class ResumeEvaluationAsyncService {
                     return;
                 }
 
-                pdfUploadService.saveResume(request.getResume(), member, extraction.resumeText());
-                if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
-                    pdfUploadService.savePortfolio(request.getPortfolio(), member, extraction.portfolioText());
+                pdfUploadService.saveResume(resumeFileData.content(), resumeFileData.filename(),
+                        member, extraction.resumeText());
+                if (portfolioFileData != null && !portfolioFileData.isEmpty()) {
+                    pdfUploadService.savePortfolio(portfolioFileData.content(), portfolioFileData.filename(),
+                            member, extraction.portfolioText());
                 }
 
                 resumeEvaluationService.updateResumeText(evaluationId,
@@ -89,7 +95,7 @@ public class ResumeEvaluationAsyncService {
 
                 ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
                         extraction.resumeText(), extraction.portfolioText(),
-                        request.getJobPosition(), request.getJobDescription(), request.getJobCareer()
+                        jobPosition, jobDescription, jobCareer
                 );
                 evaluateMemberAsync(evaluationId, evalRequest);
             } catch (Exception e) {
@@ -101,7 +107,12 @@ public class ResumeEvaluationAsyncService {
         });
     }
 
-    public void processAndEvaluateNonMemberAsync(String uuid, ResumeEvaluationAsyncRequest request) {
+    public void processAndEvaluateNonMemberAsync(String uuid,
+                                                 ResumeFileData resumeFileData,
+                                                 ResumeFileData portfolioFileData,
+                                                 String jobPosition,
+                                                 String jobDescription,
+                                                 String jobCareer) {
         String redisKey = createRedisKey(uuid);
         redisService.setValue(redisKey, NonMemberResumeEvaluationData.pending(null), REDIS_TTL);
 
@@ -109,7 +120,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                TextExtractionResult extraction = extractTexts(request);
+                TextExtractionResult extraction = extractTexts(resumeFileData, portfolioFileData);
 
                 if (!extraction.hasResumeText()) {
                     log.error("이력서 텍스트 추출 실패 - uuid: {}", uuid);
@@ -119,7 +130,7 @@ public class ResumeEvaluationAsyncService {
 
                 ResumeEvaluationRequest evaluationRequest = new ResumeEvaluationRequest(
                         extraction.resumeText(), extraction.portfolioText(),
-                        request.getJobPosition(), request.getJobDescription(), request.getJobCareer()
+                        jobPosition, jobDescription, jobCareer
                 );
                 evaluateNonMemberAsync(uuid, evaluationRequest);
             } catch (Exception e) {
@@ -131,24 +142,23 @@ public class ResumeEvaluationAsyncService {
         });
     }
 
-    private TextExtractionResult extractTexts(ResumeEvaluationAsyncRequest request) {
+    private TextExtractionResult extractTexts(ResumeFileData resumeFileData, ResumeFileData portfolioFileData) {
         CompletableFuture<String> resumeFuture = CompletableFuture.supplyAsync(
-                () -> extractTextSafely(request.getResume()), executor);
+                () -> extractTextSafely(resumeFileData), executor);
 
         CompletableFuture<String> portfolioFuture = CompletableFuture.supplyAsync(() -> {
-            MultipartFile portfolio = request.getPortfolio();
-            if (portfolio == null || portfolio.isEmpty()) {
+            if (portfolioFileData == null || portfolioFileData.isEmpty()) {
                 return null;
             }
-            return extractTextSafely(portfolio);
+            return extractTextSafely(portfolioFileData);
         }, executor);
 
         return resumeFuture.thenCombine(portfolioFuture, TextExtractionResult::of).join();
     }
 
-    private String extractTextSafely(MultipartFile file) {
+    private String extractTextSafely(ResumeFileData fileData) {
         try {
-            return pdfTextExtractor.extractText(file);
+            return pdfTextExtractor.extractText(fileData.content());
         } catch (Exception e) {
             log.error("PDF 텍스트 추출 실패", e);
             return null;
