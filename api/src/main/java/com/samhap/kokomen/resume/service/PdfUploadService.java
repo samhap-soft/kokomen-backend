@@ -29,7 +29,6 @@ public class PdfUploadService {
     private final MemberResumeRepository memberResumeRepository;
     private final S3Service s3Service;
 
-    @Async
     @Transactional
     public void savePortfolio(MultipartFile portfolio, Member member, String content) {
         pdfValidator.validate(portfolio);
@@ -51,7 +50,6 @@ public class PdfUploadService {
         savePortfolio(portfolio, member, content);
     }
 
-    @Async
     @Transactional
     public void saveResume(MultipartFile resume, Member member, String content) {
         pdfValidator.validate(resume);
