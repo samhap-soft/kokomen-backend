@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 @Service
 public class S3Service {
 
-    private static final String S3_BUCKET_NAME = "kokomen";
+    private static final String S3_BUCKET_NAME = "kokomen-new";
 
     private final S3Client s3Client;
 
