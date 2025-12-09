@@ -9,6 +9,7 @@ public class MemberPortfolioFixtureBuilder {
     private Member member;
     private String title;
     private String portfolioUrl;
+    private String content;
 
     public static MemberPortfolioFixtureBuilder builder() {
         return new MemberPortfolioFixtureBuilder();
@@ -29,8 +30,13 @@ public class MemberPortfolioFixtureBuilder {
         return this;
     }
 
-    public MemberPortfolioFixtureBuilder resumeUrl(String portfolioUrl) {
+    public MemberPortfolioFixtureBuilder portfolioUrl(String portfolioUrl) {
         this.portfolioUrl = portfolioUrl;
+        return this;
+    }
+
+    public MemberPortfolioFixtureBuilder content(String content) {
+        this.content = content;
         return this;
     }
 
@@ -39,7 +45,8 @@ public class MemberPortfolioFixtureBuilder {
                 id,
                 member,
                 title != null ? title : "기본 포트폴리오 제목",
-                portfolioUrl != null ? portfolioUrl : "https://example.com/resume.pdf"
+                portfolioUrl != null ? portfolioUrl : "https://example.com/portfolio.pdf",
+                content
         );
     }
 }

@@ -6,7 +6,6 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
-import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
@@ -40,7 +39,6 @@ public class CareerMaterialsFacadeService {
     private final ResumeEvaluationAsyncService resumeEvaluationAsyncService;
     private final RedisService redisService;
     private final PdfValidator pdfValidator;
-    private final PdfTextExtractor pdfTextExtractor;
     private final PdfUploadService pdfUploadService;
 
     @Transactional(readOnly = true)
@@ -49,38 +47,16 @@ public class CareerMaterialsFacadeService {
     }
 
     @Transactional
-    public void saveCareerMaterials(ResumeSaveRequest request, MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-        pdfUploadService.saveResume(request.resume(), member);
-        if (request.portfolio() != null) {
-            pdfUploadService.savePortfolio(request.portfolio(), member);
-        }
-    }
-
-    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
-    @Transactional
-    public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
-        return resumeEvaluationService.evaluate(request);
-    }
-
-    @Transactional
-    public ResumeEvaluationSubmitResponse submitResumeEvaluationAsync(ResumeEvaluationAsyncRequest request,
-                                                                      MemberAuth memberAuth) {
+    public ResumeEvaluationSubmitResponse submitResumeEvaluationAsync(
+            ResumeEvaluationAsyncRequest request,
+            MemberAuth memberAuth
+    ) {
         validatePdfFiles(request);
-        String resumeText = extractResumeText(request);
-        String portfolioText = pdfTextExtractor.extractText(request.getPortfolio());
 
-        ResumeEvaluationRequest evaluationRequest = new ResumeEvaluationRequest(
-                resumeText,
-                portfolioText,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
-        );
         if (memberAuth.isAuthenticated()) {
-            return submitMemberResumeEvaluationAsync(request, memberAuth, evaluationRequest);
+            return submitMemberResumeEvaluationAsync(request, memberAuth);
         }
-        return submitNonMemberResumeEvaluationAsync(evaluationRequest);
+        return submitNonMemberResumeEvaluationAsync(request);
     }
 
     private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {
@@ -90,44 +66,30 @@ public class CareerMaterialsFacadeService {
         }
     }
 
-    private String extractResumeText(ResumeEvaluationAsyncRequest request) {
-        String resumeText = pdfTextExtractor.extractText(request.getResume());
-        if (resumeText == null || resumeText.isBlank()) {
-            throw new BadRequestException("이력서 PDF에서 텍스트를 추출할 수 없습니다.");
-        }
-        return resumeText;
-    }
-
     private ResumeEvaluationSubmitResponse submitMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request,
-                                                                             MemberAuth memberAuth,
-                                                                             ResumeEvaluationRequest evaluationRequest) {
+                                                                             MemberAuth memberAuth) {
         Member member = memberService.readById(memberAuth.memberId());
         ResumeEvaluation evaluation = new ResumeEvaluation(
                 member,
-                evaluationRequest.resume(),
-                evaluationRequest.portfolio(),
+                null,
+                null,
                 request.getJobPosition(),
                 request.getJobDescription(),
                 request.getJobCareer()
         );
-
         ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
-        uploadEvaluationPdfsToS3(request, member);
-        resumeEvaluationAsyncService.evaluateMemberAsync(savedEvaluation.getId(), evaluationRequest);
+
+        resumeEvaluationAsyncService.processAndEvaluateMemberAsync(
+                savedEvaluation.getId(),
+                member,
+                request
+        );
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
 
-    private void uploadEvaluationPdfsToS3(ResumeEvaluationAsyncRequest request, Member member) {
-        pdfUploadService.saveResume(request.getResume(), member);
-        if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
-            pdfUploadService.savePortfolio(request.getPortfolio(), member);
-        }
-    }
-
-    private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(
-            ResumeEvaluationRequest evaluationRequest) {
+    private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request) {
         String uuid = UUID.randomUUID().toString();
-        resumeEvaluationAsyncService.evaluateNonMemberAsync(uuid, evaluationRequest);
+        resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(uuid, request);
         return ResumeEvaluationSubmitResponse.fromUuid(uuid);
     }
 
@@ -205,6 +167,22 @@ public class CareerMaterialsFacadeService {
     private void validateEvaluationOwner(ResumeEvaluation evaluation, Long memberId) {
         if (!evaluation.isOwner(memberId)) {
             throw new BadRequestException("본인의 이력서 평가만 조회할 수 있습니다.");
+        }
+    }
+
+    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
+    @Transactional
+    public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
+        return resumeEvaluationService.evaluate(request);
+    }
+
+    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
+    @Transactional
+    public void saveCareerMaterials(ResumeSaveRequest request, MemberAuth memberAuth) {
+        Member member = memberService.readById(memberAuth.memberId());
+        pdfUploadService.saveResume(request.resume(), member);
+        if (request.portfolio() != null) {
+            pdfUploadService.savePortfolio(request.portfolio(), member);
         }
     }
 }

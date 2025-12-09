@@ -47,7 +47,8 @@ public class ResumeEvaluationService {
 
     @Transactional
     public void updateCompleted(Long evaluationId, ResumeEvaluationResponse response) {
-        ResumeEvaluation evaluation = readById(evaluationId);
+        ResumeEvaluation evaluation = resumeEvaluationRepository.findById(evaluationId)
+                .orElseThrow(() -> new BadRequestException("이력서 평가를 찾을 수 없습니다. id: " + evaluationId));
         evaluation.complete(
                 response.technicalSkills().score(),
                 response.technicalSkills().reason(),
@@ -70,8 +71,16 @@ public class ResumeEvaluationService {
     }
 
     @Transactional
+    public void updateResumeText(Long evaluationId, String resumeText, String portfolioText) {
+        ResumeEvaluation evaluation = resumeEvaluationRepository.findById(evaluationId)
+                .orElseThrow(() -> new BadRequestException("이력서 평가를 찾을 수 없습니다. id: " + evaluationId));
+        evaluation.updateResumeText(resumeText, portfolioText);
+    }
+
+    @Transactional
     public void updateFailed(Long evaluationId) {
-        ResumeEvaluation evaluation = readById(evaluationId);
+        ResumeEvaluation evaluation = resumeEvaluationRepository.findById(evaluationId)
+                .orElseThrow(() -> new BadRequestException("이력서 평가를 찾을 수 없습니다. id: " + evaluationId));
         evaluation.fail();
     }
 
