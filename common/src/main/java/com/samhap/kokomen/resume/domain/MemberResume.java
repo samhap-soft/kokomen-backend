@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -43,9 +44,26 @@ public class MemberResume extends BaseEntity {
     @Column(name = "resume_url", nullable = false)
     private String resumeUrl;
 
-    public MemberResume(Member member, String title, String resumeUrl) {
+    @Lob
+    @Column(name = "content", columnDefinition = "LONGTEXT")
+    private String content;
+
+    public MemberResume(Member member, String title, String resumeUrl, String content) {
         this.member = member;
         this.title = title;
         this.resumeUrl = resumeUrl;
+        this.content = content;
+    }
+
+    public MemberResume(Member member, String title, String resumeUrl) {
+        this(member, title, resumeUrl, null);
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public boolean hasContent() {
+        return content != null && !content.isBlank();
     }
 }

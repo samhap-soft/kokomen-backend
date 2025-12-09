@@ -4,18 +4,24 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
+import com.samhap.kokomen.resume.service.dto.ResumeEvaluationAsyncRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
+import com.samhap.kokomen.resume.service.dto.TextExtractionResult;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowOutputEvent;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowResponseStream;
@@ -29,31 +35,127 @@ public class ResumeEvaluationAsyncService {
     private static final String REDIS_KEY_PREFIX = "resume:evaluation:nonmember:";
     private static final Duration REDIS_TTL = Duration.ofMinutes(5);
 
-    private final ResumeEvaluationPersistenceService resumeEvaluationPersistenceService;
+    private final ResumeEvaluationService resumeEvaluationService;
+    private final PdfUploadService pdfUploadService;
     private final RedisService redisService;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final ResumeGptClient resumeGptClient;
+    private final PdfTextExtractor pdfTextExtractor;
     private final ObjectMapper objectMapper;
     private final ThreadPoolTaskExecutor executor;
 
     public ResumeEvaluationAsyncService(
-            ResumeEvaluationPersistenceService resumeEvaluationPersistenceService,
+            ResumeEvaluationService resumeEvaluationService,
+            PdfUploadService pdfUploadService,
             RedisService redisService,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             ResumeGptClient resumeGptClient,
+            PdfTextExtractor pdfTextExtractor,
             ObjectMapper objectMapper,
             @Qualifier("resumeEvaluationExecutor")
             ThreadPoolTaskExecutor executor
     ) {
-        this.resumeEvaluationPersistenceService = resumeEvaluationPersistenceService;
+        this.resumeEvaluationService = resumeEvaluationService;
+        this.pdfUploadService = pdfUploadService;
         this.redisService = redisService;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.resumeGptClient = resumeGptClient;
+        this.pdfTextExtractor = pdfTextExtractor;
         this.objectMapper = objectMapper;
         this.executor = executor;
     }
 
-    public void evaluateMemberAsync(Long evaluationId, ResumeEvaluationRequest request) {
+    public void processAndEvaluateMemberAsync(Long evaluationId, Member member,
+                                              ResumeEvaluationAsyncRequest request) {
+        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
+        executor.execute(() -> {
+            try {
+                setMdcContext(mdcContext);
+                TextExtractionResult extraction = extractTexts(request);
+
+                if (!extraction.hasResumeText()) {
+                    log.error("이력서 텍스트 추출 실패 - evaluationId: {}", evaluationId);
+                    resumeEvaluationService.updateFailed(evaluationId);
+                    return;
+                }
+
+                pdfUploadService.saveResume(request.getResume(), member, extraction.resumeText());
+                if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
+                    pdfUploadService.savePortfolio(request.getPortfolio(), member, extraction.portfolioText());
+                }
+
+                resumeEvaluationService.updateResumeText(evaluationId,
+                        extraction.resumeText(), extraction.portfolioText());
+
+                ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
+                        extraction.resumeText(), extraction.portfolioText(),
+                        request.getJobPosition(), request.getJobDescription(), request.getJobCareer()
+                );
+                evaluateMemberAsync(evaluationId, evalRequest);
+            } catch (Exception e) {
+                log.error("회원 이력서 평가 처리 실패 - evaluationId: {}", evaluationId, e);
+                resumeEvaluationService.updateFailed(evaluationId);
+            } finally {
+                MDC.clear();
+            }
+        });
+    }
+
+    public void processAndEvaluateNonMemberAsync(String uuid, ResumeEvaluationAsyncRequest request) {
+        String redisKey = createRedisKey(uuid);
+        redisService.setValue(redisKey, NonMemberResumeEvaluationData.pending(null), REDIS_TTL);
+
+        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
+        executor.execute(() -> {
+            try {
+                setMdcContext(mdcContext);
+                TextExtractionResult extraction = extractTexts(request);
+
+                if (!extraction.hasResumeText()) {
+                    log.error("이력서 텍스트 추출 실패 - uuid: {}", uuid);
+                    redisService.setValue(redisKey, NonMemberResumeEvaluationData.failed(null), REDIS_TTL);
+                    return;
+                }
+
+                ResumeEvaluationRequest evaluationRequest = new ResumeEvaluationRequest(
+                        extraction.resumeText(), extraction.portfolioText(),
+                        request.getJobPosition(), request.getJobDescription(), request.getJobCareer()
+                );
+                evaluateNonMemberAsync(uuid, evaluationRequest);
+            } catch (Exception e) {
+                log.error("비회원 이력서 평가 처리 실패 - uuid: {}", uuid, e);
+                redisService.setValue(redisKey, NonMemberResumeEvaluationData.failed(null), REDIS_TTL);
+            } finally {
+                MDC.clear();
+            }
+        });
+    }
+
+    private TextExtractionResult extractTexts(ResumeEvaluationAsyncRequest request) {
+        CompletableFuture<String> resumeFuture = CompletableFuture.supplyAsync(
+                () -> extractTextSafely(request.getResume()), executor);
+
+        CompletableFuture<String> portfolioFuture = CompletableFuture.supplyAsync(() -> {
+            MultipartFile portfolio = request.getPortfolio();
+            if (portfolio == null || portfolio.isEmpty()) {
+                return null;
+            }
+            return extractTextSafely(portfolio);
+        }, executor);
+
+        return resumeFuture.thenCombine(portfolioFuture, TextExtractionResult::of).join();
+    }
+
+    private String extractTextSafely(MultipartFile file) {
+        try {
+            return pdfTextExtractor.extractText(file);
+        } catch (Exception e) {
+            log.error("PDF 텍스트 추출 실패", e);
+            return null;
+        }
+    }
+
+    private void evaluateMemberAsync(Long evaluationId, ResumeEvaluationRequest request) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         InvokeFlowRequest flowRequest = ResumeInvokeFlowRequestFactory.createResumeEvaluationFlowRequest(request);
 
@@ -82,7 +184,7 @@ public class ResumeEvaluationAsyncService {
             if (event instanceof FlowOutputEvent outputEvent) {
                 String jsonPayload = outputEvent.content().document().toString();
                 ResumeEvaluationResponse response = parseResponse(jsonPayload);
-                resumeEvaluationPersistenceService.updateCompleted(evaluationId, response);
+                resumeEvaluationService.updateCompleted(evaluationId, response);
             }
         } catch (Exception e) {
             log.error("Bedrock 응답 처리 실패, GPT 폴백 시도 - evaluationId: {}", evaluationId, e);
@@ -110,17 +212,17 @@ public class ResumeEvaluationAsyncService {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeGptClient.requestResumeEvaluation(request);
                 ResumeEvaluationResponse response = parseResponse(jsonResponse);
-                resumeEvaluationPersistenceService.updateCompleted(evaluationId, response);
+                resumeEvaluationService.updateCompleted(evaluationId, response);
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - evaluationId: {}", evaluationId, e);
-                resumeEvaluationPersistenceService.updateFailed(evaluationId);
+                resumeEvaluationService.updateFailed(evaluationId);
             } finally {
                 MDC.clear();
             }
         });
     }
 
-    public void evaluateNonMemberAsync(String uuid, ResumeEvaluationRequest request) {
+    private void evaluateNonMemberAsync(String uuid, ResumeEvaluationRequest request) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         String redisKey = createRedisKey(uuid);
         InvokeFlowRequest flowRequest = ResumeInvokeFlowRequestFactory.createResumeEvaluationFlowRequest(request);

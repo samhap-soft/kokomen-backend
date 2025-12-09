@@ -39,7 +39,7 @@ public class ResumeEvaluation extends BaseEntity {
     @Column(name = "state", nullable = false, length = 20)
     private ResumeEvaluationState state;
 
-    @Column(name = "resume", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "resume", columnDefinition = "TEXT")
     private String resume;
 
     @Column(name = "portfolio", columnDefinition = "TEXT")
@@ -157,5 +157,10 @@ public class ResumeEvaluation extends BaseEntity {
 
     public boolean isOwner(Long memberId) {
         return this.member.isOwner(memberId);
+    }
+
+    public void updateResumeText(String resume, String portfolio) {
+        this.resume = resume;
+        this.portfolio = portfolio;
     }
 }
