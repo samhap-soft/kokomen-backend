@@ -29,7 +29,7 @@ public class ResumeEvaluationAsyncService {
     private static final String REDIS_KEY_PREFIX = "resume:evaluation:nonmember:";
     private static final Duration REDIS_TTL = Duration.ofMinutes(5);
 
-    private final ResumeEvaluationPersistenceService resumeEvaluationPersistenceService;
+    private final ResumeEvaluationService resumeEvaluationService;
     private final RedisService redisService;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final ResumeGptClient resumeGptClient;
@@ -37,7 +37,7 @@ public class ResumeEvaluationAsyncService {
     private final ThreadPoolTaskExecutor executor;
 
     public ResumeEvaluationAsyncService(
-            ResumeEvaluationPersistenceService resumeEvaluationPersistenceService,
+            ResumeEvaluationService resumeEvaluationService,
             RedisService redisService,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             ResumeGptClient resumeGptClient,
@@ -45,7 +45,7 @@ public class ResumeEvaluationAsyncService {
             @Qualifier("resumeEvaluationExecutor")
             ThreadPoolTaskExecutor executor
     ) {
-        this.resumeEvaluationPersistenceService = resumeEvaluationPersistenceService;
+        this.resumeEvaluationService = resumeEvaluationService;
         this.redisService = redisService;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.resumeGptClient = resumeGptClient;
@@ -82,7 +82,7 @@ public class ResumeEvaluationAsyncService {
             if (event instanceof FlowOutputEvent outputEvent) {
                 String jsonPayload = outputEvent.content().document().toString();
                 ResumeEvaluationResponse response = parseResponse(jsonPayload);
-                resumeEvaluationPersistenceService.updateCompleted(evaluationId, response);
+                resumeEvaluationService.updateCompleted(evaluationId, response);
             }
         } catch (Exception e) {
             log.error("Bedrock 응답 처리 실패, GPT 폴백 시도 - evaluationId: {}", evaluationId, e);
@@ -110,10 +110,10 @@ public class ResumeEvaluationAsyncService {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeGptClient.requestResumeEvaluation(request);
                 ResumeEvaluationResponse response = parseResponse(jsonResponse);
-                resumeEvaluationPersistenceService.updateCompleted(evaluationId, response);
+                resumeEvaluationService.updateCompleted(evaluationId, response);
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - evaluationId: {}", evaluationId, e);
-                resumeEvaluationPersistenceService.updateFailed(evaluationId);
+                resumeEvaluationService.updateFailed(evaluationId);
             } finally {
                 MDC.clear();
             }

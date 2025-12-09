@@ -34,46 +34,30 @@ public class CareerMaterialsFacadeService {
 
     private static final String UUID_PREFIX = "uuid-";
 
-    private final ResumeService resumeService;
-    private final PortfolioService portfolioService;
+    private final CareerMaterialsService careerMaterialsService;
     private final MemberService memberService;
     private final ResumeEvaluationService resumeEvaluationService;
-    private final ResumeEvaluationPersistenceService resumeEvaluationPersistenceService;
     private final ResumeEvaluationAsyncService resumeEvaluationAsyncService;
     private final RedisService redisService;
     private final PdfValidator pdfValidator;
     private final PdfTextExtractor pdfTextExtractor;
+    private final PdfUploadService pdfUploadService;
 
     @Transactional(readOnly = true)
     public CareerMaterialsResponse getCareerMaterials(CareerMaterialsType type, MemberAuth memberAuth) {
-        return switch (type) {
-            case ALL:
-                yield new CareerMaterialsResponse(
-                        resumeService.getResumesByMemberId(memberAuth.memberId()),
-                        portfolioService.getPortfoliosByMemberId(memberAuth.memberId())
-                );
-            case RESUME:
-                yield new CareerMaterialsResponse(
-                        resumeService.getResumesByMemberId(memberAuth.memberId()),
-                        List.of()
-                );
-            case PORTFOLIO:
-                yield new CareerMaterialsResponse(
-                        List.of(),
-                        portfolioService.getPortfoliosByMemberId(memberAuth.memberId())
-                );
-        };
+        return careerMaterialsService.getCareerMaterials(type, memberAuth);
     }
 
     @Transactional
     public void saveCareerMaterials(ResumeSaveRequest request, MemberAuth memberAuth) {
         Member member = memberService.readById(memberAuth.memberId());
-        resumeService.saveResume(request.resume(), member);
+        pdfUploadService.saveResume(request.resume(), member);
         if (request.portfolio() != null) {
-            portfolioService.savePortfolio(request.portfolio(), member);
+            pdfUploadService.savePortfolio(request.portfolio(), member);
         }
     }
 
+    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
     @Transactional
     public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
         return resumeEvaluationService.evaluate(request);
@@ -93,7 +77,6 @@ public class CareerMaterialsFacadeService {
                 request.getJobDescription(),
                 request.getJobCareer()
         );
-
         if (memberAuth.isAuthenticated()) {
             return submitMemberResumeEvaluationAsync(request, memberAuth, evaluationRequest);
         }
@@ -128,16 +111,16 @@ public class CareerMaterialsFacadeService {
                 request.getJobCareer()
         );
 
-        ResumeEvaluation savedEvaluation = resumeEvaluationPersistenceService.saveEvaluation(evaluation);
+        ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
         uploadEvaluationPdfsToS3(request, member);
         resumeEvaluationAsyncService.evaluateMemberAsync(savedEvaluation.getId(), evaluationRequest);
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
 
     private void uploadEvaluationPdfsToS3(ResumeEvaluationAsyncRequest request, Member member) {
-        resumeService.saveResume(request.getResume(), member);
+        pdfUploadService.saveResume(request.getResume(), member);
         if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
-            portfolioService.savePortfolio(request.getPortfolio(), member);
+            pdfUploadService.savePortfolio(request.getPortfolio(), member);
         }
     }
 
@@ -183,7 +166,7 @@ public class CareerMaterialsFacadeService {
 
     private ResumeEvaluationStateResponse findMemberResumeEvaluationState(String evaluationId, MemberAuth memberAuth) {
         Long id = parseMemberEvaluationId(evaluationId);
-        ResumeEvaluation evaluation = resumeEvaluationPersistenceService.readById(id);
+        ResumeEvaluation evaluation = resumeEvaluationService.readById(id);
         validateEvaluationOwner(evaluation, memberAuth.memberId());
         return ResumeEvaluationStateResponse.from(evaluation);
     }
@@ -198,7 +181,7 @@ public class CareerMaterialsFacadeService {
 
     @Transactional(readOnly = true)
     public ResumeEvaluationHistoryResponses findResumeEvaluationHistory(MemberAuth memberAuth, Pageable pageable) {
-        Page<ResumeEvaluation> evaluationPage = resumeEvaluationPersistenceService
+        Page<ResumeEvaluation> evaluationPage = resumeEvaluationService
                 .findByMemberId(memberAuth.memberId(), pageable);
 
         List<ResumeEvaluationHistoryResponse> evaluations = evaluationPage.stream()
@@ -214,7 +197,7 @@ public class CareerMaterialsFacadeService {
 
     @Transactional(readOnly = true)
     public ResumeEvaluationDetailResponse findResumeEvaluationDetail(Long evaluationId, MemberAuth memberAuth) {
-        ResumeEvaluation evaluation = resumeEvaluationPersistenceService.readById(evaluationId);
+        ResumeEvaluation evaluation = resumeEvaluationService.readById(evaluationId);
         validateEvaluationOwner(evaluation, memberAuth.memberId());
         return ResumeEvaluationDetailResponse.from(evaluation);
     }
