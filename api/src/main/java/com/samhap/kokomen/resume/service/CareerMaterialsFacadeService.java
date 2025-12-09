@@ -18,9 +18,12 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
+import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -79,18 +82,44 @@ public class CareerMaterialsFacadeService {
         );
         ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
 
+        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
+        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
+
         resumeEvaluationAsyncService.processAndEvaluateMemberAsync(
                 savedEvaluation.getId(),
                 member,
-                request
+                resumeFileData,
+                portfolioFileData,
+                request.getJobPosition(),
+                request.getJobDescription(),
+                request.getJobCareer()
         );
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
 
     private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request) {
         String uuid = UUID.randomUUID().toString();
-        resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(uuid, request);
+
+        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
+        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
+
+        resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(
+                uuid,
+                resumeFileData,
+                portfolioFileData,
+                request.getJobPosition(),
+                request.getJobDescription(),
+                request.getJobCareer()
+        );
         return ResumeEvaluationSubmitResponse.fromUuid(uuid);
+    }
+
+    private ResumeFileData createResumeFileData(MultipartFile file) {
+        try {
+            return ResumeFileData.from(file);
+        } catch (IOException e) {
+            throw new BadRequestException("파일을 읽는 중 오류가 발생했습니다.");
+        }
     }
 
     @Transactional(readOnly = true)

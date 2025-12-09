@@ -68,4 +68,17 @@ public class PdfTextExtractor {
         stripper.setSortByPosition(true);
         return stripper.getText(document).trim();
     }
+
+    public String extractText(byte[] pdfData) {
+        if (pdfData == null || pdfData.length == 0) {
+            return null;
+        }
+
+        try (PDDocument document = Loader.loadPDF(pdfData)) {
+            return extractText(document);
+        } catch (IOException e) {
+            log.error("PDF 텍스트 추출 중 오류 발생", e);
+            throw new BadRequestException("PDF 파일에서 텍스트를 추출하는 데 실패했습니다.");
+        }
+    }
 }
