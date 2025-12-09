@@ -6,6 +6,8 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
+import com.samhap.kokomen.resume.domain.PdfTextExtractor;
+import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
@@ -39,6 +41,8 @@ public class CareerMaterialsFacadeService {
     private final ResumeEvaluationPersistenceService resumeEvaluationPersistenceService;
     private final ResumeEvaluationAsyncService resumeEvaluationAsyncService;
     private final RedisService redisService;
+    private final PdfValidator pdfValidator;
+    private final PdfTextExtractor pdfTextExtractor;
 
     @Transactional(readOnly = true)
     public CareerMaterialsResponse getCareerMaterials(CareerMaterialsType type, MemberAuth memberAuth) {
@@ -78,36 +82,69 @@ public class CareerMaterialsFacadeService {
     @Transactional
     public ResumeEvaluationSubmitResponse submitResumeEvaluationAsync(ResumeEvaluationAsyncRequest request,
                                                                       MemberAuth memberAuth) {
+        validatePdfFiles(request);
+        String resumeText = extractResumeText(request);
+        String portfolioText = pdfTextExtractor.extractText(request.getPortfolio());
+
+        ResumeEvaluationRequest evaluationRequest = new ResumeEvaluationRequest(
+                resumeText,
+                portfolioText,
+                request.getJobPosition(),
+                request.getJobDescription(),
+                request.getJobCareer()
+        );
+
         if (memberAuth.isAuthenticated()) {
-            return submitMemberResumeEvaluationAsync(request, memberAuth);
+            return submitMemberResumeEvaluationAsync(request, memberAuth, evaluationRequest);
         }
-        return submitNonMemberResumeEvaluationAsync(request);
+        return submitNonMemberResumeEvaluationAsync(evaluationRequest);
+    }
+
+    private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {
+        pdfValidator.validate(request.getResume());
+        if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
+            pdfValidator.validate(request.getPortfolio());
+        }
+    }
+
+    private String extractResumeText(ResumeEvaluationAsyncRequest request) {
+        String resumeText = pdfTextExtractor.extractText(request.getResume());
+        if (resumeText == null || resumeText.isBlank()) {
+            throw new BadRequestException("이력서 PDF에서 텍스트를 추출할 수 없습니다.");
+        }
+        return resumeText;
     }
 
     private ResumeEvaluationSubmitResponse submitMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request,
-                                                                             MemberAuth memberAuth) {
+                                                                             MemberAuth memberAuth,
+                                                                             ResumeEvaluationRequest evaluationRequest) {
         Member member = memberService.readById(memberAuth.memberId());
         ResumeEvaluation evaluation = new ResumeEvaluation(
                 member,
-                request.resume(),
-                request.portfolio(),
-                request.jobPosition(),
-                request.jobDescription(),
-                request.jobCareer()
+                evaluationRequest.resume(),
+                evaluationRequest.portfolio(),
+                request.getJobPosition(),
+                request.getJobDescription(),
+                request.getJobCareer()
         );
+
         ResumeEvaluation savedEvaluation = resumeEvaluationPersistenceService.saveEvaluation(evaluation);
-
-        resumeEvaluationAsyncService.evaluateMemberAsync(
-                savedEvaluation.getId(),
-                request.toEvaluationRequest()
-        );
-
+        uploadEvaluationPdfsToS3(request, member);
+        resumeEvaluationAsyncService.evaluateMemberAsync(savedEvaluation.getId(), evaluationRequest);
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
 
-    private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request) {
+    private void uploadEvaluationPdfsToS3(ResumeEvaluationAsyncRequest request, Member member) {
+        resumeService.saveResume(request.getResume(), member);
+        if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
+            portfolioService.savePortfolio(request.getPortfolio(), member);
+        }
+    }
+
+    private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(
+            ResumeEvaluationRequest evaluationRequest) {
         String uuid = UUID.randomUUID().toString();
-        resumeEvaluationAsyncService.evaluateNonMemberAsync(uuid, request.toEvaluationRequest());
+        resumeEvaluationAsyncService.evaluateNonMemberAsync(uuid, evaluationRequest);
         return ResumeEvaluationSubmitResponse.fromUuid(uuid);
     }
 

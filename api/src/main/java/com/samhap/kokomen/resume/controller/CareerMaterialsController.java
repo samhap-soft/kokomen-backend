@@ -21,10 +21,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/resumes")
@@ -50,11 +51,17 @@ public class CareerMaterialsController {
         return ResponseEntity.ok(careerMaterialsFacadeService.getCareerMaterials(type, memberAuth));
     }
 
-    @PostMapping("/evaluations")
+    @PostMapping(value = "/evaluations", consumes = {"multipart/form-data"})
     public ResponseEntity<ResumeEvaluationSubmitResponse> submitResumeEvaluationAsync(
-            @RequestBody @Valid ResumeEvaluationAsyncRequest request,
+            @RequestPart(value = "resume") MultipartFile resume,
+            @RequestPart(value = "portfolio", required = false) MultipartFile portfolio,
+            @RequestPart(value = "job_position") String jobPosition,
+            @RequestPart(value = "job_description", required = false) String jobDescription,
+            @RequestPart(value = "job_career") String jobCareer,
             @Authentication(required = false) MemberAuth memberAuth
     ) {
+        ResumeEvaluationAsyncRequest request = new ResumeEvaluationAsyncRequest(
+                resume, portfolio, jobPosition, jobDescription, jobCareer);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(careerMaterialsFacadeService.submitResumeEvaluationAsync(request, memberAuth));
     }
