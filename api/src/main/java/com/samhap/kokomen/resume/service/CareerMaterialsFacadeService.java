@@ -1,5 +1,7 @@
 package com.samhap.kokomen.resume.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
@@ -23,12 +25,12 @@ import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
 @Service
@@ -43,6 +45,7 @@ public class CareerMaterialsFacadeService {
     private final RedisService redisService;
     private final PdfValidator pdfValidator;
     private final PdfUploadService pdfUploadService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public CareerMaterialsResponse getCareerMaterials(CareerMaterialsType type, MemberAuth memberAuth) {
@@ -138,13 +141,22 @@ public class CareerMaterialsFacadeService {
         String uuid = extractUuid(evaluationId);
         String redisKey = ResumeEvaluationAsyncService.createRedisKey(uuid);
 
-        return redisService.get(redisKey, NonMemberResumeEvaluationData.class)
+        return redisService.get(redisKey, String.class)
+                .map(this::parseNonMemberEvaluationData)
                 .map(this::convertToStateResponse)
                 .orElseThrow(() -> new BadRequestException("이력서 평가 결과를 찾을 수 없습니다. 만료되었거나 존재하지 않는 ID입니다."));
     }
 
     private String extractUuid(String evaluationId) {
         return evaluationId.substring(UUID_PREFIX.length());
+    }
+
+    private NonMemberResumeEvaluationData parseNonMemberEvaluationData(String jsonData) {
+        try {
+            return objectMapper.readValue(jsonData, NonMemberResumeEvaluationData.class);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("비회원 평가 데이터 파싱에 실패했습니다.");
+        }
     }
 
     private ResumeEvaluationStateResponse convertToStateResponse(NonMemberResumeEvaluationData data) {
