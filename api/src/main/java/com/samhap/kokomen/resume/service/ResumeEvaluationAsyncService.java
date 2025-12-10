@@ -9,9 +9,9 @@ import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
-import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
+import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.TextExtractionResult;
 import java.time.Duration;
 import java.util.Map;
@@ -21,7 +21,6 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowOutputEvent;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowResponseStream;
@@ -114,7 +113,7 @@ public class ResumeEvaluationAsyncService {
                                                  String jobDescription,
                                                  String jobCareer) {
         String redisKey = createRedisKey(uuid);
-        redisService.setValue(redisKey, NonMemberResumeEvaluationData.pending(null), REDIS_TTL);
+        saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.pending(null));
 
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         executor.execute(() -> {
@@ -124,7 +123,7 @@ public class ResumeEvaluationAsyncService {
 
                 if (!extraction.hasResumeText()) {
                     log.error("이력서 텍스트 추출 실패 - uuid: {}", uuid);
-                    redisService.setValue(redisKey, NonMemberResumeEvaluationData.failed(null), REDIS_TTL);
+                    saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.failed(null));
                     return;
                 }
 
@@ -135,7 +134,7 @@ public class ResumeEvaluationAsyncService {
                 evaluateNonMemberAsync(uuid, evaluationRequest);
             } catch (Exception e) {
                 log.error("비회원 이력서 평가 처리 실패 - uuid: {}", uuid, e);
-                redisService.setValue(redisKey, NonMemberResumeEvaluationData.failed(null), REDIS_TTL);
+                saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.failed(null));
             } finally {
                 MDC.clear();
             }
@@ -237,7 +236,7 @@ public class ResumeEvaluationAsyncService {
         String redisKey = createRedisKey(uuid);
         InvokeFlowRequest flowRequest = ResumeInvokeFlowRequestFactory.createResumeEvaluationFlowRequest(request);
 
-        redisService.setValue(redisKey, NonMemberResumeEvaluationData.pending(request), REDIS_TTL);
+        saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.pending(request));
 
         bedrockAgentRuntimeAsyncClient.invokeFlow(
                 flowRequest,
@@ -265,7 +264,7 @@ public class ResumeEvaluationAsyncService {
             if (event instanceof FlowOutputEvent outputEvent) {
                 String jsonPayload = outputEvent.content().document().toString();
                 ResumeEvaluationResponse response = parseResponse(jsonPayload);
-                redisService.setValue(redisKey, NonMemberResumeEvaluationData.completed(request, response), REDIS_TTL);
+                saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             }
         } catch (Exception e) {
             log.error("Bedrock 응답 처리 실패, GPT 폴백 시도 - uuid: {}", uuid, e);
@@ -294,14 +293,24 @@ public class ResumeEvaluationAsyncService {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeGptClient.requestResumeEvaluation(request);
                 ResumeEvaluationResponse response = parseResponse(jsonResponse);
-                redisService.setValue(redisKey, NonMemberResumeEvaluationData.completed(request, response), REDIS_TTL);
+                saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - uuid: {}", uuid, e);
-                redisService.setValue(redisKey, NonMemberResumeEvaluationData.failed(request), REDIS_TTL);
+                saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.failed(request));
             } finally {
                 MDC.clear();
             }
         });
+    }
+
+    private void saveNonMemberDataToRedis(String redisKey, NonMemberResumeEvaluationData data) {
+        try {
+            String jsonData = objectMapper.writeValueAsString(data);
+            redisService.setValue(redisKey, jsonData, REDIS_TTL);
+        } catch (JsonProcessingException e) {
+            log.error("비회원 평가 데이터 직렬화 실패 - redisKey: {}", redisKey, e);
+            throw new BadRequestException("비회원 평가 데이터 저장에 실패했습니다.");
+        }
     }
 
     private ResumeEvaluationResponse parseResponse(String jsonResponse) {
