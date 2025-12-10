@@ -81,8 +81,8 @@ public class CareerMaterialsFacadeService {
 
         ResumeEvaluation evaluation = new ResumeEvaluation(
                 member,
-                null,
-                null,
+                resume,
+                portfolio,
                 request.jobPosition(),
                 request.jobDescription(),
                 request.jobCareer()

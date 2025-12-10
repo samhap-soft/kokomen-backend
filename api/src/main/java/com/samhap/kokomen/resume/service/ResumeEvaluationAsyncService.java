@@ -88,15 +88,15 @@ public class ResumeEvaluationAsyncService {
                     return;
                 }
 
-                pdfUploadService.saveResume(resumeFileData.content(), resumeFileData.filename(),
-                        member, extraction.resumeText());
+                MemberResume memberResume = pdfUploadService.saveResume(resumeFileData.content(),
+                        resumeFileData.filename(), member, extraction.resumeText());
+                MemberPortfolio memberPortfolio = null;
                 if (portfolioFileData != null && !portfolioFileData.isEmpty()) {
-                    pdfUploadService.savePortfolio(portfolioFileData.content(), portfolioFileData.filename(),
-                            member, extraction.portfolioText());
+                    memberPortfolio = pdfUploadService.savePortfolio(portfolioFileData.content(),
+                            portfolioFileData.filename(), member, extraction.portfolioText());
                 }
 
-                resumeEvaluationService.updateResumeText(evaluationId,
-                        extraction.resumeText(), extraction.portfolioText());
+                resumeEvaluationService.updateMemberResume(evaluationId, memberResume, memberPortfolio);
 
                 ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
                         extraction.resumeText(), extraction.portfolioText(),
@@ -133,8 +133,6 @@ public class ResumeEvaluationAsyncService {
                     resumeEvaluationService.updateFailed(evaluationId);
                     return;
                 }
-
-                resumeEvaluationService.updateResumeText(evaluationId, resumeText, portfolioText);
 
                 ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
                         resumeText, portfolioText, jobPosition, jobDescription, jobCareer

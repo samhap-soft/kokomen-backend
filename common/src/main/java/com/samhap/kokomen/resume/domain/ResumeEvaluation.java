@@ -39,11 +39,13 @@ public class ResumeEvaluation extends BaseEntity {
     @Column(name = "state", nullable = false, length = 20)
     private ResumeEvaluationState state;
 
-    @Column(name = "resume", columnDefinition = "TEXT")
-    private String resume;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_resume_id")
+    private MemberResume memberResume;
 
-    @Column(name = "portfolio", columnDefinition = "TEXT")
-    private String portfolio;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_portfolio_id")
+    private MemberPortfolio memberPortfolio;
 
     @Column(name = "job_position", nullable = false, length = 500)
     private String jobPosition;
@@ -105,12 +107,12 @@ public class ResumeEvaluation extends BaseEntity {
     @Column(name = "total_feedback", columnDefinition = "TEXT")
     private String totalFeedback;
 
-    public ResumeEvaluation(Member member, String resume, String portfolio,
+    public ResumeEvaluation(Member member, MemberResume memberResume, MemberPortfolio memberPortfolio,
                             String jobPosition, String jobDescription, String jobCareer) {
         this.member = member;
         this.state = ResumeEvaluationState.PENDING;
-        this.resume = resume;
-        this.portfolio = portfolio;
+        this.memberResume = memberResume;
+        this.memberPortfolio = memberPortfolio;
         this.jobPosition = jobPosition;
         this.jobDescription = jobDescription;
         this.jobCareer = jobCareer;
@@ -159,8 +161,8 @@ public class ResumeEvaluation extends BaseEntity {
         return this.member.isOwner(memberId);
     }
 
-    public void updateResumeText(String resume, String portfolio) {
-        this.resume = resume;
-        this.portfolio = portfolio;
+    public void updateMemberResume(MemberResume memberResume, MemberPortfolio memberPortfolio) {
+        this.memberResume = memberResume;
+        this.memberPortfolio = memberPortfolio;
     }
 }
