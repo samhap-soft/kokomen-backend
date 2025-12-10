@@ -1,6 +1,7 @@
 package com.samhap.kokomen.global.service;
 
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
+import com.samhap.kokomen.global.constant.AwsConstant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -65,9 +66,8 @@ public class S3Service {
     }
 
     private String extractKeyFromCdnUrl(String cdnUrl) {
-        String cloudFrontDomain = "https://dhtg8wzvkbfxr.cloudfront.net/";
-        if (cdnUrl.startsWith(cloudFrontDomain)) {
-            return cdnUrl.substring(cloudFrontDomain.length());
+        if (cdnUrl.startsWith(AwsConstant.CLOUD_FRONT_DOMAIN_URL)) {
+            return cdnUrl.substring(AwsConstant.CLOUD_FRONT_DOMAIN_URL.length());
         }
         throw new IllegalArgumentException("Invalid CDN URL: " + cdnUrl);
     }
