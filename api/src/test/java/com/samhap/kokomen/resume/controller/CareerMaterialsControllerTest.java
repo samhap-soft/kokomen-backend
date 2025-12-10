@@ -12,9 +12,11 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +41,7 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
@@ -452,6 +455,107 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
                                 fieldWithPath("result.total_score").description("총점"),
                                 fieldWithPath("result.total_feedback").description("종합 피드백"),
                                 fieldWithPath("created_at").description("생성일시")
+                        )
+                ));
+    }
+
+    @Test
+    void 저장된_이력서_기반_평가_비동기_제출_성공() throws Exception {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MemberResume resume = memberResumeRepository.save(
+                MemberResumeFixtureBuilder.builder()
+                        .member(member)
+                        .build()
+        );
+        MemberPortfolio portfolio = memberPortfolioRepository.save(
+                MemberPortfolioFixtureBuilder.builder()
+                        .member(member)
+                        .build()
+        );
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestBody = """
+                {
+                    "resume_id": %d,
+                    "portfolio_id": %d,
+                    "job_position": "백엔드 개발자",
+                    "job_description": "Spring Boot 기반 백엔드 개발",
+                    "job_career": "경력"
+                }
+                """.formatted(resume.getId(), portfolio.getId());
+
+        mockMvc.perform(post("/api/v1/resumes/evaluations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.evaluation_id").exists())
+                .andDo(document("resume-evaluation-saved-async-submit",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("resume_id").description("저장된 이력서 ID"),
+                                fieldWithPath("portfolio_id").description("저장된 포트폴리오 ID (선택)").optional(),
+                                fieldWithPath("job_position").description("지원 직무"),
+                                fieldWithPath("job_description").description("채용공고 상세 내용 (선택)").optional(),
+                                fieldWithPath("job_career").description("경력 구분 (신입/경력)")
+                        ),
+                        responseFields(
+                                fieldWithPath("evaluation_id").description("평가 ID")
+                        )
+                ));
+    }
+
+    @Test
+    void 저장된_이력서_기반_평가_포트폴리오_없이_제출_성공() throws Exception {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MemberResume resume = memberResumeRepository.save(
+                MemberResumeFixtureBuilder.builder()
+                        .member(member)
+                        .build()
+        );
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestBody = """
+                {
+                    "resume_id": %d,
+                    "job_position": "백엔드 개발자",
+                    "job_career": "신입"
+                }
+                """.formatted(resume.getId());
+
+        mockMvc.perform(post("/api/v1/resumes/evaluations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.evaluation_id").exists())
+                .andDo(document("resume-evaluation-saved-async-submit-without-portfolio",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("resume_id").description("저장된 이력서 ID"),
+                                fieldWithPath("job_position").description("지원 직무"),
+                                fieldWithPath("job_career").description("경력 구분 (신입/경력)")
+                        ),
+                        responseFields(
+                                fieldWithPath("evaluation_id").description("평가 ID")
                         )
                 ));
     }
