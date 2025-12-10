@@ -576,7 +576,7 @@ include::{snippetsDir}/resume-evaluation/response-body.adoc[]
 include::{snippetsDir}/resume-evaluation/response-fields.adoc[]
 include::{snippetsDir}/resume-evaluation/curl-request.adoc[]
 
-=== 이력서 평가 비동기 제출
+=== 이력서 평가 비동기 제출 (파일 업로드)
 
 include::{snippetsDir}/resume-evaluation-async-submit/http-request.adoc[]
 include::{snippetsDir}/resume-evaluation-async-submit/request-headers.adoc[]
@@ -585,6 +585,28 @@ include::{snippetsDir}/resume-evaluation-async-submit/http-response.adoc[]
 include::{snippetsDir}/resume-evaluation-async-submit/response-body.adoc[]
 include::{snippetsDir}/resume-evaluation-async-submit/response-fields.adoc[]
 include::{snippetsDir}/resume-evaluation-async-submit/curl-request.adoc[]
+
+=== 저장된 이력서 기반 평가 비동기 제출
+
+include::{snippetsDir}/resume-evaluation-saved-async-submit/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/request-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/request-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/curl-request.adoc[]
+
+=== 저장된 이력서 기반 평가 포트폴리오 없이 제출
+
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/request-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/request-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/curl-request.adoc[]
 
 === 이력서 평가 상태 조회 (대기중)
 

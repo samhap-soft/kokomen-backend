@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.external.BedrockFlowClient;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
@@ -71,10 +73,10 @@ public class ResumeEvaluationService {
     }
 
     @Transactional
-    public void updateResumeText(Long evaluationId, String resumeText, String portfolioText) {
+    public void updateMemberResume(Long evaluationId, MemberResume memberResume, MemberPortfolio memberPortfolio) {
         ResumeEvaluation evaluation = resumeEvaluationRepository.findById(evaluationId)
                 .orElseThrow(() -> new BadRequestException("이력서 평가를 찾을 수 없습니다. id: " + evaluationId));
-        evaluation.updateResumeText(resumeText, portfolioText);
+        evaluation.updateMemberResume(memberResume, memberPortfolio);
     }
 
     @Transactional
