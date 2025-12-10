@@ -30,16 +30,17 @@ public class PdfUploadService {
     private final S3Service s3Service;
 
     @Transactional
-    public void savePortfolio(MultipartFile portfolio, Member member, String content) {
+    public MemberPortfolio savePortfolio(MultipartFile portfolio, Member member, String content) {
         pdfValidator.validate(portfolio);
         String filename = portfolio.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), s3Key);
 
         MemberPortfolio memberPortfolio = new MemberPortfolio(member, filename, cdnPath, content);
-        memberPortfolioRepository.save(memberPortfolio);
+        MemberPortfolio savedPortfolio = memberPortfolioRepository.save(memberPortfolio);
 
         uploadToS3IfNotExists(s3Key, portfolio);
+        return savedPortfolio;
     }
 
     // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
@@ -51,16 +52,17 @@ public class PdfUploadService {
     }
 
     @Transactional
-    public void saveResume(MultipartFile resume, Member member, String content) {
+    public MemberResume saveResume(MultipartFile resume, Member member, String content) {
         pdfValidator.validate(resume);
         String filename = resume.getOriginalFilename();
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), s3Key);
 
         MemberResume memberResume = new MemberResume(member, filename, cdnPath, content);
-        memberResumeRepository.save(memberResume);
+        MemberResume savedResume = memberResumeRepository.save(memberResume);
 
         uploadToS3IfNotExists(s3Key, resume);
+        return savedResume;
     }
 
     // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
@@ -92,27 +94,29 @@ public class PdfUploadService {
     }
 
     @Transactional
-    public void saveResume(byte[] resumeData, String filename, Member member, String content) {
+    public MemberResume saveResume(byte[] resumeData, String filename, Member member, String content) {
         validateByteArray(resumeData);
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), s3Key);
 
         MemberResume memberResume = new MemberResume(member, filename, cdnPath, content);
-        memberResumeRepository.save(memberResume);
+        MemberResume savedResume = memberResumeRepository.save(memberResume);
 
         uploadToS3IfNotExists(s3Key, resumeData);
+        return savedResume;
     }
 
     @Transactional
-    public void savePortfolio(byte[] portfolioData, String filename, Member member, String content) {
+    public MemberPortfolio savePortfolio(byte[] portfolioData, String filename, Member member, String content) {
         validateByteArray(portfolioData);
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
         String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), s3Key);
 
         MemberPortfolio memberPortfolio = new MemberPortfolio(member, filename, cdnPath, content);
-        memberPortfolioRepository.save(memberPortfolio);
+        MemberPortfolio savedPortfolio = memberPortfolioRepository.save(memberPortfolio);
 
         uploadToS3IfNotExists(s3Key, portfolioData);
+        return savedPortfolio;
     }
 
     private void validateByteArray(byte[] data) {

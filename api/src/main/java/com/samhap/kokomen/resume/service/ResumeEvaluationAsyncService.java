@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.external.ResumeGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
@@ -37,6 +40,7 @@ public class ResumeEvaluationAsyncService {
     private final ResumeEvaluationService resumeEvaluationService;
     private final PdfUploadService pdfUploadService;
     private final RedisService redisService;
+    private final S3Service s3Service;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final ResumeGptClient resumeGptClient;
     private final PdfTextExtractor pdfTextExtractor;
@@ -47,6 +51,7 @@ public class ResumeEvaluationAsyncService {
             ResumeEvaluationService resumeEvaluationService,
             PdfUploadService pdfUploadService,
             RedisService redisService,
+            S3Service s3Service,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             ResumeGptClient resumeGptClient,
             PdfTextExtractor pdfTextExtractor,
@@ -57,6 +62,7 @@ public class ResumeEvaluationAsyncService {
         this.resumeEvaluationService = resumeEvaluationService;
         this.pdfUploadService = pdfUploadService;
         this.redisService = redisService;
+        this.s3Service = s3Service;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.resumeGptClient = resumeGptClient;
         this.pdfTextExtractor = pdfTextExtractor;
@@ -82,15 +88,15 @@ public class ResumeEvaluationAsyncService {
                     return;
                 }
 
-                pdfUploadService.saveResume(resumeFileData.content(), resumeFileData.filename(),
-                        member, extraction.resumeText());
+                MemberResume memberResume = pdfUploadService.saveResume(resumeFileData.content(),
+                        resumeFileData.filename(), member, extraction.resumeText());
+                MemberPortfolio memberPortfolio = null;
                 if (portfolioFileData != null && !portfolioFileData.isEmpty()) {
-                    pdfUploadService.savePortfolio(portfolioFileData.content(), portfolioFileData.filename(),
-                            member, extraction.portfolioText());
+                    memberPortfolio = pdfUploadService.savePortfolio(portfolioFileData.content(),
+                            portfolioFileData.filename(), member, extraction.portfolioText());
                 }
 
-                resumeEvaluationService.updateResumeText(evaluationId,
-                        extraction.resumeText(), extraction.portfolioText());
+                resumeEvaluationService.updateMemberResume(evaluationId, memberResume, memberPortfolio);
 
                 ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
                         extraction.resumeText(), extraction.portfolioText(),
@@ -104,6 +110,54 @@ public class ResumeEvaluationAsyncService {
                 MDC.clear();
             }
         });
+    }
+
+    public void processAndEvaluateSavedMemberAsync(Long evaluationId,
+                                                   MemberResume resume,
+                                                   MemberPortfolio portfolio,
+                                                   String jobPosition,
+                                                   String jobDescription,
+                                                   String jobCareer) {
+        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
+        executor.execute(() -> {
+            try {
+                setMdcContext(mdcContext);
+
+                String resumeText = getOrExtractText(resume.getContent(), resume.getResumeUrl());
+                String portfolioText = portfolio != null
+                        ? getOrExtractText(portfolio.getContent(), portfolio.getPortfolioUrl())
+                        : null;
+
+                if (resumeText == null || resumeText.isBlank()) {
+                    log.error("이력서 텍스트 없음 - evaluationId: {}", evaluationId);
+                    resumeEvaluationService.updateFailed(evaluationId);
+                    return;
+                }
+
+                ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
+                        resumeText, portfolioText, jobPosition, jobDescription, jobCareer
+                );
+                evaluateMemberAsync(evaluationId, evalRequest);
+            } catch (Exception e) {
+                log.error("저장된 이력서 평가 처리 실패 - evaluationId: {}", evaluationId, e);
+                resumeEvaluationService.updateFailed(evaluationId);
+            } finally {
+                MDC.clear();
+            }
+        });
+    }
+
+    private String getOrExtractText(String content, String url) {
+        if (content != null && !content.isBlank()) {
+            return content;
+        }
+        try {
+            byte[] pdfBytes = s3Service.downloadFileFromUrl(url);
+            return pdfTextExtractor.extractText(pdfBytes);
+        } catch (Exception e) {
+            log.error("S3에서 PDF 다운로드/추출 실패 - url: {}", url, e);
+            return null;
+        }
     }
 
     public void processAndEvaluateNonMemberAsync(String uuid,

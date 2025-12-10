@@ -1,13 +1,15 @@
 package com.samhap.kokomen.global.fixture.resume;
 
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 
 public class ResumeEvaluationFixtureBuilder {
 
     private Member member;
-    private String resume;
-    private String portfolio;
+    private MemberResume resume;
+    private MemberPortfolio portfolio;
     private String jobPosition;
     private String jobDescription;
     private String jobCareer;
@@ -41,12 +43,12 @@ public class ResumeEvaluationFixtureBuilder {
         return this;
     }
 
-    public ResumeEvaluationFixtureBuilder resume(String resume) {
+    public ResumeEvaluationFixtureBuilder resume(MemberResume resume) {
         this.resume = resume;
         return this;
     }
 
-    public ResumeEvaluationFixtureBuilder portfolio(String portfolio) {
+    public ResumeEvaluationFixtureBuilder portfolio(MemberPortfolio portfolio) {
         this.portfolio = portfolio;
         return this;
     }
@@ -84,8 +86,8 @@ public class ResumeEvaluationFixtureBuilder {
     public ResumeEvaluation build() {
         ResumeEvaluation evaluation = new ResumeEvaluation(
                 member,
-                resume != null ? resume : "테스트 이력서 내용입니다. Java, Spring Boot 경험 3년.",
-                portfolio != null ? portfolio : "테스트 포트폴리오 내용입니다.",
+                resume,
+                portfolio,
                 jobPosition != null ? jobPosition : "백엔드 개발자",
                 jobDescription != null ? jobDescription : "Spring Boot 기반 백엔드 개발",
                 jobCareer != null ? jobCareer : "신입"
