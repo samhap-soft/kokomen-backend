@@ -11,6 +11,7 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationHistoryResponses;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
+import com.samhap.kokomen.resume.service.dto.SavedResumeEvaluationAsyncRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -64,6 +66,15 @@ public class CareerMaterialsController {
                 resume, portfolio, jobPosition, jobDescription, jobCareer);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(careerMaterialsFacadeService.submitResumeEvaluationAsync(request, memberAuth));
+    }
+
+    @PostMapping(value = "/evaluations", consumes = {"application/json"})
+    public ResponseEntity<ResumeEvaluationSubmitResponse> submitSavedResumeEvaluationAsync(
+            @Valid @RequestBody SavedResumeEvaluationAsyncRequest request,
+            @Authentication MemberAuth memberAuth
+    ) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(careerMaterialsFacadeService.submitSavedResumeEvaluationAsync(request, memberAuth));
     }
 
     @GetMapping("/evaluations/{evaluationId}/state")

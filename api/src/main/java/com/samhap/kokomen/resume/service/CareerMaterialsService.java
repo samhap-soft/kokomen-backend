@@ -1,7 +1,10 @@
 package com.samhap.kokomen.resume.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
@@ -58,5 +61,15 @@ public class CareerMaterialsService {
                         portfolio.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    public MemberResume getResumeByIdAndMemberId(Long resumeId, Long memberId) {
+        return memberResumeRepository.findByIdAndMemberId(resumeId, memberId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 이력서입니다."));
+    }
+
+    public MemberPortfolio getPortfolioByIdAndMemberId(Long portfolioId, Long memberId) {
+        return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 포트폴리오입니다."));
     }
 }

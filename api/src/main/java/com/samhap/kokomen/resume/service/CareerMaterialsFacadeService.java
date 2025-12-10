@@ -8,6 +8,8 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
@@ -22,6 +24,7 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
+import com.samhap.kokomen.resume.service.dto.SavedResumeEvaluationAsyncRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +66,46 @@ public class CareerMaterialsFacadeService {
             return submitMemberResumeEvaluationAsync(request, memberAuth);
         }
         return submitNonMemberResumeEvaluationAsync(request);
+    }
+
+    @Transactional
+    public ResumeEvaluationSubmitResponse submitSavedResumeEvaluationAsync(
+            SavedResumeEvaluationAsyncRequest request,
+            MemberAuth memberAuth
+    ) {
+        Member member = memberService.readById(memberAuth.memberId());
+
+        MemberResume resume = careerMaterialsService.getResumeByIdAndMemberId(
+                request.resumeId(), memberAuth.memberId());
+        MemberPortfolio portfolio = getMemberPortfolio(request, memberAuth);
+
+        ResumeEvaluation evaluation = new ResumeEvaluation(
+                member,
+                null,
+                null,
+                request.jobPosition(),
+                request.jobDescription(),
+                request.jobCareer()
+        );
+        ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
+
+        resumeEvaluationAsyncService.processAndEvaluateSavedMemberAsync(
+                savedEvaluation.getId(),
+                resume,
+                portfolio,
+                request.jobPosition(),
+                request.jobDescription(),
+                request.jobCareer()
+        );
+
+        return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
+    }
+
+    private MemberPortfolio getMemberPortfolio(SavedResumeEvaluationAsyncRequest request, MemberAuth memberAuth) {
+        if (request.portfolioId() == null) {
+            return null;
+        }
+        return careerMaterialsService.getPortfolioByIdAndMemberId(request.portfolioId(), memberAuth.memberId());
     }
 
     private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {

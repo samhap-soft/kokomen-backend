@@ -3,8 +3,11 @@ package com.samhap.kokomen.global.service;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -44,5 +47,28 @@ public class S3Service {
             }
             throw e;
         }
+    }
+
+    public byte[] downloadFile(String key) {
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(S3_BUCKET_NAME)
+                .key(key)
+                .build();
+
+        ResponseBytes<GetObjectResponse> response = s3Client.getObjectAsBytes(request);
+        return response.asByteArray();
+    }
+
+    public byte[] downloadFileFromUrl(String cdnUrl) {
+        String key = extractKeyFromCdnUrl(cdnUrl);
+        return downloadFile(key);
+    }
+
+    private String extractKeyFromCdnUrl(String cdnUrl) {
+        String cloudFrontDomain = "https://dhtg8wzvkbfxr.cloudfront.net/";
+        if (cdnUrl.startsWith(cloudFrontDomain)) {
+            return cdnUrl.substring(cloudFrontDomain.length());
+        }
+        throw new IllegalArgumentException("Invalid CDN URL: " + cdnUrl);
     }
 }
