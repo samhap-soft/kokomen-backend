@@ -26,6 +26,8 @@ import com.samhap.kokomen.global.fixture.resume.ResumeEvaluationFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
@@ -371,6 +373,16 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
     @Test
     void 이력서_평가_상세_조회() throws Exception {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MemberResume resume = memberResumeRepository.save(
+                MemberResumeFixtureBuilder.builder()
+                        .member(member)
+                        .build()
+        );
+        MemberPortfolio portfolio = memberPortfolioRepository.save(
+                MemberPortfolioFixtureBuilder.builder()
+                        .member(member)
+                        .build()
+        );
         tokenRepository.save(
                 TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
         tokenRepository.save(
@@ -381,6 +393,8 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
         ResumeEvaluation evaluation = resumeEvaluationRepository.save(
                 ResumeEvaluationFixtureBuilder.builder()
                         .member(member)
+                        .resume(resume)
+                        .portfolio(portfolio)
                         .completed()
                         .build()
         );
@@ -406,7 +420,11 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
                                 fieldWithPath("id").description("평가 ID"),
                                 fieldWithPath("state").description("평가 상태"),
                                 fieldWithPath("resume").description("이력서 텍스트"),
+                                fieldWithPath("resume.id").description("이력서 ID"),
+                                fieldWithPath("resume.title").description("이력서 파일명"),
                                 fieldWithPath("portfolio").description("포트폴리오 텍스트").optional(),
+                                fieldWithPath("portfolio.id").description("포트폴리오 ID").optional(),
+                                fieldWithPath("portfolio.title").description("포트폴리오 파일명").optional(),
                                 fieldWithPath("job_position").description("지원 직무"),
                                 fieldWithPath("job_description").description("직무 설명").optional(),
                                 fieldWithPath("job_career").description("경력 구분"),
