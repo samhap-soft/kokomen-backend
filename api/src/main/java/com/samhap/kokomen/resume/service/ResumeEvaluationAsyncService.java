@@ -70,63 +70,36 @@ public class ResumeEvaluationAsyncService {
         this.executor = executor;
     }
 
-    public void processAndEvaluateMemberAsync(Long evaluationId, Member member,
-                                              ResumeFileData resumeFileData,
-                                              ResumeFileData portfolioFileData,
-                                              String jobPosition,
-                                              String jobDescription,
-                                              String jobCareer) {
+    public void processAndEvaluateMixedAsync(Long evaluationId, Member member,
+                                             ResumeFileData resumeFileData, ResumeFileData portfolioFileData,
+                                             MemberResume existingResume, MemberPortfolio existingPortfolio,
+                                             String jobPosition, String jobDescription, String jobCareer) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                TextExtractionResult extraction = extractTexts(resumeFileData, portfolioFileData);
 
-                if (!extraction.hasResumeText()) {
-                    log.error("이력서 텍스트 추출 실패 - evaluationId: {}", evaluationId);
+                String resumeText;
+                String portfolioText;
+                MemberResume finalResume = existingResume;
+                MemberPortfolio finalPortfolio = existingPortfolio;
+
+                if (resumeFileData != null && !resumeFileData.isEmpty()) {
+                    resumeText = extractTextSafely(resumeFileData);
+                    if (resumeText == null || resumeText.isBlank()) {
+                        log.error("이력서 텍스트 추출 실패 - evaluationId: {}", evaluationId);
+                        resumeEvaluationService.updateFailed(evaluationId);
+                        return;
+                    }
+                    finalResume = pdfUploadService.saveResume(
+                            resumeFileData.content(), resumeFileData.filename(), member, resumeText);
+                } else if (existingResume != null) {
+                    resumeText = getOrExtractText(existingResume.getContent(), existingResume.getResumeUrl());
+                } else {
+                    log.error("이력서 없음 - evaluationId: {}", evaluationId);
                     resumeEvaluationService.updateFailed(evaluationId);
                     return;
                 }
-
-                MemberResume memberResume = pdfUploadService.saveResume(resumeFileData.content(),
-                        resumeFileData.filename(), member, extraction.resumeText());
-                MemberPortfolio memberPortfolio = null;
-                if (portfolioFileData != null && !portfolioFileData.isEmpty()) {
-                    memberPortfolio = pdfUploadService.savePortfolio(portfolioFileData.content(),
-                            portfolioFileData.filename(), member, extraction.portfolioText());
-                }
-
-                resumeEvaluationService.updateMemberResume(evaluationId, memberResume, memberPortfolio);
-
-                ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
-                        extraction.resumeText(), extraction.portfolioText(),
-                        jobPosition, jobDescription, jobCareer
-                );
-                evaluateMemberAsync(evaluationId, evalRequest);
-            } catch (Exception e) {
-                log.error("회원 이력서 평가 처리 실패 - evaluationId: {}", evaluationId, e);
-                resumeEvaluationService.updateFailed(evaluationId);
-            } finally {
-                MDC.clear();
-            }
-        });
-    }
-
-    public void processAndEvaluateSavedMemberAsync(Long evaluationId,
-                                                   MemberResume resume,
-                                                   MemberPortfolio portfolio,
-                                                   String jobPosition,
-                                                   String jobDescription,
-                                                   String jobCareer) {
-        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        executor.execute(() -> {
-            try {
-                setMdcContext(mdcContext);
-
-                String resumeText = getOrExtractText(resume.getContent(), resume.getResumeUrl());
-                String portfolioText = portfolio != null
-                        ? getOrExtractText(portfolio.getContent(), portfolio.getPortfolioUrl())
-                        : null;
 
                 if (resumeText == null || resumeText.isBlank()) {
                     log.error("이력서 텍스트 없음 - evaluationId: {}", evaluationId);
@@ -134,12 +107,27 @@ public class ResumeEvaluationAsyncService {
                     return;
                 }
 
+                if (portfolioFileData != null && !portfolioFileData.isEmpty()) {
+                    portfolioText = extractTextSafely(portfolioFileData);
+                    if (portfolioText != null && !portfolioText.isBlank()) {
+                        finalPortfolio = pdfUploadService.savePortfolio(
+                                portfolioFileData.content(), portfolioFileData.filename(), member, portfolioText);
+                    }
+                } else if (existingPortfolio != null) {
+                    portfolioText = getOrExtractText(existingPortfolio.getContent(),
+                            existingPortfolio.getPortfolioUrl());
+                } else {
+                    portfolioText = null;
+                }
+
+                resumeEvaluationService.updateMemberResume(evaluationId, finalResume, finalPortfolio);
+
                 ResumeEvaluationRequest evalRequest = new ResumeEvaluationRequest(
                         resumeText, portfolioText, jobPosition, jobDescription, jobCareer
                 );
                 evaluateMemberAsync(evaluationId, evalRequest);
             } catch (Exception e) {
-                log.error("저장된 이력서 평가 처리 실패 - evaluationId: {}", evaluationId, e);
+                log.error("혼합 이력서 평가 처리 실패 - evaluationId: {}", evaluationId, e);
                 resumeEvaluationService.updateFailed(evaluationId);
             } finally {
                 MDC.clear();
