@@ -12,11 +12,9 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
-import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,7 +39,6 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
@@ -479,19 +476,16 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        String requestBody = """
-                {
-                    "resume_id": %d,
-                    "portfolio_id": %d,
-                    "job_position": "백엔드 개발자",
-                    "job_description": "Spring Boot 기반 백엔드 개발",
-                    "job_career": "경력"
-                }
-                """.formatted(resume.getId(), portfolio.getId());
+        String jobPosition = "백엔드 개발자";
+        String jobDescription = "Spring Boot 기반 백엔드 개발";
+        String jobCareer = "경력";
 
-        mockMvc.perform(post("/api/v1/resumes/evaluations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody)
+        mockMvc.perform(multipart("/api/v1/resumes/evaluations")
+                        .file("resume_id", resume.getId().toString().getBytes())
+                        .file("portfolio_id", portfolio.getId().toString().getBytes())
+                        .file("job_position", jobPosition.getBytes())
+                        .file("job_description", jobDescription.getBytes())
+                        .file("job_career", jobCareer.getBytes())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
@@ -501,12 +495,12 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
-                        requestFields(
-                                fieldWithPath("resume_id").description("저장된 이력서 ID"),
-                                fieldWithPath("portfolio_id").description("저장된 포트폴리오 ID (선택)").optional(),
-                                fieldWithPath("job_position").description("지원 직무"),
-                                fieldWithPath("job_description").description("채용공고 상세 내용 (선택)").optional(),
-                                fieldWithPath("job_career").description("경력 구분 (신입/경력)")
+                        requestParts(
+                                partWithName("resume_id").description("저장된 이력서 ID"),
+                                partWithName("portfolio_id").description("저장된 포트폴리오 ID (선택)").optional(),
+                                partWithName("job_position").description("지원 직무"),
+                                partWithName("job_description").description("채용공고 상세 내용 (선택)").optional(),
+                                partWithName("job_career").description("경력 구분 (신입/경력)")
                         ),
                         responseFields(
                                 fieldWithPath("evaluation_id").description("평가 ID")
@@ -529,17 +523,13 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
-        String requestBody = """
-                {
-                    "resume_id": %d,
-                    "job_position": "백엔드 개발자",
-                    "job_career": "신입"
-                }
-                """.formatted(resume.getId());
+        String jobPosition = "백엔드 개발자";
+        String jobCareer = "신입";
 
-        mockMvc.perform(post("/api/v1/resumes/evaluations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody)
+        mockMvc.perform(multipart("/api/v1/resumes/evaluations")
+                        .file("resume_id", resume.getId().toString().getBytes())
+                        .file("job_position", jobPosition.getBytes())
+                        .file("job_career", jobCareer.getBytes())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
@@ -549,10 +539,10 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
-                        requestFields(
-                                fieldWithPath("resume_id").description("저장된 이력서 ID"),
-                                fieldWithPath("job_position").description("지원 직무"),
-                                fieldWithPath("job_career").description("경력 구분 (신입/경력)")
+                        requestParts(
+                                partWithName("resume_id").description("저장된 이력서 ID"),
+                                partWithName("job_position").description("지원 직무"),
+                                partWithName("job_career").description("경력 구분 (신입/경력)")
                         ),
                         responseFields(
                                 fieldWithPath("evaluation_id").description("평가 ID")

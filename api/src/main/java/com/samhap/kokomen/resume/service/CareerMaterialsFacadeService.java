@@ -24,7 +24,6 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeFileData;
 import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
-import com.samhap.kokomen.resume.service.dto.SavedResumeEvaluationAsyncRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -60,104 +59,127 @@ public class CareerMaterialsFacadeService {
             ResumeEvaluationAsyncRequest request,
             MemberAuth memberAuth
     ) {
-        validatePdfFiles(request);
-
         if (memberAuth.isAuthenticated()) {
-            return submitMemberResumeEvaluationAsync(request, memberAuth);
+            return submitMemberEvaluation(request, memberAuth);
         }
-        return submitNonMemberResumeEvaluationAsync(request);
+        return submitNonMemberEvaluation(request);
     }
 
-    @Transactional
-    public ResumeEvaluationSubmitResponse submitSavedResumeEvaluationAsync(
-            SavedResumeEvaluationAsyncRequest request,
+    private ResumeEvaluationSubmitResponse submitMemberEvaluation(
+            ResumeEvaluationAsyncRequest request,
             MemberAuth memberAuth
     ) {
+        validatePdfFiles(request);
         Member member = memberService.readById(memberAuth.memberId());
 
-        MemberResume resume = careerMaterialsService.getResumeByIdAndMemberId(
-                request.resumeId(), memberAuth.memberId());
-        MemberPortfolio portfolio = getMemberPortfolio(request, memberAuth);
+        ResumeFileData resumeFileData = getResumeFileData(request);
+        MemberResume memberResume = getMemberResume(request, memberAuth);
+        ResumeFileData portfolioFileData = getPortfolioFileData(request);
+        MemberPortfolio memberPortfolio = getMemberPortfolio(request, memberAuth);
 
-        ResumeEvaluation evaluation = new ResumeEvaluation(
-                member,
-                resume,
-                portfolio,
-                request.jobPosition(),
-                request.jobDescription(),
-                request.jobCareer()
-        );
-        ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
-
-        resumeEvaluationAsyncService.processAndEvaluateSavedMemberAsync(
-                savedEvaluation.getId(),
-                resume,
-                portfolio,
-                request.jobPosition(),
-                request.jobDescription(),
-                request.jobCareer()
-        );
-
+        ResumeEvaluation savedEvaluation = saveEvaluation(member, memberResume, memberPortfolio, request);
+        startMemberAsyncEvaluation(savedEvaluation, member, resumeFileData, portfolioFileData,
+                memberResume, memberPortfolio, request);
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
 
-    private MemberPortfolio getMemberPortfolio(SavedResumeEvaluationAsyncRequest request, MemberAuth memberAuth) {
+    private ResumeEvaluationSubmitResponse submitNonMemberEvaluation(ResumeEvaluationAsyncRequest request) {
+        validatePdfFiles(request);
+        String uuid = UUID.randomUUID().toString();
+        ResumeFileData resumeFileData = createResumeFileData(request.resume());
+        ResumeFileData portfolioFileData = createResumeFileData(request.portfolio());
+
+        startNonMemberAsyncEvaluation(uuid, resumeFileData, portfolioFileData, request);
+        return ResumeEvaluationSubmitResponse.fromUuid(uuid);
+    }
+
+    private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {
+        if (hasFile(request.resume())) {
+            pdfValidator.validate(request.resume());
+        }
+        if (hasFile(request.portfolio())) {
+            pdfValidator.validate(request.portfolio());
+        }
+    }
+
+    private ResumeFileData getResumeFileData(ResumeEvaluationAsyncRequest request) {
+        if (hasFile(request.resume())) {
+            return createResumeFileData(request.resume());
+        }
+        return null;
+    }
+
+    private MemberResume getMemberResume(ResumeEvaluationAsyncRequest request, MemberAuth memberAuth) {
+        if (hasFile(request.resume())) {
+            return null;
+        }
+        if (request.resumeId() == null) {
+            return null;
+        }
+        return careerMaterialsService.getResumeByIdAndMemberId(request.resumeId(), memberAuth.memberId());
+    }
+
+    private ResumeFileData getPortfolioFileData(ResumeEvaluationAsyncRequest request) {
+        if (hasFile(request.portfolio())) {
+            return createResumeFileData(request.portfolio());
+        }
+        return null;
+    }
+
+    private MemberPortfolio getMemberPortfolio(ResumeEvaluationAsyncRequest request, MemberAuth memberAuth) {
+        if (hasFile(request.portfolio())) {
+            return null;
+        }
         if (request.portfolioId() == null) {
             return null;
         }
         return careerMaterialsService.getPortfolioByIdAndMemberId(request.portfolioId(), memberAuth.memberId());
     }
 
-    private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {
-        pdfValidator.validate(request.getResume());
-        if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
-            pdfValidator.validate(request.getPortfolio());
-        }
+    private boolean hasFile(MultipartFile file) {
+        return file != null && !file.isEmpty();
     }
 
-    private ResumeEvaluationSubmitResponse submitMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request,
-                                                                             MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
+    private ResumeEvaluation saveEvaluation(
+            Member member,
+            MemberResume memberResume,
+            MemberPortfolio memberPortfolio,
+            ResumeEvaluationAsyncRequest request
+    ) {
         ResumeEvaluation evaluation = new ResumeEvaluation(
-                member,
-                null,
-                null,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
+                member, memberResume, memberPortfolio,
+                request.jobPosition(), request.jobDescription(), request.jobCareer()
         );
-        ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
-
-        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
-        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
-
-        resumeEvaluationAsyncService.processAndEvaluateMemberAsync(
-                savedEvaluation.getId(),
-                member,
-                resumeFileData,
-                portfolioFileData,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
-        );
-        return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
+        return resumeEvaluationService.saveEvaluation(evaluation);
     }
 
-    private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request) {
-        String uuid = UUID.randomUUID().toString();
-
-        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
-        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
-
-        resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(
-                uuid,
-                resumeFileData,
-                portfolioFileData,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
+    private void startMemberAsyncEvaluation(
+            ResumeEvaluation evaluation,
+            Member member,
+            ResumeFileData resumeFileData,
+            ResumeFileData portfolioFileData,
+            MemberResume memberResume,
+            MemberPortfolio memberPortfolio,
+            ResumeEvaluationAsyncRequest request
+    ) {
+        resumeEvaluationAsyncService.processAndEvaluateMixedAsync(
+                evaluation.getId(), member,
+                resumeFileData, portfolioFileData,
+                memberResume, memberPortfolio,
+                request.jobPosition(), request.jobDescription(), request.jobCareer()
         );
-        return ResumeEvaluationSubmitResponse.fromUuid(uuid);
+    }
+
+    private void startNonMemberAsyncEvaluation(
+            String uuid,
+            ResumeFileData resumeFileData,
+            ResumeFileData portfolioFileData,
+            ResumeEvaluationAsyncRequest request
+    ) {
+        resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(
+                uuid, resumeFileData, portfolioFileData,
+                request.jobPosition(), request.jobDescription(), request.jobCareer()
+        );
     }
 
     private ResumeFileData createResumeFileData(MultipartFile file) {
