@@ -109,9 +109,9 @@ public class CareerMaterialsFacadeService {
     }
 
     private void validatePdfFiles(ResumeEvaluationAsyncRequest request) {
-        pdfValidator.validate(request.getResume());
-        if (request.getPortfolio() != null && !request.getPortfolio().isEmpty()) {
-            pdfValidator.validate(request.getPortfolio());
+        pdfValidator.validate(request.resume());
+        if (request.portfolio() != null && !request.portfolio().isEmpty()) {
+            pdfValidator.validate(request.portfolio());
         }
     }
 
@@ -122,23 +122,23 @@ public class CareerMaterialsFacadeService {
                 member,
                 null,
                 null,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
+                request.jobPosition(),
+                request.jobDescription(),
+                request.jobCareer()
         );
         ResumeEvaluation savedEvaluation = resumeEvaluationService.saveEvaluation(evaluation);
 
-        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
-        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
+        ResumeFileData resumeFileData = createResumeFileData(request.resume());
+        ResumeFileData portfolioFileData = createResumeFileData(request.portfolio());
 
         resumeEvaluationAsyncService.processAndEvaluateMemberAsync(
                 savedEvaluation.getId(),
                 member,
                 resumeFileData,
                 portfolioFileData,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
+                request.jobPosition(),
+                request.jobDescription(),
+                request.jobCareer()
         );
         return ResumeEvaluationSubmitResponse.from(savedEvaluation.getId());
     }
@@ -146,16 +146,16 @@ public class CareerMaterialsFacadeService {
     private ResumeEvaluationSubmitResponse submitNonMemberResumeEvaluationAsync(ResumeEvaluationAsyncRequest request) {
         String uuid = UUID.randomUUID().toString();
 
-        ResumeFileData resumeFileData = createResumeFileData(request.getResume());
-        ResumeFileData portfolioFileData = createResumeFileData(request.getPortfolio());
+        ResumeFileData resumeFileData = createResumeFileData(request.resume());
+        ResumeFileData portfolioFileData = createResumeFileData(request.portfolio());
 
         resumeEvaluationAsyncService.processAndEvaluateNonMemberAsync(
                 uuid,
                 resumeFileData,
                 portfolioFileData,
-                request.getJobPosition(),
-                request.getJobDescription(),
-                request.getJobCareer()
+                request.jobPosition(),
+                request.jobDescription(),
+                request.jobCareer()
         );
         return ResumeEvaluationSubmitResponse.fromUuid(uuid);
     }

@@ -55,15 +55,17 @@ public class CareerMaterialsController {
 
     @PostMapping(value = "/evaluations", consumes = {"multipart/form-data"})
     public ResponseEntity<ResumeEvaluationSubmitResponse> submitResumeEvaluationAsync(
-            @RequestPart(value = "resume") MultipartFile resume,
+            @RequestPart(value = "resume", required = false) MultipartFile resume,
             @RequestPart(value = "portfolio", required = false) MultipartFile portfolio,
+            @RequestPart(value = "resume_id", required = false) Long resumeId,
+            @RequestPart(value = "portfolio_id", required = false) Long portfolioId,
             @RequestPart(value = "job_position") String jobPosition,
             @RequestPart(value = "job_description", required = false) String jobDescription,
             @RequestPart(value = "job_career") String jobCareer,
             @Authentication(required = false) MemberAuth memberAuth
     ) {
         ResumeEvaluationAsyncRequest request = new ResumeEvaluationAsyncRequest(
-                resume, portfolio, jobPosition, jobDescription, jobCareer);
+                resume, portfolio, resumeId, portfolioId, jobPosition, jobDescription, jobCareer);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(careerMaterialsFacadeService.submitResumeEvaluationAsync(request, memberAuth));
     }
