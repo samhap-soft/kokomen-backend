@@ -9,6 +9,7 @@ public class MemberResumeFixtureBuilder {
     private Member member;
     private String title;
     private String resumeUrl;
+    private String content;
 
     public static MemberResumeFixtureBuilder builder() {
         return new MemberResumeFixtureBuilder();
@@ -34,12 +35,18 @@ public class MemberResumeFixtureBuilder {
         return this;
     }
 
+    public MemberResumeFixtureBuilder content(String content) {
+        this.content = content;
+        return this;
+    }
+
     public MemberResume build() {
         return new MemberResume(
                 id,
                 member,
                 title != null ? title : "기본 이력서 제목",
-                resumeUrl != null ? resumeUrl : "https://example.com/resume.pdf"
+                resumeUrl != null ? resumeUrl : "https://example.com/resume.pdf",
+                content
         );
     }
 }

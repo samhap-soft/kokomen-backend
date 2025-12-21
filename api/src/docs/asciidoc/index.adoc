@@ -575,3 +575,71 @@ include::{snippetsDir}/resume-evaluation/http-response.adoc[]
 include::{snippetsDir}/resume-evaluation/response-body.adoc[]
 include::{snippetsDir}/resume-evaluation/response-fields.adoc[]
 include::{snippetsDir}/resume-evaluation/curl-request.adoc[]
+
+=== 이력서 평가 비동기 제출 (파일 업로드)
+
+include::{snippetsDir}/resume-evaluation-async-submit/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/request-parts.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-async-submit/curl-request.adoc[]
+
+=== 저장된 이력서 기반 평가 비동기 제출
+
+include::{snippetsDir}/resume-evaluation-saved-async-submit/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/request-parts.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit/curl-request.adoc[]
+
+=== 저장된 이력서 기반 평가 포트폴리오 없이 제출
+
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/request-parts.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-saved-async-submit-without-portfolio/curl-request.adoc[]
+
+=== 이력서 평가 상태 조회 (대기중)
+
+include::{snippetsDir}/resume-evaluation-state-pending/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-state-pending/path-parameters.adoc[]
+include::{snippetsDir}/resume-evaluation-state-pending/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-state-pending/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-state-pending/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-state-pending/curl-request.adoc[]
+
+=== 이력서 평가 상태 조회 (완료)
+
+include::{snippetsDir}/resume-evaluation-state-completed/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-state-completed/path-parameters.adoc[]
+include::{snippetsDir}/resume-evaluation-state-completed/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-state-completed/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-state-completed/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-state-completed/curl-request.adoc[]
+
+=== 이력서 평가 히스토리 조회
+
+include::{snippetsDir}/resume-evaluation-history/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-history/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-history/query-parameters.adoc[]
+include::{snippetsDir}/resume-evaluation-history/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-history/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-history/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-history/curl-request.adoc[]
+
+=== 이력서 평가 상세 조회
+
+include::{snippetsDir}/resume-evaluation-detail/http-request.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/request-headers.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/path-parameters.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/http-response.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/response-body.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/response-fields.adoc[]
+include::{snippetsDir}/resume-evaluation-detail/curl-request.adoc[]

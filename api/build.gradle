@@ -27,6 +27,9 @@ dependencies {
 
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // PDF 텍스트 추출
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+
     testImplementation 'com.h2database:h2:2.2.224'
     testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
 }

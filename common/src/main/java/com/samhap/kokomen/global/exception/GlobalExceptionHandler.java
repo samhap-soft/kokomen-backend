@@ -18,14 +18,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InternalApiException.class)
     public ResponseEntity<ErrorResponse> handleInternalApiException(InternalApiException e) {
-        log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
+        log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
+                e.getMessage(), e);
         return ResponseEntity.status(e.getHttpStatusCode())
                 .body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(KokomenException.class)
     public ResponseEntity<ErrorResponse> handleKokomenException(KokomenException e) {
-        log.warn("KokomenException :: status: {}, message: {}", e.getHttpStatusCode(), e.getMessage());
+        log.warn("KokomenException :: status: {}, message: {}", e.getHttpStatusCode(), e.getMessage(), e);
         return ResponseEntity.status(e.getHttpStatusCode())
                 .body(new ErrorResponse(e.getMessage()));
     }
@@ -52,13 +53,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ExternalApiException.class)
     public ResponseEntity<ErrorResponse> handleExternalApiException(ExternalApiException e) {
-        log.warn("ExternalApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(), e);
+        log.warn("ExternalApiException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(), e.getMessage(),
+                e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+            MissingServletRequestParameterException e) {
         String message = "필수 요청 파라미터 '" + e.getParameterName() + "'가 누락되었습니다.";
         log.warn("MissingServletRequestParameterException :: message: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -85,7 +88,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
-        log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
+        log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
+                e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("서버에 문제가 발생하였습니다."));
     }
