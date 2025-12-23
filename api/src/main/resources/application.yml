@@ -9,6 +9,10 @@ spring:
     default-property-inclusion: non_null
   session:
     store-type: redis
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 25MB
   kafka:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
