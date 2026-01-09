@@ -149,7 +149,7 @@ class RecruitControllerTest extends BaseControllerTest {
                       "image" : "https://example.com/company.png"
                     },
                     "title" : "백엔드 개발자 채용",
-                    "end_date" : "2025-12-31T23:59:59",
+                    "end_date" : "2099-12-31T23:59:59",
                     "deadline_type" : "기한 설정",
                     "career_min" : 0,
                     "career_max" : 3,

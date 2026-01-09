@@ -108,7 +108,7 @@ public class RecruitFixtureBuilder {
                 externalId != null ? externalId : "recruit-1",
                 affiliate != null ? affiliate : AffiliateFixtureBuilder.builder().build(),
                 title != null ? title : "백엔드 개발자 채용",
-                endDate != null ? endDate : LocalDateTime.of(2025, 12, 31, 23, 59, 59),
+                endDate != null ? endDate : LocalDateTime.of(2099, 12, 31, 23, 59, 59),
                 deadlineType != null ? deadlineType : DeadlineType.DEADLINE_SET,
                 careerMin != null ? careerMin : 0,
                 careerMax != null ? careerMax : 3,
