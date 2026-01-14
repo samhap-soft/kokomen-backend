@@ -3,61 +3,35 @@ package com.samhap.kokomen.interview.external;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import com.samhap.kokomen.global.external.BaseGptClient;
 import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
+import com.samhap.kokomen.interview.external.dto.response.Message;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 
 @Slf4j
 @ExecutionTimer
 @Component
-public class GptClient {
-
-    private static final String GPT_API_URL = "/v1/chat/completions";
-
-    private final RestClient restClient;
-    private final String gptApiKey;
+public class GptClient extends BaseGptClient {
 
     public GptClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${open-ai.api-key}") String gptApiKey
     ) {
-        this.restClient = builder
-                .baseUrl("https://api.openai.com")
-                .messageConverters(converters -> {
-                    converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
-                    converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
-                })
-                .build();
-        this.gptApiKey = gptApiKey;
+        super(builder, objectMapper, gptApiKey);
     }
 
     public GptResponse requestToGpt(QuestionAndAnswers questionAndAnswers) {
         GptRequest gptRequest = createGptRequest(questionAndAnswers);
-        GptResponse gptResponse;
-        try {
-            gptResponse = restClient.post()
-                    .uri(GPT_API_URL)
-                    .header("Authorization", "Bearer " + gptApiKey)
-                    .body(gptRequest)
-                    .retrieve()
-                    .body(GptResponse.class);
-        } catch (RestClientResponseException e) {
-            throw new ExternalApiException("GPT API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getRawStatusCode(), e);
-        } catch (Exception e) {
-            throw new ExternalApiException("GPT API 호출 중 예상치 못한 오류가 발생했습니다.", e);
-        }
-
-        return gptResponse;
+        return executeRequest(gptRequest, GptResponse.class);
     }
 
     private GptRequest createGptRequest(QuestionAndAnswers questionAndAnswers) {
@@ -67,5 +41,26 @@ public class GptClient {
         }
         List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
         return GptRequest.createEndGptRequest(gptMessages);
+    }
+
+    @Override
+    protected void validateResponse(Object response) {
+        if (response == null) {
+            throw new ExternalApiException("GPT API로부터 유효한 응답을 받지 못했습니다.");
+        }
+        if (!(response instanceof GptResponse gptResponse)) {
+            throw new ExternalApiException("GPT API로부터 예기치 않은 타입의 응답을 받았습니다: " + response.getClass().getName());
+        }
+
+        if (gptResponse.choices() == null || gptResponse.choices().isEmpty()) {
+            throw new ExternalApiException("GPT API 응답에 choices가 없습니다.");
+        }
+        Message message = gptResponse.choices().get(0).message();
+        if (message == null) {
+            throw new ExternalApiException("GPT API 응답에 message가 없습니다.");
+        }
+        if (message.toolCalls() == null || message.toolCalls().isEmpty()) {
+            throw new ExternalApiException("GPT API 응답에 tool_calls가 없습니다.");
+        }
     }
 }

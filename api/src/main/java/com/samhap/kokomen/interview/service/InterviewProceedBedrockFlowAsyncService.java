@@ -130,7 +130,8 @@ public class InterviewProceedBedrockFlowAsyncService {
                                         mdcContext))))
                 .onError(ex ->
                         executor.execute(
-                                () -> handleInterviewProceedBedrockFlowException(ex, interviewProceedStateKey)))
+                                () -> handleInterviewProceedBedrockFlowException(ex, memberId, questionAndAnswers,
+                                        interviewId, lockKey, interviewProceedStateKey, mdcContext)))
                 .build();
     }
 
@@ -154,9 +155,47 @@ public class InterviewProceedBedrockFlowAsyncService {
         }
     }
 
-    private void handleInterviewProceedBedrockFlowException(Throwable ex,
-                                                            String interviewProceedStateKey) {
-        log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
+    private void handleInterviewProceedBedrockFlowException(Throwable ex, Long memberId,
+                                                            QuestionAndAnswers questionAndAnswers,
+                                                            Long interviewId, String lockKey,
+                                                            String interviewProceedStateKey,
+                                                            Map<String, String> mdcContext) {
+        try {
+            setMdcContext(mdcContext);
+            log.error("Bedrock API 호출 실패, GPT 폴백 시도 - {}", interviewProceedStateKey, ex);
+            fallbackToGptForInterview(memberId, questionAndAnswers, interviewId, lockKey,
+                    interviewProceedStateKey, mdcContext);
+        } finally {
+            MDC.clear();
+        }
+    }
+
+    private void fallbackToGptForInterview(Long memberId, QuestionAndAnswers questionAndAnswers,
+                                           Long interviewId, String lockKey,
+                                           String interviewProceedStateKey,
+                                           Map<String, String> mdcContext) {
+        gptCallbackExecutor.execute(() -> {
+            try {
+                setMdcContext(mdcContext);
+                log.info("GPT 폴백 시작 - {}", interviewProceedStateKey);
+
+                GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+                log.info("GPT 폴백 응답 받음 - {}: {}", interviewProceedStateKey, response);
+
+                interviewProceedService.proceedOrEndInterview(
+                        memberId, questionAndAnswers, response, interviewId);
+
+                redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
+                        Duration.ofSeconds(300));
+            } catch (Exception e) {
+                log.error("GPT 폴백 실패 - {}", interviewProceedStateKey, e);
+                redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                        Duration.ofSeconds(300));
+            } finally {
+                redisService.releaseLock(lockKey);
+                MDC.clear();
+            }
+        });
     }
 
     private void callbackInterviewProceedBedrockFlow(FlowOutputEvent outputEvent, Long memberId,
