@@ -18,12 +18,9 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationAsyncRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationDetailResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationHistoryResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationHistoryResponses;
-import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
-import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeFileData;
-import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +43,6 @@ public class CareerMaterialsFacadeService {
     private final ResumeEvaluationAsyncService resumeEvaluationAsyncService;
     private final RedisService redisService;
     private final PdfValidator pdfValidator;
-    private final PdfUploadService pdfUploadService;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -273,22 +269,6 @@ public class CareerMaterialsFacadeService {
     private void validateEvaluationOwner(ResumeEvaluation evaluation, Long memberId) {
         if (!evaluation.isOwner(memberId)) {
             throw new BadRequestException("본인의 이력서 평가만 조회할 수 있습니다.");
-        }
-    }
-
-    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
-    @Transactional
-    public ResumeEvaluationResponse evaluateResume(ResumeEvaluationRequest request) {
-        return resumeEvaluationService.evaluate(request);
-    }
-
-    // TODO: 이력서 평가가 비동기로 전환 완료되면 삭제하기
-    @Transactional
-    public void saveCareerMaterials(ResumeSaveRequest request, MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-        pdfUploadService.saveResume(request.resume(), member);
-        if (request.portfolio() != null) {
-            pdfUploadService.savePortfolio(request.portfolio(), member);
         }
     }
 }
