@@ -11,15 +11,12 @@ import com.samhap.kokomen.resume.service.dto.ResumeEvaluationDetailResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationHistoryResponses;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationStateResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationSubmitResponse;
-import com.samhap.kokomen.resume.service.dto.ResumeSaveRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,15 +31,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class CareerMaterialsController {
 
     private final CareerMaterialsFacadeService careerMaterialsFacadeService;
-
-    @PostMapping(consumes = {"multipart/form-data"})
-    public ResponseEntity<Void> uploadCareerMaterials(
-            @Valid @ModelAttribute ResumeSaveRequest request,
-            @Authentication MemberAuth memberAuth
-    ) {
-        careerMaterialsFacadeService.saveCareerMaterials(request, memberAuth);
-        return ResponseEntity.noContent().build();
-    }
 
     @GetMapping
     public ResponseEntity<CareerMaterialsResponse> getCareerMaterials(

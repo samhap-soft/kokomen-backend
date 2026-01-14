@@ -34,7 +34,6 @@ import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import com.samhap.kokomen.resume.repository.ResumeEvaluationRepository;
-import com.samhap.kokomen.resume.service.ResumeEvaluationAsyncService;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
@@ -58,53 +57,9 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
     @Autowired
     private ResumeEvaluationRepository resumeEvaluationRepository;
     @MockitoBean
-    private ResumeEvaluationAsyncService resumeEvaluationAsyncService;
-    @MockitoBean
     private PdfValidator pdfValidator;
     @MockitoBean
     private PdfTextExtractor pdfTextExtractor;
-
-    @Test
-    void 이력서_업로드_성공() throws Exception {
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenRepository.save(
-                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
-        tokenRepository.save(
-                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-
-        MockMultipartFile resume = new MockMultipartFile(
-                "resume",
-                "resume.pdf",
-                "application/pdf",
-                "test resume content".getBytes()
-        );
-
-        MockMultipartFile portfolio = new MockMultipartFile(
-                "portfolio",
-                "portfolio.pdf",
-                "application/pdf",
-                "test portfolio content".getBytes()
-        );
-
-        mockMvc.perform(multipart("/api/v1/resumes")
-                        .file(resume)
-                        .file(portfolio)
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session)
-                )
-                .andExpect(status().isNoContent())
-                .andDo(document("resume-upload",
-                        requestHeaders(
-                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        requestParts(
-                                partWithName("resume").description("업로드할 이력서 PDF 파일"),
-                                partWithName("portfolio").description("업로드할 포트폴리오 PDF 파일 (선택사항)").optional()
-                        )
-                ));
-    }
 
     @Test
     void 멤버_이력서_반환() throws Exception {
