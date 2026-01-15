@@ -1,8 +1,13 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.ResumeBasedRootQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.member.domain.Member;
@@ -28,6 +33,7 @@ public class ResumeBasedInterviewService {
     private final MemberRepository memberRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
+    private final ResumeBasedRootQuestionRepository resumeBasedRootQuestionRepository;
     private final QuestionGenerationAsyncService questionGenerationAsyncService;
 
     @Transactional
@@ -56,6 +62,25 @@ public class ResumeBasedInterviewService {
         );
 
         return new QuestionGenerationSubmitResponse(savedInterview.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public QuestionGenerationStatusResponse getQuestionGenerationStatus(Long interviewId, Long memberId) {
+        Interview interview = interviewRepository.findById(interviewId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
+
+        if (!interview.isInterviewee(memberId)) {
+            throw new ForbiddenException("본인의 인터뷰만 조회할 수 있습니다.");
+        }
+
+        InterviewState status = interview.getInterviewState();
+
+        if (status == InterviewState.PENDING) {
+            int questionCount = resumeBasedRootQuestionRepository.countByInterviewId(interviewId);
+            return QuestionGenerationStatusResponse.of(status, questionCount);
+        }
+
+        return QuestionGenerationStatusResponse.of(status);
     }
 
     private Member readMember(Long memberId) {
