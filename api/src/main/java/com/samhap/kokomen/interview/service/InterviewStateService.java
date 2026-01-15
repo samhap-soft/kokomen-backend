@@ -7,6 +7,7 @@ import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.ResumeBasedRootQuestionRepository;
 import java.util.List;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,12 +26,12 @@ public class InterviewStateService {
         Interview interview = interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
 
-        List<ResumeBasedRootQuestion> rootQuestions = questions.stream()
-                .map(dto -> new ResumeBasedRootQuestion(
+        List<ResumeBasedRootQuestion> rootQuestions = IntStream.range(0, questions.size())
+                .mapToObj(i -> new ResumeBasedRootQuestion(
                         interview,
-                        dto.question(),
-                        dto.reason(),
-                        questions.indexOf(dto)
+                        questions.get(i).question(),
+                        questions.get(i).reason(),
+                        i
                 ))
                 .toList();
 
@@ -40,12 +41,9 @@ public class InterviewStateService {
 
     @Transactional
     public void markAsFailed(Long interviewId) {
-        try {
-            Interview interview = interviewRepository.findById(interviewId)
-                    .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
-            interview.failQuestionGeneration();
-        } catch (Exception e) {
-            log.error("인터뷰 실패 상태 업데이트 실패 - interviewId: {}", interviewId, e);
-        }
+        interviewRepository.findById(interviewId).ifPresentOrElse(
+                Interview::failQuestionGeneration,
+                () -> log.error("인터뷰 실패 상태 업데이트 실패: ID {}에 해당하는 인터뷰를 찾을 수 없습니다.", interviewId)
+        );
     }
 }

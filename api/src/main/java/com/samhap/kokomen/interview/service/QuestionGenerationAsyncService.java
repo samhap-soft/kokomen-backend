@@ -1,9 +1,10 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.global.service.S3Service;
+import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
 import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
@@ -23,33 +24,33 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class QuestionGenerationAsyncService {
 
-    private static final int DEFAULT_QUESTION_COUNT = 3;
-    private static final int MAX_QUESTION_COUNT = 5;
-
     private final InterviewStateService interviewStateService;
+    private final ResumeContentService resumeContentService;
+    private final InterviewRepository interviewRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
     private final ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService;
     private final PdfTextExtractor pdfTextExtractor;
-    private final S3Service s3Service;
     private final ThreadPoolTaskExecutor executor;
 
     public QuestionGenerationAsyncService(
             InterviewStateService interviewStateService,
+            ResumeContentService resumeContentService,
+            InterviewRepository interviewRepository,
             MemberResumeRepository memberResumeRepository,
             MemberPortfolioRepository memberPortfolioRepository,
             ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService,
             PdfTextExtractor pdfTextExtractor,
-            S3Service s3Service,
             @Qualifier("gptCallbackExecutor")
             ThreadPoolTaskExecutor executor
     ) {
         this.interviewStateService = interviewStateService;
+        this.resumeContentService = resumeContentService;
+        this.interviewRepository = interviewRepository;
         this.memberResumeRepository = memberResumeRepository;
         this.memberPortfolioRepository = memberPortfolioRepository;
         this.resumeBasedQuestionBedrockService = resumeBasedQuestionBedrockService;
         this.pdfTextExtractor = pdfTextExtractor;
-        this.s3Service = s3Service;
         this.executor = executor;
     }
 
@@ -84,15 +85,17 @@ public class QuestionGenerationAsyncService {
             ResumeBasedQuestionGenerateRequest request,
             Long memberId
     ) {
+        Interview interview = interviewRepository.findById(interviewId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
+
         String resumeText = extractResumeText(memberId, request.resume(), request.resumeId());
         String portfolioText = extractPortfolioText(memberId, request.portfolio(), request.portfolioId());
-        int questionCount = calculateQuestionCount(request.questionCount());
 
         List<GeneratedQuestionDto> questions = resumeBasedQuestionBedrockService.generateQuestions(
                 resumeText,
                 portfolioText,
                 request.jobCareer(),
-                questionCount
+                interview.getMaxQuestionCount()
         );
 
         interviewStateService.saveQuestionsAndComplete(interviewId, questions);
@@ -105,24 +108,9 @@ public class QuestionGenerationAsyncService {
         if (resumeId != null) {
             MemberResume resume = memberResumeRepository.findByIdAndMemberId(resumeId, memberId)
                     .orElseThrow(() -> new BadRequestException("존재하지 않는 이력서입니다."));
-            return getTextFromResume(resume);
+            return resumeContentService.getOrExtractResumeContent(resume);
         }
         throw new BadRequestException("이력서 파일 또는 이력서 ID가 필요합니다.");
-    }
-
-    private String getTextFromResume(MemberResume resume) {
-        if (resume.hasContent()) {
-            return resume.getContent();
-        }
-        try {
-            byte[] pdfBytes = s3Service.downloadFileFromUrl(resume.getResumeUrl());
-            String extractedText = pdfTextExtractor.extractText(pdfBytes);
-            resume.updateContent(extractedText);
-            return extractedText;
-        } catch (Exception e) {
-            log.error("이력서 PDF 다운로드/추출 실패 - resumeId: {}, url: {}", resume.getId(), resume.getResumeUrl(), e);
-            throw new BadRequestException("이력서에서 텍스트를 추출하는 데 실패했습니다.");
-        }
     }
 
     private String extractPortfolioText(Long memberId, MultipartFile portfolioFile, Long portfolioId) {
@@ -132,31 +120,8 @@ public class QuestionGenerationAsyncService {
         if (portfolioId != null) {
             MemberPortfolio portfolio = memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId)
                     .orElseThrow(() -> new BadRequestException("존재하지 않는 포트폴리오입니다."));
-            return getTextFromPortfolio(portfolio);
+            return resumeContentService.getOrExtractPortfolioContent(portfolio);
         }
         return null;
-    }
-
-    private String getTextFromPortfolio(MemberPortfolio portfolio) {
-        if (portfolio.hasContent()) {
-            return portfolio.getContent();
-        }
-        try {
-            byte[] pdfBytes = s3Service.downloadFileFromUrl(portfolio.getPortfolioUrl());
-            String extractedText = pdfTextExtractor.extractText(pdfBytes);
-            portfolio.updateContent(extractedText);
-            return extractedText;
-        } catch (Exception e) {
-            log.error("포트폴리오 PDF 다운로드/추출 실패 - portfolioId: {}, url: {}",
-                    portfolio.getId(), portfolio.getPortfolioUrl(), e);
-            throw new BadRequestException("포트폴리오에서 텍스트를 추출하는 데 실패했습니다.");
-        }
-    }
-
-    private int calculateQuestionCount(Integer questionCount) {
-        if (questionCount == null) {
-            return DEFAULT_QUESTION_COUNT;
-        }
-        return Math.min(questionCount, MAX_QUESTION_COUNT);
     }
 }
