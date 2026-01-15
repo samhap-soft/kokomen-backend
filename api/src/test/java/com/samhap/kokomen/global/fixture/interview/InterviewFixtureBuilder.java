@@ -4,8 +4,11 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import java.time.LocalDateTime;
 
 public class InterviewFixtureBuilder {
@@ -16,6 +19,10 @@ public class InterviewFixtureBuilder {
     private Integer maxQuestionCount;
     private InterviewState interviewState;
     private InterviewMode interviewMode;
+    private InterviewType interviewType;
+    private MemberResume memberResume;
+    private MemberPortfolio memberPortfolio;
+    private String jobCareer;
     private String totalFeedback;
     private Integer totalScore;
     private Long likeCount;
@@ -56,6 +63,26 @@ public class InterviewFixtureBuilder {
         return this;
     }
 
+    public InterviewFixtureBuilder interviewType(InterviewType interviewType) {
+        this.interviewType = interviewType;
+        return this;
+    }
+
+    public InterviewFixtureBuilder memberResume(MemberResume memberResume) {
+        this.memberResume = memberResume;
+        return this;
+    }
+
+    public InterviewFixtureBuilder memberPortfolio(MemberPortfolio memberPortfolio) {
+        this.memberPortfolio = memberPortfolio;
+        return this;
+    }
+
+    public InterviewFixtureBuilder jobCareer(String jobCareer) {
+        this.jobCareer = jobCareer;
+        return this;
+    }
+
     public InterviewFixtureBuilder totalFeedback(String totalFeedback) {
         this.totalFeedback = totalFeedback;
         return this;
@@ -89,6 +116,10 @@ public class InterviewFixtureBuilder {
                 maxQuestionCount != null ? maxQuestionCount : Interview.MIN_ALLOWED_MAX_QUESTION_COUNT,
                 interviewState != null ? interviewState : InterviewState.IN_PROGRESS,
                 interviewMode != null ? interviewMode : InterviewMode.TEXT,
+                interviewType != null ? interviewType : InterviewType.CATEGORY_BASED,
+                memberResume,
+                memberPortfolio,
+                jobCareer,
                 totalFeedback,
                 totalScore,
                 likeCount != null ? likeCount : 0L,

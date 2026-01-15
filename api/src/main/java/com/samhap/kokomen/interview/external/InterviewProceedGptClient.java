@@ -19,9 +19,9 @@ import org.springframework.web.client.RestClient;
 @Slf4j
 @ExecutionTimer
 @Component
-public class GptClient extends BaseGptClient {
+public class InterviewProceedGptClient extends BaseGptClient {
 
-    public GptClient(
+    public InterviewProceedGptClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${open-ai.api-key}") String gptApiKey

@@ -79,7 +79,7 @@ class InterviewFacadeServiceTest extends BaseTest {
                 .answerRank(curAnswerRank)
                 .nextQuestion(nextQuestion)
                 .buildProceed();
-        when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+        when(interviewProceedGptClient.requestToGpt(any())).thenReturn(gptResponse);
         BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
                 .answerRank(curAnswerRank)
                 .nextQuestion(nextQuestion)
@@ -123,7 +123,7 @@ class InterviewFacadeServiceTest extends BaseTest {
                 .totalFeedback(totalFeedback)
                 .answerRank(answerRank)
                 .buildEnd();
-        when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+        when(interviewProceedGptClient.requestToGpt(any())).thenReturn(gptResponse);
 
         BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
                 .totalFeedback(totalFeedback)
@@ -161,7 +161,7 @@ class InterviewFacadeServiceTest extends BaseTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(AnswerRank.B).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.A).build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
+        questionRepository.save(QuestionFixtureBuilder.builder().build());
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
