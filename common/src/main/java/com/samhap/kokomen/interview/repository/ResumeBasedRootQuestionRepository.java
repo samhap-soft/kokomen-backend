@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ResumeBasedRootQuestionRepository extends JpaRepository<ResumeBasedRootQuestion, Long> {
 
     List<ResumeBasedRootQuestion> findByInterviewIdOrderByQuestionOrder(Long interviewId);
+
+    int countByInterviewId(Long interviewId);
 }
