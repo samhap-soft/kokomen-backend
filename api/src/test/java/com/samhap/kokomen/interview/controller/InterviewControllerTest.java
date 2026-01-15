@@ -93,7 +93,7 @@ class InterviewControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
-        RootQuestion rootQuestion = rootQuestionRepository.save(
+        rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content(rootQuestionContent).build());
 
         String requestJson = """
@@ -149,7 +149,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
         String requestJson = """
                 {
@@ -232,7 +232,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 .answerRank(curAnswerRank)
                 .nextQuestion(nextQuestion)
                 .buildProceed();
-        when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
+        when(interviewProceedGptClient.requestToGpt(any())).thenReturn(gptResponse);
 
         BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
                 .answerRank(curAnswerRank)
@@ -650,8 +650,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 다른_사용자의_완료된_인터뷰_목록_조회_로그인_버전() throws Exception {
         // given
         Member interviewee = memberRepository.save(
-                MemberFixtureBuilder.builder().nickname("오상훈").kakaoId(1L).score(100).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
+                MemberFixtureBuilder.builder().nickname("오상훈").score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().score(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
@@ -707,7 +707,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
         interviewLikeRepository.save(
                 InterviewLikeFixtureBuilder.builder().interview(finishedInterview2).member(readerMember).build());
         interviewRepository.increaseLikeCountModifying(finishedInterview2.getId());
@@ -865,7 +865,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
 
         answerMemoRepository.save(
                 AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.SUBMITTED)
@@ -1009,7 +1009,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion1 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview1).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer1 = answerRepository.save(
+        answerRepository.save(
                 AnswerFixtureBuilder.builder().question(otherQuestion1).content("자바는 플랫폼에 독립적이며 객체지향 언어입니다.")
                         .answerRank(AnswerRank.A).build());
 
@@ -1019,7 +1019,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion2 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview2).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer2 = answerRepository.save(
+        answerRepository.save(
                 AnswerFixtureBuilder.builder().question(otherQuestion2).content("자바는 JVM에서 실행되는 객체지향 프로그래밍 언어입니다.")
                         .answerRank(AnswerRank.A).build());
 
@@ -1029,7 +1029,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion3 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview3).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3)
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3)
                 .content("자바는 Write Once Run Anywhere 철학을 가진 언어입니다.").answerRank(AnswerRank.B).build());
 
         String responseJson = """
@@ -1143,8 +1143,8 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 다른_사용자의_완료된_인터뷰_결과_조회_로그인_버전() throws Exception {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).score(100).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().score(0).build());
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());

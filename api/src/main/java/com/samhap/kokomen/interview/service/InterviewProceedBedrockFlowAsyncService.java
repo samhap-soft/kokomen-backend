@@ -6,7 +6,7 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.InterviewProceedResult;
 import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
-import com.samhap.kokomen.interview.external.GptClient;
+import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
 import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
@@ -36,7 +36,7 @@ public class InterviewProceedBedrockFlowAsyncService {
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
     private final ThreadPoolTaskExecutor gptCallbackExecutor;
-    private final GptClient gptClient;
+    private final InterviewProceedGptClient interviewProceedGptClient;
 
     public InterviewProceedBedrockFlowAsyncService(
             InterviewProceedService interviewProceedService,
@@ -48,7 +48,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             ThreadPoolTaskExecutor bedrockFlowCallbackExecutor,
             @Qualifier("gptCallbackExecutor")
             ThreadPoolTaskExecutor gptCallbackExecutor,
-            GptClient gptClient) {
+            InterviewProceedGptClient interviewProceedGptClient) {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
         this.tokenFacadeService = tokenFacadeService;
@@ -56,7 +56,7 @@ public class InterviewProceedBedrockFlowAsyncService {
         this.redisService = redisService;
         this.executor = bedrockFlowCallbackExecutor;
         this.gptCallbackExecutor = gptCallbackExecutor;
-        this.gptClient = gptClient;
+        this.interviewProceedGptClient = interviewProceedGptClient;
     }
 
     public void proceedInterviewByBedrockFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
@@ -98,7 +98,7 @@ public class InterviewProceedBedrockFlowAsyncService {
         try {
             setMdcContext(mdcContext);
 
-            GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+            GptResponse response = interviewProceedGptClient.requestToGpt(questionAndAnswers);
             log.info("GPT 응답 받음: {}", response);
 
             interviewProceedService.proceedOrEndInterview(
@@ -179,7 +179,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                 setMdcContext(mdcContext);
                 log.info("GPT 폴백 시작 - {}", interviewProceedStateKey);
 
-                GptResponse response = gptClient.requestToGpt(questionAndAnswers);
+                GptResponse response = interviewProceedGptClient.requestToGpt(questionAndAnswers);
                 log.info("GPT 폴백 응답 받음 - {}: {}", interviewProceedStateKey, response);
 
                 interviewProceedService.proceedOrEndInterview(

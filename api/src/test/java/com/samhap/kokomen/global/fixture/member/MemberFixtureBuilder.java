@@ -1,10 +1,6 @@
 package com.samhap.kokomen.global.fixture.member;
 
 import com.samhap.kokomen.member.domain.Member;
-import com.samhap.kokomen.member.domain.MemberSocialLogin;
-import com.samhap.kokomen.member.domain.SocialProvider;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MemberFixtureBuilder {
 

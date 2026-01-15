@@ -1,0 +1,3 @@
+-- interview_state ENUM에 질문 생성 관련 상태 추가
+ALTER TABLE interview MODIFY COLUMN interview_state
+    ENUM('GENERATING_QUESTIONS', 'QUESTION_GENERATION_FAILED', 'PENDING', 'IN_PROGRESS', 'FINISHED') NOT NULL;

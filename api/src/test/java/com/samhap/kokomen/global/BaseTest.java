@@ -4,9 +4,12 @@ package com.samhap.kokomen.global;
 import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.BedrockClient;
-import com.samhap.kokomen.interview.external.GptClient;
-import com.samhap.kokomen.resume.external.ResumeGptClient;
+import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
+import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
+import com.samhap.kokomen.interview.external.ResumeBasedQuestionGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
+import com.samhap.kokomen.interview.service.QuestionGenerationAsyncService;
+import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
 import com.samhap.kokomen.token.external.PaymentClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +36,7 @@ public abstract class BaseTest {
     @MockitoBean
     protected PaymentClient paymentClient;
     @MockitoBean
-    protected GptClient gptClient;
+    protected InterviewProceedGptClient interviewProceedGptClient;
     @MockitoBean
     protected KafkaTemplate<String, String> kafkaTemplate;
     @MockitoBean
@@ -45,7 +48,13 @@ public abstract class BaseTest {
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
     @MockitoBean
-    protected ResumeGptClient resumeGptClient;
+    protected ResumeEvaluationGptClient resumeEvaluationGptClient;
+    @MockitoBean
+    protected ResumeBasedQuestionGptClient resumeBasedQuestionGptClient;
+    @MockitoBean
+    protected ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService;
+    @MockitoBean
+    protected QuestionGenerationAsyncService questionGenerationAsyncService;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @Autowired

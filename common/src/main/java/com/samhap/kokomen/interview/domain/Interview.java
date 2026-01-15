@@ -3,6 +3,8 @@ package com.samhap.kokomen.interview.domain;
 import com.samhap.kokomen.global.domain.BaseEntity;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -43,7 +45,7 @@ public class Interview extends BaseEntity {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "root_question_id", nullable = false)
+    @JoinColumn(name = "root_question_id")
     private RootQuestion rootQuestion;
 
     @Column(name = "max_question_count", nullable = false)
@@ -56,6 +58,21 @@ public class Interview extends BaseEntity {
     @Column(name = "interview_mode", nullable = false)
     @Enumerated(EnumType.STRING)
     private InterviewMode interviewMode;
+
+    @Column(name = "interview_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private InterviewType interviewType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_resume_id")
+    private MemberResume memberResume;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_portfolio_id")
+    private MemberPortfolio memberPortfolio;
+
+    @Column(name = "job_career", length = 100)
+    private String jobCareer;
 
     @Column(name = "total_feedback", length = 2_000)
     private String totalFeedback;
@@ -79,6 +96,10 @@ public class Interview extends BaseEntity {
             Integer maxQuestionCount,
             InterviewState interviewState,
             InterviewMode interviewMode,
+            InterviewType interviewType,
+            MemberResume memberResume,
+            MemberPortfolio memberPortfolio,
+            String jobCareer,
             String totalFeedback,
             Integer totalScore,
             Long likeCount,
@@ -92,6 +113,10 @@ public class Interview extends BaseEntity {
         this.maxQuestionCount = maxQuestionCount;
         this.interviewState = interviewState;
         this.interviewMode = interviewMode;
+        this.interviewType = interviewType;
+        this.memberResume = memberResume;
+        this.memberPortfolio = memberPortfolio;
+        this.jobCareer = jobCareer;
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;
         this.likeCount = likeCount;
@@ -100,7 +125,29 @@ public class Interview extends BaseEntity {
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode, null, null, 0L, 0L, null);
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
+                InterviewType.CATEGORY_BASED, null, null, null, null, null, 0L, 0L, null);
+    }
+
+    public static Interview createResumeBasedInterview(
+            Member member,
+            MemberResume memberResume,
+            MemberPortfolio memberPortfolio,
+            String jobCareer,
+            int questionCount
+    ) {
+        return new Interview(
+                null, member, null, questionCount, InterviewState.GENERATING_QUESTIONS, InterviewMode.TEXT,
+                InterviewType.RESUME_BASED, memberResume, memberPortfolio, jobCareer, null, null, 0L, 0L, null
+        );
+    }
+
+    public void completeQuestionGeneration() {
+        this.interviewState = InterviewState.PENDING;
+    }
+
+    public void failQuestionGeneration() {
+        this.interviewState = InterviewState.QUESTION_GENERATION_FAILED;
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
