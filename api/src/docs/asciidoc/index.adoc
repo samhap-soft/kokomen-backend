@@ -131,6 +131,33 @@ include::{snippetsDir}/member-findMemberStreaks/curl-request.adoc[]
 
 == 인터뷰
 
+=== 이력서 기반 질문 생성 (파일 업로드)
+
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/request-parts.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-file/curl-request.adoc[]
+
+=== 이력서 기반 질문 생성 (저장된 이력서 ID)
+
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/request-parts.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-resume-id/curl-request.adoc[]
+
+=== 이력서 기반 질문 생성 (이력서 + 포트폴리오)
+
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/request-parts.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/curl-request.adoc[]
+
 === 인터뷰 시작 텍스트모드
 
 include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]
@@ -549,14 +576,6 @@ include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
 
 == 이력서
 
-=== 이력서 & 포트폴리오 저장
-
-include::{snippetsDir}/resume-upload/http-request.adoc[]
-include::{snippetsDir}/resume-upload/request-headers.adoc[]
-include::{snippetsDir}/resume-upload/request-parts.adoc[]
-include::{snippetsDir}/recruit-list-empty/http-response.adoc[]
-include::{snippetsDir}/recruit-list-empty/curl-request.adoc[]
-
 === 이력서 & 포트폴리오 반환
 
 include::{snippetsDir}/resume-getCareerMaterials/http-request.adoc[]
@@ -565,16 +584,6 @@ include::{snippetsDir}/resume-getCareerMaterials/query-parameters.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/http-response.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/response-fields.adoc[]
 include::{snippetsDir}/resume-getCareerMaterials/curl-request.adoc[]
-
-=== 이력서 평가
-
-include::{snippetsDir}/resume-evaluation/http-request.adoc[]
-include::{snippetsDir}/resume-evaluation/request-body.adoc[]
-include::{snippetsDir}/resume-evaluation/request-fields.adoc[]
-include::{snippetsDir}/resume-evaluation/http-response.adoc[]
-include::{snippetsDir}/resume-evaluation/response-body.adoc[]
-include::{snippetsDir}/resume-evaluation/response-fields.adoc[]
-include::{snippetsDir}/resume-evaluation/curl-request.adoc[]
 
 === 이력서 평가 비동기 제출 (파일 업로드)
 

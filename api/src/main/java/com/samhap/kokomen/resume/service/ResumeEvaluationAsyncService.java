@@ -9,7 +9,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfTextExtractor;
-import com.samhap.kokomen.resume.external.ResumeGptClient;
+import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
@@ -42,7 +42,7 @@ public class ResumeEvaluationAsyncService {
     private final RedisService redisService;
     private final S3Service s3Service;
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
-    private final ResumeGptClient resumeGptClient;
+    private final ResumeEvaluationGptClient resumeEvaluationGptClient;
     private final PdfTextExtractor pdfTextExtractor;
     private final ObjectMapper objectMapper;
     private final ThreadPoolTaskExecutor executor;
@@ -53,7 +53,7 @@ public class ResumeEvaluationAsyncService {
             RedisService redisService,
             S3Service s3Service,
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
-            ResumeGptClient resumeGptClient,
+            ResumeEvaluationGptClient resumeEvaluationGptClient,
             PdfTextExtractor pdfTextExtractor,
             ObjectMapper objectMapper,
             @Qualifier("resumeEvaluationExecutor")
@@ -64,7 +64,7 @@ public class ResumeEvaluationAsyncService {
         this.redisService = redisService;
         this.s3Service = s3Service;
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
-        this.resumeGptClient = resumeGptClient;
+        this.resumeEvaluationGptClient = resumeEvaluationGptClient;
         this.pdfTextExtractor = pdfTextExtractor;
         this.objectMapper = objectMapper;
         this.executor = executor;
@@ -261,7 +261,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                String jsonResponse = resumeGptClient.requestResumeEvaluation(request);
+                String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
                 ResumeEvaluationResponse response = parseResponse(jsonResponse);
                 resumeEvaluationService.updateCompleted(evaluationId, response);
             } catch (Exception e) {
@@ -333,7 +333,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                String jsonResponse = resumeGptClient.requestResumeEvaluation(request);
+                String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
                 ResumeEvaluationResponse response = parseResponse(jsonResponse);
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
