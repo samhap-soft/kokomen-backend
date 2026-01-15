@@ -158,6 +158,15 @@ include::{snippetsDir}/resume-based-interview-submit-question-generation-with-po
 include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/response-fields.adoc[]
 include::{snippetsDir}/resume-based-interview-submit-question-generation-with-portfolio/curl-request.adoc[]
 
+=== 이력서 기반 질문 생성 상태 조회 (폴링)
+
+include::{snippetsDir}/resume-based-interview-generation-status/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-generation-status/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-generation-status/path-parameters.adoc[]
+include::{snippetsDir}/resume-based-interview-generation-status/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-generation-status/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-generation-status/curl-request.adoc[]
+
 === 인터뷰 시작 텍스트모드
 
 include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]
