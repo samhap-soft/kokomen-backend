@@ -89,6 +89,22 @@ public class ResumeBasedInterviewService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ResumeQuestionGeneration readGeneration(Long generationId) {
+        return resumeQuestionGenerationRepository.findById(generationId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 질문 생성 요청입니다."));
+    }
+
+    @Transactional(readOnly = true)
+    public GeneratedQuestion readGeneratedQuestion(Long questionId, Long generationId) {
+        GeneratedQuestion question = generatedQuestionRepository.findById(questionId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 생성 질문입니다."));
+        if (!question.getGeneration().getId().equals(generationId)) {
+            throw new BadRequestException("해당 질문 생성 요청에 속하지 않는 질문입니다.");
+        }
+        return question;
+    }
+
     private Member readMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));

@@ -7,7 +7,9 @@ import static org.springframework.restdocs.headers.HeaderDocumentation.headerWit
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
@@ -21,8 +23,10 @@ import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
 import com.samhap.kokomen.member.domain.Member;
@@ -33,8 +37,11 @@ import com.samhap.kokomen.resume.domain.PdfTextExtractor;
 import com.samhap.kokomen.resume.domain.PdfValidator;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
+import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -56,6 +63,9 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
 
     @Autowired
     private GeneratedQuestionRepository generatedQuestionRepository;
+
+    @Autowired
+    private TokenRepository tokenRepository;
 
     @MockitoBean
     private PdfValidator pdfValidator;
@@ -444,6 +454,332 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     void 인증되지_않은_사용자의_질문_목록_조회시_401_에러_반환() throws Exception {
         // when & then
         mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", 1L))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 이력서_기반_인터뷰_시작_텍스트모드_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        GeneratedQuestion generatedQuestion = generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "Spring Boot의 자동 설정에 대해 설명해주세요.", "이력서 기반 질문", 0)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """.formatted(generatedQuestion.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.interview_id").exists())
+                .andExpect(jsonPath("$.question_id").exists())
+                .andExpect(jsonPath("$.root_question").value("Spring Boot의 자동 설정에 대해 설명해주세요."))
+                .andDo(document("resume-based-interview-start-text-mode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("resumeBasedInterviewResultId").description("질문 생성 요청 ID")
+                        ),
+                        requestFields(
+                                fieldWithPath("generated_question_id").description("선택한 생성 질문 ID"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수 (3-20)"),
+                                fieldWithPath("mode").description("인터뷰 모드 (TEXT, VOICE)")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 첫 질문 ID"),
+                                fieldWithPath("root_question").description("첫 질문 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 이력서_기반_인터뷰_시작_음성모드_성공() throws Exception {
+        // given
+        when(supertoneClient.request(any())).thenReturn(new SupertoneResponse(new byte[0]));
+
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "경력 3년");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        GeneratedQuestion generatedQuestion = generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "마이크로서비스 아키텍처 경험에 대해 설명해주세요.", "이력서 기반 질문", 0)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5,
+                    "mode": "VOICE"
+                }
+                """.formatted(generatedQuestion.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.interview_id").exists())
+                .andExpect(jsonPath("$.question_id").exists())
+                .andExpect(jsonPath("$.root_question_voice_url").exists())
+                .andDo(document("resume-based-interview-start-voice-mode",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("resumeBasedInterviewResultId").description("질문 생성 요청 ID")
+                        ),
+                        requestFields(
+                                fieldWithPath("generated_question_id").description("선택한 생성 질문 ID"),
+                                fieldWithPath("max_question_count").description("최대 질문 개수 (3-20)"),
+                                fieldWithPath("mode").description("인터뷰 모드 (TEXT, VOICE)")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 첫 질문 ID"),
+                                fieldWithPath("root_question_voice_url").description("첫 질문 음성 URL")
+                        )
+                ));
+    }
+
+    @Test
+    void 본인이_아닌_질문_생성_결과로_인터뷰_시작시_403_에러_반환() throws Exception {
+        // given
+        Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member other = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(other.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(other.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(owner, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        GeneratedQuestion generatedQuestion = generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "테스트 질문입니다.", "이력서 기반 질문", 0)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", other.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """.formatted(generatedQuestion.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 미완료_상태의_질문_생성_결과로_인터뷰_시작시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.save(
+                new ResumeQuestionGeneration(member, null, null, "신입")
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": 1,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 존재하지_않는_생성_질문으로_인터뷰_시작시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": 999999,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 다른_질문_생성_요청에_속한_질문으로_인터뷰_시작시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation1 = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation1.complete();
+        generation1 = resumeQuestionGenerationRepository.save(generation1);
+
+        ResumeQuestionGeneration generation2 = new ResumeQuestionGeneration(member, null, null, "경력");
+        generation2.complete();
+        generation2 = resumeQuestionGenerationRepository.save(generation2);
+
+        GeneratedQuestion questionFromGeneration2 = generatedQuestionRepository.save(
+                new GeneratedQuestion(generation2, "테스트 질문입니다.", "이력서 기반 질문", 0)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """.formatted(questionFromGeneration2.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 토큰이_부족하면_인터뷰_시작시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        GeneratedQuestion generatedQuestion = generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "테스트 질문입니다.", "이력서 기반 질문", 0)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """.formatted(generatedQuestion.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 인증되지_않은_사용자의_인터뷰_시작시_401_에러_반환() throws Exception {
+        // given
+        String requestJson = """
+                {
+                    "generated_question_id": 1,
+                    "max_question_count": 5,
+                    "mode": "TEXT"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                )
                 .andExpect(status().isUnauthorized());
     }
 }

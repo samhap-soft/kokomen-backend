@@ -27,7 +27,7 @@ public class PdfUploadService {
     public MemberResume saveResume(byte[] resumeData, String filename, Member member, String content) {
         validateByteArray(resumeData);
         String s3Key = careerMaterialsPathResolver.resolveResumeS3Key(member.getId(), filename);
-        String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(member.getId(), s3Key);
+        String cdnPath = careerMaterialsPathResolver.resolveResumeCdnPath(s3Key);
 
         MemberResume memberResume = new MemberResume(member, filename, cdnPath, content);
         MemberResume savedResume = memberResumeRepository.save(memberResume);
@@ -40,7 +40,7 @@ public class PdfUploadService {
     public MemberPortfolio savePortfolio(byte[] portfolioData, String filename, Member member, String content) {
         validateByteArray(portfolioData);
         String s3Key = careerMaterialsPathResolver.resolvePortfolioS3Key(member.getId(), filename);
-        String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(member.getId(), s3Key);
+        String cdnPath = careerMaterialsPathResolver.resolvePortfolioCdnPath(s3Key);
 
         MemberPortfolio memberPortfolio = new MemberPortfolio(member, filename, cdnPath, content);
         MemberPortfolio savedPortfolio = memberPortfolioRepository.save(memberPortfolio);

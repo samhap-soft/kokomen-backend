@@ -46,6 +46,10 @@ public class Interview extends BaseEntity {
     @JoinColumn(name = "root_question_id")
     private RootQuestion rootQuestion;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "generated_question_id")
+    private GeneratedQuestion generatedQuestion;
+
     @Column(name = "max_question_count", nullable = false)
     private Integer maxQuestionCount;
 
@@ -108,6 +112,13 @@ public class Interview extends BaseEntity {
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
         this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
                 InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null);
+    }
+
+    public Interview(Member member, GeneratedQuestion generatedQuestion, Integer maxQuestionCount,
+                     InterviewMode interviewMode) {
+        this(null, member, null, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
+                InterviewType.RESUME_BASED, null, null, 0L, 0L, null);
+        this.generatedQuestion = generatedQuestion;
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
