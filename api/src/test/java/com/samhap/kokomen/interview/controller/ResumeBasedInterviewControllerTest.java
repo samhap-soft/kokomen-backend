@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
@@ -16,16 +17,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
-
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.ResumeBasedRootQuestion;
-import com.samhap.kokomen.interview.repository.InterviewRepository;
-import com.samhap.kokomen.interview.repository.ResumeBasedRootQuestionRepository;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
+import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
@@ -53,10 +52,10 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     private MemberPortfolioRepository memberPortfolioRepository;
 
     @Autowired
-    private InterviewRepository interviewRepository;
+    private ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
 
     @Autowired
-    private ResumeBasedRootQuestionRepository resumeBasedRootQuestionRepository;
+    private GeneratedQuestionRepository generatedQuestionRepository;
 
     @MockitoBean
     private PdfValidator pdfValidator;
@@ -86,12 +85,11 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
         mockMvc.perform(multipart("/api/v1/interviews/resume-based/questions/generate")
                         .file(resumeFile)
                         .file("job_career", "신입".getBytes())
-                        .file("question_count", "3".getBytes())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.interview_id").exists())
+                .andExpect(jsonPath("$.resume_based_interview_result_id").exists())
                 .andExpect(jsonPath("$.questions").doesNotExist())
                 .andDo(document("resume-based-interview-submit-question-generation-with-file",
                         requestHeaders(
@@ -99,11 +97,11 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         ),
                         requestParts(
                                 partWithName("resume").description("이력서 PDF 파일 (resume 또는 resume_id 중 하나 필수)"),
-                                partWithName("job_career").description("경력 구분 (신입/경력)"),
-                                partWithName("question_count").description("생성할 질문 수 (기본: 3, 최대: 5)").optional()
+                                partWithName("job_career").description("경력 구분 (신입/경력)")
                         ),
                         responseFields(
-                                fieldWithPath("interview_id").description("생성된 인터뷰 ID (질문 생성 진행 중)")
+                                fieldWithPath("resume_based_interview_result_id").description(
+                                        "질문 생성 요청 ID (질문 생성 진행 중)")
                         )
                 ));
     }
@@ -129,7 +127,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.interview_id").exists())
+                .andExpect(jsonPath("$.resume_based_interview_result_id").exists())
                 .andExpect(jsonPath("$.questions").doesNotExist())
                 .andDo(document("resume-based-interview-submit-question-generation-with-resume-id",
                         requestHeaders(
@@ -140,7 +138,8 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                                 partWithName("job_career").description("경력 구분 (신입/경력)")
                         ),
                         responseFields(
-                                fieldWithPath("interview_id").description("생성된 인터뷰 ID (질문 생성 진행 중)")
+                                fieldWithPath("resume_based_interview_result_id").description(
+                                        "질문 생성 요청 ID (질문 생성 진행 중)")
                         )
                 ));
     }
@@ -169,12 +168,11 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .file("resume_id", String.valueOf(resume.getId()).getBytes())
                         .file("portfolio_id", String.valueOf(portfolio.getId()).getBytes())
                         .file("job_career", "경력 5년".getBytes())
-                        .file("question_count", "5".getBytes())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.interview_id").exists())
+                .andExpect(jsonPath("$.resume_based_interview_result_id").exists())
                 .andDo(document("resume-based-interview-submit-question-generation-with-portfolio",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -182,11 +180,11 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         requestParts(
                                 partWithName("resume_id").description("기존 이력서 ID"),
                                 partWithName("portfolio_id").description("기존 포트폴리오 ID (선택)").optional(),
-                                partWithName("job_career").description("경력 구분"),
-                                partWithName("question_count").description("생성할 질문 수 (최대 5)").optional()
+                                partWithName("job_career").description("경력 구분")
                         ),
                         responseFields(
-                                fieldWithPath("interview_id").description("생성된 인터뷰 ID (질문 생성 진행 중)")
+                                fieldWithPath("resume_based_interview_result_id").description(
+                                        "질문 생성 요청 ID (질문 생성 진행 중)")
                         )
                 ));
     }
@@ -229,62 +227,62 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     void 질문_생성_중_상태_조회_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                Interview.createResumeBasedInterview(member, null, null, "신입", 3)
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.save(
+                new ResumeQuestionGeneration(member, null, null, "신입")
         );
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/resume-based/{interviewId}/generation-status", interview.getId())
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}/check",
+                        generation.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("GENERATING_QUESTIONS"))
-                .andExpect(jsonPath("$.question_count").doesNotExist());
+                .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     @Test
-    void 질문_생성_완료_상태_조회_성공_질문_개수_포함() throws Exception {
+    void 질문_생성_완료_상태_조회_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = Interview.createResumeBasedInterview(member, null, null, "신입", 3);
-        interview.completeQuestionGeneration();
-        interview = interviewRepository.save(interview);
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
 
-        resumeBasedRootQuestionRepository.save(
-                new ResumeBasedRootQuestion(interview, "첫 번째 질문입니다.", "이력서 기반 질문", 0)
+        generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "첫 번째 질문입니다.", "이력서 기반 질문", 0)
         );
-        resumeBasedRootQuestionRepository.save(
-                new ResumeBasedRootQuestion(interview, "두 번째 질문입니다.", "포트폴리오 기반 질문", 1)
+        generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "두 번째 질문입니다.", "포트폴리오 기반 질문", 1)
         );
-        resumeBasedRootQuestionRepository.save(
-                new ResumeBasedRootQuestion(interview, "세 번째 질문입니다.", "경력 기반 질문", 2)
+        generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "세 번째 질문입니다.", "경력 기반 질문", 2)
         );
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/resume-based/{interviewId}/generation-status", interview.getId())
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}/check",
+                        generation.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.question_count").value(3))
-                .andDo(document("resume-based-interview-generation-status",
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andDo(document("resume-based-interview-check",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         pathParameters(
-                                parameterWithName("interviewId").description("인터뷰 ID")
+                                parameterWithName("resumeBasedInterviewResultId").description("질문 생성 요청 ID")
                         ),
                         responseFields(
-                                fieldWithPath("status").description("질문 생성 상태 (GENERATING_QUESTIONS: 생성 중, PENDING: 생성 완료, QUESTION_GENERATION_FAILED: 생성 실패)"),
-                                fieldWithPath("question_count").description("생성된 질문 수 (PENDING 상태일 때만 포함)").optional()
+                                fieldWithPath("status").description(
+                                        "질문 생성 상태 (PENDING: 생성 중, COMPLETED: 생성 완료, FAILED: 생성 실패)")
                         )
                 ));
     }
@@ -293,37 +291,38 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     void 질문_생성_실패_상태_조회_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = Interview.createResumeBasedInterview(member, null, null, "신입", 3);
-        interview.failQuestionGeneration();
-        interview = interviewRepository.save(interview);
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.fail();
+        generation = resumeQuestionGenerationRepository.save(generation);
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/resume-based/{interviewId}/generation-status", interview.getId())
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}/check",
+                        generation.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("QUESTION_GENERATION_FAILED"))
-                .andExpect(jsonPath("$.question_count").doesNotExist());
+                .andExpect(jsonPath("$.status").value("FAILED"));
     }
 
     @Test
-    void 본인이_아닌_인터뷰_상태_조회시_403_에러_반환() throws Exception {
+    void 본인이_아닌_질문_생성_상태_조회시_403_에러_반환() throws Exception {
         // given
         Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
         Member other = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                Interview.createResumeBasedInterview(owner, null, null, "신입", 3)
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.save(
+                new ResumeQuestionGeneration(owner, null, null, "신입")
         );
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", other.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/resume-based/{interviewId}/generation-status", interview.getId())
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}/check",
+                        generation.getId())
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
@@ -331,14 +330,14 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 존재하지_않는_인터뷰_상태_조회시_400_에러_반환() throws Exception {
+    void 존재하지_않는_질문_생성_상태_조회시_400_에러_반환() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
         // when & then
-        mockMvc.perform(get("/api/v1/interviews/resume-based/{interviewId}/generation-status", 999999L)
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}/check", 999999L)
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )

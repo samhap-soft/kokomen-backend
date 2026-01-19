@@ -3,10 +3,8 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.repository.InterviewRepository;
-import com.samhap.kokomen.interview.repository.ResumeBasedRootQuestionRepository;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
@@ -26,14 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ResumeBasedInterviewService {
 
-    private static final int DEFAULT_QUESTION_COUNT = 3;
-    private static final int MAX_QUESTION_COUNT = 5;
-
-    private final InterviewRepository interviewRepository;
+    private final ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
     private final MemberRepository memberRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
-    private final ResumeBasedRootQuestionRepository resumeBasedRootQuestionRepository;
     private final QuestionGenerationAsyncService questionGenerationAsyncService;
 
     @Transactional
@@ -44,43 +38,32 @@ public class ResumeBasedInterviewService {
         Member member = readMember(memberId);
         MemberResume memberResume = findMemberResume(memberId, request.resumeId());
         MemberPortfolio memberPortfolio = findMemberPortfolio(memberId, request.portfolioId());
-        int questionCount = calculateQuestionCount(request.questionCount());
 
-        Interview interview = Interview.createResumeBasedInterview(
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(
                 member,
                 memberResume,
                 memberPortfolio,
-                request.jobCareer(),
-                questionCount
+                request.jobCareer()
         );
-        Interview savedInterview = interviewRepository.save(interview);
+        ResumeQuestionGeneration savedGeneration = resumeQuestionGenerationRepository.save(generation);
 
         questionGenerationAsyncService.generateQuestionsAsync(
-                savedInterview.getId(),
+                savedGeneration.getId(),
                 request,
                 memberId
         );
 
-        return new QuestionGenerationSubmitResponse(savedInterview.getId());
+        return new QuestionGenerationSubmitResponse(savedGeneration.getId());
     }
 
     @Transactional(readOnly = true)
-    public QuestionGenerationStatusResponse getQuestionGenerationStatus(Long interviewId, Long memberId) {
-        Interview interview = interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
-
-        if (!interview.isInterviewee(memberId)) {
-            throw new ForbiddenException("본인의 인터뷰만 조회할 수 있습니다.");
+    public QuestionGenerationStatusResponse getQuestionGenerationStatus(Long generationId, Long memberId) {
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.findById(generationId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 질문 생성 요청입니다."));
+        if (!generation.isOwner(memberId)) {
+            throw new ForbiddenException("본인의 질문 생성 요청만 조회할 수 있습니다.");
         }
-
-        InterviewState status = interview.getInterviewState();
-
-        if (status == InterviewState.PENDING) {
-            int questionCount = resumeBasedRootQuestionRepository.countByInterviewId(interviewId);
-            return QuestionGenerationStatusResponse.of(status, questionCount);
-        }
-
-        return QuestionGenerationStatusResponse.of(status);
+        return QuestionGenerationStatusResponse.of(generation.getState());
     }
 
     private Member readMember(Long memberId) {
@@ -100,12 +83,5 @@ public class ResumeBasedInterviewService {
             return null;
         }
         return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId).orElse(null);
-    }
-
-    private int calculateQuestionCount(Integer questionCount) {
-        if (questionCount == null) {
-            return DEFAULT_QUESTION_COUNT;
-        }
-        return Math.min(questionCount, MAX_QUESTION_COUNT);
     }
 }

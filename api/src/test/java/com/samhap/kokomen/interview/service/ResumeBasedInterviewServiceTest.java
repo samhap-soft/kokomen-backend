@@ -12,10 +12,9 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
-import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.member.domain.Member;
@@ -42,10 +41,10 @@ class ResumeBasedInterviewServiceTest extends BaseTest {
     private MemberPortfolioRepository memberPortfolioRepository;
 
     @Autowired
-    private InterviewRepository interviewRepository;
+    private ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
 
     @Test
-    void 기존_이력서_ID로_질문_생성을_요청하면_Interview가_생성되고_비동기_처리가_시작된다() {
+    void 기존_이력서_ID로_질문_생성을_요청하면_ResumeQuestionGeneration이_생성되고_비동기_처리가_시작된다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MemberResume resume = memberResumeRepository.save(
@@ -57,23 +56,22 @@ class ResumeBasedInterviewServiceTest extends BaseTest {
 
         // when
         ResumeBasedQuestionGenerateRequest request = new ResumeBasedQuestionGenerateRequest(
-                null, null, resume.getId(), null, "신입", 3
+                null, null, resume.getId(), null, "신입"
         );
         QuestionGenerationSubmitResponse response = resumeBasedInterviewService.submitQuestionGeneration(
                 member.getId(), request
         );
 
         // then
-        assertThat(response.interviewId()).isNotNull();
+        assertThat(response.resumeBasedInterviewResultId()).isNotNull();
 
-        // DB 검증 - Interview가 GENERATING_QUESTIONS 상태로 생성되었는지 확인
-        Interview savedInterview = interviewRepository.findById(response.interviewId()).orElseThrow();
+        // DB 검증 - ResumeQuestionGeneration이 PENDING 상태로 생성되었는지 확인
+        ResumeQuestionGeneration savedGeneration = resumeQuestionGenerationRepository.findById(
+                response.resumeBasedInterviewResultId()).orElseThrow();
         assertAll(
-                () -> assertThat(savedInterview.getInterviewType()).isEqualTo(InterviewType.RESUME_BASED),
-                () -> assertThat(savedInterview.getInterviewState()).isEqualTo(InterviewState.GENERATING_QUESTIONS),
-                () -> assertThat(savedInterview.getMemberResume()).isNotNull(),
-                () -> assertThat(savedInterview.getJobCareer()).isEqualTo("신입"),
-                () -> assertThat(savedInterview.getMaxQuestionCount()).isEqualTo(3)
+                () -> assertThat(savedGeneration.getState()).isEqualTo(ResumeQuestionGenerationState.PENDING),
+                () -> assertThat(savedGeneration.getMemberResume()).isNotNull(),
+                () -> assertThat(savedGeneration.getJobCareer()).isEqualTo("신입")
         );
 
         // 비동기 서비스 호출 검증
@@ -101,18 +99,19 @@ class ResumeBasedInterviewServiceTest extends BaseTest {
 
         // when
         ResumeBasedQuestionGenerateRequest request = new ResumeBasedQuestionGenerateRequest(
-                null, null, resume.getId(), portfolio.getId(), "경력 3년", 3
+                null, null, resume.getId(), portfolio.getId(), "경력 3년"
         );
         QuestionGenerationSubmitResponse response = resumeBasedInterviewService.submitQuestionGeneration(
                 member.getId(), request
         );
 
         // then
-        Interview savedInterview = interviewRepository.findById(response.interviewId()).orElseThrow();
+        ResumeQuestionGeneration savedGeneration = resumeQuestionGenerationRepository.findById(
+                response.resumeBasedInterviewResultId()).orElseThrow();
         assertAll(
-                () -> assertThat(savedInterview.getMemberResume()).isNotNull(),
-                () -> assertThat(savedInterview.getMemberPortfolio()).isNotNull(),
-                () -> assertThat(savedInterview.getJobCareer()).isEqualTo("경력 3년")
+                () -> assertThat(savedGeneration.getMemberResume()).isNotNull(),
+                () -> assertThat(savedGeneration.getMemberPortfolio()).isNotNull(),
+                () -> assertThat(savedGeneration.getJobCareer()).isEqualTo("경력 3년")
         );
     }
 
@@ -120,57 +119,9 @@ class ResumeBasedInterviewServiceTest extends BaseTest {
     void 이력서_파일과_ID_모두_없으면_예외가_발생한다() {
         // when & then
         assertThatThrownBy(() -> new ResumeBasedQuestionGenerateRequest(
-                null, null, null, null, "신입", 3
+                null, null, null, null, "신입"
         ))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("이력서 파일 또는 이력서 ID는 필수입니다.");
-    }
-
-    @Test
-    void 질문_개수를_지정하지_않으면_기본값_3개가_적용된다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        MemberResume resume = memberResumeRepository.save(
-                MemberResumeFixtureBuilder.builder()
-                        .member(member)
-                        .content("이력서 내용")
-                        .build()
-        );
-
-        // when
-        ResumeBasedQuestionGenerateRequest request = new ResumeBasedQuestionGenerateRequest(
-                null, null, resume.getId(), null, "신입", null
-        );
-        QuestionGenerationSubmitResponse response = resumeBasedInterviewService.submitQuestionGeneration(
-                member.getId(), request
-        );
-
-        // then
-        Interview savedInterview = interviewRepository.findById(response.interviewId()).orElseThrow();
-        assertThat(savedInterview.getMaxQuestionCount()).isEqualTo(3);
-    }
-
-    @Test
-    void 질문_개수가_최대값_5를_초과하면_5개로_제한된다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        MemberResume resume = memberResumeRepository.save(
-                MemberResumeFixtureBuilder.builder()
-                        .member(member)
-                        .content("이력서 내용")
-                        .build()
-        );
-
-        // when
-        ResumeBasedQuestionGenerateRequest request = new ResumeBasedQuestionGenerateRequest(
-                null, null, resume.getId(), null, "신입", 10
-        );
-        QuestionGenerationSubmitResponse response = resumeBasedInterviewService.submitQuestionGeneration(
-                member.getId(), request
-        );
-
-        // then
-        Interview savedInterview = interviewRepository.findById(response.interviewId()).orElseThrow();
-        assertThat(savedInterview.getMaxQuestionCount()).isEqualTo(5);
     }
 }

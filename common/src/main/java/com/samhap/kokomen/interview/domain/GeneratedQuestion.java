@@ -18,10 +18,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "resume_based_root_question", indexes = {
-        @Index(name = "idx_resume_based_root_question_interview_id", columnList = "interview_id")
+@Table(name = "generated_question", indexes = {
+        @Index(name = "idx_generated_question_generation_id", columnList = "generation_id")
 })
-public class ResumeBasedRootQuestion extends BaseEntity {
+public class GeneratedQuestion extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,8 +29,8 @@ public class ResumeBasedRootQuestion extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "interview_id", nullable = false)
-    private Interview interview;
+    @JoinColumn(name = "generation_id", nullable = false)
+    private ResumeQuestionGeneration generation;
 
     @Column(name = "content", nullable = false, length = 1_000)
     private String content;
@@ -41,8 +41,8 @@ public class ResumeBasedRootQuestion extends BaseEntity {
     @Column(name = "question_order", nullable = false)
     private Integer questionOrder;
 
-    public ResumeBasedRootQuestion(Interview interview, String content, String reason, Integer questionOrder) {
-        this.interview = interview;
+    public GeneratedQuestion(ResumeQuestionGeneration generation, String content, String reason, Integer questionOrder) {
+        this.generation = generation;
         this.content = content;
         this.reason = reason;
         this.questionOrder = questionOrder;

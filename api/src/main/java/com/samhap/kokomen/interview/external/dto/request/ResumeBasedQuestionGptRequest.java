@@ -23,9 +23,6 @@ public record ResumeBasedQuestionGptRequest(
             <job_career>
             {{job_career}}
             </job_career>
-            <question_count>
-            {{question_count}}
-            </question_count>
 
             ---
             ## 질문 생성 지침
@@ -34,6 +31,7 @@ public record ResumeBasedQuestionGptRequest(
             3. 단순 암기가 아닌 경험과 이해도를 확인할 수 있는 질문을 생성하세요.
             4. 신입/경력에 따라 질문의 난이도를 조절하세요.
             5. 각 질문에 대해 왜 이 질문을 선택했는지 이유를 함께 제공하세요.
+            6. 이력서와 포트폴리오 내용을 분석하여 적절한 개수의 질문을 생성하세요.
 
             ## 질문 유형 가이드
             - 프로젝트에서 사용한 특정 기술에 대한 심층 질문
@@ -42,7 +40,7 @@ public record ResumeBasedQuestionGptRequest(
             - 협업 및 커뮤니케이션 관련 기술적 질문
 
             ## 출력 형식
-            다음 JSON 형식으로 정확히 {{question_count}}개의 질문을 생성해주세요:
+            다음 JSON 형식으로 질문을 생성해주세요:
             {
               "questions": [
                 {
@@ -59,14 +57,12 @@ public record ResumeBasedQuestionGptRequest(
     public static ResumeBasedQuestionGptRequest create(
             String resumeText,
             String portfolioText,
-            String jobCareer,
-            int questionCount
+            String jobCareer
     ) {
         String prompt = SYSTEM_PROMPT_TEMPLATE
                 .replace("{{resume_text}}", resumeText)
                 .replace("{{portfolio_text}}", portfolioText != null ? portfolioText : "포트폴리오가 제공되지 않았습니다.")
-                .replace("{{job_career}}", jobCareer)
-                .replace("{{question_count}}", String.valueOf(questionCount));
+                .replace("{{job_career}}", jobCareer);
 
         List<ResumeBasedQuestionGptMessage> messages = List.of(
                 new ResumeBasedQuestionGptMessage("user", prompt)

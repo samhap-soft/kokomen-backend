@@ -32,7 +32,6 @@ public class ResumeBasedInterviewController {
             @RequestPart(value = "resume_id", required = false) String resumeIdStr,
             @RequestPart(value = "portfolio_id", required = false) String portfolioIdStr,
             @RequestPart(value = "job_career") String jobCareer,
-            @RequestPart(value = "question_count", required = false) String questionCountStr,
             @Authentication MemberAuth memberAuth
     ) {
         ResumeBasedQuestionGenerateRequest request = new ResumeBasedQuestionGenerateRequest(
@@ -40,8 +39,7 @@ public class ResumeBasedInterviewController {
                 portfolio,
                 parseIdOrNull(resumeIdStr),
                 parseIdOrNull(portfolioIdStr),
-                jobCareer,
-                parseIntOrNull(questionCountStr)
+                jobCareer
         );
 
         QuestionGenerationSubmitResponse response = resumeBasedInterviewService.submitQuestionGeneration(
@@ -51,13 +49,13 @@ public class ResumeBasedInterviewController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
-    @GetMapping("/{interviewId}/generation-status")
+    @GetMapping("/{resumeBasedInterviewResultId}/check")
     public ResponseEntity<QuestionGenerationStatusResponse> getGenerationStatus(
-            @PathVariable Long interviewId,
+            @PathVariable Long resumeBasedInterviewResultId,
             @Authentication MemberAuth memberAuth
     ) {
         QuestionGenerationStatusResponse response = resumeBasedInterviewService.getQuestionGenerationStatus(
-                interviewId,
+                resumeBasedInterviewResultId,
                 memberAuth.memberId()
         );
         return ResponseEntity.ok(response);
@@ -71,17 +69,6 @@ public class ResumeBasedInterviewController {
             return Long.parseLong(idStr.trim());
         } catch (NumberFormatException e) {
             throw new BadRequestException("잘못된 ID 형식입니다: " + idStr);
-        }
-    }
-
-    private Integer parseIntOrNull(String intStr) {
-        if (intStr == null || intStr.isBlank()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(intStr.trim());
-        } catch (NumberFormatException e) {
-            throw new BadRequestException("잘못된 숫자 형식입니다: " + intStr);
         }
     }
 }
