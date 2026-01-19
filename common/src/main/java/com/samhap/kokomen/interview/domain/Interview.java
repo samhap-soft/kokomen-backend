@@ -32,6 +32,7 @@ public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
     public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
+    private static final String RESUME_BASED_DISPLAY_CATEGORY = "이력서 기반";
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -154,7 +155,7 @@ public class Interview extends BaseEntity {
 
     public String getDisplayCategory() {
         if (isResumeBased()) {
-            return "이력서 기반";
+            return RESUME_BASED_DISPLAY_CATEGORY;
         }
         return rootQuestion.getCategory().getTitle();
     }
