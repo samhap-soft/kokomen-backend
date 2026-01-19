@@ -32,6 +32,7 @@ public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
     public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
+    private static final String RESUME_BASED_DISPLAY_CATEGORY = "이력서 기반";
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -123,7 +124,9 @@ public class Interview extends BaseEntity {
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
         if (maxQuestionCount < MIN_ALLOWED_MAX_QUESTION_COUNT || maxQuestionCount > MAX_ALLOWED_MAX_QUESTION_COUNT) {
-            throw new BadRequestException("최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT + " 이하이어야 합니다.");
+            throw new BadRequestException(
+                    "최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT
+                            + " 이하이어야 합니다.");
         }
     }
 
@@ -144,5 +147,23 @@ public class Interview extends BaseEntity {
             return;
         }
         throw new BadRequestException("이미 종료된 인터뷰입니다.");
+    }
+
+    public boolean isResumeBased() {
+        return this.interviewType == InterviewType.RESUME_BASED;
+    }
+
+    public String getDisplayCategory() {
+        if (isResumeBased()) {
+            return RESUME_BASED_DISPLAY_CATEGORY;
+        }
+        return rootQuestion.getCategory().getTitle();
+    }
+
+    public String getDisplayQuestion() {
+        if (isResumeBased()) {
+            return generatedQuestion.getContent();
+        }
+        return rootQuestion.getContent();
     }
 }
