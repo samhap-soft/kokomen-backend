@@ -343,4 +343,107 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                 )
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void 완료된_질문_생성_요청의_질문_목록_조회_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "첫 번째 질문입니다.", "이력서 기반 질문", 0)
+        );
+        generatedQuestionRepository.save(
+                new GeneratedQuestion(generation, "두 번째 질문입니다.", "포트폴리오 기반 질문", 1)
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[0].question").value("첫 번째 질문입니다."))
+                .andExpect(jsonPath("$[1].id").exists())
+                .andExpect(jsonPath("$[1].question").value("두 번째 질문입니다."))
+                .andDo(document("resume-based-interview-get-generated-questions",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("resumeBasedInterviewResultId").description("질문 생성 요청 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("[].id").description("생성된 질문 ID"),
+                                fieldWithPath("[].question").description("질문 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 미완료_상태의_질문_목록_조회시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.save(
+                new ResumeQuestionGeneration(member, null, null, "신입")
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 본인이_아닌_질문_목록_조회시_403_에러_반환() throws Exception {
+        // given
+        Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member other = memberRepository.save(MemberFixtureBuilder.builder().build());
+        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(owner, null, null, "신입");
+        generation.complete();
+        generation = resumeQuestionGenerationRepository.save(generation);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", other.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", generation.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 존재하지_않는_질문_생성_요청의_질문_목록_조회시_400_에러_반환() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", 999999L)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 인증되지_않은_사용자의_질문_목록_조회시_401_에러_반환() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/{resumeBasedInterviewResultId}", 1L))
+                .andExpect(status().isUnauthorized());
+    }
 }

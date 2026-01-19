@@ -167,6 +167,15 @@ include::{snippetsDir}/resume-based-interview-check/http-response.adoc[]
 include::{snippetsDir}/resume-based-interview-check/response-fields.adoc[]
 include::{snippetsDir}/resume-based-interview-check/curl-request.adoc[]
 
+=== 이력서 기반 생성된 질문 목록 조회
+
+include::{snippetsDir}/resume-based-interview-get-generated-questions/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-get-generated-questions/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-get-generated-questions/path-parameters.adoc[]
+include::{snippetsDir}/resume-based-interview-get-generated-questions/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-get-generated-questions/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-get-generated-questions/curl-request.adoc[]
+
 === 인터뷰 시작 텍스트모드
 
 include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]

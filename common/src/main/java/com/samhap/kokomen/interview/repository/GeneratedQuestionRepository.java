@@ -7,6 +7,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface GeneratedQuestionRepository extends JpaRepository<GeneratedQuestion, Long> {
 
     List<GeneratedQuestion> findByGenerationIdOrderByQuestionOrder(Long generationId);
-
-    int countByGenerationId(Long generationId);
 }
