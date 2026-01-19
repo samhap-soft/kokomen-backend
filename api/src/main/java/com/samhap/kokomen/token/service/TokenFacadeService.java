@@ -83,6 +83,16 @@ public class TokenFacadeService {
         throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
     }
 
+
+    @Transactional
+    public void useTokens(Long memberId, int count) {
+        tokenService.validateEnoughTokens(memberId, count);
+
+        for (int i = 0; i < count; i++) {
+            useToken(memberId);
+        }
+    }
+
     @Transactional
     public void refundTokens(Long memberId, Long tokenPurchaseId, TokenRefundRequest request) {
         TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);

@@ -10,6 +10,7 @@ import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.ResumeQuestionUsageStatusResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -55,6 +56,16 @@ public class ResumeBasedInterviewController {
                 request
         );
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @GetMapping("/usage-status")
+    public ResponseEntity<ResumeQuestionUsageStatusResponse> getUsageStatus(
+            @Authentication MemberAuth memberAuth
+    ) {
+        ResumeQuestionUsageStatusResponse response = resumeBasedInterviewService.getUsageStatus(
+                memberAuth.memberId()
+        );
+        return ResponseEntity.ok(response);
     }
 
     private Long parseIdOrNull(String idStr) {
