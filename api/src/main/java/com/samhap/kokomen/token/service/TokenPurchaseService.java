@@ -5,6 +5,7 @@ import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,19 +47,23 @@ public class TokenPurchaseService {
 
     @Transactional
     public void usePaidTokens(Long memberId, int count) {
-        int remaining = count;
+        List<TokenPurchase> usablePurchases = tokenPurchaseRepository.findAllByMemberIdAndStateIn(
+                memberId,
+                TokenPurchaseState.getUsableTokenPurchaseStates()
+        );
 
-        while (remaining > 0) {
-            TokenPurchase purchase = findFirstUsablePurchase(memberId);
+        int remaining = count;
+        for (TokenPurchase purchase : usablePurchases) {
+            if (remaining <= 0) {
+                break;
+            }
             int used = purchase.useTokens(remaining);
             remaining -= used;
         }
-    }
 
-    private TokenPurchase findFirstUsablePurchase(Long memberId) {
-        return tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.USABLE)
-                .or(() -> tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.REFUNDABLE))
-                .orElseThrow(() -> new BadRequestException("사용 가능한 유료 토큰이 없습니다."));
+        if (remaining > 0) {
+            throw new BadRequestException("사용 가능한 유료 토큰이 부족합니다.");
+        }
     }
 
     @Transactional(readOnly = true)

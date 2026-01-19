@@ -86,9 +86,13 @@ public class TokenFacadeService {
 
     @Transactional
     public void useTokens(Long memberId, int count) {
-        tokenService.validateEnoughTokens(memberId, count);
-
         int freeTokenCount = tokenService.readFreeTokenCount(memberId);
+        int paidTokenCount = tokenService.readPaidTokenCount(memberId);
+
+        if (freeTokenCount + paidTokenCount < count) {
+            throw new BadRequestException("토큰 갯수가 부족합니다.");
+        }
+
         int tokensFromFree = Math.min(count, freeTokenCount);
         int tokensFromPaid = count - tokensFromFree;
 
