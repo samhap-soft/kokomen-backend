@@ -3,8 +3,11 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
+import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
@@ -14,6 +17,7 @@ import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResumeBasedInterviewService {
 
     private final ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
+    private final GeneratedQuestionRepository generatedQuestionRepository;
     private final MemberRepository memberRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
@@ -64,6 +69,24 @@ public class ResumeBasedInterviewService {
             throw new ForbiddenException("본인의 질문 생성 요청만 조회할 수 있습니다.");
         }
         return QuestionGenerationStatusResponse.of(generation.getState());
+    }
+
+    @Transactional(readOnly = true)
+    public List<GeneratedQuestionsResponse> getGeneratedQuestions(Long generationId, Long memberId) {
+        ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.findById(generationId)
+                .orElseThrow(() -> new BadRequestException("존재하지 않는 질문 생성 요청입니다."));
+        if (!generation.isOwner(memberId)) {
+            throw new ForbiddenException("본인의 질문 생성 요청만 조회할 수 있습니다.");
+        }
+        if (!generation.isCompleted()) {
+            throw new BadRequestException("질문 생성이 완료되지 않았습니다.");
+        }
+
+        List<GeneratedQuestion> questions = generatedQuestionRepository.findByGenerationIdOrderByQuestionOrder(
+                generationId);
+        return questions.stream()
+                .map(GeneratedQuestionsResponse::from)
+                .toList();
     }
 
     private Member readMember(Long memberId) {
