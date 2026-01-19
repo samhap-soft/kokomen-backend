@@ -82,6 +82,10 @@ public class InterviewService {
     private String resolveQuestionVoiceUrl(List<Question> questions, Interview interview) {
         // TODO: 답변하고 LLM 응답이 오기 전에 나갔다가 바로 다시 들어오는 경우에는 questions.size()가 당장은 1일텐데 RootQuestion부터 다시 시작?
         if (questions.size() == 1) {
+            if (interview.isResumeBased()) {
+                Question firstQuestion = questions.get(0);
+                return questionService.resolveQuestionVoiceUrl(firstQuestion);
+            }
             return questionVoicePathResolver.resolveRootQuestionCdnPath(interview.getRootQuestion().getId());
         }
 
@@ -90,19 +94,23 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state, Pageable pageable) {
+    public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state,
+                                                           Pageable pageable) {
         Member member = readMember(memberAuth.memberId());
         List<Interview> interviews = findInterviews(member, state, pageable);
         List<Long> finishedInterviewIds = interviews.stream()
                 .filter(interview -> !interview.isInProgress())
                 .map(Interview::getId)
                 .toList();
-        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(), finishedInterviewIds);
+        Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(),
+                finishedInterviewIds);
 
         return interviews.stream()
                 .map(interview ->
-                        InterviewSummaryResponse.createMine(interview, countCurAnswers(interview), interviewViewCountService.findViewCount(interview),
-                                likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview), hasTempAnswerMemo(interview)))
+                        InterviewSummaryResponse.createMine(interview, countCurAnswers(interview),
+                                interviewViewCountService.findViewCount(interview),
+                                likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview),
+                                hasTempAnswerMemo(interview)))
                 .toList();
     }
 
@@ -117,7 +125,8 @@ public class InterviewService {
     }
 
     private int countSubmittedAnswerMemos(Interview interview) {
-        return Math.toIntExact(answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.SUBMITTED));
+        return Math.toIntExact(answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview,
+                AnswerMemoState.SUBMITTED));
     }
 
     private Boolean hasTempAnswerMemo(Interview interview) {
@@ -125,7 +134,8 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth, Pageable pageable) {
+    public InterviewSummaryResponses findOtherMemberInterviews(Long targetMemberId, MemberAuth memberAuth,
+                                                               Pageable pageable) {
         Member interviewee = readMember(targetMemberId);
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());
         long totalMemberCount = memberRepository.count();
@@ -139,12 +149,15 @@ public class InterviewService {
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
             List<Long> finishedInterviewIds = finishedInterviews.stream().map(Interview::getId).toList();
-            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(), finishedInterviewIds);
+            Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(readerMember.getId(),
+                    finishedInterviewIds);
 
-            return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
+            return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(),
+                    totalMemberCount, intervieweeRank, finishedInterviews,
                     likedInterviewIds, viewCounts, submittedAnswerMemoCounts, totalPageCount);
         }
-        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount, intervieweeRank, finishedInterviews,
+        return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount,
+                intervieweeRank, finishedInterviews,
                 viewCounts, submittedAnswerMemoCounts, totalPageCount);
     }
 
@@ -168,8 +181,9 @@ public class InterviewService {
     }
 
     private int countSubmittedAndPublicAnswerMemos(Interview interview) {
-        return Math.toIntExact(answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(
-                interview, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC));
+        return Math.toIntExact(
+                answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(
+                        interview, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC));
     }
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
@@ -182,12 +196,20 @@ public class InterviewService {
         List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
         List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
 
-        List<RootQuestionReferenceAnswer> referenceAnswers = findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());
+        List<RootQuestionReferenceAnswer> referenceAnswers = getReferenceAnswers(interview);
 
         return InterviewResultResponse.createMine(feedbackResponses, interview, member, referenceAnswers);
     }
 
-    private List<RootQuestionReferenceAnswer> findRootQuestionReferenceAnswers(Long rootQuestionId, Long excludeInterviewId) {
+    private List<RootQuestionReferenceAnswer> getReferenceAnswers(Interview interview) {
+        if (interview.isResumeBased()) {
+            return List.of();
+        }
+        return findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());
+    }
+
+    private List<RootQuestionReferenceAnswer> findRootQuestionReferenceAnswers(Long rootQuestionId,
+                                                                               Long excludeInterviewId) {
 
         List<Answer> rankAAnswers = answerRepository.findTopAnswersByRootQuestionAndRank(
                 rootQuestionId, AnswerRank.A, excludeInterviewId, MAX_REFERENCE_ANSWERS_COUNT);
@@ -214,7 +236,8 @@ public class InterviewService {
     public void validateInterviewMode(Long interviewId, InterviewMode interviewMode) {
         Interview interview = readInterview(interviewId);
         if (interview.getInterviewMode() != interviewMode) {
-            throw new BadRequestException("인터뷰 모드가 일치하지 않습니다. 현재 인터뷰 모드: " + interview.getInterviewMode() + ", 요청한 인터뷰 모드: " + interviewMode);
+            throw new BadRequestException(
+                    "인터뷰 모드가 일치하지 않습니다. 현재 인터뷰 모드: " + interview.getInterviewMode() + ", 요청한 인터뷰 모드: " + interviewMode);
         }
     }
 
@@ -230,7 +253,8 @@ public class InterviewService {
         return answers.stream()
                 .collect(Collectors.toMap(
                         Answer::getId,
-                        answer -> AnswerMemos.createMine(findAnswerMemo(answer, AnswerMemoState.SUBMITTED), findAnswerMemo(answer, AnswerMemoState.TEMP))));
+                        answer -> AnswerMemos.createMine(findAnswerMemo(answer, AnswerMemoState.SUBMITTED),
+                                findAnswerMemo(answer, AnswerMemoState.TEMP))));
     }
 
     private AnswerMemo findAnswerMemo(Answer answer, AnswerMemoState state) {
@@ -239,7 +263,8 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+    public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth,
+                                                                  ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         Member interviewee = interview.getMember();
         long totalMemberCount = memberRepository.count();
@@ -251,15 +276,18 @@ public class InterviewService {
         Map<Long, AnswerMemos> answerMemos = findPublicSubmittedAnswerMemos(answers);
         if (memberAuth.isAuthenticated()) {
             Member readerMember = readMember(memberAuth.memberId());
-            boolean interviewAlreadyLiked = interviewLikeRepository.existsByInterviewIdAndMemberId(interview.getId(), readerMember.getId());
+            boolean interviewAlreadyLiked = interviewLikeRepository.existsByInterviewIdAndMemberId(interview.getId(),
+                    readerMember.getId());
             List<Long> answerIds = answers.stream().map(Answer::getId).toList();
             Set<Long> likedAnswerIds = answerLikeRepository.findLikedAnswerIds(readerMember.getId(), answerIds);
 
-            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview, viewCount, interviewAlreadyLiked,
+            return InterviewResultResponse.createOfOtherMemberForAuthorized(answers, likedAnswerIds, interview,
+                    viewCount, interviewAlreadyLiked,
                     interview.getMember().getNickname(), totalMemberCount, intervieweeRank, answerMemos);
         }
 
-        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount, interviewee.getNickname(), totalMemberCount,
+        return InterviewResultResponse.createOfOtherMemberForUnauthorized(answers, interview, viewCount,
+                interviewee.getNickname(), totalMemberCount,
                 intervieweeRank, answerMemos);
     }
 
@@ -267,10 +295,12 @@ public class InterviewService {
         return answers.stream()
                 .collect(Collectors.toMap(
                         Answer::getId,
-                        answer -> AnswerMemos.createOfOtherMember(findAnswerMemo(answer, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC))));
+                        answer -> AnswerMemos.createOfOtherMember(
+                                findAnswerMemo(answer, AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC))));
     }
 
-    private AnswerMemo findAnswerMemo(Answer answer, AnswerMemoState answerMemoState, AnswerMemoVisibility answerMemoVisibility) {
+    private AnswerMemo findAnswerMemo(Answer answer, AnswerMemoState answerMemoState,
+                                      AnswerMemoVisibility answerMemoVisibility) {
         return answerMemoRepository.findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(
                         answer, answerMemoState, answerMemoVisibility)
                 .orElse(null);

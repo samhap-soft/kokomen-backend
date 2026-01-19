@@ -123,7 +123,9 @@ public class Interview extends BaseEntity {
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
         if (maxQuestionCount < MIN_ALLOWED_MAX_QUESTION_COUNT || maxQuestionCount > MAX_ALLOWED_MAX_QUESTION_COUNT) {
-            throw new BadRequestException("최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT + " 이하이어야 합니다.");
+            throw new BadRequestException(
+                    "최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT
+                            + " 이하이어야 합니다.");
         }
     }
 
@@ -144,5 +146,23 @@ public class Interview extends BaseEntity {
             return;
         }
         throw new BadRequestException("이미 종료된 인터뷰입니다.");
+    }
+
+    public boolean isResumeBased() {
+        return this.interviewType == InterviewType.RESUME_BASED;
+    }
+
+    public String getDisplayCategory() {
+        if (isResumeBased()) {
+            return "이력서 기반";
+        }
+        return rootQuestion.getCategory().getTitle();
+    }
+
+    public String getDisplayQuestion() {
+        if (isResumeBased()) {
+            return generatedQuestion.getContent();
+        }
+        return rootQuestion.getContent();
     }
 }
