@@ -8,8 +8,7 @@ public record ResumeBasedQuestionGenerateRequest(
         MultipartFile portfolio,
         Long resumeId,
         Long portfolioId,
-        String jobCareer,
-        Integer questionCount
+        String jobCareer
 ) {
 
     public ResumeBasedQuestionGenerateRequest {

@@ -56,19 +56,18 @@ public class ResumeBasedQuestionBedrockService {
     public List<GeneratedQuestionDto> generateQuestions(
             String resumeText,
             String portfolioText,
-            String jobCareer,
-            int questionCount
+            String jobCareer
     ) {
         if (!isBedrockFlowConfigured()) {
             log.info("Bedrock Flow ID 미설정, GPT로 질문 생성");
-            return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer, questionCount);
+            return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer);
         }
 
         try {
-            return generateQuestionsWithBedrock(resumeText, portfolioText, jobCareer, questionCount);
+            return generateQuestionsWithBedrock(resumeText, portfolioText, jobCareer);
         } catch (Exception e) {
             log.error("Bedrock 질문 생성 실패, GPT 폴백 시도", e);
-            return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer, questionCount);
+            return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer);
         }
     }
 
@@ -80,16 +79,15 @@ public class ResumeBasedQuestionBedrockService {
     private List<GeneratedQuestionDto> generateQuestionsWithBedrock(
             String resumeText,
             String portfolioText,
-            String jobCareer,
-            int questionCount
+            String jobCareer
     ) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
         CompletableFuture<List<GeneratedQuestionDto>> future = new CompletableFuture<>();
-        InvokeFlowRequest flowRequest = createInvokeFlowRequest(resumeText, portfolioText, jobCareer, questionCount);
+        InvokeFlowRequest flowRequest = createInvokeFlowRequest(resumeText, portfolioText, jobCareer);
 
         bedrockAgentRuntimeAsyncClient.invokeFlow(
                 flowRequest,
-                createResponseHandler(future, resumeText, portfolioText, jobCareer, questionCount, mdcContext)
+                createResponseHandler(future, resumeText, portfolioText, jobCareer, mdcContext)
         );
         return future.join();
     }
@@ -97,14 +95,12 @@ public class ResumeBasedQuestionBedrockService {
     private InvokeFlowRequest createInvokeFlowRequest(
             String resumeText,
             String portfolioText,
-            String jobCareer,
-            int questionCount
+            String jobCareer
     ) {
         Map<String, Document> documentMap = Map.of(
                 "resume_text", Document.fromString(resumeText),
                 "portfolio_text", Document.fromString(portfolioText != null ? portfolioText : ""),
-                "job_career", Document.fromString(jobCareer),
-                "question_count", Document.fromNumber(questionCount)
+                "job_career", Document.fromString(jobCareer)
         );
 
         FlowInputContent content = FlowInputContent.fromDocument(Document.fromMap(documentMap));
@@ -127,7 +123,6 @@ public class ResumeBasedQuestionBedrockService {
             String resumeText,
             String portfolioText,
             String jobCareer,
-            int questionCount,
             Map<String, String> mdcContext
     ) {
         return InvokeFlowResponseHandler.builder()
@@ -136,8 +131,7 @@ public class ResumeBasedQuestionBedrockService {
                                 handleBedrockResponse(event, future, mdcContext))))
                 .onError(ex ->
                         executor.execute(() ->
-                                handleBedrockError(ex, future, resumeText, portfolioText, jobCareer, questionCount,
-                                        mdcContext)))
+                                handleBedrockError(ex, future, resumeText, portfolioText, jobCareer, mdcContext)))
                 .build();
     }
 
@@ -167,14 +161,13 @@ public class ResumeBasedQuestionBedrockService {
             String resumeText,
             String portfolioText,
             String jobCareer,
-            int questionCount,
             Map<String, String> mdcContext
     ) {
         try {
             setMdcContext(mdcContext);
             log.error("Bedrock 호출 실패, GPT 폴백 시도", ex);
             List<GeneratedQuestionDto> questions = generateQuestionsWithGpt(
-                    resumeText, portfolioText, jobCareer, questionCount);
+                    resumeText, portfolioText, jobCareer);
             future.complete(questions);
         } catch (Exception e) {
             log.error("GPT 폴백 실패", e);
@@ -187,10 +180,9 @@ public class ResumeBasedQuestionBedrockService {
     private List<GeneratedQuestionDto> generateQuestionsWithGpt(
             String resumeText,
             String portfolioText,
-            String jobCareer,
-            int questionCount
+            String jobCareer
     ) {
-        String jsonResponse = gptClient.generateQuestions(resumeText, portfolioText, jobCareer, questionCount);
+        String jsonResponse = gptClient.generateQuestions(resumeText, portfolioText, jobCareer);
         return parseQuestionResponse(jsonResponse);
     }
 
