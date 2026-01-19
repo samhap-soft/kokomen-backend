@@ -11,12 +11,14 @@ import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.ResumeQuestionUsageStatusResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,18 +30,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ResumeBasedInterviewService {
 
+    private static final int RESUME_QUESTION_GENERATION_TOKEN_COST = 5;
+
     private final ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
     private final GeneratedQuestionRepository generatedQuestionRepository;
     private final MemberRepository memberRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
     private final QuestionGenerationAsyncService questionGenerationAsyncService;
+    private final TokenFacadeService tokenFacadeService;
 
     @Transactional
     public QuestionGenerationSubmitResponse submitQuestionGeneration(
             Long memberId,
             ResumeBasedQuestionGenerateRequest request
     ) {
+        if (!isFirstUse(memberId)) {
+            tokenFacadeService.useTokens(memberId, RESUME_QUESTION_GENERATION_TOKEN_COST);
+        }
+
         Member member = readMember(memberId);
         MemberResume memberResume = findMemberResume(memberId, request.resumeId());
         MemberPortfolio memberPortfolio = findMemberPortfolio(memberId, request.portfolioId());
@@ -59,6 +68,11 @@ public class ResumeBasedInterviewService {
         );
 
         return new QuestionGenerationSubmitResponse(savedGeneration.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public ResumeQuestionUsageStatusResponse getUsageStatus(Long memberId) {
+        return ResumeQuestionUsageStatusResponse.of(isFirstUse(memberId));
     }
 
     @Transactional(readOnly = true)
@@ -122,5 +136,9 @@ public class ResumeBasedInterviewService {
             return null;
         }
         return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId).orElse(null);
+    }
+
+    private boolean isFirstUse(Long memberId) {
+        return !resumeQuestionGenerationRepository.existsByMemberId(memberId);
     }
 }

@@ -47,9 +47,21 @@ public class TokenService {
     }
 
     @Transactional
+    public void useFreeTokens(Long memberId, int count) {
+        Token freeToken = readTokenByMemberIdAndType(memberId, TokenType.FREE);
+        freeToken.useTokens(count);
+    }
+
+    @Transactional
     public void usePaidToken(Long memberId) {
         Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
         paidToken.useToken();
+    }
+
+    @Transactional
+    public void usePaidTokens(Long memberId, int count) {
+        Token paidToken = readTokenByMemberIdAndType(memberId, TokenType.PAID);
+        paidToken.useTokens(count);
     }
 
     @Transactional

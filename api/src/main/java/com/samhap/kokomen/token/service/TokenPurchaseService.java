@@ -28,19 +28,42 @@ public class TokenPurchaseService {
 
     @Transactional
     public void usePaidToken(Long memberId) {
-        Optional<TokenPurchase> usableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.USABLE);
+        Optional<TokenPurchase> usableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId,
+                TokenPurchaseState.USABLE);
         if (usableToken.isPresent()) {
             usableToken.get().useToken();
             return;
         }
 
-        Optional<TokenPurchase> refundableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.REFUNDABLE);
+        Optional<TokenPurchase> refundableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId,
+                TokenPurchaseState.REFUNDABLE);
         if (refundableToken.isPresent()) {
             refundableToken.get().useToken();
             return;
         }
 
         throw new BadRequestException("사용 가능한 유료 토큰이 없습니다.");
+    }
+
+    @Transactional
+    public void usePaidTokens(Long memberId, int count) {
+        List<TokenPurchase> usablePurchases = tokenPurchaseRepository.findAllByMemberIdAndStateIn(
+                memberId,
+                TokenPurchaseState.getUsableTokenPurchaseStates()
+        );
+
+        int remaining = count;
+        for (TokenPurchase purchase : usablePurchases) {
+            if (remaining <= 0) {
+                break;
+            }
+            int used = purchase.useTokens(remaining);
+            remaining -= used;
+        }
+
+        if (remaining > 0) {
+            throw new BadRequestException("사용 가능한 유료 토큰이 부족합니다.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -50,12 +73,14 @@ public class TokenPurchaseService {
     }
 
     @Transactional
-    public void refundTokenPurchase(TokenPurchase tokenPurchase, RefundReasonCode refundReasonCode, String refundReasonText) {
+    public void refundTokenPurchase(TokenPurchase tokenPurchase, RefundReasonCode refundReasonCode,
+                                    String refundReasonText) {
         tokenPurchase.refund(refundReasonCode, refundReasonText);
     }
 
     @Transactional(readOnly = true)
-    public Page<TokenPurchase> findTokenPurchasesByMemberId(Long memberId, TokenPurchaseState state, Pageable pageable) {
+    public Page<TokenPurchase> findTokenPurchasesByMemberId(Long memberId, TokenPurchaseState state,
+                                                            Pageable pageable) {
         if (state == null) {
             return tokenPurchaseRepository.findByMemberId(memberId, pageable);
         }
