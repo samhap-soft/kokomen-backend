@@ -126,6 +126,26 @@ public class TokenPurchase extends BaseEntity {
         }
     }
 
+    public int useTokens(int count) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("사용할 토큰 수는 0보다 커야 합니다.");
+        }
+        if (!hasRemainingTokens()) {
+            throw new IllegalStateException("사용할 수 있는 토큰이 없습니다.");
+        }
+
+        int tokensToUse = Math.min(count, this.remainingCount);
+        this.remainingCount -= tokensToUse;
+
+        if (this.remainingCount == 0) {
+            this.state = TokenPurchaseState.EXHAUSTED;
+        } else if (this.state == TokenPurchaseState.REFUNDABLE) {
+            this.state = TokenPurchaseState.USABLE;
+        }
+
+        return tokensToUse;
+    }
+
     public boolean hasRemainingTokens() {
         return remainingCount > 0;
     }

@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "token", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_token_member_type", columnNames = {"member_id", "type"})
+        @UniqueConstraint(name = "uk_token_member_type", columnNames = {"member_id", "type"})
 })
 public class Token extends BaseEntity {
 
@@ -58,6 +58,16 @@ public class Token extends BaseEntity {
             throw new BadRequestException("사용할 수 있는 토큰이 없습니다.");
         }
         this.tokenCount--;
+    }
+
+    public void useTokens(int count) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("사용할 토큰 수는 0보다 커야 합니다.");
+        }
+        if (this.tokenCount < count) {
+            throw new BadRequestException("사용할 수 있는 토큰이 부족합니다.");
+        }
+        this.tokenCount -= count;
     }
 
     public boolean hasTokens() {
