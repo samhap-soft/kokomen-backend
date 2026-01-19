@@ -245,7 +245,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 질문_생성_완료_상태_조회_성공_질문_개수_포함() throws Exception {
+    void 질문_생성_완료_상태_조회_성공() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         ResumeQuestionGeneration generation = new ResumeQuestionGeneration(member, null, null, "신입");
