@@ -23,18 +23,16 @@ public class CareerMaterialsPathResolver {
         this.portfolioS3Path = portfolioS3Path;
     }
 
-    public String resolveResumeCdnPath(Long memberId, String s3Key) {
-        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + resumeS3Path + memberId + FOLDER_DELIMITER + s3Key
-                + PDF_FILE_EXTENSION;
+    public String resolveResumeCdnPath(String s3Key) {
+        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + s3Key;
     }
 
     public String resolveResumeS3Key(Long memberId, String title) {
         return resumeS3Path + memberId + FOLDER_DELIMITER + title + "-" + UUID.randomUUID() + PDF_FILE_EXTENSION;
     }
 
-    public String resolvePortfolioCdnPath(Long memberId, String s3Key) {
-        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + portfolioS3Path + memberId + FOLDER_DELIMITER + s3Key
-                + PDF_FILE_EXTENSION;
+    public String resolvePortfolioCdnPath(String s3Key) {
+        return AwsConstant.CLOUD_FRONT_DOMAIN_URL + s3Key;
     }
 
     public String resolvePortfolioS3Key(Long memberId, String title) {

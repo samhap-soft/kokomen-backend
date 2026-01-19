@@ -176,6 +176,26 @@ include::{snippetsDir}/resume-based-interview-get-generated-questions/http-respo
 include::{snippetsDir}/resume-based-interview-get-generated-questions/response-fields.adoc[]
 include::{snippetsDir}/resume-based-interview-get-generated-questions/curl-request.adoc[]
 
+=== 이력서 기반 인터뷰 시작 (텍스트 모드)
+
+include::{snippetsDir}/resume-based-interview-start-text-mode/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/path-parameters.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/request-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-start-text-mode/curl-request.adoc[]
+
+=== 이력서 기반 인터뷰 시작 (음성 모드)
+
+include::{snippetsDir}/resume-based-interview-start-voice-mode/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/path-parameters.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/request-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-start-voice-mode/curl-request.adoc[]
+
 === 인터뷰 시작 텍스트모드
 
 include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]

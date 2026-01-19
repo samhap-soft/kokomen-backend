@@ -6,7 +6,9 @@ import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewMode;
@@ -15,6 +17,7 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
@@ -25,6 +28,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
+import com.samhap.kokomen.interview.service.dto.ResumeBasedInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.RootQuestionCustomInterviewRequest;
 import com.samhap.kokomen.interview.service.dto.RootQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
@@ -69,6 +73,7 @@ public class InterviewFacadeService {
     private final InterviewLikeEventProducer interviewLikeEventProducer;
     private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
     private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
+    private final ResumeBasedInterviewService resumeBasedInterviewService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -324,5 +329,45 @@ public class InterviewFacadeService {
         return rootQuestionService.findAllRootQuestionByCategory(category).stream()
                 .map(RootQuestionResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public InterviewStartResponse startResumeBasedInterview(
+            Long generationId,
+            ResumeBasedInterviewStartRequest request,
+            MemberAuth memberAuth
+    ) {
+        Member member = memberService.readById(memberAuth.memberId());
+        ResumeQuestionGeneration generation = resumeBasedInterviewService.readGeneration(generationId);
+        validateGenerationOwnership(generation, memberAuth.memberId());
+        validateGenerationCompleted(generation);
+        GeneratedQuestion generatedQuestion = resumeBasedInterviewService.readGeneratedQuestion(
+                request.generatedQuestionId(), generationId);
+
+        InterviewMode interviewMode = request.mode();
+        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+
+        Interview interview = interviewService.saveInterview(
+                new Interview(member, generatedQuestion, request.maxQuestionCount(), interviewMode));
+        Question question = questionService.saveQuestion(new Question(interview, generatedQuestion.getContent()));
+
+        if (interviewMode == InterviewMode.VOICE) {
+            String voiceUrl = questionService.createAndUploadQuestionVoice(question);
+            return new InterviewStartVoiceModeResponse(interview, question, voiceUrl);
+        }
+        return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    private void validateGenerationOwnership(ResumeQuestionGeneration generation, Long memberId) {
+        if (!generation.isOwner(memberId)) {
+            throw new ForbiddenException("본인의 질문 생성 결과로만 면접을 시작할 수 있습니다.");
+        }
+    }
+
+    private void validateGenerationCompleted(ResumeQuestionGeneration generation) {
+        if (!generation.isCompleted()) {
+            throw new BadRequestException("질문 생성이 완료되지 않았습니다.");
+        }
     }
 }
