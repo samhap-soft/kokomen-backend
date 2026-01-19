@@ -160,12 +160,12 @@ include::{snippetsDir}/resume-based-interview-submit-question-generation-with-po
 
 === 이력서 기반 질문 생성 상태 조회 (폴링)
 
-include::{snippetsDir}/resume-based-interview-generation-status/http-request.adoc[]
-include::{snippetsDir}/resume-based-interview-generation-status/request-headers.adoc[]
-include::{snippetsDir}/resume-based-interview-generation-status/path-parameters.adoc[]
-include::{snippetsDir}/resume-based-interview-generation-status/http-response.adoc[]
-include::{snippetsDir}/resume-based-interview-generation-status/response-fields.adoc[]
-include::{snippetsDir}/resume-based-interview-generation-status/curl-request.adoc[]
+include::{snippetsDir}/resume-based-interview-check/http-request.adoc[]
+include::{snippetsDir}/resume-based-interview-check/request-headers.adoc[]
+include::{snippetsDir}/resume-based-interview-check/path-parameters.adoc[]
+include::{snippetsDir}/resume-based-interview-check/http-response.adoc[]
+include::{snippetsDir}/resume-based-interview-check/response-fields.adoc[]
+include::{snippetsDir}/resume-based-interview-check/curl-request.adoc[]
 
 === 인터뷰 시작 텍스트모드
 

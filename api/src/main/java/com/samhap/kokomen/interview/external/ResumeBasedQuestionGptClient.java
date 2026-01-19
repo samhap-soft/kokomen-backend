@@ -25,12 +25,11 @@ public class ResumeBasedQuestionGptClient extends BaseGptClient {
         super(builder, objectMapper, gptApiKey);
     }
 
-    public String generateQuestions(String resumeText, String portfolioText, String jobCareer, int questionCount) {
+    public String generateQuestions(String resumeText, String portfolioText, String jobCareer) {
         ResumeBasedQuestionGptRequest request = ResumeBasedQuestionGptRequest.create(
                 resumeText,
                 portfolioText,
-                jobCareer,
-                questionCount
+                jobCareer
         );
         ResumeBasedQuestionGptResponse response = executeRequest(request, ResumeBasedQuestionGptResponse.class);
         return response.choices().get(0).message().content();

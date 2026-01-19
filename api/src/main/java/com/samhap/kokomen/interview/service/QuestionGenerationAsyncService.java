@@ -1,10 +1,8 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
 import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
-import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
@@ -24,9 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class QuestionGenerationAsyncService {
 
-    private final InterviewStateService interviewStateService;
+    private final QuestionGenerationStateService questionGenerationStateService;
     private final ResumeContentService resumeContentService;
-    private final InterviewRepository interviewRepository;
     private final MemberResumeRepository memberResumeRepository;
     private final MemberPortfolioRepository memberPortfolioRepository;
     private final ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService;
@@ -34,9 +31,8 @@ public class QuestionGenerationAsyncService {
     private final ThreadPoolTaskExecutor executor;
 
     public QuestionGenerationAsyncService(
-            InterviewStateService interviewStateService,
+            QuestionGenerationStateService questionGenerationStateService,
             ResumeContentService resumeContentService,
-            InterviewRepository interviewRepository,
             MemberResumeRepository memberResumeRepository,
             MemberPortfolioRepository memberPortfolioRepository,
             ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService,
@@ -44,9 +40,8 @@ public class QuestionGenerationAsyncService {
             @Qualifier("gptCallbackExecutor")
             ThreadPoolTaskExecutor executor
     ) {
-        this.interviewStateService = interviewStateService;
+        this.questionGenerationStateService = questionGenerationStateService;
         this.resumeContentService = resumeContentService;
-        this.interviewRepository = interviewRepository;
         this.memberResumeRepository = memberResumeRepository;
         this.memberPortfolioRepository = memberPortfolioRepository;
         this.resumeBasedQuestionBedrockService = resumeBasedQuestionBedrockService;
@@ -55,7 +50,7 @@ public class QuestionGenerationAsyncService {
     }
 
     public void generateQuestionsAsync(
-            Long interviewId,
+            Long generationId,
             ResumeBasedQuestionGenerateRequest request,
             Long memberId
     ) {
@@ -64,10 +59,10 @@ public class QuestionGenerationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                processQuestionGeneration(interviewId, request, memberId);
+                processQuestionGeneration(generationId, request, memberId);
             } catch (Exception e) {
-                log.error("질문 생성 실패 - interviewId: {}", interviewId, e);
-                interviewStateService.markAsFailed(interviewId);
+                log.error("질문 생성 실패 - resumeBasedInterviewResultId: {}", generationId, e);
+                questionGenerationStateService.markAsFailed(generationId);
             } finally {
                 MDC.clear();
             }
@@ -81,24 +76,20 @@ public class QuestionGenerationAsyncService {
     }
 
     private void processQuestionGeneration(
-            Long interviewId,
+            Long generationId,
             ResumeBasedQuestionGenerateRequest request,
             Long memberId
     ) {
-        Interview interview = interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
-
         String resumeText = extractResumeText(memberId, request.resume(), request.resumeId());
         String portfolioText = extractPortfolioText(memberId, request.portfolio(), request.portfolioId());
 
         List<GeneratedQuestionDto> questions = resumeBasedQuestionBedrockService.generateQuestions(
                 resumeText,
                 portfolioText,
-                request.jobCareer(),
-                interview.getMaxQuestionCount()
+                request.jobCareer()
         );
 
-        interviewStateService.saveQuestionsAndComplete(interviewId, questions);
+        questionGenerationStateService.saveQuestionsAndComplete(generationId, questions);
     }
 
     private String extractResumeText(Long memberId, MultipartFile resumeFile, Long resumeId) {

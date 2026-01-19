@@ -3,7 +3,7 @@ package com.samhap.kokomen.interview.service.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record QuestionGenerationSubmitResponse(
-        @JsonProperty("interview_id")
-        Long interviewId
+        @JsonProperty("resume_based_interview_result_id")
+        Long resumeBasedInterviewResultId
 ) {
 }
