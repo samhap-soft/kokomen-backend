@@ -45,9 +45,7 @@ public class ResumeBasedInterviewService {
             Long memberId,
             ResumeBasedQuestionGenerateRequest request
     ) {
-        boolean isFirstUse = !resumeQuestionGenerationRepository.existsByMemberId(memberId);
-
-        if (!isFirstUse) {
+        if (!isFirstUse(memberId)) {
             tokenFacadeService.useTokens(memberId, RESUME_QUESTION_GENERATION_TOKEN_COST);
         }
 
@@ -74,8 +72,7 @@ public class ResumeBasedInterviewService {
 
     @Transactional(readOnly = true)
     public ResumeQuestionUsageStatusResponse getUsageStatus(Long memberId) {
-        boolean isFirstUse = !resumeQuestionGenerationRepository.existsByMemberId(memberId);
-        return ResumeQuestionUsageStatusResponse.of(isFirstUse);
+        return ResumeQuestionUsageStatusResponse.of(isFirstUse(memberId));
     }
 
     @Transactional(readOnly = true)
@@ -139,5 +136,9 @@ public class ResumeBasedInterviewService {
             return null;
         }
         return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId).orElse(null);
+    }
+
+    private boolean isFirstUse(Long memberId) {
+        return !resumeQuestionGenerationRepository.existsByMemberId(memberId);
     }
 }

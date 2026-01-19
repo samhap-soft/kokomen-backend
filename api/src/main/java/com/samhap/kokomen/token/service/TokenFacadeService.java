@@ -88,8 +88,17 @@ public class TokenFacadeService {
     public void useTokens(Long memberId, int count) {
         tokenService.validateEnoughTokens(memberId, count);
 
-        for (int i = 0; i < count; i++) {
-            useToken(memberId);
+        int freeTokenCount = tokenService.readFreeTokenCount(memberId);
+        int tokensFromFree = Math.min(count, freeTokenCount);
+        int tokensFromPaid = count - tokensFromFree;
+
+        if (tokensFromFree > 0) {
+            tokenService.useFreeTokens(memberId, tokensFromFree);
+        }
+
+        if (tokensFromPaid > 0) {
+            tokenService.usePaidTokens(memberId, tokensFromPaid);
+            tokenPurchaseService.usePaidTokens(memberId, tokensFromPaid);
         }
     }
 

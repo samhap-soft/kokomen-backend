@@ -5,7 +5,6 @@ import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,19 +27,38 @@ public class TokenPurchaseService {
 
     @Transactional
     public void usePaidToken(Long memberId) {
-        Optional<TokenPurchase> usableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.USABLE);
+        Optional<TokenPurchase> usableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId,
+                TokenPurchaseState.USABLE);
         if (usableToken.isPresent()) {
             usableToken.get().useToken();
             return;
         }
 
-        Optional<TokenPurchase> refundableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.REFUNDABLE);
+        Optional<TokenPurchase> refundableToken = tokenPurchaseRepository.findFirstUsableTokenByState(memberId,
+                TokenPurchaseState.REFUNDABLE);
         if (refundableToken.isPresent()) {
             refundableToken.get().useToken();
             return;
         }
 
         throw new BadRequestException("사용 가능한 유료 토큰이 없습니다.");
+    }
+
+    @Transactional
+    public void usePaidTokens(Long memberId, int count) {
+        int remaining = count;
+
+        while (remaining > 0) {
+            TokenPurchase purchase = findFirstUsablePurchase(memberId);
+            int used = purchase.useTokens(remaining);
+            remaining -= used;
+        }
+    }
+
+    private TokenPurchase findFirstUsablePurchase(Long memberId) {
+        return tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.USABLE)
+                .or(() -> tokenPurchaseRepository.findFirstUsableTokenByState(memberId, TokenPurchaseState.REFUNDABLE))
+                .orElseThrow(() -> new BadRequestException("사용 가능한 유료 토큰이 없습니다."));
     }
 
     @Transactional(readOnly = true)
@@ -50,12 +68,14 @@ public class TokenPurchaseService {
     }
 
     @Transactional
-    public void refundTokenPurchase(TokenPurchase tokenPurchase, RefundReasonCode refundReasonCode, String refundReasonText) {
+    public void refundTokenPurchase(TokenPurchase tokenPurchase, RefundReasonCode refundReasonCode,
+                                    String refundReasonText) {
         tokenPurchase.refund(refundReasonCode, refundReasonText);
     }
 
     @Transactional(readOnly = true)
-    public Page<TokenPurchase> findTokenPurchasesByMemberId(Long memberId, TokenPurchaseState state, Pageable pageable) {
+    public Page<TokenPurchase> findTokenPurchasesByMemberId(Long memberId, TokenPurchaseState state,
+                                                            Pageable pageable) {
         if (state == null) {
             return tokenPurchaseRepository.findByMemberId(memberId, pageable);
         }
