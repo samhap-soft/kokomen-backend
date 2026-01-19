@@ -4,9 +4,11 @@ import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.service.ResumeBasedInterviewService;
+import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,6 +57,18 @@ public class ResumeBasedInterviewController {
             @Authentication MemberAuth memberAuth
     ) {
         QuestionGenerationStatusResponse response = resumeBasedInterviewService.getQuestionGenerationStatus(
+                resumeBasedInterviewResultId,
+                memberAuth.memberId()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{resumeBasedInterviewResultId}")
+    public ResponseEntity<List<GeneratedQuestionsResponse>> getGeneratedQuestions(
+            @PathVariable Long resumeBasedInterviewResultId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        List<GeneratedQuestionsResponse> response = resumeBasedInterviewService.getGeneratedQuestions(
                 resumeBasedInterviewResultId,
                 memberAuth.memberId()
         );
