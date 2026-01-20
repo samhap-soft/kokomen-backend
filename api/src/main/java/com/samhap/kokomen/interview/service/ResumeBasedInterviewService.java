@@ -36,6 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResumeBasedInterviewService {
 
     private static final int RESUME_QUESTION_GENERATION_TOKEN_COST = 5;
+    private static final List<ResumeQuestionGenerationState> DEFAULT_FILTER_STATES = List.of(
+            ResumeQuestionGenerationState.PENDING,
+            ResumeQuestionGenerationState.COMPLETED
+    );
 
     private final ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
     private final GeneratedQuestionRepository generatedQuestionRepository;
@@ -123,11 +127,7 @@ public class ResumeBasedInterviewService {
             Pageable pageable
     ) {
         if (state == null) {
-            List<ResumeQuestionGenerationState> defaultStates = List.of(
-                    ResumeQuestionGenerationState.PENDING,
-                    ResumeQuestionGenerationState.COMPLETED
-            );
-            return resumeQuestionGenerationRepository.findByMemberIdAndStateIn(memberId, defaultStates, pageable);
+            return resumeQuestionGenerationRepository.findByMemberIdAndStateIn(memberId, DEFAULT_FILTER_STATES, pageable);
         }
         return resumeQuestionGenerationRepository.findByMemberIdAndState(memberId, state, pageable);
     }

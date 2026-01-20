@@ -148,7 +148,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                         interviewProceedStateKey, mdcContext);
             }
         } catch (Exception e) {
-            log.error("Exception :: state: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
+            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
                     e.getMessage(), e);
         } finally {
             MDC.clear();
@@ -285,7 +285,7 @@ public class InterviewProceedBedrockFlowAsyncService {
                 callbackAnswerFeedbackBedrockFlow(outputEvent, curAnswerId);
             }
         } catch (Exception e) {
-            log.error("Exception :: state: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
+            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
                     e.getMessage(), e);
         } finally {
             MDC.clear();
