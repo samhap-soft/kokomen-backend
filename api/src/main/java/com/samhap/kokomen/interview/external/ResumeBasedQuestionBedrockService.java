@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.document.Document;
@@ -27,30 +26,25 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRespo
 @Service
 public class ResumeBasedQuestionBedrockService {
 
+    private static final String FLOW_ID = "5U5D48J4JO";
+    private static final String FLOW_ALIAS_ID = "952A7U6OO6";
+
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final ResumeBasedQuestionGptClient gptClient;
     private final ObjectMapper objectMapper;
     private final ThreadPoolTaskExecutor executor;
-    private final String flowId;
-    private final String flowAliasId;
 
     public ResumeBasedQuestionBedrockService(
             BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
             ResumeBasedQuestionGptClient gptClient,
             ObjectMapper objectMapper,
             @Qualifier("gptCallbackExecutor")
-            ThreadPoolTaskExecutor executor,
-            @Value("${bedrock.flow.resume-based-question.flow-id:}")
-            String flowId,
-            @Value("${bedrock.flow.resume-based-question.flow-alias-id:}")
-            String flowAliasId
+            ThreadPoolTaskExecutor executor
     ) {
         this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
         this.gptClient = gptClient;
         this.objectMapper = objectMapper;
         this.executor = executor;
-        this.flowId = flowId;
-        this.flowAliasId = flowAliasId;
     }
 
     public List<GeneratedQuestionDto> generateQuestions(
@@ -58,22 +52,12 @@ public class ResumeBasedQuestionBedrockService {
             String portfolioText,
             String jobCareer
     ) {
-        if (!isBedrockFlowConfigured()) {
-            log.info("Bedrock Flow ID 미설정, GPT로 질문 생성");
-            return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer);
-        }
-
         try {
             return generateQuestionsWithBedrock(resumeText, portfolioText, jobCareer);
         } catch (Exception e) {
             log.error("Bedrock 질문 생성 실패, GPT 폴백 시도", e);
             return generateQuestionsWithGpt(resumeText, portfolioText, jobCareer);
         }
-    }
-
-    private boolean isBedrockFlowConfigured() {
-        return flowId != null && !flowId.isBlank()
-                && flowAliasId != null && !flowAliasId.isBlank();
     }
 
     private List<GeneratedQuestionDto> generateQuestionsWithBedrock(
@@ -113,8 +97,8 @@ public class ResumeBasedQuestionBedrockService {
         return InvokeFlowRequest.builder()
                 .inputs(flowInput)
                 .enableTrace(true)
-                .flowIdentifier(flowId)
-                .flowAliasIdentifier(flowAliasId)
+                .flowIdentifier(FLOW_ID)
+                .flowAliasIdentifier(FLOW_ALIAS_ID)
                 .build();
     }
 
