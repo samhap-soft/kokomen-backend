@@ -14,18 +14,21 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.interview.ResumeQuestionGenerationFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
@@ -251,7 +254,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.state").value("PENDING"));
     }
 
     @Test
@@ -282,7 +285,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.state").value("COMPLETED"))
                 .andDo(document("resume-based-interview-check",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -291,7 +294,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("resumeBasedInterviewResultId").description("질문 생성 요청 ID")
                         ),
                         responseFields(
-                                fieldWithPath("status").description(
+                                fieldWithPath("state").description(
                                         "질문 생성 상태 (PENDING: 생성 중, COMPLETED: 생성 완료, FAILED: 생성 실패)")
                         )
                 ));
@@ -315,7 +318,7 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("FAILED"));
+                .andExpect(jsonPath("$.state").value("FAILED"));
     }
 
     @Test
@@ -780,6 +783,197 @@ class ResumeBasedInterviewControllerTest extends BaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                 )
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 내_질문_생성_기록_목록_조회_성공() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MemberResume resume = memberResumeRepository.save(
+                MemberResumeFixtureBuilder.builder()
+                        .member(member)
+                        .title("테스트 이력서")
+                        .resumeUrl("https://example.com/resume.pdf")
+                        .build()
+        );
+        MemberPortfolio portfolio = memberPortfolioRepository.save(
+                MemberPortfolioFixtureBuilder.builder()
+                        .member(member)
+                        .title("테스트 포트폴리오")
+                        .portfolioUrl("https://example.com/portfolio.pdf")
+                        .build()
+        );
+
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .memberResume(resume)
+                        .memberPortfolio(portfolio)
+                        .jobCareer("신입")
+                        .state(ResumeQuestionGenerationState.COMPLETED)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/questions/generations")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].id").exists())
+                .andExpect(jsonPath("$.data[0].job_career").value("신입"))
+                .andExpect(jsonPath("$.data[0].state").value("COMPLETED"))
+                .andExpect(jsonPath("$.data[0].created_at").exists())
+                .andExpect(jsonPath("$.data[0].resume.name").value("테스트 이력서"))
+                .andExpect(jsonPath("$.data[0].resume.url").value("https://example.com/resume.pdf"))
+                .andExpect(jsonPath("$.data[0].portfolio.name").value("테스트 포트폴리오"))
+                .andExpect(jsonPath("$.data[0].portfolio.url").value("https://example.com/portfolio.pdf"))
+                .andExpect(jsonPath("$.current_page").value(0))
+                .andExpect(jsonPath("$.total_count").value(1))
+                .andExpect(jsonPath("$.has_next").value(false))
+                .andDo(document("resume-question-generation-list",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        queryParameters(
+                                parameterWithName("state").description(
+                                        "상태 필터 (PENDING, COMPLETED, FAILED). 미지정시 PENDING, COMPLETED만 조회").optional(),
+                                parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
+                                parameterWithName("size").description("페이지 크기 (기본값: 20)").optional(),
+                                parameterWithName("sort").description("정렬 (기본값: createdAt,DESC)").optional()
+                        ),
+                        responseFields(
+                                fieldWithPath("data[]").description("질문 생성 기록 목록"),
+                                fieldWithPath("data[].id").description("질문 생성 ID"),
+                                fieldWithPath("data[].job_career").description("경력 구분"),
+                                fieldWithPath("data[].state").description("생성 상태 (PENDING, COMPLETED, FAILED)"),
+                                fieldWithPath("data[].created_at").description("생성 일시"),
+                                fieldWithPath("data[].resume").description("이력서 정보 (없으면 null)").optional(),
+                                fieldWithPath("data[].resume.name").description("이력서 파일명"),
+                                fieldWithPath("data[].resume.url").description("이력서 URL"),
+                                fieldWithPath("data[].portfolio").description("포트폴리오 정보 (없으면 null)").optional(),
+                                fieldWithPath("data[].portfolio.name").description("포트폴리오 파일명"),
+                                fieldWithPath("data[].portfolio.url").description("포트폴리오 URL"),
+                                fieldWithPath("current_page").description("현재 페이지 번호"),
+                                fieldWithPath("total_count").description("전체 기록 수"),
+                                fieldWithPath("total_pages").description("전체 페이지 수"),
+                                fieldWithPath("has_next").description("다음 페이지 존재 여부")
+                        )
+                ));
+    }
+
+    @Test
+    void 상태_필터로_질문_생성_기록_조회() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .jobCareer("신입")
+                        .state(ResumeQuestionGenerationState.PENDING)
+                        .build()
+        );
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .jobCareer("경력")
+                        .state(ResumeQuestionGenerationState.COMPLETED)
+                        .build()
+        );
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .jobCareer("경력 3년")
+                        .state(ResumeQuestionGenerationState.FAILED)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then - PENDING 상태만 조회
+        mockMvc.perform(get("/api/v1/interviews/resume-based/questions/generations")
+                        .param("state", "PENDING")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.total_count").value(1))
+                .andExpect(jsonPath("$.data[0].state").value("PENDING"));
+    }
+
+    @Test
+    void 기본_조회시_FAILED_상태는_제외된다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .jobCareer("신입")
+                        .state(ResumeQuestionGenerationState.PENDING)
+                        .build()
+        );
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .jobCareer("실패 건")
+                        .state(ResumeQuestionGenerationState.FAILED)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then - state 파라미터 없이 조회하면 PENDING, COMPLETED만 반환
+        mockMvc.perform(get("/api/v1/interviews/resume-based/questions/generations")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total_count").value(1))
+                .andExpect(jsonPath("$.data[0].state").value("PENDING"));
+    }
+
+    @Test
+    void 이력서와_포트폴리오가_없는_경우_null로_반환된다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+
+        resumeQuestionGenerationRepository.save(
+                ResumeQuestionGenerationFixtureBuilder.builder()
+                        .member(member)
+                        .memberResume(null)
+                        .memberPortfolio(null)
+                        .jobCareer("신입")
+                        .state(ResumeQuestionGenerationState.COMPLETED)
+                        .build()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/questions/generations")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].resume").doesNotExist())
+                .andExpect(jsonPath("$.data[0].portfolio").doesNotExist());
+    }
+
+    @Test
+    void 인증되지_않은_사용자의_질문_생성_기록_조회시_401_반환() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/resume-based/questions/generations"))
                 .andExpect(status().isUnauthorized());
     }
 }

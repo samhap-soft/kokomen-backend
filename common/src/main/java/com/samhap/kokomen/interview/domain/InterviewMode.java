@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum InterviewMode {
 
-
     TEXT(1),
     VOICE(2),
     ;

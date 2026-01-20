@@ -5,12 +5,15 @@ import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
 import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
-import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
+import com.samhap.kokomen.interview.service.dto.QuestionGenerationStateResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.ResumeQuestionGenerationPageResponse;
+import com.samhap.kokomen.interview.service.dto.ResumeQuestionGenerationResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeQuestionUsageStatusResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -22,6 +25,8 @@ import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResumeBasedInterviewService {
 
     private static final int RESUME_QUESTION_GENERATION_TOKEN_COST = 5;
+    private static final List<ResumeQuestionGenerationState> DEFAULT_FILTER_STATES = List.of(
+            ResumeQuestionGenerationState.PENDING,
+            ResumeQuestionGenerationState.COMPLETED
+    );
 
     private final ResumeQuestionGenerationRepository resumeQuestionGenerationRepository;
     private final GeneratedQuestionRepository generatedQuestionRepository;
@@ -70,19 +79,67 @@ public class ResumeBasedInterviewService {
         return new QuestionGenerationSubmitResponse(savedGeneration.getId());
     }
 
+    private Member readMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
+    }
+
+    private MemberResume findMemberResume(Long memberId, Long resumeId) {
+        if (resumeId == null) {
+            return null;
+        }
+        return memberResumeRepository.findByIdAndMemberId(resumeId, memberId).orElse(null);
+    }
+
+    private MemberPortfolio findMemberPortfolio(Long memberId, Long portfolioId) {
+        if (portfolioId == null) {
+            return null;
+        }
+        return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId).orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public ResumeQuestionUsageStatusResponse getUsageStatus(Long memberId) {
         return ResumeQuestionUsageStatusResponse.of(isFirstUse(memberId));
     }
 
+    private boolean isFirstUse(Long memberId) {
+        return !resumeQuestionGenerationRepository.existsByMemberId(memberId);
+    }
+
     @Transactional(readOnly = true)
-    public QuestionGenerationStatusResponse getQuestionGenerationStatus(Long generationId, Long memberId) {
+    public ResumeQuestionGenerationPageResponse findMyQuestionGenerations(
+            Long memberId,
+            ResumeQuestionGenerationState state,
+            Pageable pageable
+    ) {
+        Page<ResumeQuestionGeneration> page = getResumeQuestionGenerations(memberId, state, pageable);
+
+        List<ResumeQuestionGenerationResponse> data = page.getContent().stream()
+                .map(ResumeQuestionGenerationResponse::from)
+                .toList();
+        return ResumeQuestionGenerationPageResponse.of(data, page);
+    }
+
+    private Page<ResumeQuestionGeneration> getResumeQuestionGenerations(
+            Long memberId,
+            ResumeQuestionGenerationState state,
+            Pageable pageable
+    ) {
+        if (state == null) {
+            return resumeQuestionGenerationRepository.findByMemberIdAndStateIn(memberId, DEFAULT_FILTER_STATES, pageable);
+        }
+        return resumeQuestionGenerationRepository.findByMemberIdAndState(memberId, state, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public QuestionGenerationStateResponse getQuestionGenerationStatus(Long generationId, Long memberId) {
         ResumeQuestionGeneration generation = resumeQuestionGenerationRepository.findById(generationId)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 질문 생성 요청입니다."));
         if (!generation.isOwner(memberId)) {
             throw new ForbiddenException("본인의 질문 생성 요청만 조회할 수 있습니다.");
         }
-        return QuestionGenerationStatusResponse.of(generation.getState());
+        return QuestionGenerationStateResponse.of(generation.getState());
     }
 
     @Transactional(readOnly = true)
@@ -117,28 +174,5 @@ public class ResumeBasedInterviewService {
             throw new BadRequestException("해당 질문 생성 요청에 속하지 않는 질문입니다.");
         }
         return question;
-    }
-
-    private Member readMember(Long memberId) {
-        return memberRepository.findById(memberId)
-                .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
-    }
-
-    private MemberResume findMemberResume(Long memberId, Long resumeId) {
-        if (resumeId == null) {
-            return null;
-        }
-        return memberResumeRepository.findByIdAndMemberId(resumeId, memberId).orElse(null);
-    }
-
-    private MemberPortfolio findMemberPortfolio(Long memberId, Long portfolioId) {
-        if (portfolioId == null) {
-            return null;
-        }
-        return memberPortfolioRepository.findByIdAndMemberId(portfolioId, memberId).orElse(null);
-    }
-
-    private boolean isFirstUse(Long memberId) {
-        return !resumeQuestionGenerationRepository.existsByMemberId(memberId);
     }
 }
