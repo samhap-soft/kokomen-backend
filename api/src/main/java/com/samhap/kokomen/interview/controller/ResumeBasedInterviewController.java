@@ -3,18 +3,23 @@ package com.samhap.kokomen.interview.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
 import com.samhap.kokomen.interview.service.ResumeBasedInterviewService;
 import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
-import com.samhap.kokomen.interview.service.dto.QuestionGenerationStatusResponse;
+import com.samhap.kokomen.interview.service.dto.QuestionGenerationStateResponse;
 import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.ResumeQuestionGenerationPageResponse;
 import com.samhap.kokomen.interview.service.dto.ResumeQuestionUsageStatusResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -68,6 +74,20 @@ public class ResumeBasedInterviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/questions/generations")
+    public ResponseEntity<ResumeQuestionGenerationPageResponse> findMyQuestionGenerations(
+            @RequestParam(required = false) ResumeQuestionGenerationState state,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @Authentication MemberAuth memberAuth
+    ) {
+        ResumeQuestionGenerationPageResponse response = resumeBasedInterviewService.findMyQuestionGenerations(
+                memberAuth.memberId(),
+                state,
+                pageable
+        );
+        return ResponseEntity.ok(response);
+    }
+
     private Long parseIdOrNull(String idStr) {
         if (idStr == null || idStr.isBlank()) {
             return null;
@@ -80,11 +100,11 @@ public class ResumeBasedInterviewController {
     }
 
     @GetMapping("/{resumeBasedInterviewResultId}/check")
-    public ResponseEntity<QuestionGenerationStatusResponse> getGenerationStatus(
+    public ResponseEntity<QuestionGenerationStateResponse> getGenerationStatus(
             @PathVariable Long resumeBasedInterviewResultId,
             @Authentication MemberAuth memberAuth
     ) {
-        QuestionGenerationStatusResponse response = resumeBasedInterviewService.getQuestionGenerationStatus(
+        QuestionGenerationStateResponse response = resumeBasedInterviewService.getQuestionGenerationStatus(
                 resumeBasedInterviewResultId,
                 memberAuth.memberId()
         );
