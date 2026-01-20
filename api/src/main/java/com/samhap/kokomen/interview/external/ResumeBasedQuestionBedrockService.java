@@ -26,8 +26,8 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowRespo
 @Service
 public class ResumeBasedQuestionBedrockService {
 
-    private static final String FLOW_ID = "5U5D48J4JO";
-    private static final String FLOW_ALIAS_ID = "952A7U6OO6";
+    private static final String FLOW_ID = "YF0GPURXR9";
+    private static final String FLOW_ALIAS_ID = "2Z6V8L8WT2";
 
     private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
     private final ResumeBasedQuestionGptClient gptClient;
