@@ -65,7 +65,8 @@ class AnswerControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
 
@@ -84,7 +85,8 @@ class AnswerControllerTest extends BaseControllerTest {
                 ));
 
         assertAll(
-                () -> assertThat(answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId())).isTrue(),
+                () -> assertThat(
+                        answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId())).isTrue(),
                 () -> assertThat(answerRepository.findById(answer.getId()).get().getLikeCount()).isEqualTo(1)
         );
     }
@@ -97,7 +99,8 @@ class AnswerControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
 
@@ -140,7 +143,8 @@ class AnswerControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
         AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());
@@ -183,7 +187,8 @@ class AnswerControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(1L).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().answer(answer).member(member).build());
@@ -203,8 +208,9 @@ class AnswerControllerTest extends BaseControllerTest {
                 ));
 
         assertAll(
-                () -> assertThat(answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId())).isFalse(),
-                () -> assertThat(answerRepository.findById(answer.getId()).get().getLikeCount()).isEqualTo(0)
+                () -> assertThat(
+                        answerLikeRepository.existsByMemberIdAndAnswerId(member.getId(), answer.getId())).isFalse(),
+                () -> assertThat(answerRepository.findById(answer.getId()).get().getLikeCount()).isZero()
         );
     }
 
@@ -216,7 +222,8 @@ class AnswerControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).likeCount(0L).build());
         AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).build());

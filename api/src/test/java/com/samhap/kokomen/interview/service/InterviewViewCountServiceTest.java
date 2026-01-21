@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.doThrow;
 
-import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
@@ -48,8 +47,8 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 다른_사용자의_인터뷰_최종_결과를_조회하면_조회수가_1_증가한다() {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
         Interview interview = interviewRepository.save(
@@ -86,8 +85,8 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 다른_사용자의_인터뷰_최종_결과를_연속으로_조회해도_조회수는_1만_증가한다() {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
         Interview interview = interviewRepository.save(
@@ -125,8 +124,8 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 자신의_인터뷰_최종_결과를_조회하면_조회수는_증가하지_않는다() {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
         Interview interview = interviewRepository.save(
@@ -163,7 +162,7 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 여러명이_동시에_인터뷰_최종_결과를_조회하면_정확하게_사람_수만큼_조회수가_증가한다() throws InterruptedException {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(0L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
@@ -209,8 +208,8 @@ class InterviewViewCountServiceTest extends BaseTest {
     void 레디스에서_예외가_발생하더라도_실패하지_않고_DB에서_조회수를_가져온다() {
         // given
         doThrow(new IllegalStateException("강제 예외")).when(redisTemplate).opsForValue();
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
         Interview interview = interviewRepository.save(
@@ -238,7 +237,7 @@ class InterviewViewCountServiceTest extends BaseTest {
                 new ClientIp("1.1.1.1"));
 
         // then
-        assertThat(viewCount).isEqualTo(0L);
+        assertThat(viewCount).isZero();
     }
 
     @Test
@@ -251,14 +250,14 @@ class InterviewViewCountServiceTest extends BaseTest {
                 InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
                         .interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
-        Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
-        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
         // when
         Long viewCount = interviewViewCountService.findViewCount(interview1);
 
         // then
-        assertThat(viewCount).isEqualTo(0L);
+        assertThat(viewCount).isZero();
     }
 }

@@ -31,9 +31,11 @@ class QuestionRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("Q1").build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("Q2").build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("Q1").build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).content("Q2").build());
 
         // when
         Long foundQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interview.getId());

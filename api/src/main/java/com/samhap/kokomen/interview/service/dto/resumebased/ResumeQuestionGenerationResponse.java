@@ -1,4 +1,4 @@
-package com.samhap.kokomen.interview.service.dto;
+package com.samhap.kokomen.interview.service.dto.resumebased;
 
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;

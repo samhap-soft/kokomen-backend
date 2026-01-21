@@ -7,7 +7,6 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.service.InterviewFacadeService;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
@@ -45,43 +44,12 @@ public class InterviewController {
         return ResponseEntity.ok(interviewFacadeService.startInterview(interviewRequest, memberAuth));
     }
 
-    @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
-    public ResponseEntity<?> proceedInterview(
-            @PathVariable Long interviewId,
-            @PathVariable Long curQuestionId,
-            @RequestBody @Valid AnswerRequest answerRequest,
-            @Authentication MemberAuth memberAuth
-    ) {
-        return interviewFacadeService.proceedInterview(interviewId, curQuestionId, answerRequest, memberAuth)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
-    }
-
     @PostMapping("/{interviewId}/like")
     public ResponseEntity<Void> likeInterview(
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
         interviewFacadeService.likeInterview(interviewId, memberAuth);
-        return ResponseEntity.noContent().build();
-    }
-
-    // TODO: 하나로 합치기
-    @PostMapping("/{interviewId}/like/kafka")
-    public ResponseEntity<Void> likeInterviewKafka(
-            @PathVariable Long interviewId,
-            @Authentication MemberAuth memberAuth
-    ) {
-        interviewFacadeService.likeInterviewKafka(interviewId, memberAuth);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{interviewId}/like/kafka-v2")
-    public ResponseEntity<Void> likeInterviewKafkaV2(
-            @PathVariable Long interviewId,
-            @Authentication MemberAuth memberAuth
-    ) {
-        interviewFacadeService.likeInterviewKafkaV2(interviewId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -126,7 +94,8 @@ public class InterviewController {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
+        return ResponseEntity.ok(
+                interviewFacadeService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
     }
 
     @DeleteMapping("/{interviewId}/like")

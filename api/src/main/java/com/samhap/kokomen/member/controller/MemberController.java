@@ -60,13 +60,6 @@ public class MemberController {
         return ResponseEntity.ok(memberService.findRankingPage(pageable));
     }
 
-    @GetMapping("/ranking/v3")
-    public ResponseEntity<RankingPageResponse> findRankingPageV3(
-            @PageableDefault(size = 30, sort = "score", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        return ResponseEntity.ok(memberService.findRankingPageV3(pageable));
-    }
-
     @GetMapping("/me/streaks")
     public ResponseEntity<MemberStreakResponse> findMemberStreaks(
             @Authentication MemberAuth memberAuth,

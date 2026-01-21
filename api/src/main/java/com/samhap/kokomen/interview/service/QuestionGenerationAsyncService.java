@@ -3,7 +3,7 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
 import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
-import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.PdfTextExtractor;
