@@ -1,4 +1,4 @@
-package com.samhap.kokomen.interview.service.dto;
+package com.samhap.kokomen.interview.service.dto.resumebased;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

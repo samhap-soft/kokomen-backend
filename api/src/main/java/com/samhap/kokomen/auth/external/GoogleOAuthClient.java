@@ -29,7 +29,7 @@ public class GoogleOAuthClient {
     ) {
         this.restClient = builder
                 .messageConverters(converters -> {
-                    converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
+                    converters.removeIf(MappingJackson2HttpMessageConverter.class::isInstance);
                     converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
                 })
                 .build();

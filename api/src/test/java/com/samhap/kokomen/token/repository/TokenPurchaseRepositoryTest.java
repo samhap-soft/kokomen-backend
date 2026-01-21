@@ -35,14 +35,15 @@ class TokenPurchaseRepositoryTest extends BaseTest {
                         .state(TokenPurchaseState.USABLE)
                         .build());
 
-        TokenPurchase newerToken = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .state(TokenPurchaseState.USABLE)
                         .build());
 
         // when
-        Optional<TokenPurchase> firstToken = tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.USABLE);
+        Optional<TokenPurchase> firstToken = tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(),
+                TokenPurchaseState.USABLE);
 
         // then
         assertThat(firstToken.get().getId()).isEqualTo(olderToken.getId());
@@ -53,7 +54,7 @@ class TokenPurchaseRepositoryTest extends BaseTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
 
-        TokenPurchase exhaustedToken = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .state(TokenPurchaseState.EXHAUSTED)
@@ -61,7 +62,8 @@ class TokenPurchaseRepositoryTest extends BaseTest {
                         .build());
 
         // when
-        Optional<TokenPurchase> firstToken = tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.USABLE);
+        Optional<TokenPurchase> firstToken = tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(),
+                TokenPurchaseState.USABLE);
 
         // then
         assertThat(firstToken).isEmpty();
@@ -70,24 +72,24 @@ class TokenPurchaseRepositoryTest extends BaseTest {
     @Test
     void 회원별_토큰_구매_내역을_페이징하여_조회한다() {
         // given
-        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1001L).build());
-        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1002L).build());
+        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().build());
 
         // member1의 토큰 구매 내역 3개 생성
-        TokenPurchase purchase1 = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member1.getId())
                         .totalAmount(100L)
                         .state(TokenPurchaseState.REFUNDABLE)
                         .build());
-        
+
         TokenPurchase purchase2 = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member1.getId())
                         .totalAmount(200L)
                         .state(TokenPurchaseState.USABLE)
                         .build());
-        
+
         TokenPurchase purchase3 = tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member1.getId())
@@ -114,7 +116,7 @@ class TokenPurchaseRepositoryTest extends BaseTest {
         assertThat(result.getTotalPages()).isEqualTo(2);
         assertThat(result.isFirst()).isTrue();
         assertThat(result.hasNext()).isTrue();
-        
+
         // id 내림차순으로 정렬되어 있는지 확인
         assertThat(result.getContent().get(0).getId()).isEqualTo(purchase3.getId());
         assertThat(result.getContent().get(1).getId()).isEqualTo(purchase2.getId());
@@ -130,12 +132,12 @@ class TokenPurchaseRepositoryTest extends BaseTest {
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .build());
-        
+
         tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .build());
-        
+
         tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
@@ -153,7 +155,7 @@ class TokenPurchaseRepositoryTest extends BaseTest {
         assertThat(result.isFirst()).isFalse();
         assertThat(result.isLast()).isTrue();
         assertThat(result.hasNext()).isFalse();
-        
+
         // 가장 오래된 항목이 마지막 페이지에 있는지 확인
         assertThat(result.getContent().get(0).getId()).isEqualTo(purchase1.getId());
     }
@@ -169,8 +171,8 @@ class TokenPurchaseRepositoryTest extends BaseTest {
 
         // then
         assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isEqualTo(0);
-        assertThat(result.getTotalPages()).isEqualTo(0);
+        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.getTotalPages()).isZero();
         assertThat(result.isFirst()).isTrue();
         assertThat(result.isLast()).isTrue();
         assertThat(result.hasNext()).isFalse();
@@ -188,7 +190,7 @@ class TokenPurchaseRepositoryTest extends BaseTest {
                         .state(TokenPurchaseState.REFUNDABLE)
                         .build());
 
-        TokenPurchase usable = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .state(TokenPurchaseState.USABLE)
@@ -203,7 +205,8 @@ class TokenPurchaseRepositoryTest extends BaseTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
 
         // when - REFUNDABLE 상태만 조회
-        Page<TokenPurchase> refundableResult = tokenPurchaseRepository.findByMemberIdAndState(member.getId(), TokenPurchaseState.REFUNDABLE, pageable);
+        Page<TokenPurchase> refundableResult = tokenPurchaseRepository.findByMemberIdAndState(member.getId(),
+                TokenPurchaseState.REFUNDABLE, pageable);
 
         // then
         assertThat(refundableResult.getContent()).hasSize(1);
@@ -227,10 +230,11 @@ class TokenPurchaseRepositoryTest extends BaseTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
 
         // when - EXHAUSTED 상태로 조회 (존재하지 않음)
-        Page<TokenPurchase> result = tokenPurchaseRepository.findByMemberIdAndState(member.getId(), TokenPurchaseState.EXHAUSTED, pageable);
+        Page<TokenPurchase> result = tokenPurchaseRepository.findByMemberIdAndState(member.getId(),
+                TokenPurchaseState.EXHAUSTED, pageable);
 
         // then
         assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isEqualTo(0);
+        assertThat(result.getTotalElements()).isZero();
     }
 }

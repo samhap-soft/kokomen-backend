@@ -157,15 +157,18 @@ class MemberControllerTest extends BaseControllerTest {
     @Test
     void 랭킹_조회에_성공한다() throws Exception {
         // given
-        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).kakaoId(1L).build());
-        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("200점 회원").score(200).kakaoId(2L).build());
-        Member member3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("300점 회원").score(300).kakaoId(3L).build());
+        memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("200점 회원").score(200).build());
+        Member member3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("300점 회원").score(300).build());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
 
         String responseJson = """
                 [
@@ -207,15 +210,21 @@ class MemberControllerTest extends BaseControllerTest {
     @Test
     void 랭킹_조회에_성공한다_V2() throws Exception {
         // given
-        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).kakaoId(1L).build());
-        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("200점 회원").score(200).kakaoId(2L).build());
-        Member member3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("300점 회원").score(300).kakaoId(3L).build());
+        memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("100점 회원").score(100).build());
+        Member member2 = memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("200점 회원").score(200).build());
+        Member member3 = memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("300점 회원").score(300).build());
 
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member3).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
+        interviewRepository.save(InterviewFixtureBuilder.builder().member(member2).rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED).build());
 
         String responseJson = """
                 {

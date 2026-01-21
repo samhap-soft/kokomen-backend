@@ -5,7 +5,6 @@ import com.samhap.kokomen.member.domain.Member;
 public class MemberFixtureBuilder {
 
     private Long id;
-    private Long kakaoId;
     private String nickname;
     private Integer score;
     private Boolean profileCompleted;
@@ -19,12 +18,6 @@ public class MemberFixtureBuilder {
         return this;
     }
 
-    @Deprecated
-    public MemberFixtureBuilder kakaoId(Long kakaoId) {
-        this.kakaoId = kakaoId;
-        return this;
-    }
-
     public MemberFixtureBuilder nickname(String nickname) {
         this.nickname = nickname;
         return this;
@@ -32,11 +25,6 @@ public class MemberFixtureBuilder {
 
     public MemberFixtureBuilder score(Integer score) {
         this.score = score;
-        return this;
-    }
-
-    public MemberFixtureBuilder profileCompleted(Boolean profileCompleted) {
-        this.profileCompleted = profileCompleted;
         return this;
     }
 

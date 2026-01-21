@@ -41,10 +41,14 @@ class RootQuestionServiceTest extends BaseTest {
         RootQuestion operatingSystemRootQuestion2 = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(2).build());
         RootQuestion operatingSystemRootQuestion3 =
-                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
+                rootQuestionRepository.save(
+                        RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3)
+                                .build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
 
         // when
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
@@ -64,10 +68,14 @@ class RootQuestionServiceTest extends BaseTest {
         RootQuestion operatingSystemRootQuestion2 = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(2).build());
         RootQuestion operatingSystemRootQuestion3 =
-                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
+                rootQuestionRepository.save(
+                        RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3)
+                                .build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
 
         // when
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
@@ -84,10 +92,10 @@ class RootQuestionServiceTest extends BaseTest {
         InterviewRequest interviewRequest = new InterviewRequest(Category.OPERATING_SYSTEM, 3, InterviewMode.TEXT);
         RootQuestion operatingSystemRootQuestion1 = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(1).build());
-        RootQuestion operatingSystemRootQuestion2 = rootQuestionRepository.save(
+        rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(2).build());
-        RootQuestion operatingSystemRootQuestion3 =
-                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
+        rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
 
         // when
@@ -108,11 +116,16 @@ class RootQuestionServiceTest extends BaseTest {
         RootQuestion operatingSystemRootQuestion2 = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(2).build());
         RootQuestion operatingSystemRootQuestion3 =
-                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
+                rootQuestionRepository.save(
+                        RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3)
+                                .build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
 
         // when
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
@@ -132,12 +145,18 @@ class RootQuestionServiceTest extends BaseTest {
         RootQuestion operatingSystemRootQuestion2 = rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(2).build());
         RootQuestion operatingSystemRootQuestion3 =
-                rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3).build());
+                rootQuestionRepository.save(
+                        RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(3)
+                                .build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion2).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion3).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(operatingSystemRootQuestion1).member(member).build());
 
         // when
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);

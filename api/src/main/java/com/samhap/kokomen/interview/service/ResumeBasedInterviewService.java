@@ -8,13 +8,13 @@ import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;
-import com.samhap.kokomen.interview.service.dto.GeneratedQuestionsResponse;
-import com.samhap.kokomen.interview.service.dto.QuestionGenerationStateResponse;
-import com.samhap.kokomen.interview.service.dto.QuestionGenerationSubmitResponse;
-import com.samhap.kokomen.interview.service.dto.ResumeBasedQuestionGenerateRequest;
-import com.samhap.kokomen.interview.service.dto.ResumeQuestionGenerationPageResponse;
-import com.samhap.kokomen.interview.service.dto.ResumeQuestionGenerationResponse;
-import com.samhap.kokomen.interview.service.dto.ResumeQuestionUsageStatusResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.GeneratedQuestionsResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.QuestionGenerationStateResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.QuestionGenerationSubmitResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeBasedQuestionGenerateRequest;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeQuestionGenerationPageResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeQuestionGenerationResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeQuestionUsageStatusResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
@@ -127,7 +127,8 @@ public class ResumeBasedInterviewService {
             Pageable pageable
     ) {
         if (state == null) {
-            return resumeQuestionGenerationRepository.findByMemberIdAndStateIn(memberId, DEFAULT_FILTER_STATES, pageable);
+            return resumeQuestionGenerationRepository.findByMemberIdAndStateIn(memberId, DEFAULT_FILTER_STATES,
+                    pageable);
         }
         return resumeQuestionGenerationRepository.findByMemberIdAndState(memberId, state, pageable);
     }
