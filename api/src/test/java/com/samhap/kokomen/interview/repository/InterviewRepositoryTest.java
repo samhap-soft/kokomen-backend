@@ -83,7 +83,6 @@ class InterviewRepositoryTest extends BaseTest {
 
         LocalDate today = LocalDate.of(2024, 1, 15);
         LocalDate yesterday = today.minusDays(1);
-        today.minusDays(2);
 
         // member1의 완료된 인터뷰들 - 같은 날짜에 여러 개, 다른 날짜에도 있음
         createFinishedInterview(member1, rootQuestion, today.atTime(10, 0));

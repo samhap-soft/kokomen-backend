@@ -1,6 +1,6 @@
 package com.samhap.kokomen.global.constant;
 
-public abstract class AwsConstant {
+public final class AwsConstant {
 
     public static final String CLOUD_FRONT_DOMAIN_URL = "https://dhtg8wzvkbfxr.cloudfront.net/";
 

@@ -385,8 +385,6 @@ class InterviewControllerV2Test extends BaseControllerTest {
         questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
 
-        System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
-
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
@@ -448,8 +446,6 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.C).build());
         questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
-
-        System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
