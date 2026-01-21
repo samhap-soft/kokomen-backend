@@ -6,7 +6,6 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.mo
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
-import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,8 +30,6 @@ public abstract class DocsTest {
     protected MockMvc mockMvc;
     @MockitoBean
     protected InterviewProceedGptClient interviewProceedGptClient;
-    @MockitoBean
-    protected BedrockClient bedrockClient;
     @Autowired
     private H2AutoIncrementCleaner h2AutoIncrementCleaner;
 

@@ -47,8 +47,9 @@ public class AuthController {
             @RequestParam String state
     ) {
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create("https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
-                        .formatted(kakaoClientId, redirectUri, state)))
+                .location(URI.create(
+                        "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
+                                .formatted(kakaoClientId, redirectUri, state)))
                 .build();
     }
 
@@ -72,8 +73,9 @@ public class AuthController {
     ) {
         String scope = "openid%20profile%20email";
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create("https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s"
-                        .formatted(googleClientId, redirectUri, scope, state)))
+                .location(URI.create(
+                        "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s"
+                                .formatted(googleClientId, redirectUri, scope, state)))
                 .build();
     }
 
@@ -88,30 +90,6 @@ public class AuthController {
         session.setAttribute("MEMBER_ID", memberResponse.id());
 
         return ResponseEntity.ok(memberResponse);
-    }
-
-    @PostMapping("/kakao-logout")
-    public ResponseEntity<Void> kakaoLogout(
-            @Authentication MemberAuth memberAuth,
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) {
-        SessionInvalidator.logout(request, response);
-
-        authService.kakaoLogout(memberAuth);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/kakao-withdraw")
-    public ResponseEntity<Void> kakaoWithdraw(
-            @Authentication MemberAuth memberAuth,
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) {
-        SessionInvalidator.logout(request, response);
-
-        authService.withdraw(memberAuth);
-        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/logout")

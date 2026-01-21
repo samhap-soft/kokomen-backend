@@ -39,7 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 
-public class InterviewDocsV2Test extends DocsTest {
+class InterviewDocsV2Test extends DocsTest {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -124,7 +124,7 @@ public class InterviewDocsV2Test extends DocsTest {
         Question question2 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
-        Question question3 = questionRepository.save(
+        questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());

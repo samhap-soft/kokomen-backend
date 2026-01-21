@@ -382,10 +382,8 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.C).build());
-        Question question3 = questionRepository.save(
+        questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
-
-        System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
@@ -446,10 +444,8 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.C).build());
-        Question question3 = questionRepository.save(
+        questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
-
-        System.out.println(questionRepository.findTop2ByInterviewIdOrderByIdDesc(interview.getId()));
 
         String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());

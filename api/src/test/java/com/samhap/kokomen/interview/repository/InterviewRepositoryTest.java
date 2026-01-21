@@ -32,7 +32,8 @@ class InterviewRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
 
         // when
         interviewRepository.increaseLikeCountModifying(interview.getId());
@@ -47,7 +48,8 @@ class InterviewRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
 
         // when
         interviewRepository.decreaseLikeCountModifying(interview.getId());
@@ -62,7 +64,8 @@ class InterviewRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
 
         // when
         Long foundRootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interview.getId());
@@ -77,23 +80,22 @@ class InterviewRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member1 = memberRepository.save(MemberFixtureBuilder.builder().build());
         Member member2 = memberRepository.save(MemberFixtureBuilder.builder().build());
-        
+
         LocalDate today = LocalDate.of(2024, 1, 15);
         LocalDate yesterday = today.minusDays(1);
-        LocalDate twoDaysAgo = today.minusDays(2);
-        
+
         // member1의 완료된 인터뷰들 - 같은 날짜에 여러 개, 다른 날짜에도 있음
         createFinishedInterview(member1, rootQuestion, today.atTime(10, 0));
         createFinishedInterview(member1, rootQuestion, today.atTime(14, 0));
         createFinishedInterview(member1, rootQuestion, yesterday.atTime(9, 0));
-        
+
         // member1의 진행중인 인터뷰 (결과에 포함되면 안됨)
         interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member1)
                 .rootQuestion(rootQuestion)
                 .interviewState(InterviewState.IN_PROGRESS)
                 .build());
-        
+
         // member2의 완료된 인터뷰 (결과에 포함되면 안됨)
         createFinishedInterview(member2, rootQuestion, today.atTime(11, 0));
 
@@ -102,11 +104,11 @@ class InterviewRepositoryTest extends BaseTest {
 
         // then
         assertThat(result).hasSize(2);
-        
+
         // 날짜순으로 정렬되어 반환되는지 확인
         assertThat(result.get(0).date()).isEqualTo(yesterday);
         assertThat(result.get(0).count()).isEqualTo(1L);
-        
+
         assertThat(result.get(1).date()).isEqualTo(today);
         assertThat(result.get(1).count()).isEqualTo(2L);
     }
@@ -144,7 +146,7 @@ class InterviewRepositoryTest extends BaseTest {
                 .totalScore(85)
                 .finishedAt(finishedAt)
                 .build();
-        
+
         interviewRepository.save(interview);
     }
 }

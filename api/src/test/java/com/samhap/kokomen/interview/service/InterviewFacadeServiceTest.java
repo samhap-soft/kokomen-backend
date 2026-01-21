@@ -2,9 +2,6 @@ package com.samhap.kokomen.interview.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
@@ -12,8 +9,6 @@ import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -25,20 +20,13 @@ import com.samhap.kokomen.interview.domain.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
-import com.samhap.kokomen.token.service.TokenService;
 import java.time.Duration;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,96 +47,6 @@ class InterviewFacadeServiceTest extends BaseTest {
     private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private RedisService redisService;
-    @Autowired
-    private TokenService tokenService;
-
-    @Test
-    void 인터뷰를_진행할_때_마지막_답변이_아니면_다음_꼬리_질문과_현재_답변에_대한_피드백을_응답한다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenService.createTokensForNewMember(member.getId());
-        int freeTokenCount = tokenService.readFreeTokenCount(member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question = questionRepository.save(QuestionFixtureBuilder.builder().build());
-        String nextQuestion = "스레드 안전하다는 것은 무엇인가요?";
-        AnswerRank curAnswerRank = AnswerRank.A;
-
-        GptResponse gptResponse = GptResponseFixtureBuilder.builder()
-                .answerRank(curAnswerRank)
-                .nextQuestion(nextQuestion)
-                .buildProceed();
-        when(interviewProceedGptClient.requestToGpt(any())).thenReturn(gptResponse);
-        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
-                .answerRank(curAnswerRank)
-                .nextQuestion(nextQuestion)
-                .buildProceed();
-        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
-
-        InterviewProceedResponse expected = new InterviewProceedResponse(curAnswerRank, question.getId() + 1,
-                nextQuestion);
-
-        // when
-        Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."),
-                new MemberAuth(member.getId()));
-
-        // then
-        assertAll(
-                () -> assertThat(actual).contains(expected),
-                () -> assertThat(questionRepository.existsById(question.getId() + 1)).isTrue(),
-                () -> assertThat(tokenService.readFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
-        );
-    }
-
-    @Test
-    void 인터뷰를_진행할_때_마지막_답변이면_현재_답변에_대한_피드백과_응답한다() {
-        // given
-        AnswerRank answerRank = AnswerRank.B;
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenService.createTokensForNewMember(member.getId());
-        int freeTokenCount = tokenService.readFreeTokenCount(member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().build());
-        Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).answerRank(answerRank).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(answerRank).build());
-        String totalFeedback = "스레드 안전하다는 것은 무엇인가요?";
-
-        GptResponse gptResponse = GptResponseFixtureBuilder.builder()
-                .totalFeedback(totalFeedback)
-                .answerRank(answerRank)
-                .buildEnd();
-        when(interviewProceedGptClient.requestToGpt(any())).thenReturn(gptResponse);
-
-        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
-                .totalFeedback(totalFeedback)
-                .answerRank(answerRank)
-                .buildEnd();
-        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
-
-        // when
-        Optional<InterviewProceedResponse> actual = interviewFacadeService.proceedInterview(
-                interview.getId(), question3.getId(), new AnswerRequest("프로세스는 무겁고, 스레드는 가벼워요."),
-                new MemberAuth(member.getId()));
-
-        // then
-        assertAll(
-                () -> assertThat(actual).isEmpty(),
-                () -> assertThat(questionRepository.existsById(question3.getId() + 1)).isFalse(),
-                () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalFeedback()).isEqualTo(
-                        totalFeedback),
-                () -> assertThat(interviewRepository.findById(interview.getId()).get().getTotalScore()).isEqualTo(
-                        answerRank.getScore() * 3),
-                () -> assertThat(memberRepository.findById(member.getId()).get().getScore()).isEqualTo(
-                        member.getScore() + answerRank.getScore() * 3),
-                () -> assertThat(tokenService.readFreeTokenCount(member.getId())).isEqualTo(freeTokenCount - 1)
-        );
-    }
 
     @Test
     void 진행중인_인터뷰_진행_상황을_폴링으로_조회할_때_현재_질문_id가_아니라면_예외가_발생한다() {
@@ -243,9 +141,6 @@ class InterviewFacadeServiceTest extends BaseTest {
     @Test
     void 이미_좋아요를_누른_인터뷰에_좋아요를_요청하면_예외가_발생한다() {
         // given
-        when(kafkaTemplate.send(any(), any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(null));
-
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(

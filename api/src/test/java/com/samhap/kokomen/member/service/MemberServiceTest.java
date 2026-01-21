@@ -175,8 +175,8 @@ class MemberServiceTest extends BaseTest {
         );
 
         // then
-        assertThat(result.maxStreak()).isEqualTo(0);
-        assertThat(result.currentStreak()).isEqualTo(0);
+        assertThat(result.maxStreak()).isZero();
+        assertThat(result.currentStreak()).isZero();
     }
 
     @Test
@@ -255,7 +255,7 @@ class MemberServiceTest extends BaseTest {
         );
 
         // then: 어제, 오늘 모두 안 풀었으므로 현재 스트릭은 0
-        assertThat(result.currentStreak()).isEqualTo(0);
+        assertThat(result.currentStreak()).isZero();
     }
 
     @Test

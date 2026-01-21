@@ -14,7 +14,6 @@ import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponseV2;
 import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
 import com.samhap.kokomen.member.service.dto.RankingPageResponse;
-import com.samhap.kokomen.member.service.dto.RankingProjection;
 import com.samhap.kokomen.member.service.dto.RankingResponse;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
@@ -28,7 +27,6 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -74,7 +72,8 @@ public class MemberService {
         Token freeToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
         Token paidToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
         boolean isTestUser = isTestUser(memberAuth.memberId());
-        return new MyProfileResponse(member, totalMemberCount, rank, freeToken.getTokenCount() + paidToken.getTokenCount(), isTestUser);
+        return new MyProfileResponse(member, totalMemberCount, rank,
+                freeToken.getTokenCount() + paidToken.getTokenCount(), isTestUser);
     }
 
     public MyProfileResponseV2 findMemberV2(MemberAuth memberAuth) {
@@ -83,7 +82,8 @@ public class MemberService {
         long totalMemberCount = memberRepository.count();
         Token freeToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
         Token paidToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
-        return new MyProfileResponseV2(member, totalMemberCount, rank, freeToken.getTokenCount(), paidToken.getTokenCount());
+        return new MyProfileResponseV2(member, totalMemberCount, rank, freeToken.getTokenCount(),
+                paidToken.getTokenCount());
     }
 
     public List<RankingResponse> findRanking(Pageable pageable) {
@@ -104,19 +104,6 @@ public class MemberService {
         long totalElements = memberRepository.countTotalMembers();
 
         return RankingPageResponse.of(rankings, currentPage, limit, totalElements);
-    }
-
-    // 페이지네이션용 v3(Pageable을 활용한 코드)
-    public RankingPageResponse findRankingPageV3(Pageable pageable) {
-        Page<RankingProjection> page = memberRepository.findRankingsV3(pageable);
-        List<RankingResponse> rankings = RankingResponse.createRankingResponses(page.getContent());
-
-        return RankingPageResponse.of(
-                rankings,
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements()
-        );
     }
 
     @Transactional
@@ -144,7 +131,8 @@ public class MemberService {
     }
 
     public MemberStreakResponse findMemberStreaks(MemberAuth memberAuth, LocalDate startDate, LocalDate endDate) {
-        List<DailyInterviewCount> allDailyInterviewCount = interviewRepository.countFinishedInterviewsByMemberId(memberAuth.memberId());
+        List<DailyInterviewCount> allDailyInterviewCount = interviewRepository.countFinishedInterviewsByMemberId(
+                memberAuth.memberId());
 
         Integer maxStreak = calculateMaxStreak(allDailyInterviewCount);
         Integer currentStreak = calculateCurrentStreak(allDailyInterviewCount, LocalDate.now());
@@ -153,7 +141,8 @@ public class MemberService {
         return new MemberStreakResponse(filteredCounts, maxStreak, currentStreak);
     }
 
-    private List<DailyInterviewCount> filterByDateRange(List<DailyInterviewCount> allDailyInterviewCount, LocalDate startDate, LocalDate endDate) {
+    private List<DailyInterviewCount> filterByDateRange(List<DailyInterviewCount> allDailyInterviewCount,
+                                                        LocalDate startDate, LocalDate endDate) {
         Comparator<DailyInterviewCount> dateComparator = Comparator.comparing(DailyInterviewCount::date);
 
         int startIndex = findStartIndex(allDailyInterviewCount, startDate, dateComparator);
@@ -162,16 +151,20 @@ public class MemberService {
         return allDailyInterviewCount.subList(startIndex, endIndex);
     }
 
-    private int findStartIndex(List<DailyInterviewCount> allDailyInterviewCount, LocalDate startDate, Comparator<DailyInterviewCount> comparator) {
-        int index = Collections.binarySearch(allDailyInterviewCount, new DailyInterviewCount(startDate, 0L), comparator);
+    private int findStartIndex(List<DailyInterviewCount> allDailyInterviewCount, LocalDate startDate,
+                               Comparator<DailyInterviewCount> comparator) {
+        int index = Collections.binarySearch(allDailyInterviewCount, new DailyInterviewCount(startDate, 0L),
+                comparator);
         if (index < 0) {
             return -index - 1;
         }
         return index;
     }
 
-    private int findEndIndex(List<DailyInterviewCount> allDailyInterviewCount, LocalDate endDate, Comparator<DailyInterviewCount> comparator) {
-        int index = Collections.binarySearch(allDailyInterviewCount, new DailyInterviewCount(endDate.plusDays(1), 0L), comparator);
+    private int findEndIndex(List<DailyInterviewCount> allDailyInterviewCount, LocalDate endDate,
+                             Comparator<DailyInterviewCount> comparator) {
+        int index = Collections.binarySearch(allDailyInterviewCount, new DailyInterviewCount(endDate.plusDays(1), 0L),
+                comparator);
         if (index < 0) {
             return -index - 1;
         }

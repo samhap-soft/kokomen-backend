@@ -1,4 +1,4 @@
-package com.samhap.kokomen.interview.service.dto;
+package com.samhap.kokomen.interview.service.dto.resumebased;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
 import org.springframework.web.multipart.MultipartFile;

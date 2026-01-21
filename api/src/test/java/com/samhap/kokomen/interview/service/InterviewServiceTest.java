@@ -73,7 +73,8 @@ class InterviewServiceTest extends BaseTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
 
         // when & then
         assertThatThrownBy(() -> interviewService.unlikeInterview(interview.getId(), new MemberAuth(member.getId())))
@@ -87,14 +88,18 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Interview interview2 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.IN_PROGRESS).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.IN_PROGRESS).build());
 
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+        interviewLikeRepository.save(
+                InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
 
         // when
-        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+        List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findMyInterviews(
+                new MemberAuth(member.getId()), null,
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
 
         // then
@@ -110,16 +115,19 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void 남의_인터뷰_목록을_조회할_때_이미_좋아요를_눌렀는지_여부도_함께_조회된다() {
         // given
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L)
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).likeCount(1L)
                         .build());
         Interview interview2 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
 
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(readerMember).build());
+        interviewLikeRepository.save(
+                InterviewLikeFixtureBuilder.builder().interview(interview1).member(readerMember).build());
 
         // when
         List<InterviewSummaryResponse> interviewSummaryResponses = interviewService.findOtherMemberInterviews(
@@ -141,24 +149,27 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void 남의_인터뷰_결과를_조회할_때_답변과_인터뷰_각각에_대해_이미_좋아요를_눌렀는지_여부도_함께_조회된다() {
         // given
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).build());
-        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(targetMember).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
 
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
+        interviewLikeRepository.save(
+                InterviewLikeFixtureBuilder.builder().interview(interview).member(readerMember).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer1).build());
         answerLikeRepository.save(AnswerLikeFixtureBuilder.builder().member(readerMember).answer(answer2).build());
 
         // when
-        InterviewResultResponse results = interviewService.findOtherMemberInterviewResult(interview.getId(), new MemberAuth(readerMember.getId()),
+        InterviewResultResponse results = interviewService.findOtherMemberInterviewResult(interview.getId(),
+                new MemberAuth(readerMember.getId()),
                 new ClientIp("1.1.1.1"));
 
         // then
@@ -178,12 +189,14 @@ class InterviewServiceTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         for (int i = 0; i < interviewCount; i++) {
             interviewRepository.save(
-                    InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                    InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                            .interviewState(InterviewState.FINISHED).build());
         }
 
         // when
         long actualTotalPageCount = interviewService.findOtherMemberInterviews(
-                member.getId(), MemberAuth.notAuthenticated(), PageRequest.of(0, pageSize, Sort.by(Direction.DESC, "id"))
+                member.getId(), MemberAuth.notAuthenticated(),
+                PageRequest.of(0, pageSize, Sort.by(Direction.DESC, "id"))
         ).totalPageCount();
 
         // then
@@ -206,19 +219,23 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
         // when
-        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
+                null,
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
 
         // then
@@ -231,23 +248,27 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
         // when
-        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
+                null,
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
 
         // then
-        assertThat(responses.get(0).submittedAnswerMemoCount()).isEqualTo(0);
+        assertThat(responses.get(0).submittedAnswerMemoCount()).isZero();
     }
 
     @MethodSource("provideAnswerMemoStateAndHasTempAnswerMemo")
@@ -257,7 +278,8 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).likeCount(1L).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
 
@@ -265,7 +287,8 @@ class InterviewServiceTest extends BaseTest {
                 .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
 
         // when
-        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
+                null,
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
 
         // then
@@ -284,11 +307,13 @@ class InterviewServiceTest extends BaseTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.IN_PROGRESS).likeCount(1L).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.IN_PROGRESS).likeCount(1L).build());
 
         // when
-        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
+                null,
                 PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
 
         // then
@@ -304,7 +329,8 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4).interviewState(InterviewState.FINISHED)
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4)
+                        .interviewState(InterviewState.FINISHED)
                         .likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
@@ -315,16 +341,21 @@ class InterviewServiceTest extends BaseTest {
         Question question4 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+        interviewLikeRepository.save(
+                InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
 
         // when
         List<InterviewSummaryResponse> responses = interviewService.findOtherMemberInterviews(
@@ -344,7 +375,8 @@ class InterviewServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4).interviewState(InterviewState.FINISHED)
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).maxQuestionCount(4)
+                        .interviewState(InterviewState.FINISHED)
                         .likeCount(1L).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
@@ -355,16 +387,21 @@ class InterviewServiceTest extends BaseTest {
         Question question4 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview1).build());
         Answer answer4 = answerRepository.save(AnswerFixtureBuilder.builder().question(question4).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
 
-        interviewLikeRepository.save(InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
+        interviewLikeRepository.save(
+                InterviewLikeFixtureBuilder.builder().interview(interview1).member(member).build());
 
         // when
         List<InterviewSummaryResponse> responses = interviewService.findOtherMemberInterviews(
@@ -377,39 +414,57 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void 자신의_인터뷰_결과_조회시_참조_답변이_포함된다() {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(101).build());
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(10L).build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(101).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        
+
         // 다른 사용자들의 참조 답변 데이터
-        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(11L).build());
-        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
-        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("우수한 답변 1").answerRank(AnswerRank.A).build());
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L)
+                        .build());
+        Question otherQuestion1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion1).content("우수한 답변 1").answerRank(AnswerRank.A)
+                        .build());
 
-        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(12L).build());
-        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L).build());
-        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("우수한 답변 2").answerRank(AnswerRank.A).build());
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").build());
+        Interview otherInterview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L)
+                        .build());
+        Question otherQuestion2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion2).content("우수한 답변 2").answerRank(AnswerRank.A)
+                        .build());
 
-        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(13L).build());
-        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L).build());
-        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("괜찮은 답변").answerRank(AnswerRank.B).build());
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").build());
+        Interview otherInterview3 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L)
+                        .build());
+        Question otherQuestion3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion3).content("괜찮은 답변").answerRank(AnswerRank.B)
+                        .build());
 
         interview.evaluate("총 피드백", 50);
         interviewRepository.save(interview);
 
         // when
-        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
-        
+
         List<RootQuestionReferenceAnswer> referenceAnswers = result.rootQuestionReferenceAnswers();
-        
+
         // A 랭크가 먼저, 인터뷰 좋아요 수 높은 순으로 정렬
         assertAll(
                 () -> assertThat(referenceAnswers.get(0).nickname()).isEqualTo("김철수"),
@@ -427,40 +482,58 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void A랭크_답변이_3개_미만일_때_B랭크로_채운다() {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(102).build());
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(20L).build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(102).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        
+
         // A 랭크 답변 1개만
-        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(21L).build());
-        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
-        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("A 랭크 답변").answerRank(AnswerRank.A).build());
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L)
+                        .build());
+        Question otherQuestion1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion1).content("A 랭크 답변").answerRank(AnswerRank.A)
+                        .build());
 
         // B 랭크 답변 2개
-        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(22L).build());
-        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(8L).build());
-        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("B 랭크 답변 1").answerRank(AnswerRank.B).build());
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").build());
+        Interview otherInterview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(8L)
+                        .build());
+        Question otherQuestion2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion2).content("B 랭크 답변 1").answerRank(AnswerRank.B)
+                        .build());
 
-        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(23L).build());
-        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(5L).build());
-        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("B 랭크 답변 2").answerRank(AnswerRank.B).build());
+        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").build());
+        Interview otherInterview3 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(5L)
+                        .build());
+        Question otherQuestion3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion3).content("B 랭크 답변 2").answerRank(AnswerRank.B)
+                        .build());
 
         interview.evaluate("총 피드백", 50);
         interviewRepository.save(interview);
 
         // when
-        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
-        
+
         List<RootQuestionReferenceAnswer> referenceAnswers = result.rootQuestionReferenceAnswers();
-        
+
         // A 랭크 1개 + B 랭크 2개 (인터뷰 좋아요 수 높은 순)
         assertAll(
                 () -> assertThat(referenceAnswers.get(0).answerRank()).isEqualTo(AnswerRank.A),
@@ -475,23 +548,33 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void 자신의_인터뷰는_참조_답변에서_제외된다() {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(103).build());
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(30L).build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(100L).build()); // 가장 높은 좋아요
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(103).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(100L)
+                        .build()); // 가장 높은 좋아요
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question).content("내 답변").answerRank(AnswerRank.A).build());
-        
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question).content("내 답변").answerRank(AnswerRank.A).build());
+
         // 다른 사용자 답변
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(31L).build());
-        Interview otherInterview = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember).rootQuestion(rootQuestion).likeCount(10L).build());
-        Question otherQuestion = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion).content("다른 사용자 답변").answerRank(AnswerRank.A).build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember).rootQuestion(rootQuestion).likeCount(10L)
+                        .build());
+        Question otherQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion).content("다른 사용자 답변").answerRank(AnswerRank.A)
+                        .build());
 
         interview.evaluate("총 피드백", 50);
         interviewRepository.save(interview);
 
         // when
-        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(1);
@@ -502,33 +585,54 @@ class InterviewServiceTest extends BaseTest {
     @Test
     void A와_B랭크_답변이_없으면_빈_리스트를_반환한다() {
         // given
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(104).build());
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(40L).build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(104).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        
+
         // C, D, F 랭크 답변들만 존재
-        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").kakaoId(41L).build());
-        Interview otherInterview1 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L).build());
-        Question otherQuestion1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview1).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion1).content("C 랭크 답변").answerRank(AnswerRank.C).build());
+        Member otherMember1 = memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L)
+                        .build());
+        Question otherQuestion1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview1).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion1).content("C 랭크 답변").answerRank(AnswerRank.C)
+                        .build());
 
-        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").kakaoId(42L).build());
-        Interview otherInterview2 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L).build());
-        Question otherQuestion2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview2).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion2).content("D 랭크 답변").answerRank(AnswerRank.D).build());
+        Member otherMember2 = memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("이영희").build());
+        Interview otherInterview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L)
+                        .build());
+        Question otherQuestion2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview2).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion2).content("D 랭크 답변").answerRank(AnswerRank.D)
+                        .build());
 
-        Member otherMember3 = memberRepository.save(MemberFixtureBuilder.builder().nickname("박민수").kakaoId(43L).build());
-        Interview otherInterview3 = interviewRepository.save(InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L).build());
-        Question otherQuestion3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(otherInterview3).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3).content("F 랭크 답변").answerRank(AnswerRank.F).build());
+        Member otherMember3 = memberRepository.save(
+                MemberFixtureBuilder.builder().nickname("박민수").build());
+        Interview otherInterview3 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember3).rootQuestion(rootQuestion).likeCount(3L)
+                        .build());
+        Question otherQuestion3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview3).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion3).content("F 랭크 답변").answerRank(AnswerRank.F)
+                        .build());
 
         interview.evaluate("총 피드백", 50);
         interviewRepository.save(interview);
 
         // when
-        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(), new MemberAuth(member.getId()));
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()));
 
         // then - A, B 랭크가 없으므로 빈 리스트 반환
         assertThat(result.rootQuestionReferenceAnswers()).isEmpty();
