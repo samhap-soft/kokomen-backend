@@ -6,7 +6,9 @@ import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.interview.domain.InterviewMode;
@@ -15,13 +17,10 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.BedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
-import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
-import com.samhap.kokomen.interview.service.dto.AnswerRequest;
 import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
@@ -31,6 +30,7 @@ import com.samhap.kokomen.interview.service.dto.check.InterviewCheckResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateTextModeResponse;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateVoiceModeResponse;
+import com.samhap.kokomen.interview.service.dto.resumebased.ResumeBasedInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
@@ -56,9 +56,7 @@ public class InterviewFacadeService {
     private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
     private final QuestionVoicePathResolver questionVoicePathResolver;
-    private final BedrockClient bedrockClient;
     private final RedisService redisService;
-    private final InterviewProceedService interviewProceedService;
     private final InterviewService interviewService;
     private final InterviewLikeService interviewLikeService;
     private final MemberService memberService;
@@ -66,9 +64,8 @@ public class InterviewFacadeService {
     private final RootQuestionService rootQuestionService;
     private final QuestionService questionService;
     private final AnswerService answerService;
-    private final InterviewLikeEventProducer interviewLikeEventProducer;
-    private final InterviewLikeEventProducerV2 interviewLikeEventProducerV2;
     private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
+    private final ResumeBasedInterviewService resumeBasedInterviewService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -107,23 +104,6 @@ public class InterviewFacadeService {
                     questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
-    }
-
-    public Optional<InterviewProceedResponse> proceedInterview(Long interviewId, Long curQuestionId,
-                                                               AnswerRequest answerRequest, MemberAuth memberAuth) {
-        tokenService.validateEnoughTokens(memberAuth.memberId(), 1);
-        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
-        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
-        acquireLockForProceedInterview(lockKey);
-        try {
-            QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
-                    answerRequest.answer());
-            LlmResponse llmResponse = bedrockClient.requestToBedrock(questionAndAnswers);
-            return interviewProceedService.proceedOrEndInterview(memberAuth.memberId(), questionAndAnswers, llmResponse,
-                    interviewId);
-        } finally {
-            redisService.releaseLock(lockKey);
-        }
     }
 
     public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest,
@@ -259,39 +239,6 @@ public class InterviewFacadeService {
                 interviewId); // X락을 사용하기 때문에 동시에 요청이 와도 올바른 likeCount 값으로 이벤트를 생성할 수 있다.
     }
 
-    // TODO: 하나로 합치기
-    @Transactional
-    public void likeInterviewKafka(Long interviewId, MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-        Interview interview = interviewService.readInterview(interviewId);
-        interviewLikeService.likeInterview(new InterviewLike(member, interview));
-
-        // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
-        interviewLikeEventProducer.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(),
-                interview.getLikeCount() + 1);
-    }
-
-    @Transactional
-    public void likeInterviewKafkaV2(Long interviewId, MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-        Interview interview = interviewService.readInterview(interviewId);
-        interviewLikeService.likeInterview(new InterviewLike(member, interview));
-        Long likeCount = incrementAndGetLikeCountInRedis(interviewId, interview);
-
-        // Kafka 이벤트 발행 (receiverMemberId, likerMemberId, likeCount 모두 전달)
-        interviewLikeEventProducerV2.sendLikeEvent(interviewId, interview.getMember().getId(), memberAuth.memberId(),
-                likeCount);
-    }
-
-    private Long incrementAndGetLikeCountInRedis(Long interviewId, Interview interview) {
-        String likeCountKey = "interview:like:" + interviewId;
-        boolean expireSuccess = redisService.expireKey(likeCountKey, Duration.ofDays(2));
-        if (!expireSuccess) {
-            redisService.setIfAbsent(likeCountKey, String.valueOf(interview.getLikeCount()), Duration.ofDays(2));
-        }
-        return redisService.incrementKey(likeCountKey);
-    }
-
     public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
         return interviewService.checkInterview(interviewId, mode, memberAuth);
     }
@@ -324,5 +271,45 @@ public class InterviewFacadeService {
         return rootQuestionService.findAllRootQuestionByCategory(category).stream()
                 .map(RootQuestionResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public InterviewStartResponse startResumeBasedInterview(
+            Long generationId,
+            ResumeBasedInterviewStartRequest request,
+            MemberAuth memberAuth
+    ) {
+        Member member = memberService.readById(memberAuth.memberId());
+        ResumeQuestionGeneration generation = resumeBasedInterviewService.readGeneration(generationId);
+        validateGenerationOwnership(generation, memberAuth.memberId());
+        validateGenerationCompleted(generation);
+        GeneratedQuestion generatedQuestion = resumeBasedInterviewService.readGeneratedQuestion(
+                request.generatedQuestionId(), generationId);
+
+        InterviewMode interviewMode = request.mode();
+        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+
+        Interview interview = interviewService.saveInterview(
+                new Interview(member, generatedQuestion, request.maxQuestionCount(), interviewMode));
+        Question question = questionService.saveQuestion(new Question(interview, generatedQuestion.getContent()));
+
+        if (interviewMode == InterviewMode.VOICE) {
+            String voiceUrl = questionService.createAndUploadQuestionVoice(question);
+            return new InterviewStartVoiceModeResponse(interview, question, voiceUrl);
+        }
+        return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    private void validateGenerationOwnership(ResumeQuestionGeneration generation, Long memberId) {
+        if (!generation.isOwner(memberId)) {
+            throw new ForbiddenException("본인의 질문 생성 결과로만 면접을 시작할 수 있습니다.");
+        }
+    }
+
+    private void validateGenerationCompleted(ResumeQuestionGeneration generation) {
+        if (!generation.isCompleted()) {
+            throw new BadRequestException("질문 생성이 완료되지 않았습니다.");
+        }
     }
 }

@@ -128,7 +128,8 @@ class TokenControllerTest extends BaseControllerTest {
 
         // 유료 토큰 수 증가 확인
         assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens + 10);
-        assertThat(tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(), TokenPurchaseState.REFUNDABLE)).isPresent();
+        assertThat(tokenPurchaseRepository.findFirstUsableTokenByState(member.getId(),
+                TokenPurchaseState.REFUNDABLE)).isPresent();
         assertThat(tokenPurchaseRepository.findById(1L).get().getEasyPayProvider()).isEqualTo("카카오페이");
         assertThat(tokenPurchaseRepository.findById(1L).get().getPaymentMethod()).isEqualTo("간편결제");
     }
@@ -140,7 +141,7 @@ class TokenControllerTest extends BaseControllerTest {
         tokenService.createTokensForNewMember(member.getId());
 
         // 여러 토큰 구매 내역 생성
-        TokenPurchase refundable = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_10.getPrice())
@@ -154,7 +155,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .build()
         );
 
-        TokenPurchase usable = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_20.getPrice())
@@ -168,7 +169,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .build()
         );
 
-        TokenPurchase exhausted = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_50.getPrice())
@@ -181,7 +182,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .build()
         );
 
-        TokenPurchase refunded = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_100.getPrice())
@@ -212,7 +213,8 @@ class TokenControllerTest extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         queryParameters(
-                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("state").description(
+                                        "토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
                                 parameterWithName("sort").description(
@@ -227,9 +229,12 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("token_purchases[].state").description(
+                                        "토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING)
+                                        .description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING)
+                                        .description("간편결제 제공업체").optional(),
                                 fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
@@ -287,7 +292,8 @@ class TokenControllerTest extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         queryParameters(
-                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("state").description(
+                                        "토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
                                 parameterWithName("sort").description(
@@ -302,9 +308,12 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("token_purchases[].state").description(
+                                        "토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING)
+                                        .description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING)
+                                        .description("간편결제 제공업체").optional(),
                                 fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
@@ -317,7 +326,7 @@ class TokenControllerTest extends BaseControllerTest {
         tokenService.createTokensForNewMember(member.getId());
 
         // EXHAUSTED 상태의 토큰 구매 내역 3개 생성 (totalAmount DESC 정렬 테스트용)
-        TokenPurchase purchase1 = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_200.getPrice()) // 가장 높은 금액 (첫번째)
@@ -329,7 +338,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .build()
         );
 
-        TokenPurchase purchase2 = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_10.getPrice()) // 가장 낮은 금액 (세번째)
@@ -341,7 +350,7 @@ class TokenControllerTest extends BaseControllerTest {
                         .build()
         );
 
-        TokenPurchase purchase3 = tokenPurchaseRepository.save(
+        tokenPurchaseRepository.save(
                 TokenPurchaseFixtureBuilder.builder()
                         .memberId(member.getId())
                         .totalAmount(TokenProduct.TOKEN_100.getPrice()) // 중간 금액 (두번째)
@@ -367,16 +376,20 @@ class TokenControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token_purchases").isArray())
                 .andExpect(jsonPath("$.token_purchases.length()").value(3))
-                .andExpect(jsonPath("$.token_purchases[0].price").value(TokenProduct.TOKEN_200.getPrice())) // 첫번째: 가장 높은 금액
-                .andExpect(jsonPath("$.token_purchases[1].price").value(TokenProduct.TOKEN_100.getPrice())) // 두번째: 중간 금액
-                .andExpect(jsonPath("$.token_purchases[2].price").value(TokenProduct.TOKEN_10.getPrice()))  // 세번째: 가장 낮은 금액
+                .andExpect(jsonPath("$.token_purchases[0].price").value(
+                        TokenProduct.TOKEN_200.getPrice())) // 첫번째: 가장 높은 금액
+                .andExpect(
+                        jsonPath("$.token_purchases[1].price").value(TokenProduct.TOKEN_100.getPrice())) // 두번째: 중간 금액
+                .andExpect(jsonPath("$.token_purchases[2].price").value(
+                        TokenProduct.TOKEN_10.getPrice()))  // 세번째: 가장 낮은 금액
                 .andExpect(jsonPath("$.total_page_count").value(1))
                 .andDo(document("token-purchases-list-with-pagination-and-sorting",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         queryParameters(
-                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("state").description(
+                                        "토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작, 기본값: 0)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
                                 parameterWithName("sort").description(
@@ -391,9 +404,12 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
+                                fieldWithPath("token_purchases[].state").description(
+                                        "토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING)
+                                        .description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING)
+                                        .description("간편결제 제공업체").optional(),
                                 fieldWithPath("total_page_count").description("전체 페이지 수")
                         )
                 ));
@@ -440,7 +456,8 @@ class TokenControllerTest extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         queryParameters(
-                                parameterWithName("state").description("토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
+                                parameterWithName("state").description(
+                                        "토큰 상태 필터 (REFUNDABLE, USABLE, EXHAUSTED, REFUNDED)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기 (기본값: 10)").optional(),
                                 parameterWithName("sort").description(
@@ -455,10 +472,14 @@ class TokenControllerTest extends BaseControllerTest {
                                 fieldWithPath("token_purchases[].product_name").description("상품명 (예: TOKEN_10)"),
                                 fieldWithPath("token_purchases[].count").description("구매한 토큰 개수"),
                                 fieldWithPath("token_purchases[].remaining_count").description("남은 토큰 개수"),
-                                fieldWithPath("token_purchases[].state").description("토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
-                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING).description("결제 방법"),
-                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공업체").optional(),
-                                fieldWithPath("total_page_count").description("전체 페이지 수 (이 예시에서는 15개 데이터를 10개씩 나누어 2페이지)")
+                                fieldWithPath("token_purchases[].state").description(
+                                        "토큰 상태 (환불 가능, 사용 중, 사용 완료, 환불 완료)"),
+                                fieldWithPath("token_purchases[].payment_method").type(JsonFieldType.STRING)
+                                        .description("결제 방법"),
+                                fieldWithPath("token_purchases[].easy_pay_provider").type(JsonFieldType.STRING)
+                                        .description("간편결제 제공업체").optional(),
+                                fieldWithPath("total_page_count").description(
+                                        "전체 페이지 수 (이 예시에서는 15개 데이터를 10개씩 나누어 2페이지)")
                         )
                 ));
 
@@ -541,7 +562,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING)
+                                        .description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
                                         .optional()
                         )
                 ));
@@ -549,7 +571,7 @@ class TokenControllerTest extends BaseControllerTest {
         // 환불 처리 확인
         TokenPurchase refundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId()).get();
         assertThat(refundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDED);
-        assertThat(refundedTokenPurchase.getRemainingCount()).isEqualTo(0);
+        assertThat(refundedTokenPurchase.getRemainingCount()).isZero();
         assertThat(tokenService.readPaidTokenCount(member.getId())).isEqualTo(initialPaidTokens - 10);
     }
 
@@ -591,7 +613,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING)
+                                        .description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
                                         .optional()
                         )
                 ));
@@ -600,8 +623,8 @@ class TokenControllerTest extends BaseControllerTest {
     @Test
     void 타인의_토큰_환불_실패() throws Exception {
         // given
-        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1001L).build());
-        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1002L).build());
+        Member member1 = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member2 = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenService.createTokensForNewMember(member1.getId());
         tokenService.createTokensForNewMember(member2.getId());
 
@@ -638,7 +661,8 @@ class TokenControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("refund_reason_code").description(
                                         "환불 사유 코드 (CHANGE_OF_MIND, NO_LONGER_USING_SERVICE, NOT_AS_EXPECTED, SERVICE_DISSATISFACTION, TECHNICAL_ISSUE, OTHER)"),
-                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING).description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
+                                fieldWithPath("refund_reason_text").type(JsonFieldType.STRING)
+                                        .description("환불 사유 상세 설명 (refund_reason_code가 OTHER일 때 필수)")
                                         .optional()
                         )
                 ));

@@ -40,7 +40,7 @@ public class PaymentClientBuilder {
                 .requestFactory(requestFactory)
                 .baseUrl(paymentBaseUrl)
                 .messageConverters(converters -> {
-                    converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
+                    converters.removeIf(MappingJackson2HttpMessageConverter.class::isInstance);
                     converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
                 });
     }

@@ -32,6 +32,7 @@ public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
     public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
+    private static final String RESUME_BASED_DISPLAY_CATEGORY = "이력서 기반";
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,8 +44,12 @@ public class Interview extends BaseEntity {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "root_question_id", nullable = false)
+    @JoinColumn(name = "root_question_id")
     private RootQuestion rootQuestion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "generated_question_id")
+    private GeneratedQuestion generatedQuestion;
 
     @Column(name = "max_question_count", nullable = false)
     private Integer maxQuestionCount;
@@ -56,6 +61,10 @@ public class Interview extends BaseEntity {
     @Column(name = "interview_mode", nullable = false)
     @Enumerated(EnumType.STRING)
     private InterviewMode interviewMode;
+
+    @Column(name = "interview_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private InterviewType interviewType;
 
     @Column(name = "total_feedback", length = 2_000)
     private String totalFeedback;
@@ -79,6 +88,7 @@ public class Interview extends BaseEntity {
             Integer maxQuestionCount,
             InterviewState interviewState,
             InterviewMode interviewMode,
+            InterviewType interviewType,
             String totalFeedback,
             Integer totalScore,
             Long likeCount,
@@ -92,6 +102,7 @@ public class Interview extends BaseEntity {
         this.maxQuestionCount = maxQuestionCount;
         this.interviewState = interviewState;
         this.interviewMode = interviewMode;
+        this.interviewType = interviewType;
         this.totalFeedback = totalFeedback;
         this.totalScore = totalScore;
         this.likeCount = likeCount;
@@ -100,12 +111,22 @@ public class Interview extends BaseEntity {
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode, null, null, 0L, 0L, null);
+        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
+                InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null);
+    }
+
+    public Interview(Member member, GeneratedQuestion generatedQuestion, Integer maxQuestionCount,
+                     InterviewMode interviewMode) {
+        this(null, member, null, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
+                InterviewType.RESUME_BASED, null, null, 0L, 0L, null);
+        this.generatedQuestion = generatedQuestion;
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
         if (maxQuestionCount < MIN_ALLOWED_MAX_QUESTION_COUNT || maxQuestionCount > MAX_ALLOWED_MAX_QUESTION_COUNT) {
-            throw new BadRequestException("최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT + " 이하이어야 합니다.");
+            throw new BadRequestException(
+                    "최대 질문 개수는 " + MIN_ALLOWED_MAX_QUESTION_COUNT + " 이상 " + MAX_ALLOWED_MAX_QUESTION_COUNT
+                            + " 이하이어야 합니다.");
         }
     }
 
@@ -126,5 +147,23 @@ public class Interview extends BaseEntity {
             return;
         }
         throw new BadRequestException("이미 종료된 인터뷰입니다.");
+    }
+
+    public boolean isResumeBased() {
+        return this.interviewType == InterviewType.RESUME_BASED;
+    }
+
+    public String getDisplayCategory() {
+        if (isResumeBased()) {
+            return RESUME_BASED_DISPLAY_CATEGORY;
+        }
+        return rootQuestion.getCategory().getTitle();
+    }
+
+    public String getDisplayQuestion() {
+        if (isResumeBased()) {
+            return generatedQuestion.getContent();
+        }
+        return rootQuestion.getContent();
     }
 }

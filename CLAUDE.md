@@ -4,226 +4,150 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-꼬꼬면 (Kokomen) is an interview preparation backend system that provides AI-powered mock interview functionality with
-question-and-answer sessions. The system uses multi-module architecture with Spring Boot and includes real-time event
-processing via Kafka.
+Kokomen (꼬꼬면) is an AI-powered mock interview platform for developers. The name comes from "꼬리에 꼬리를 무는 면접 질문" (follow-up questions that chain together).
 
-## Project Structure
-
-This is a multi-module Gradle project with the following modules:
-
-- **api** - Main REST API server with Spring Boot
-- **consumer** - Kafka consumer service for event processing
-- **domain** - Shared domain models and repositories
-
-## Development Commands
-
-### Building and Testing
-
-- you have to run 'docker compose -f test.yml' in api directory to run the tests
+## Build & Development Commands
 
 ```bash
-# Build all modules
+# Full build
 ./gradlew clean build
 
-# Run tests for all modules
-./gradlew test
-
-# Run tests for specific module
-./gradlew :api:test
-./gradlew :consumer:test
-
-# Build specific module
-./gradlew :api:build
-./gradlew :consumer:build
-```
-
-### Running Applications
-
-```bash
 # Run API server
 ./gradlew :api:bootRun
 
-# Run consumer service
+# Run Consumer service (separate terminal)
 ./gradlew :consumer:bootRun
 
-# Run local development environment (API with dependencies)
-./local-run.sh
+# Run all tests
+./gradlew test
 
-# Run API with local Docker environment
-cd api && ./local-app-run.sh
-```
+# Run module-specific tests
+./gradlew :api:test
+./gradlew :consumer:test
 
-### Docker Operations
+# Run single test class
+./gradlew :api:test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest"
 
-```bash
-# Build and run API locally with Docker
-cd api && ./local-app-run.sh
+# Run single test method
+./gradlew :api:test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest.메소드명"
 
-# Build and run consumer locally with Docker
-cd consumer && ./local-run-consumer.sh
+# Start test infrastructure (MySQL + Redis)
+cd api && docker compose -f test.yml up -d
+
+# Or use the helper script
+cd api && ./run-test-mysql-redis.sh
 ```
 
 ## Architecture
 
-### Core Domain Models
-
-- **Member** - User accounts and profiles
-- **Interview** - Mock interview sessions
-- **Question/RootQuestion** - Interview questions (root questions spawn follow-up questions)
-- **Answer** - User responses to questions
-- **Category** - Question categories
-
-### Key Services
-
-- **InterviewFacadeService** - Main orchestration for interview flow
-- **InterviewProceedService** - Handles interview progression logic
-- **RootQuestionService** - Manages root questions and categories
-- **MemberService** - User management and ranking
-- **S3Service** - File storage for audio/media
-- **RedisService** - Caching and session management
-
-### External Integrations
-
-- **OpenAI GPT** - Question generation and analysis
-- **AWS Bedrock** - Alternative LLM service
-- **Supertone** - Text-to-speech conversion
-- **Kakao OAuth** - User authentication
-- **AWS S3** - File storage
-- **Redis** - Caching and sessions
-- **Kafka** - Event streaming between API and consumer
-
-### Event-Driven Architecture
-
-The system uses Kafka for asynchronous processing:
-
-- **API module** produces events (interview likes, view counts, etc.)
-- **Consumer module** processes events and updates statistics
-
-### Database
-
-- **MySQL** - Primary database with Flyway migrations in `/src/main/resources/db/migration/`
-- **H2** - In-memory database for testing
-- **Redis** - Session storage and caching
-
-## Testing
-
-Tests use JUnit 5 with Spring Boot Test framework. Key test utilities:
-
-- **BaseControllerTest** - Base class for controller tests
-- **BaseTest** - Common test configuration
-- **Fixture builders** - Test data creation helpers in `global/fixture/`
-
-## Configuration
-
-- **application.yml** - Main configuration files in each module
-- Environment variables for secrets (API keys, database credentials)
-- Profiles: local development uses embedded configurations
-
-## Key Design Patterns
-
-- **Facade Pattern** - InterviewFacadeService orchestrates complex operations
-- **Event Sourcing** - Kafka events for statistics and notifications
-- **Repository Pattern** - JPA repositories for data access
-- **DTO Pattern** - Separate request/response objects from domain models
-
-## Service Architecture Guidelines
-
-### Single Repository Principle
-- **Each Service should manage only ONE Repository**
-- This ensures clear separation of concerns and single responsibility
-- Services should focus on business logic for a specific domain
-
-### Multiple Repository Usage
-- **When multiple Repositories are needed, create a FacadeService**
-- FacadeService orchestrates multiple Services and ensures transaction consistency
-- Example: `TokenFacadeService` manages both `TokenService` and `TokenPurchaseService`
-- Use `@Transactional` annotation on FacadeService methods to ensure data consistency
-
-### Service Structure Pattern
+### Multi-Module Structure
 ```
-TokenService (manages TokenRepository only)
-TokenPurchaseService (manages TokenPurchaseRepository only)  
-TokenFacadeService (orchestrates both services with @Transactional)
+kokomen-backend/
+├── api/        # REST API server (Spring Boot application)
+├── consumer/   # Kafka event consumer service
+└── common/     # Shared domain models, entities, repositories, exceptions
 ```
 
-### Benefits
-- Clear boundaries between services
-- Easier testing and maintenance
-- Better transaction management
-- Reduced coupling between domain models
+- **api**: Main REST API with controllers, services, external client integrations (GPT, Bedrock, Supertone TTS, S3)
+- **consumer**: Kafka Streams consumer for event processing (e.g., InterviewLikeEvent)
+- **common**: JPA entities, repositories, shared exceptions, Flyway migrations, Redis configuration
 
-## Method Organization Guidelines
+### Key Technologies
+- Java 17, Spring Boot 3.x
+- MySQL 8.0 (Primary DB), Redis/Valkey (Session & Cache)
+- Apache Kafka for async event processing
+- OpenAI GPT-4 / AWS Bedrock for AI features
+- Supertone for TTS (voice mode)
+- Kakao/Google OAuth for authentication
+- Flyway for DB migrations (`common/src/main/resources/db/migration/`)
 
-### CRUD Method Ordering
-- **Service and Controller methods should be organized in CRUD order**
-- **C**reate methods first (save, create, register, etc.)
-- **R**ead methods second (find, get, read, validate, etc.)
-- **U**pdate methods third (update, modify, use, etc.)
-- **D**elete methods last (delete, remove, etc.)
+### Domain Package Structure
+```
+domain/
+├── controller/
+├── service/
+│   └── dto/     # Request/Response DTOs
+├── repository/
+├── domain/      # Entities (in common module)
+└── external/    # External API clients
+```
 
-### Private Method Placement
-- **Private methods should be placed immediately after the last public method that calls them**
-- If multiple public methods call the same private method, place it after the last one in the file order
-- This maintains logical grouping and readability
+## Code Conventions (from docs/convention.md)
 
-### Example Method Order
+### Style Guide
+- Follows Woowacourse Java Style Guide (based on Google Java Style)
+- Line limit: 160 characters
+- Indent: 4 spaces
+
+### Naming
+- Methods: `행위 + 도메인` (e.g., `saveMember()`)
+- `read-` prefix: value must exist, throws exception if not found
+- `find-` prefix: value may not exist, returns Optional or empty list
+- Don't use `get-` for non-getter methods
+- DTOs end with `Request` or `Response`
+
+### Annotation Order
+- Lombok → Spring annotations (more important annotations go below)
 ```java
-// CREATE methods
-public void createUser() { ... }
-public void registerMember() { ... }
-
-// READ methods  
-public User findById() { ... }
-public boolean validateUser() { ... }
-private boolean isValidEmail() { ... } // called by validateUser
-
-// UPDATE methods
-public void updateUser() { ... }
-public void useToken() { ... }
-
-// DELETE methods
-public void deleteUser() { ... }
+@Lombok
+@SpringAnnotation
+public void example() {}
 ```
 
-## Method Naming Guidelines
+### Method Declaration Order
+1. Constructor
+2. Static factory methods
+3. Business methods (CRUD order, private methods after their calling public method)
+4. Override methods (equals, hashCode, toString)
 
-### getXXX() Method Usage
-- **Use getXXX() ONLY when retrieving a field from a specific entity or object**
-- **DO NOT use getXXX() when computing, calculating, or aggregating values**
-- Use appropriate verbs for computed values: `calculate`, `compute`, `determine`, `count`, etc.
+### Testing
+- Test method names in **Korean**
+- No `@DisplayName` annotation
+- Controller tests: MockMvc + real beans (integration test, generates RestDocs)
+- Service tests: integration with repository
+- Domain tests: unit tests
+- Test isolation: `MySQLDatabaseCleaner` (not `@Transactional`)
+- Fixtures: `global/fixture/XxxFixtureBuilder` classes
+- Tests use real MySQL container (not H2)
 
-### Examples
-```java
-// CORRECT - Getting field from entity
-public String getName() { return this.name; }
-public Long getId() { return this.id; }
+### Exception Handling
+- Custom exceptions: `BadRequestException`, `UnauthorizedException`, `ForbiddenException`, etc.
+- Validation: `@Valid` in DTO, entity-level validation in constructors
+- Business validation that needs external data goes in service layer
 
-// INCORRECT - Computing/calculating values  
-public int getTotalCount() { ... } // ❌
-public boolean getIsValid() { ... } // ❌
+## Test Infrastructure
 
-// CORRECT - Computing/calculating values
-public int calculateTotalCount() { ... } // ✅
-public int countTotalTokens() { ... } // ✅  
-public boolean isValid() { ... } // ✅
-public boolean hasEnoughTokens() { ... } // ✅
+Tests require MySQL and Redis containers:
+- MySQL: port 13306 (database: kokomen-test, password: root)
+- Redis: port 16379
+
+Start with: `cd api && docker compose -f test.yml up -d`
+
+Test base classes:
+- `BaseTest`: `@SpringBootTest` with mock beans for external services (GPT, Kafka, S3, etc.)
+- `BaseControllerTest`: Extends BaseTest, adds MockMvc with RestDocs configuration
+
+## API Documentation
+
+- Generated via Spring REST Docs
+- Build generates docs into `api/build/docs/`
+- Access at: `http://localhost:8080/docs/index.html`
+
+## Environment Variables
+
+Required for local development:
+```
+OPEN_AI_API_KEY
+KAKAO_CLIENT_ID
+KAKAO_CLIENT_SECRET
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+SUPERTONE_API_TOKEN
 ```
 
-### Recommended Verbs for Computed Values
-- **calculate** - for mathematical computations
-- **compute** - for algorithmic calculations  
-- **count** - for counting items
-- **determine** - for decision-making logic
-- **check** - for validation checks
-- **is/has** - for boolean conditions
-
-## File Creation Guidelines
-
-- **End of Line**: ALWAYS add a newline character at the end of every file to avoid "No newline at end of file" warnings
-- This applies to all file types: .sql, .java, .yml, .md, etc.
-
-## Code Formatting Guidelines
-
-- **Line Length**: Keep code lines under 120 characters. Do not break lines unless they exceed 120 characters
-- This ensures code consistency and prevents unnecessary line breaks that reduce readability
+## Profiles
+- `local`: Local development
+- `dev`: Development server
+- `prod`: Production
+- `load-test`: Load testing
+- `test`: Test environment (used by tests)
