@@ -83,6 +83,29 @@ public class TokenFacadeService {
         throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
     }
 
+
+    @Transactional
+    public void useTokens(Long memberId, int count) {
+        int freeTokenCount = tokenService.readFreeTokenCount(memberId);
+        int paidTokenCount = tokenService.readPaidTokenCount(memberId);
+
+        if (freeTokenCount + paidTokenCount < count) {
+            throw new BadRequestException("토큰 갯수가 부족합니다.");
+        }
+
+        int tokensFromFree = Math.min(count, freeTokenCount);
+        int tokensFromPaid = count - tokensFromFree;
+
+        if (tokensFromFree > 0) {
+            tokenService.useFreeTokens(memberId, tokensFromFree);
+        }
+
+        if (tokensFromPaid > 0) {
+            tokenService.usePaidTokens(memberId, tokensFromPaid);
+            tokenPurchaseService.usePaidTokens(memberId, tokensFromPaid);
+        }
+    }
+
     @Transactional
     public void refundTokens(Long memberId, Long tokenPurchaseId, TokenRefundRequest request) {
         TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);

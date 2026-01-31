@@ -29,12 +29,14 @@ public class AuthService {
 
     @Transactional
     public MemberResponse kakaoLogin(KakaoLoginRequest kakaoLoginRequest) {
-        KakaoUserInfoResponse kakaoUserInfoResponse = kakaoOAuthClient.requestKakaoUserInfo(kakaoLoginRequest.code(), kakaoLoginRequest.redirectUri());
+        KakaoUserInfoResponse kakaoUserInfoResponse = kakaoOAuthClient.requestKakaoUserInfo(kakaoLoginRequest.code(),
+                kakaoLoginRequest.redirectUri());
 
         return memberService.findBySocialLogin(SocialProvider.KAKAO, String.valueOf(kakaoUserInfoResponse.id()))
                 .map(MemberResponse::new)
                 .orElseGet(() -> {
-                    Member member = memberService.saveSocialMember(SocialProvider.KAKAO, String.valueOf(kakaoUserInfoResponse.id()),
+                    Member member = memberService.saveSocialMember(SocialProvider.KAKAO,
+                            String.valueOf(kakaoUserInfoResponse.id()),
                             kakaoUserInfoResponse.kakaoAccount().profile().nickname());
                     tokenService.createTokensForNewMember(member.getId());
                     return new MemberResponse(member);
@@ -43,7 +45,8 @@ public class AuthService {
 
     @Transactional
     public MemberResponse googleLogin(GoogleLoginRequest googleLoginRequest) {
-        GoogleUserInfoResponse googleUserInfoResponse = googleOAuthClient.requestGoogleUserInfo(googleLoginRequest.code(), googleLoginRequest.redirectUri());
+        GoogleUserInfoResponse googleUserInfoResponse = googleOAuthClient.requestGoogleUserInfo(
+                googleLoginRequest.code(), googleLoginRequest.redirectUri());
 
         return memberService.findBySocialLogin(SocialProvider.GOOGLE, googleUserInfoResponse.id())
                 .map(MemberResponse::new)
@@ -72,28 +75,6 @@ public class AuthService {
                 .ifPresent(googleLogin -> googleOAuthClient.revokeGoogleToken(googleLogin.getSocialId()));
 
         memberService.withdraw(member);
-    }
-
-    @Transactional
-    public void kakaoLogout(MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-
-        // 카카오 소셜로그인 정보 조회하여 카카오 로그아웃
-        memberSocialLoginRepository.findByMember_Id(member.getId()).stream()
-                .filter(socialLogin -> socialLogin.getProvider() == SocialProvider.KAKAO)
-                .findFirst()
-                .ifPresent(kakaoLogin -> kakaoOAuthClient.logoutKakaoUser(Long.valueOf(kakaoLogin.getSocialId())));
-    }
-
-    @Transactional
-    public void googleLogout(MemberAuth memberAuth) {
-        Member member = memberService.readById(memberAuth.memberId());
-
-        // 구글 소셜로그인 정보 조회하여 구글 로그아웃
-        memberSocialLoginRepository.findByMember_Id(member.getId()).stream()
-                .filter(socialLogin -> socialLogin.getProvider() == SocialProvider.GOOGLE)
-                .findFirst()
-                .ifPresent(googleLogin -> googleOAuthClient.revokeGoogleToken(googleLogin.getSocialId()));
     }
 
     @Transactional

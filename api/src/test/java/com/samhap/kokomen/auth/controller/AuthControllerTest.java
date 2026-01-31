@@ -32,7 +32,6 @@ import com.samhap.kokomen.member.domain.MemberSocialLogin;
 import com.samhap.kokomen.member.domain.SocialProvider;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
-import java.util.List;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
@@ -62,8 +61,9 @@ class AuthControllerTest extends BaseControllerTest {
                         .param("redirectUri", redirectUri)
                         .param("state", state))
                 .andExpect(status().isFound())
-                .andExpect(header().string("Location", "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
-                        .formatted(kakaoClientId, redirectUri, state)))
+                .andExpect(header().string("Location",
+                        "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s"
+                                .formatted(kakaoClientId, redirectUri, state)))
                 .andDo(document("auth-redirectKakaoLoginPage",
                         queryParameters(
                                 parameterWithName("redirectUri").description("카카오 로그인 후 리다이렉트될 URI"),
@@ -94,7 +94,8 @@ class AuthControllerTest extends BaseControllerTest {
                   "profile_completed": false
                 }
                 """.formatted(nickname);
-        when(kakaoOAuthClient.requestKakaoUserInfo(code, redirectUri)).thenReturn(new KakaoUserInfoResponse(1L, new KakaoAccount(new Profile(nickname))));
+        when(kakaoOAuthClient.requestKakaoUserInfo(code, redirectUri)).thenReturn(
+                new KakaoUserInfoResponse(1L, new KakaoAccount(new Profile(nickname))));
 
         // when & then
         mockMvc.perform(post("/api/v1/auth/kakao-login")
@@ -135,8 +136,9 @@ class AuthControllerTest extends BaseControllerTest {
                         .param("redirectUri", redirectUri)
                         .param("state", state))
                 .andExpect(status().isFound())
-                .andExpect(header().string("Location", "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s"
-                        .formatted(googleClientId, redirectUri, expectedScope, state)))
+                .andExpect(header().string("Location",
+                        "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s"
+                                .formatted(googleClientId, redirectUri, expectedScope, state)))
                 .andDo(document("auth-redirectGoogleLoginPage",
                         queryParameters(
                                 parameterWithName("redirectUri").description("구글 로그인 후 리다이렉트될 URI"),
@@ -169,7 +171,8 @@ class AuthControllerTest extends BaseControllerTest {
                 }
                 """.formatted(name);
         when(googleOAuthClient.requestGoogleUserInfo(code, redirectUri))
-                .thenReturn(new GoogleUserInfoResponse(googleId, "john@example.com", true, name, "John", "Doe", "https://example.com/picture.jpg", "en"));
+                .thenReturn(new GoogleUserInfoResponse(googleId, "john@example.com", true, name, "John", "Doe",
+                        "https://example.com/picture.jpg", "en"));
 
         // when & then
         mockMvc.perform(post("/api/v1/auth/google-login")
@@ -199,65 +202,13 @@ class AuthControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 회원_탈퇴_성공() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Long kakaoId = 12345L;
-        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
-                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
-        
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-
-        when(kakaoOAuthClient.unlinkKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
-
-        // when & then
-        mockMvc.perform(delete("/api/v1/auth/kakao-withdraw")
-                        .session(session)
-                        .cookie(new Cookie("JSESSIONID", session.getId())))
-                .andExpect(status().isNoContent())
-                .andExpect(cookie().maxAge("JSESSIONID", 0))
-                .andDo(document("auth-kakaoWithdraw",
-                        requestCookies(
-                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        )
-                ));
-    }
-
-    @Test
-    void 회원_로그아웃_성공() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Long kakaoId = 12345L;
-        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
-                new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
-        
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-
-        when(kakaoOAuthClient.logoutKakaoUser(kakaoId)).thenReturn(new KakaoIdResponse(kakaoId));
-
-        // when & then
-        mockMvc.perform(post("/api/v1/auth/kakao-logout")
-                        .session(session)
-                        .cookie(new Cookie("JSESSIONID", session.getId())))
-                .andExpect(status().isNoContent())
-                .andExpect(cookie().maxAge("JSESSIONID", 0))
-                .andDo(document("auth-kakaoLogout",
-                        requestCookies(
-                                cookieWithName("JSESSIONID").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        )
-                ));
-    }
-
-    @Test
     void 통합_회원_탈퇴_성공_카카오() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long kakaoId = 12345L;
-        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+        memberSocialLoginRepository.save(
                 new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
-        
+
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
@@ -281,9 +232,9 @@ class AuthControllerTest extends BaseControllerTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         String googleId = "123456789";
-        MemberSocialLogin googleSocialLogin = memberSocialLoginRepository.save(
+        memberSocialLoginRepository.save(
                 new MemberSocialLogin(member, SocialProvider.GOOGLE, googleId));
-        
+
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
@@ -305,9 +256,9 @@ class AuthControllerTest extends BaseControllerTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long kakaoId = 12345L;
-        MemberSocialLogin kakaoSocialLogin = memberSocialLoginRepository.save(
+        memberSocialLoginRepository.save(
                 new MemberSocialLogin(member, SocialProvider.KAKAO, String.valueOf(kakaoId)));
-        
+
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
@@ -331,9 +282,9 @@ class AuthControllerTest extends BaseControllerTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         String googleId = "123456789";
-        MemberSocialLogin googleSocialLogin = memberSocialLoginRepository.save(
+        memberSocialLoginRepository.save(
                 new MemberSocialLogin(member, SocialProvider.GOOGLE, googleId));
-        
+
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 

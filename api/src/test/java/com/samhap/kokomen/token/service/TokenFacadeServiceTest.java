@@ -82,7 +82,7 @@ class TokenFacadeServiceTest extends BaseTest {
         Token updatedFreeToken = tokenRepository.findById(freeToken.getId()).get();
         Token updatedPaidToken = tokenRepository.findById(paidToken.getId()).get();
 
-        assertThat(updatedFreeToken.getTokenCount()).isEqualTo(0); // 변화 없음
+        assertThat(updatedFreeToken.getTokenCount()).isZero(); // 변화 없음
         assertThat(updatedPaidToken.getTokenCount()).isEqualTo(4);
     }
 
@@ -200,7 +200,7 @@ class TokenFacadeServiceTest extends BaseTest {
         TokenPurchaseResponses result = tokenFacadeService.readMyTokenPurchases(member.getId(), null, pageable);
 
         // then
-        assertThat(result.totalPageCount()).isEqualTo(0L); // 데이터 없음 → 0페이지
+        assertThat(result.totalPageCount()).isZero(); // 데이터 없음 → 0페이지
         assertThat(result.tokenPurchases()).isEmpty(); // 빈 리스트
     }
 
@@ -235,7 +235,8 @@ class TokenFacadeServiceTest extends BaseTest {
         Pageable pageable = PageRequest.of(0, 3); // 페이지 크기 3
 
         // when - REFUNDABLE 상태만 필터링
-        TokenPurchaseResponses result = tokenFacadeService.readMyTokenPurchases(member.getId(), TokenPurchaseState.REFUNDABLE, pageable);
+        TokenPurchaseResponses result = tokenFacadeService.readMyTokenPurchases(member.getId(),
+                TokenPurchaseState.REFUNDABLE, pageable);
 
         // then
         assertThat(result.totalPageCount()).isEqualTo(2L); // REFUNDABLE 5개, 3개씩 → 2페이지

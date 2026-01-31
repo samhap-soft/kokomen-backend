@@ -30,7 +30,7 @@ public class SupertoneClientBuilder {
                 .baseUrl(SUPERTONE_API_URL)
                 .defaultHeader("x-sup-api-key", supertoneApiToken)
                 .messageConverters(converters -> {
-                    converters.removeIf(converter -> converter instanceof MappingJackson2HttpMessageConverter);
+                    converters.removeIf(MappingJackson2HttpMessageConverter.class::isInstance);
                     converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
                 });
     }

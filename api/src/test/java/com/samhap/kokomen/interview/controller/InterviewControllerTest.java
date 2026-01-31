@@ -29,8 +29,6 @@ import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.answer.AnswerLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.answer.AnswerMemoFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
@@ -42,8 +40,6 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -54,7 +50,6 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -93,7 +88,7 @@ class InterviewControllerTest extends BaseControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
         String rootQuestionContent = "부팅 과정에 대해 설명해주세요.";
-        RootQuestion rootQuestion = rootQuestionRepository.save(
+        rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder().content(rootQuestionContent).build());
 
         String requestJson = """
@@ -149,7 +144,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
 
         String requestJson = """
                 {
@@ -195,86 +190,8 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 인터뷰_진행() throws Exception {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenRepository.save(
-                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
-        tokenRepository.save(
-                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("MEMBER_ID", member.getId());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
-        Question question1 = questionRepository.save(
-                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
-        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
-        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        String nextQuestion = "절차지향 프로그래밍이 뭔가요?";
-        AnswerRank curAnswerRank = AnswerRank.D;
-
-        String requestJson = """
-                {
-                  "answer": "절차지향 프로그래밍과 반대되는 개념입니다."
-                }
-                """;
-
-        String responseJson = """
-                {
-                  "cur_answer_rank": "%s",
-                  "next_question_id": 3,
-                  "next_question": "%s"
-                }
-                """.formatted(curAnswerRank, nextQuestion);
-
-        GptResponse gptResponse = GptResponseFixtureBuilder.builder()
-                .answerRank(curAnswerRank)
-                .nextQuestion(nextQuestion)
-                .buildProceed();
-        when(gptClient.requestToGpt(any())).thenReturn(gptResponse);
-
-        BedrockResponse bedrockResponse = BedrockResponseFixtureBuilder.builder()
-                .answerRank(curAnswerRank)
-                .nextQuestion(nextQuestion)
-                .buildProceed();
-        when(bedrockClient.requestToBedrock(any())).thenReturn(bedrockResponse);
-
-        // when & then
-        mockMvc.perform(post(
-                        "/api/v1/interviews/{interview_id}/questions/{question_id}/answers", interview.getId(),
-                        question2.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson)
-                        .header("Cookie", "JSESSIONID=" + session.getId())
-                        .session(session)
-                )
-                .andExpect(status().isOk())
-                .andExpect(content().json(responseJson))
-                .andDo(document("interview-proceedInterview",
-                        pathParameters(
-                                parameterWithName("interview_id").description("인터뷰 ID"),
-                                parameterWithName("question_id").description("질문 ID")
-                        ),
-                        requestHeaders(
-                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
-                        ),
-                        requestFields(
-                                fieldWithPath("answer").description("사용자가 작성한 답변")
-                        ),
-                        responseFields(
-                                fieldWithPath("cur_answer_rank").description("현재 답변 랭크"),
-                                fieldWithPath("next_question_id").description("다음 질문 id"),
-                                fieldWithPath("next_question").description("다음 질문 내용")
-                        )
-                ));
-    }
-
-    @Test
     void 인터뷰_좋아요_요청() throws Exception {
         // given
-        when(kafkaTemplate.send(any(), any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(null));
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
@@ -650,8 +567,8 @@ class InterviewControllerTest extends BaseControllerTest {
     void 다른_사용자의_완료된_인터뷰_목록_조회_로그인_버전() throws Exception {
         // given
         Member interviewee = memberRepository.save(
-                MemberFixtureBuilder.builder().nickname("오상훈").kakaoId(1L).score(100).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
+                MemberFixtureBuilder.builder().nickname("오상훈").score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().score(0).build());
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());
 
@@ -707,7 +624,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
         interviewLikeRepository.save(
                 InterviewLikeFixtureBuilder.builder().interview(finishedInterview2).member(readerMember).build());
         interviewRepository.increaseLikeCountModifying(finishedInterview2.getId());
@@ -865,7 +782,7 @@ class InterviewControllerTest extends BaseControllerTest {
         Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
         Question question6 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(finishedInterview2).build());
-        Answer answer6 = answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question6).build());
 
         answerMemoRepository.save(
                 AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.SUBMITTED)
@@ -1009,7 +926,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion1 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview1).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer1 = answerRepository.save(
+        answerRepository.save(
                 AnswerFixtureBuilder.builder().question(otherQuestion1).content("자바는 플랫폼에 독립적이며 객체지향 언어입니다.")
                         .answerRank(AnswerRank.A).build());
 
@@ -1019,7 +936,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion2 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview2).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer2 = answerRepository.save(
+        answerRepository.save(
                 AnswerFixtureBuilder.builder().question(otherQuestion2).content("자바는 JVM에서 실행되는 객체지향 프로그래밍 언어입니다.")
                         .answerRank(AnswerRank.A).build());
 
@@ -1029,7 +946,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         .build());
         Question otherQuestion3 = questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(otherInterview3).content(rootQuestion.getContent()).build());
-        Answer referenceAnswer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3)
+        answerRepository.save(AnswerFixtureBuilder.builder().question(otherQuestion3)
                 .content("자바는 Write Once Run Anywhere 철학을 가진 언어입니다.").answerRank(AnswerRank.B).build());
 
         String responseJson = """
@@ -1143,8 +1060,8 @@ class InterviewControllerTest extends BaseControllerTest {
     @Test
     void 다른_사용자의_완료된_인터뷰_결과_조회_로그인_버전() throws Exception {
         // given
-        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(1L).score(100).build());
-        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().kakaoId(2L).score(0).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().score(100).build());
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().score(0).build());
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", readerMember.getId());

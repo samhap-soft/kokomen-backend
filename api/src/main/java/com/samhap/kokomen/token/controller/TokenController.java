@@ -6,7 +6,6 @@ import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.dto.RefundReasonResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
-import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.service.TokenFacadeService;
@@ -49,7 +48,8 @@ public class TokenController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication MemberAuth memberAuth
     ) {
-        TokenPurchaseResponses purchases = tokenFacadeService.readMyTokenPurchases(memberAuth.memberId(), state, pageable);
+        TokenPurchaseResponses purchases = tokenFacadeService.readMyTokenPurchases(memberAuth.memberId(), state,
+                pageable);
         return ResponseEntity.ok(purchases);
     }
 

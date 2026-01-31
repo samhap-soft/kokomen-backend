@@ -51,10 +51,13 @@ class AnswerMemoRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoVisibility(AnswerMemoVisibility.PUBLIC)
+                        .build());
 
         // when
         boolean exists = answerMemoRepository.existsByAnswerIdAndAnswerMemoState(answer.getId(), answerMemoState);
@@ -77,13 +80,16 @@ class AnswerMemoRepositoryTest extends BaseTest {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
         Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer = answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
-        AnswerMemo answerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer).answerMemoState(AnswerMemoState.SUBMITTED).build());
 
         // when
-        Optional<AnswerMemo> result = answerMemoRepository.findByAnswerIdAndAnswerMemoState(answer.getId(), answerMemoState);
+        Optional<AnswerMemo> result = answerMemoRepository.findByAnswerIdAndAnswerMemoState(answer.getId(),
+                answerMemoState);
 
         // then
         assertThat(result.isPresent()).isEqualTo(expected);
@@ -102,7 +108,8 @@ class AnswerMemoRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
 
@@ -112,15 +119,20 @@ class AnswerMemoRepositoryTest extends BaseTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
 
         // when
-        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.SUBMITTED);
+        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoState(interview,
+                AnswerMemoState.SUBMITTED);
 
         // then
         assertThat(submittedMemoCount).isEqualTo(2L);
@@ -132,7 +144,8 @@ class AnswerMemoRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
@@ -144,19 +157,25 @@ class AnswerMemoRepositoryTest extends BaseTest {
         Question question5 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer5 = answerRepository.save(AnswerFixtureBuilder.builder().question(question5).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.TEMP)
-                .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer4).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer5).answerMemoState(AnswerMemoState.TEMP)
+                        .answerMemoVisibility(AnswerMemoVisibility.PRIVATE).build());
 
         // when
-        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(interview,
+        Long submittedMemoCount = answerMemoRepository.countByAnswerQuestionInterviewAndAnswerMemoStateAndAnswerMemoVisibility(
+                interview,
                 AnswerMemoState.SUBMITTED, AnswerMemoVisibility.PUBLIC);
 
         // then
@@ -169,7 +188,8 @@ class AnswerMemoRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
 
@@ -179,15 +199,20 @@ class AnswerMemoRepositoryTest extends BaseTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer3 = answerRepository.save(AnswerFixtureBuilder.builder().question(question3).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer2).answerMemoState(AnswerMemoState.TEMP).build());
 
-        answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
+        answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer3).answerMemoState(AnswerMemoState.TEMP).build());
 
         // when
-        Boolean tempMemoExists = answerMemoRepository.existsByAnswerQuestionInterviewAndAnswerMemoState(interview, AnswerMemoState.TEMP);
+        Boolean tempMemoExists = answerMemoRepository.existsByAnswerQuestionInterviewAndAnswerMemoState(interview,
+                AnswerMemoState.TEMP);
 
         // then
         assertThat(tempMemoExists).isTrue();
@@ -199,17 +224,19 @@ class AnswerMemoRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
-        Answer answer2 = answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
         AnswerMemo submittedAnswerMemo = answerMemoRepository.save(
                 AnswerMemoFixtureBuilder.builder().answer(answer1).answerMemoState(AnswerMemoState.SUBMITTED).build());
 
         // when
-        Optional<AnswerMemo> foundSubmittedAnswerMemo = answerMemoRepository.findByAnswerAndAnswerMemoState(answer1, AnswerMemoState.SUBMITTED);
+        Optional<AnswerMemo> foundSubmittedAnswerMemo = answerMemoRepository.findByAnswerAndAnswerMemoState(answer1,
+                AnswerMemoState.SUBMITTED);
 
         // then
         assertThat(foundSubmittedAnswerMemo.get().getId()).isEqualTo(submittedAnswerMemo.getId());
@@ -221,12 +248,15 @@ class AnswerMemoRepositoryTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).build());
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewState(InterviewState.FINISHED).build());
         Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         Answer answer1 = answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
 
-        AnswerMemo submittedPublicAnswerMemo = answerMemoRepository.save(AnswerMemoFixtureBuilder.builder().answer(answer1)
-                .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.SUBMITTED).build());
+        AnswerMemo submittedPublicAnswerMemo = answerMemoRepository.save(
+                AnswerMemoFixtureBuilder.builder().answer(answer1)
+                        .answerMemoVisibility(AnswerMemoVisibility.PUBLIC).answerMemoState(AnswerMemoState.SUBMITTED)
+                        .build());
 
         // when
         Optional<AnswerMemo> foundSubmittedPublicAnswerMemo = answerMemoRepository.findByAnswerAndAnswerMemoStateAndAnswerMemoVisibility(
