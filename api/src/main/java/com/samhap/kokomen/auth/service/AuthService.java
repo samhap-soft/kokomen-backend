@@ -12,8 +12,8 @@ import com.samhap.kokomen.member.domain.SocialProvider;
 import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.member.service.dto.MemberResponse;
-import com.samhap.kokomen.token.service.TokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +25,6 @@ public class AuthService {
     private final GoogleOAuthClient googleOAuthClient;
     private final MemberService memberService;
     private final MemberSocialLoginRepository memberSocialLoginRepository;
-    private final TokenService tokenService;
 
     @Transactional
     public MemberResponse kakaoLogin(KakaoLoginRequest kakaoLoginRequest) {
@@ -35,11 +34,16 @@ public class AuthService {
         return memberService.findBySocialLogin(SocialProvider.KAKAO, String.valueOf(kakaoUserInfoResponse.id()))
                 .map(MemberResponse::new)
                 .orElseGet(() -> {
-                    Member member = memberService.saveSocialMember(SocialProvider.KAKAO,
-                            String.valueOf(kakaoUserInfoResponse.id()),
-                            kakaoUserInfoResponse.kakaoAccount().profile().nickname());
-                    tokenService.createTokensForNewMember(member.getId());
-                    return new MemberResponse(member);
+                    try {
+                        Member member = memberService.saveSocialMember(SocialProvider.KAKAO,
+                                String.valueOf(kakaoUserInfoResponse.id()),
+                                kakaoUserInfoResponse.kakaoAccount().profile().nickname());
+                        return new MemberResponse(member);
+                    } catch (DataIntegrityViolationException exception) {
+                        Member member = memberService.readBySocialLogin(SocialProvider.KAKAO,
+                                String.valueOf(kakaoUserInfoResponse.id()));
+                        return new MemberResponse(member);
+                    }
                 });
     }
 
@@ -51,10 +55,15 @@ public class AuthService {
         return memberService.findBySocialLogin(SocialProvider.GOOGLE, googleUserInfoResponse.id())
                 .map(MemberResponse::new)
                 .orElseGet(() -> {
-                    Member member = memberService.saveSocialMember(SocialProvider.GOOGLE, googleUserInfoResponse.id(),
-                            googleUserInfoResponse.name());
-                    tokenService.createTokensForNewMember(member.getId());
-                    return new MemberResponse(member);
+                    try {
+                        Member member = memberService.saveSocialMember(SocialProvider.GOOGLE,
+                                googleUserInfoResponse.id(), googleUserInfoResponse.name());
+                        return new MemberResponse(member);
+                    } catch (DataIntegrityViolationException exception) {
+                        Member member = memberService.readBySocialLogin(SocialProvider.GOOGLE,
+                                googleUserInfoResponse.id());
+                        return new MemberResponse(member);
+                    }
                 });
     }
 

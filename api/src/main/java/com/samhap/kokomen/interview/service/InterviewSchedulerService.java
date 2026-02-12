@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.Cursor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +19,8 @@ import org.springframework.stereotype.Service;
 public class InterviewSchedulerService {
 
     private static final String INTERVIEW_VIEW_COUNT_SCHEDULER_LOCK = "lock:interview:viewCount:scheduler";
-    private static final String INTERVIEW_VIEW_COUNT_KEY_PATTERN = InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*";
+    private static final String INTERVIEW_VIEW_COUNT_KEY_PATTERN =
+            InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*";
     private static final int REDIS_INTERVIEW_VIEW_COUNT_BATCH_SIZE = 100;
     private static final int DB_INTERVIEW_VIEW_COUNT_BATCH_SIZE = 1_000;
 
@@ -34,20 +34,22 @@ public class InterviewSchedulerService {
             return;
         }
 
-        try (Cursor<String> cursor = redisService.scanKeys(INTERVIEW_VIEW_COUNT_KEY_PATTERN, REDIS_INTERVIEW_VIEW_COUNT_BATCH_SIZE)) {
-            syncInterviewViewCounts(cursor);
+        try {
+            Iterable<String> scannedKeys = redisService.scanKeys(INTERVIEW_VIEW_COUNT_KEY_PATTERN,
+                    REDIS_INTERVIEW_VIEW_COUNT_BATCH_SIZE);
+            syncInterviewViewCounts(scannedKeys);
         } catch (Exception e) {
             log.error("인터뷰 조회수를 DB에 반영하는 스케줄러 동작 중 에러 발생", e);
             redisService.releaseLock(INTERVIEW_VIEW_COUNT_SCHEDULER_LOCK);
         }
     }
 
-    private void syncInterviewViewCounts(Cursor<String> cursor) {
+    private void syncInterviewViewCounts(Iterable<String> scannedKeys) {
         List<String> keys = new ArrayList<>();
         Map<Long, Long> interviewViewCounts = new HashMap<>();
 
-        while (cursor.hasNext()) {
-            keys.add(cursor.next());
+        for (String scannedKey : scannedKeys) {
+            keys.add(scannedKey);
             processBatchesIfReady(keys, interviewViewCounts);
         }
         putInterviewViewCounts(keys, interviewViewCounts);
