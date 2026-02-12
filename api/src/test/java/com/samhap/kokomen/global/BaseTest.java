@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -51,6 +52,8 @@ public abstract class BaseTest {
     protected QuestionGenerationAsyncService questionGenerationAsyncService;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
+    @MockitoSpyBean
+    protected RedissonClient redissonClient;
     @Autowired
     private MySQLDatabaseCleaner mySQLDatabaseCleaner;
 

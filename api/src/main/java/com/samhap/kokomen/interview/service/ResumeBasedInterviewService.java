@@ -21,6 +21,7 @@ import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -49,7 +51,8 @@ public class ResumeBasedInterviewService {
     private final QuestionGenerationAsyncService questionGenerationAsyncService;
     private final TokenFacadeService tokenFacadeService;
 
-    @Transactional
+    @DistributedLock(prefix = "resume-question", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public QuestionGenerationSubmitResponse submitQuestionGeneration(
             Long memberId,
             ResumeBasedQuestionGenerateRequest request
