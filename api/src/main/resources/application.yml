@@ -111,7 +111,7 @@ server:
 payment:
   base-url: http://kokomen-payment-dev-internal:8080
   connect-timeout: 3s
-  read-timeout: 3s
+  read-timeout: 10s
 aws:
   root-question-s3-path: dev/root-question-voice/
   next-question-s3-path: dev/next-question-voice/
@@ -147,7 +147,7 @@ server:
 payment:
   base-url: ${PAYMENT_BASE_URL_PROD}
   connect-timeout: 3s
-  read-timeout: 3s
+  read-timeout: 10s
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
