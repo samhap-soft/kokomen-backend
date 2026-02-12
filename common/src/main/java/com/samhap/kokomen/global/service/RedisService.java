@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Collections;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBucket;
 import org.redisson.api.RBuckets;
+import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.api.options.KeysScanOptions;
 import org.redisson.client.codec.StringCodec;
@@ -28,6 +30,21 @@ public class RedisService {
 
     public boolean acquireLock(String lockKey, Duration ttl) {
         return setIfAbsent(lockKey, "1", ttl);
+    }
+
+    public boolean acquireLockWithValue(String lockKey, String lockValue, Duration ttl) {
+        return setIfAbsent(lockKey, lockValue, ttl);
+    }
+
+    public void releaseLockSafely(String lockKey, String expectedValue) {
+        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                + "return redis.call('del', KEYS[1]) "
+                + "else return 0 end";
+        RScript rScript = redissonClient.getScript(StringCodec.INSTANCE);
+        rScript.eval(
+                RScript.Mode.READ_WRITE, script, RScript.ReturnType.INTEGER,
+                Collections.singletonList(lockKey), expectedValue
+        );
     }
 
     public boolean setIfAbsent(String key, String value, Duration ttl) {

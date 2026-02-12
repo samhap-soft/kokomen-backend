@@ -40,6 +40,7 @@ import com.samhap.kokomen.token.service.TokenService;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -112,24 +113,25 @@ public class InterviewFacadeService {
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
-        acquireLockForProceedInterview(lockKey);
+        String lockValue = UUID.randomUUID().toString();
+        acquireLockForProceedInterview(lockKey, lockValue);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
                 answerRequest.answer());
         try {
             log.info("Bedrock API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                     interviewId, curQuestionId, memberAuth.memberId());
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
-                    questionAndAnswers, interviewId);
+                    questionAndAnswers, interviewId, lockValue);
         } catch (Exception e) {
             try {
                 log.info("Gpt API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                         interviewId, curQuestionId, memberAuth.memberId());
                 log.error("Bedrock API 호출 실패, GPT 폴백에시 기록 - {}", e);
                 interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
-                        questionAndAnswers, interviewId);
+                        questionAndAnswers, interviewId, lockValue);
             } catch (Exception ex) {
                 log.error("Gpt API 호출 실패 - {}", ex);
-                redisService.releaseLock(lockKey);
+                redisService.releaseLockSafely(lockKey, lockValue);
             }
         }
     }
@@ -138,8 +140,8 @@ public class InterviewFacadeService {
         return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + memberId;
     }
 
-    private void acquireLockForProceedInterview(String lockKey) {
-        boolean lockAcquired = redisService.acquireLock(lockKey, Duration.ofSeconds(30));
+    private void acquireLockForProceedInterview(String lockKey, String lockValue) {
+        boolean lockAcquired = redisService.acquireLockWithValue(lockKey, lockValue, Duration.ofMinutes(5));
         if (!lockAcquired) {
             throw new BadRequestException("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
         }
