@@ -18,7 +18,6 @@ import com.samhap.kokomen.member.service.dto.RankingResponse;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.service.TokenService;
-import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,6 +28,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -42,10 +43,11 @@ public class MemberService {
     @Value("${spring.profiles.active:local}")
     private String activeProfile;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Member saveSocialMember(SocialProvider provider, String socialId, String nickname) {
         Member member = memberRepository.save(new Member(nickname));
         memberSocialLoginRepository.save(new MemberSocialLogin(member, provider, socialId));
+        tokenService.createTokensForNewMember(member.getId());
         return member;
     }
 
