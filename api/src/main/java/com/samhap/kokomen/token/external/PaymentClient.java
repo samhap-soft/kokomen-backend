@@ -29,8 +29,10 @@ public class PaymentClient {
                     .retrieve()
                     .body(PaymentResponse.class);
         } catch (RestClientResponseException e) {
+            log.error("[Payment API 오류] confirmPayment - 상태 코드: {}, 응답: {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             throw new InternalApiException("Payment API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getStatusCode(), e);
         } catch (Exception e) {
+            log.error("[Payment API 오류] confirmPayment - 예상치 못한 오류", e);
             throw new InternalApiException("Payment API 호출 중 예상치 못한 오류가 발생했습니다.", e);
         }
     }
@@ -43,8 +45,10 @@ public class PaymentClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientResponseException e) {
+            log.error("[Payment API 오류] refundPayment - 상태 코드: {}, 응답: {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             throw new InternalApiException("Payment API 서버로부터 오류 응답을 받았습니다. 상태 코드: " + e.getStatusCode(), e);
         } catch (Exception e) {
+            log.error("[Payment API 오류] refundPayment - 예상치 못한 오류", e);
             throw new InternalApiException("Payment API 호출 중 예상치 못한 오류가 발생했습니다.", e);
         }
     }
