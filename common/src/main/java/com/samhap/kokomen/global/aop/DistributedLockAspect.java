@@ -65,6 +65,9 @@ public class DistributedLockAspect {
         }
 
         Object resolvedKey = PARSER.parseExpression(distributedLock.key()).getValue(context);
+        if (resolvedKey == null) {
+            throw new BadRequestException("분산 락 키를 생성할 수 없습니다.");
+        }
         return LOCK_KEY_PREFIX + distributedLock.prefix() + ":" + resolvedKey;
     }
 }

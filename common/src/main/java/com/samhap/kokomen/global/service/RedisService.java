@@ -2,7 +2,6 @@ package com.samhap.kokomen.global.service;
 
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.annotation.RedisExceptionWrapper;
-import com.samhap.kokomen.global.exception.RedisException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -80,11 +79,7 @@ public class RedisService {
 
     public Map<String, Object> multiGet(List<String> keys) {
         RBuckets buckets = redissonClient.getBuckets(StringCodec.INSTANCE);
-        Map<String, Object> result = buckets.get(keys.toArray(new String[0]));
-        if (result == null) {
-            throw new RedisException("Redis 멀티 GET 실패. keys: " + keys);
-        }
-        return result;
+        return buckets.get(keys.toArray(new String[0]));
     }
 
     public void releaseLock(String lockKey) {
