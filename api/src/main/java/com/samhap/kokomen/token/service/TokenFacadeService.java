@@ -1,5 +1,6 @@
 package com.samhap.kokomen.token.service;
 
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -29,13 +31,15 @@ public class TokenFacadeService {
     private final TokenPurchaseService tokenPurchaseService;
     private final PaymentClient paymentClient;
 
-    @Transactional
+    @DistributedLock(prefix = "token", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void purchaseTokens(Long memberId, TokenPurchaseRequest request) {
         int tokenCount = getTokenCountFromProductName(request.productName());
         long totalAmount = request.price();
 
         validateTokenPrice(request);
-        log.info("토큰 구매 요청 - memberId: {}, paymentKey: {}, tokenCount: {}, amount: {}", memberId, request.paymentKey(), tokenCount, totalAmount);
+        log.info("토큰 구매 요청 - memberId: {}, paymentKey: {}, tokenCount: {}, amount: {}", memberId, request.paymentKey(),
+                tokenCount, totalAmount);
 
         PaymentResponse paymentResponse = paymentClient.confirmPayment(request.toConfirmRequest(memberId));
         tokenPurchaseService.saveTokenPurchase(request.toTokenPurchase(memberId, paymentResponse));
@@ -66,9 +70,9 @@ public class TokenFacadeService {
         }
     }
 
-    @Transactional
+    @DistributedLock(prefix = "token", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void useToken(Long memberId) {
-        // TODO: 분산락으로 동시성 제어. (인터뷰 진행, 토큰 결제, 토큰 환불)
         if (tokenService.readFreeTokenCount(memberId) > 0) {
             tokenService.useFreeToken(memberId);
             return;
@@ -83,8 +87,8 @@ public class TokenFacadeService {
         throw new BadRequestException("토큰을 이미 모두 소진하였습니다.");
     }
 
-
-    @Transactional
+    @DistributedLock(prefix = "token", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void useTokens(Long memberId, int count) {
         int freeTokenCount = tokenService.readFreeTokenCount(memberId);
         int paidTokenCount = tokenService.readPaidTokenCount(memberId);
@@ -106,7 +110,8 @@ public class TokenFacadeService {
         }
     }
 
-    @Transactional
+    @DistributedLock(prefix = "token", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void refundTokens(Long memberId, Long tokenPurchaseId, TokenRefundRequest request) {
         TokenPurchase tokenPurchase = tokenPurchaseService.readTokenPurchaseById(tokenPurchaseId);
 
@@ -125,7 +130,8 @@ public class TokenFacadeService {
         String paymentKey = tokenPurchase.getPaymentKey();
 
         String refundReasonText = refundReasonCode.getRefundReason(request.refundReasonText());
-        log.info("토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
+        log.info(
+                "토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
                 memberId, tokenPurchaseId, paymentKey, refundTokenCount, refundReasonCode, refundReasonText);
 
         paymentClient.refundPayment(new RefundRequest(paymentKey, refundReasonText));
@@ -133,16 +139,18 @@ public class TokenFacadeService {
         tokenPurchaseService.refundTokenPurchase(tokenPurchase, refundReasonCode, request.refundReasonText());
         tokenService.refundPaidTokenCount(memberId, refundTokenCount);
 
-        log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId, refundTokenCount);
+        log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId,
+                refundTokenCount);
     }
 
     @Transactional(readOnly = true)
     public TokenPurchaseResponses readMyTokenPurchases(Long memberId, TokenPurchaseState state, Pageable pageable) {
-        Page<TokenPurchase> tokenPurchasePage = tokenPurchaseService.findTokenPurchasesByMemberId(memberId, state, pageable);
+        Page<TokenPurchase> tokenPurchasePage = tokenPurchaseService.findTokenPurchasesByMemberId(memberId, state,
+                pageable);
         List<TokenPurchaseResponse> tokenPurchases = tokenPurchasePage.stream()
                 .map(TokenPurchaseResponse::from)
                 .toList();
-        
+
         long totalPageCount = tokenPurchasePage.getTotalPages();
         return TokenPurchaseResponses.from(tokenPurchases, totalPageCount);
     }

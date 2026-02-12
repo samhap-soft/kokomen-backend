@@ -7,13 +7,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ScanOptions;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBucket;
+import org.redisson.api.RBuckets;
+import org.redisson.api.RedissonClient;
+import org.redisson.api.options.KeysScanOptions;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -23,69 +24,53 @@ import org.springframework.stereotype.Service;
 @Service
 public class RedisService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedissonClient redissonClient;
 
     public boolean acquireLock(String lockKey, Duration ttl) {
         return setIfAbsent(lockKey, "1", ttl);
     }
 
-    public boolean setIfAbsent(String lockKey, String value, Duration ttl) {
-        Boolean setSuccess = redisTemplate.opsForValue().setIfAbsent(lockKey, value, ttl);
-        if (setSuccess == null) {
-            throw new RedisException("분산 락 획득 실패. key: " + lockKey);
-        }
-        return setSuccess;
+    public boolean setIfAbsent(String key, String value, Duration ttl) {
+        RBucket<String> bucket = redissonClient.getBucket(key, StringCodec.INSTANCE);
+        return bucket.setIfAbsent(value, ttl);
     }
 
     public void setValue(String key, Object value, Duration ttl) {
-        redisTemplate.opsForValue().set(key, value, ttl);
+        RBucket<Object> bucket = redissonClient.getBucket(key, StringCodec.INSTANCE);
+        bucket.set(value, ttl);
     }
 
     public Long incrementKey(String key) {
-        Long count = redisTemplate.opsForValue().increment(key, 1);
-        if (count == null) {
-            throw new RedisException("Redis 카운트 증가 실패. key: " + key);
-        }
-
-        return count;
+        RAtomicLong atomicLong = redissonClient.getAtomicLong(key);
+        return atomicLong.incrementAndGet();
     }
 
     public boolean expireKey(String key, Duration ttl) {
-        Boolean expireSuccess = redisTemplate.expire(key, ttl);
-        if (expireSuccess == null) {
-            throw new RedisException("Redis 키 만료 설정 실패. key: " + key);
-        }
-
-        return expireSuccess;
+        return redissonClient.getBucket(key).expire(ttl);
     }
 
-    public Cursor<String> scanKeys(String pattern, int scanCount) {
-        ScanOptions scanOptions = ScanOptions.scanOptions()
-                .match(pattern)
-                .count(scanCount)
-                .build();
-
-        return redisTemplate.scan(scanOptions);
+    public Iterable<String> scanKeys(String pattern, int scanCount) {
+        return redissonClient.getKeys().getKeys(KeysScanOptions.defaults().pattern(pattern).chunkSize(scanCount));
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Optional<T> get(String key, Class<T> type) {
-        Object value = redisTemplate.opsForValue().get(key);
+        RBucket<Object> bucket = redissonClient.getBucket(key, StringCodec.INSTANCE);
+        Object value = bucket.get();
         return Optional.ofNullable(value)
                 .map(type::cast);
     }
 
     public Map<String, Object> multiGet(List<String> keys) {
-        List<Object> values = redisTemplate.opsForValue().multiGet(keys);
-        if (values == null) {
+        RBuckets buckets = redissonClient.getBuckets(StringCodec.INSTANCE);
+        Map<String, Object> result = buckets.get(keys.toArray(new String[0]));
+        if (result == null) {
             throw new RedisException("Redis 멀티 GET 실패. keys: " + keys);
         }
-
-        return IntStream.range(0, keys.size())
-                .boxed()
-                .collect(Collectors.toMap(keys::get, values::get));
+        return result;
     }
 
     public void releaseLock(String lockKey) {
-        redisTemplate.delete(lockKey);
+        redissonClient.getKeys().delete(lockKey);
     }
 }

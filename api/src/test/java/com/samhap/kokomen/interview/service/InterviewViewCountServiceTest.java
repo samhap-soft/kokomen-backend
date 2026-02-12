@@ -2,6 +2,8 @@ package com.samhap.kokomen.interview.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
@@ -207,7 +209,7 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 레디스에서_예외가_발생하더라도_실패하지_않고_DB에서_조회수를_가져온다() {
         // given
-        doThrow(new IllegalStateException("강제 예외")).when(redisTemplate).opsForValue();
+        doThrow(new IllegalStateException("강제 예외")).when(redissonClient).getBucket(anyString(), any());
         Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().build());
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(
@@ -243,7 +245,7 @@ class InterviewViewCountServiceTest extends BaseTest {
     @Test
     void 인터뷰_조회수_조회_시_레디스에서_예외가_발생하더라도_실패하지_않고_DB에서_조회수를_가져온다() {
         // given
-        doThrow(new IllegalStateException("강제 예외")).when(redisTemplate).opsForValue();
+        doThrow(new IllegalStateException("강제 예외")).when(redissonClient).getBucket(anyString(), any());
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview interview1 = interviewRepository.save(
