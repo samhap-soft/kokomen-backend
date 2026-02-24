@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.service.S3Service;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.Question;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.external.dto.request.SupertoneRequest;

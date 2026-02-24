@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.service.dto.resumebased;
 
-import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.entity.ResumeQuestionGenerationState;
 
 public record QuestionGenerationStateResponse(
         ResumeQuestionGenerationState state

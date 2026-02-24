@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.service.dto.resumebased;
 
-import com.samhap.kokomen.interview.domain.GeneratedQuestion;
+import com.samhap.kokomen.interview.entity.GeneratedQuestion;
 
 public record GeneratedQuestionsResponse(
         Long id,

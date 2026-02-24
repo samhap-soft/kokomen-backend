@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.interview.entity.Question;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 

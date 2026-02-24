@@ -3,7 +3,7 @@ package com.samhap.kokomen.resume.service;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.member.domain.Member;
-import com.samhap.kokomen.resume.domain.CareerMaterialsPathResolver;
+import com.samhap.kokomen.resume.tool.CareerMaterialsPathResolver;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;

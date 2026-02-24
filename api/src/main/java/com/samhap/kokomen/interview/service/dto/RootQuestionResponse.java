@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.entity.RootQuestion;
 
 public record RootQuestionResponse(
         Long id,

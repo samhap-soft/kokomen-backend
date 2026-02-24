@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.GeneratedQuestion;
-import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.entity.GeneratedQuestion;
+import com.samhap.kokomen.interview.entity.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.ResumeQuestionGenerationRepository;

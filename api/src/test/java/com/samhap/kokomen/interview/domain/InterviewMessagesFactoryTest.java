@@ -6,6 +6,8 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.Question;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.List;
 import org.junit.jupiter.api.Test;

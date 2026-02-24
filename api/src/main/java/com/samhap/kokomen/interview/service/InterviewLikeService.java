@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewLike;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.InterviewLike;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.member.domain.Member;
 import lombok.RequiredArgsConstructor;

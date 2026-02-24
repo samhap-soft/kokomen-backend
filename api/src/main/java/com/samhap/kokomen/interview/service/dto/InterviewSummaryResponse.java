@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.service.dto;
 
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewMode;
-import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.InterviewMode;
+import com.samhap.kokomen.interview.entity.InterviewState;
 import java.time.LocalDateTime;
 
 public record InterviewSummaryResponse(

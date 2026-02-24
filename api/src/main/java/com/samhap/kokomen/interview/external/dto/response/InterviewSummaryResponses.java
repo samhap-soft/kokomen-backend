@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
-import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.entity.Interview;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import java.util.List;
 import java.util.Map;

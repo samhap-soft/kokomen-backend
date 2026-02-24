@@ -2,8 +2,8 @@ package com.samhap.kokomen.admin.service;
 
 import com.samhap.kokomen.admin.service.dto.RootQuestionVoiceResponse;
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.RootQuestion;
-import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.entity.RootQuestion;
+import com.samhap.kokomen.interview.entity.RootQuestionState;
 import com.samhap.kokomen.interview.service.RootQuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

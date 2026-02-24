@@ -3,8 +3,8 @@ package com.samhap.kokomen.interview.service.dto.proceedstate;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.interview.domain.InterviewProceedState;
-import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.entity.InterviewState;
+import com.samhap.kokomen.interview.entity.Question;
 
 public record InterviewProceedStateVoiceModeResponse(
         InterviewProceedState proceedState,

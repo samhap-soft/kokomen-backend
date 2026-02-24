@@ -2,8 +2,8 @@ package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.dto.AnswerMemos;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.InterviewMode;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import java.util.Map;

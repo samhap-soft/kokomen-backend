@@ -3,7 +3,7 @@ package com.samhap.kokomen.answer.service;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.entity.Question;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

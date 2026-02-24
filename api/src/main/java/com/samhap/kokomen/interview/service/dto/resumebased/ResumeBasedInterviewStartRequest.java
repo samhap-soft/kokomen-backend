@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.service.dto.resumebased;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.entity.InterviewMode;
 import jakarta.validation.constraints.NotNull;
 
 public record ResumeBasedInterviewStartRequest(

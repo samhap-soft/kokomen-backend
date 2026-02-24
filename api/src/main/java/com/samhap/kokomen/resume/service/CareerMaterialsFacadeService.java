@@ -10,7 +10,7 @@ import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.resume.domain.CareerMaterialsType;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
-import com.samhap.kokomen.resume.domain.PdfValidator;
+import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
 import com.samhap.kokomen.resume.service.dto.CareerMaterialsResponse;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;

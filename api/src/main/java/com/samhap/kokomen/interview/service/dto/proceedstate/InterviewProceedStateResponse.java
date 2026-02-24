@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.service.dto.proceedstate;
 
 import com.samhap.kokomen.interview.domain.InterviewProceedState;
-import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.entity.InterviewState;
 
 public interface InterviewProceedStateResponse {
 

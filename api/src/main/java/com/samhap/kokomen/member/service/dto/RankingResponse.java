@@ -1,5 +1,6 @@
 package com.samhap.kokomen.member.service.dto;
 
+import com.samhap.kokomen.member.repository.dto.RankingProjection;
 import java.util.List;
 
 public record RankingResponse(
@@ -8,7 +9,7 @@ public record RankingResponse(
         Integer score,
         Integer finishedInterviewCount
 ) {
-    public RankingResponse(RankingProjection rankingProjection) {
+    public RankingResponse(com.samhap.kokomen.member.repository.dto.RankingProjection rankingProjection) {
         this(
                 rankingProjection.getId(),
                 rankingProjection.getNickname(),

@@ -1,7 +1,7 @@
 package com.samhap.kokomen.global.fixture.interview;
 
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.entity.Question;
 
 public class QuestionFixtureBuilder {
 

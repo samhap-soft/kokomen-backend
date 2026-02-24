@@ -4,7 +4,7 @@ import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.RedisException;
 import com.samhap.kokomen.global.service.RedisService;
-import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.entity.Interview;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

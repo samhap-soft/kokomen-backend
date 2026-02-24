@@ -4,7 +4,7 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
-import com.samhap.kokomen.resume.domain.PdfTextExtractor;
+import com.samhap.kokomen.resume.tool.PdfTextExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

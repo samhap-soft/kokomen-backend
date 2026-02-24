@@ -6,7 +6,7 @@ import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
 import com.samhap.kokomen.interview.service.dto.resumebased.ResumeBasedQuestionGenerateRequest;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
-import com.samhap.kokomen.resume.domain.PdfTextExtractor;
+import com.samhap.kokomen.resume.tool.PdfTextExtractor;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import java.util.List;

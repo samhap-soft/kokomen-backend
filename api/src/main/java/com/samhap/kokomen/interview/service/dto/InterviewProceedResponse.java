@@ -2,7 +2,7 @@ package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.entity.Question;
 
 public record InterviewProceedResponse(
         AnswerRank curAnswerRank,

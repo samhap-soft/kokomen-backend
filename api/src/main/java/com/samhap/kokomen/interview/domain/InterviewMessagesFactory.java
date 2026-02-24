@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.interview.entity.Question;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.ArrayList;
 import java.util.List;

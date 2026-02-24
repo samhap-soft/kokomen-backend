@@ -1,7 +1,7 @@
 package com.samhap.kokomen.global.fixture.interview;
 
-import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
-import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.entity.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.entity.ResumeQuestionGenerationState;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;

@@ -2,7 +2,7 @@ package com.samhap.kokomen.member.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.interview.dto.DailyInterviewCount;
+import com.samhap.kokomen.interview.repository.dto.DailyInterviewCount;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.domain.MemberSocialLogin;

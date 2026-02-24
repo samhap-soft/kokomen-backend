@@ -1,4 +1,3 @@
 rootProject.name = 'kokomen'
 
 include 'api'
-include 'common'

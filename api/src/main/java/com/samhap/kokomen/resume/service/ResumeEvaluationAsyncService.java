@@ -8,7 +8,7 @@ import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
-import com.samhap.kokomen.resume.domain.PdfTextExtractor;
+import com.samhap.kokomen.resume.tool.PdfTextExtractor;
 import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
 import com.samhap.kokomen.resume.external.ResumeInvokeFlowRequestFactory;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
