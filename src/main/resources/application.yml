@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: kokomen-interview-api
+  profiles:
+    include:
+      - common
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  session:
+    store-type: redis
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 25MB
+server:
+  servlet:
+    session:
+      timeout: 24h
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        same-site: lax
+        max-age: 86400
+  tomcat:
+    threads:
+      min-spare: 20
+      max: 30
+    max-connections: 1024
+    mbeanregistry:
+      enabled: true
+open-ai:
+  api-key: ${OPEN_AI_API_KEY}
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  server:
+    port: 8081
+    address: 0.0.0.0
+supertone:
+  api-token: ${SUPERTONE_API_TOKEN}

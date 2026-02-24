@@ -1,0 +1,15 @@
+package com.samhap.kokomen.interview.service.dto.resumebased;
+
+import com.samhap.kokomen.interview.entity.GeneratedQuestion;
+
+public record GeneratedQuestionsResponse(
+        Long id,
+        String question
+) {
+    public static GeneratedQuestionsResponse from(GeneratedQuestion generatedQuestion) {
+        return new GeneratedQuestionsResponse(
+                generatedQuestion.getId(),
+                generatedQuestion.getContent()
+        );
+    }
+}
