@@ -24,3 +24,11 @@ aws:
   resume-s3-path: dev/resume/
   portfolio-s3-path: dev/portfolio/
   company-s3-path: recruit/dev/company/
+tosspayments:
+  widget-secret-key: ${WIDGET_SECRET_KEY_DEV}
+retry:
+  tosspayments:
+    max-attempts: 3
+    initial-interval: 500
+    multiplier: 2.0
+    max-interval: 2000

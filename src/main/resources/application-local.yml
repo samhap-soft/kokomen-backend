@@ -23,3 +23,11 @@ aws:
   resume-s3-path: local/resume/
   portfolio-s3-path: local/portfolio/
   company-s3-path: recruit/local/company/
+tosspayments:
+  widget-secret-key: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+retry:
+  tosspayments:
+    max-attempts: 3
+    initial-interval: 500
+    multiplier: 2.0
+    max-interval: 2000
