@@ -5,21 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      api_changed: ${{ steps.filter.outputs.api }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          base: main
-          filters: |
-            api:
-              - 'api/**'
   build:
-    needs: detect-changes
     runs-on: ubuntu-latest
 
     defaults:
@@ -40,14 +26,12 @@ jobs:
 
       - name: Grant execute permission for run-test-mysql-redis.sh
         run: chmod +x run-test-mysql-redis.sh
-        working-directory: ./api
 
       - name: Start MySQL for testing
         run: ./run-test-mysql-redis.sh
-        working-directory: ./api
 
       - name: Build with Gradle
-        run: ./gradlew :api:build
+        run: ./gradlew build
 
       - name: Sign in Dockerhub
         uses: docker/login-action@v3
@@ -57,11 +41,9 @@ jobs:
 
       - name: Build the Docker image
         run: docker build -f ./Dockerfile --platform linux/arm64 --no-cache -t samhap/kokomen-interview-api:prod .
-        working-directory: ./api
 
       - name: Push the Docker Image to Dockerhub
         run: docker push samhap/kokomen-interview-api:prod
-        working-directory: ./api
 
   deploy:
     needs: build

@@ -44,7 +44,7 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     Long findRootQuestionIdByInterviewId(@Param("interviewId") Long interviewId);
 
     @Query("""
-            SELECT new com.samhap.kokomen.interview.dto.DailyInterviewCount(
+            SELECT new com.samhap.kokomen.interview.repository.dto.DailyInterviewCount(
                 CAST(i.finishedAt AS LocalDate),
                 COUNT(i)
             )
