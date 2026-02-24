@@ -1,0 +1,52 @@
+spring:
+  profiles:
+    include:
+      - common-test
+  main:
+    lazy-initialization: true
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+
+open-ai:
+  api-key: test_api_key
+
+cors:
+  allowed-origins: http://localhost:8080
+
+oauth:
+  kakao:
+    client-id: test_client_id
+    client-secret: test_client_secret
+  google:
+    client-id: test_google_client_id
+    client-secret: test_google_client_secret
+
+payment:
+  base-url: http://kokomen-payment-test
+  connect-timeout: 3s
+  read-timeout: 3s
+
+supertone:
+  api-token: mock-token
+
+aws:
+  root-question-s3-path: mock-path/
+  next-question-s3-path: mock-path/
+  resume-s3-path: mock-path/
+  portfolio-s3-path: mock-path/
+  company-s3-path: mock-path/
+
+---
+# test
+spring:
+  config:
+    activate:
+      on-profile: test
+
+---
+# docs
+spring:
+  config:
+    activate:
+      on-profile: docs

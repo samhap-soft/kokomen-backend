@@ -12,63 +12,71 @@ Kokomen (꼬꼬면) is an AI-powered mock interview platform for developers. The
 # Full build
 ./gradlew clean build
 
-# Run API server
-./gradlew :api:bootRun
-
-# Run Consumer service (separate terminal)
-./gradlew :consumer:bootRun
+# Run server
+./gradlew bootRun
 
 # Run all tests
 ./gradlew test
 
-# Run module-specific tests
-./gradlew :api:test
-./gradlew :consumer:test
-
 # Run single test class
-./gradlew :api:test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest"
+./gradlew test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest"
 
 # Run single test method
-./gradlew :api:test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest.메소드명"
+./gradlew test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest.메소드명"
 
 # Start test infrastructure (MySQL + Redis)
-cd api && docker compose -f test.yml up -d
+docker compose -f test.yml up -d
 
 # Or use the helper script
-cd api && ./run-test-mysql-redis.sh
+./run-test-mysql-redis.sh
 ```
 
 ## Architecture
 
-### Multi-Module Structure
+### Project Structure
 ```
 kokomen-backend/
-├── api/        # REST API server (Spring Boot application)
-├── consumer/   # Kafka event consumer service
-└── common/     # Shared domain models, entities, repositories, exceptions
+├── src/main/java/com/samhap/kokomen/
+│   ├── admin/
+│   ├── answer/
+│   ├── auth/
+│   ├── category/
+│   ├── global/
+│   ├── interview/
+│   ├── member/
+│   ├── product/
+│   ├── recruit/
+│   ├── resume/
+│   └── token/
+├── src/main/resources/
+│   ├── db/migration/     # Flyway migrations
+│   ├── application.yml   # Common config
+│   └── application-{profile}.yml
+├── src/test/
+├── src/docs/asciidoc/    # REST Docs
+├── docker/               # Deployment configs
+└── build.gradle
 ```
-
-- **api**: Main REST API with controllers, services, external client integrations (GPT, Bedrock, Supertone TTS, S3)
-- **consumer**: Kafka Streams consumer for event processing (e.g., InterviewLikeEvent)
-- **common**: JPA entities, repositories, shared exceptions, Flyway migrations, Redis configuration
 
 ### Key Technologies
 - Java 17, Spring Boot 3.x
 - MySQL 8.0 (Primary DB), Redis/Valkey (Session & Cache)
-- Apache Kafka for async event processing
 - OpenAI GPT-4 / AWS Bedrock for AI features
 - Supertone for TTS (voice mode)
 - Kakao/Google OAuth for authentication
-- Flyway for DB migrations (`common/src/main/resources/db/migration/`)
+- Flyway for DB migrations (`src/main/resources/db/migration/`)
 
 ### Domain Package Structure
 ```
-domain/
+{domain}/
 ├── controller/
 ├── service/
 │   └── dto/     # Request/Response DTOs
 ├── repository/
-├── domain/      # Entities (in common module)
+│   └── dto/     # Query projections
+├── entity/      # JPA entities
+├── domain/      # Domain logic & enums
+├── tool/        # Utility classes
 └── external/    # External API clients
 ```
 
@@ -121,16 +129,16 @@ Tests require MySQL and Redis containers:
 - MySQL: port 13306 (database: kokomen-test, password: root)
 - Redis: port 16379
 
-Start with: `cd api && docker compose -f test.yml up -d`
+Start with: `docker compose -f test.yml up -d`
 
 Test base classes:
-- `BaseTest`: `@SpringBootTest` with mock beans for external services (GPT, Kafka, S3, etc.)
+- `BaseTest`: `@SpringBootTest` with mock beans for external services (GPT, S3, etc.)
 - `BaseControllerTest`: Extends BaseTest, adds MockMvc with RestDocs configuration
 
 ## API Documentation
 
 - Generated via Spring REST Docs
-- Build generates docs into `api/build/docs/`
+- Build generates docs into `build/docs/`
 - Access at: `http://localhost:8080/docs/index.html`
 
 ## Environment Variables
@@ -151,3 +159,6 @@ SUPERTONE_API_TOKEN
 - `prod`: Production
 - `load-test`: Load testing
 - `test`: Test environment (used by tests)
+
+# currentDate
+Today's date is 2026-02-24.

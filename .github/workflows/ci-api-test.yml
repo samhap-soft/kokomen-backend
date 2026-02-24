@@ -5,21 +5,7 @@ on:
     branches: [ main, release, develop ]
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      api_changed: ${{ steps.filter.outputs.api }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            api:
-              - 'api/**'
-
   build:
-    needs: detect-changes
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -43,20 +29,18 @@ jobs:
 
       - name: Grant execute permission for run-test-mysql-redis.sh
         run: chmod +x run-test-mysql-redis.sh
-        working-directory: ./api
 
       - name: Start MySQL for testing
         run: ./run-test-mysql-redis.sh
-        working-directory: ./api
 
-      - name: Test & Build api only
-        run: ./gradlew :api:build
+      - name: Test & Build
+        run: ./gradlew build
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: ${{ always() }}
         with:
-          files: ${{ github.workspace }}/api/build/test-results/**/*.xml
+          files: ${{ github.workspace }}/build/test-results/**/*.xml
           seconds_between_github_reads: 1.0
           seconds_between_github_writes: 3.0
           secondary_rate_limit_wait_seconds: 90.0
@@ -65,5 +49,5 @@ jobs:
         uses: mikepenz/action-junit-report@v3
         if: always()
         with:
-          report_paths: ${{ github.workspace }}/api/build/test-results/**/*.xml
+          report_paths: ${{ github.workspace }}/build/test-results/**/*.xml
           token: ${{ github.token }}

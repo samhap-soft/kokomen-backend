@@ -29,9 +29,6 @@ mysql_data/
 *.rar
 
 # build
-api/build/
-consumer/build/
-common/build/
 /build/
 /.gradle/
 
@@ -42,8 +39,7 @@ common/build/
 hs_err_pid*
 replay_pid*
 
-api/local-app-run.sh
-consumer/local-app-run.sh
+local-app-run.sh
 
 /**/bin/
 .serena

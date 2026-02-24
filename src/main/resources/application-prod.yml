@@ -1,0 +1,26 @@
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID_PROD}
+    client-secret: ${KAKAO_CLIENT_SECRET_PROD}
+    admin-key: ${KAKAO_ADMIN_KEY_PROD}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID_PROD}
+    client-secret: ${GOOGLE_CLIENT_SECRET_PROD}
+cors:
+  allowed-origins: https://kokomen.kr, https://www.kokomen.kr, https://www.webview.kokomen.kr, https://webview.kokomen.kr
+server:
+  servlet:
+    session:
+      cookie:
+        domain: kokomen.kr
+        secure: true
+payment:
+  base-url: ${PAYMENT_BASE_URL_PROD}
+  connect-timeout: 3s
+  read-timeout: 10s
+aws:
+  root-question-s3-path: prod/root-question-voice/
+  next-question-s3-path: prod/next-question-voice/
+  resume-s3-path: prod/resume/
+  portfolio-s3-path: prod/portfolio/
+  company-s3-path: recruit/prod/company/
