@@ -22,10 +22,6 @@ oauth:
     client-id: test_google_client_id
     client-secret: test_google_client_secret
 
-payment:
-  base-url: http://kokomen-payment-test
-  connect-timeout: 3s
-  read-timeout: 3s
 tosspayments:
   widget-secret-key: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
 retry:

@@ -9,7 +9,7 @@ import com.samhap.kokomen.interview.external.ResumeBasedQuestionGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.service.QuestionGenerationAsyncService;
 import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
-import com.samhap.kokomen.token.external.PaymentClient;
+import com.samhap.kokomen.payment.service.PaymentFacadeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +33,7 @@ public abstract class BaseTest {
     @MockitoBean
     protected S3Client s3Client;
     @MockitoBean
-    protected PaymentClient paymentClient;
+    protected PaymentFacadeService paymentFacadeService;
     @MockitoBean
     protected InterviewProceedGptClient interviewProceedGptClient;
     @MockitoBean

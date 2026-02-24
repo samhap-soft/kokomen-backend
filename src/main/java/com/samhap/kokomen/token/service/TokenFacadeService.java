@@ -1,18 +1,20 @@
 package com.samhap.kokomen.token.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.payment.service.PaymentFacadeService;
+import com.samhap.kokomen.payment.service.dto.CancelRequest;
+import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
+import com.samhap.kokomen.payment.service.dto.PaymentResponse;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
-import com.samhap.kokomen.token.dto.PaymentResponse;
-import com.samhap.kokomen.token.dto.RefundRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
-import com.samhap.kokomen.token.external.PaymentClient;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +31,8 @@ public class TokenFacadeService {
 
     private final TokenService tokenService;
     private final TokenPurchaseService tokenPurchaseService;
-    private final PaymentClient paymentClient;
+    private final PaymentFacadeService paymentFacadeService;
+    private final ObjectMapper objectMapper;
 
     @DistributedLock(prefix = "token", key = "#memberId")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -41,8 +44,11 @@ public class TokenFacadeService {
         log.info("토큰 구매 요청 - memberId: {}, paymentKey: {}, tokenCount: {}, amount: {}", memberId, request.paymentKey(),
                 tokenCount, totalAmount);
 
-        PaymentResponse paymentResponse = paymentClient.confirmPayment(request.toConfirmRequest(memberId));
-        tokenPurchaseService.saveTokenPurchase(request.toTokenPurchase(memberId, paymentResponse));
+        ConfirmRequest confirmRequest = request.toPaymentConfirmRequest(memberId, objectMapper);
+        PaymentResponse paymentResponse = paymentFacadeService.confirmPayment(confirmRequest);
+        tokenPurchaseService.saveTokenPurchase(
+                request.toTokenPurchase(memberId, paymentResponse.method(),
+                        paymentResponse.easyPay() != null ? paymentResponse.easyPay().provider() : null));
         tokenService.addPaidTokens(memberId, tokenCount);
 
         log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);
@@ -134,7 +140,7 @@ public class TokenFacadeService {
                 "토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
                 memberId, tokenPurchaseId, paymentKey, refundTokenCount, refundReasonCode, refundReasonText);
 
-        paymentClient.refundPayment(new RefundRequest(paymentKey, refundReasonText));
+        paymentFacadeService.cancelPayment(new CancelRequest(paymentKey, refundReasonText));
 
         tokenPurchaseService.refundTokenPurchase(tokenPurchase, refundReasonCode, request.refundReasonText());
         tokenService.refundPaidTokenCount(memberId, refundTokenCount);

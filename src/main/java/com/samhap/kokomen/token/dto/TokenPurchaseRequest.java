@@ -1,5 +1,10 @@
 package com.samhap.kokomen.token.dto;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.InternalServerErrorException;
+import com.samhap.kokomen.payment.domain.ServiceType;
+import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +25,7 @@ public record TokenPurchaseRequest(
         String productName
 ) {
 
-    public ConfirmRequest toConfirmRequest(Long memberId) {
+    public ConfirmRequest toPaymentConfirmRequest(Long memberId, ObjectMapper objectMapper) {
         TokenProduct product = TokenProduct.valueOf(productName);
         PurchaseMetadata metadata = new PurchaseMetadata(
                 productName,
@@ -28,18 +33,25 @@ public record TokenPurchaseRequest(
                 product.getUnitPrice()
         );
 
+        String metadataJson;
+        try {
+            metadataJson = objectMapper.writeValueAsString(metadata);
+        } catch (JsonProcessingException e) {
+            throw new InternalServerErrorException("metadata 직렬화 중 오류가 발생했습니다.", e);
+        }
+
         return new ConfirmRequest(
                 paymentKey,
                 orderId,
                 price,
                 orderName,
                 memberId,
-                metadata,
-                "INTERVIEW"
+                metadataJson,
+                ServiceType.INTERVIEW
         );
     }
 
-    public TokenPurchase toTokenPurchase(Long memberId, PaymentResponse paymentResponse) {
+    public TokenPurchase toTokenPurchase(Long memberId, String paymentMethod, String easyPayProvider) {
         TokenProduct product = TokenProduct.valueOf(productName);
         return TokenPurchase.builder()
                 .memberId(memberId)
@@ -50,8 +62,8 @@ public record TokenPurchaseRequest(
                 .productName(productName)
                 .purchaseCount(getTokenCountFromProduct(product))
                 .unitPrice(product.getUnitPrice())
-                .paymentMethod(paymentResponse.method())
-                .easyPayProvider(paymentResponse.easyPay() != null ? paymentResponse.easyPay().provider() : null)
+                .paymentMethod(paymentMethod)
+                .easyPayProvider(easyPayProvider)
                 .build();
     }
 

@@ -14,10 +14,6 @@ server:
       cookie:
         domain: kokomen.kr
         secure: true
-payment:
-  base-url: ${PAYMENT_BASE_URL_PROD}
-  connect-timeout: 3s
-  read-timeout: 10s
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/

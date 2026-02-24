@@ -29,8 +29,7 @@ import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
-import com.samhap.kokomen.token.dto.PaymentResponse;
-import com.samhap.kokomen.token.dto.PaymentResponse.EasyPay;
+import com.samhap.kokomen.payment.service.dto.PaymentResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
@@ -103,7 +102,12 @@ class TokenControllerTest extends BaseControllerTest {
                 "토큰 10개",
                 "TOKEN_10"
         );
-        given(paymentClient.confirmPayment(any())).willReturn(new PaymentResponse("간편결제", new EasyPay("카카오페이")));
+        given(paymentFacadeService.confirmPayment(any())).willReturn(new PaymentResponse(
+                "test_paymentKey", null, "test_orderId", "토큰 10개", "mId", "KRW",
+                "간편결제", 500L, 500L, null, null, null, null, null, null, null, null,
+                false, null, null, null,
+                new com.samhap.kokomen.payment.service.dto.EasyPay("카카오페이", null, null),
+                null, null, null));
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
 
         // when & then
@@ -541,7 +545,7 @@ class TokenControllerTest extends BaseControllerTest {
         session.setAttribute("MEMBER_ID", member.getId());
 
         TokenRefundRequest request = new TokenRefundRequest(RefundReasonCode.CHANGE_OF_MIND, null);
-        willDoNothing().given(paymentClient).refundPayment(any());
+        willDoNothing().given(paymentFacadeService).cancelPayment(any());
 
         long initialPaidTokens = tokenService.readPaidTokenCount(member.getId());
 

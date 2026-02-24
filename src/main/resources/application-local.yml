@@ -13,10 +13,6 @@ server:
     session:
       cookie:
         secure: true
-payment:
-  base-url: http://kokomen-payment-local-internal:8080
-  connect-timeout: 3s
-  read-timeout: 3s
 aws:
   root-question-s3-path: local/root-question-voice/
   next-question-s3-path: local/next-question-voice/
