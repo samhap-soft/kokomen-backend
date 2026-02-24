@@ -25,8 +25,6 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client:2.32.12'
     implementation 'software.amazon.awssdk:netty-nio-client:2.32.16'
 
-    implementation 'org.springframework.kafka:spring-kafka'
-
     // PDF 텍스트 추출
     implementation 'org.apache.pdfbox:pdfbox:3.0.3'
 

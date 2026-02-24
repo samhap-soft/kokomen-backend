@@ -13,13 +13,6 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 25MB
-  kafka:
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: 1
-    properties:
-      security.protocol: PLAINTEXT
 server:
   servlet:
     session:
@@ -56,8 +49,6 @@ spring:
   config:
     activate:
       on-profile: local
-  kafka:
-    bootstrap-servers: kokomen-local-kafka:9092
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
@@ -90,8 +81,6 @@ spring:
   config:
     activate:
       on-profile: dev
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_DEV}
@@ -125,8 +114,6 @@ spring:
   config:
     activate:
       on-profile: prod
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}
@@ -160,8 +147,6 @@ spring:
   config:
     activate:
       on-profile: load-test
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID_PROD}
