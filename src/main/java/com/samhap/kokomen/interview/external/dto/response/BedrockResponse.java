@@ -1,6 +1,8 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 
 public record BedrockResponse(
@@ -9,35 +11,29 @@ public record BedrockResponse(
 
     @Override
     public AnswerFeedbackResponse extractAnswerFeedbackResponse(ObjectMapper objectMapper) {
-        try {
-            return objectMapper.readValue(content, AnswerFeedbackResponse.class);
-        } catch (Exception e) {
-            throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
-        }
+        return parseContent(objectMapper, AnswerFeedbackResponse.class);
     }
 
     @Override
     public AnswerRankResponse extractAnswerRankResponse(ObjectMapper objectMapper) {
-        try {
-            return objectMapper.readValue(content, AnswerRankResponse.class);
-        } catch (Exception e) {
-            throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
-        }
+        return parseContent(objectMapper, AnswerRankResponse.class);
     }
 
     @Override
     public NextQuestionResponse extractNextQuestionResponse(ObjectMapper objectMapper) {
-        try {
-            return objectMapper.readValue(content, NextQuestionResponse.class);
-        } catch (Exception e) {
-            throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
-        }
+        return parseContent(objectMapper, NextQuestionResponse.class);
     }
 
     @Override
     public TotalFeedbackResponse extractTotalFeedbackResponse(ObjectMapper objectMapper) {
+        return parseContent(objectMapper, TotalFeedbackResponse.class);
+    }
+
+    private <T> T parseContent(ObjectMapper objectMapper, Class<T> type) {
         try {
-            return objectMapper.readValue(content, TotalFeedbackResponse.class);
+            ObjectReader reader = objectMapper.reader()
+                    .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS);
+            return reader.readValue(content, type);
         } catch (Exception e) {
             throw new ExternalApiException("Bedrock 응답 파싱 실패. 원본 응답: " + content, e);
         }
