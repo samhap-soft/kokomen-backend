@@ -30,6 +30,7 @@ import com.samhap.kokomen.token.domain.RefundReasonCode;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
+import com.samhap.kokomen.payment.service.PaymentFacadeService;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
@@ -38,10 +39,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.payload.JsonFieldType;
 
 class TokenControllerTest extends BaseControllerTest {
 
+    @MockitoBean
+    private PaymentFacadeService paymentFacadeService;
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
