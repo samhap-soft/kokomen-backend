@@ -6,6 +6,7 @@ import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentRepository;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,11 @@ public class TosspaymentsPaymentService {
                     log.error("결제 정보 조회 실패 - paymentKey: {}", paymentKey);
                     return new NotFoundException(PaymentServiceErrorMessage.PAYMENT_NOT_FOUND_BY_PAYMENT_KEY.getMessage());
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TosspaymentsPayment> findByPaymentKey(String paymentKey) {
+        return tosspaymentsPaymentRepository.findByPaymentKey(paymentKey);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

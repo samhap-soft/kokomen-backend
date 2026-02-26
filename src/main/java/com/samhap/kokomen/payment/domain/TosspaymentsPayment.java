@@ -90,6 +90,14 @@ public class TosspaymentsPayment extends BaseEntity {
         }
     }
 
+    public boolean isCompleted() {
+        return state == PaymentState.COMPLETED;
+    }
+
+    public boolean isNeedApprove() {
+        return state == PaymentState.NEED_APPROVE;
+    }
+
     public void updateState(PaymentState state) {
         this.state = state;
     }
