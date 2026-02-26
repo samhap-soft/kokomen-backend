@@ -25,6 +25,8 @@ services:
       GOOGLE_CLIENT_ID_PROD: ${GOOGLE_CLIENT_ID_PROD}
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
       WIDGET_SECRET_KEY_PROD: ${WIDGET_SECRET_KEY_PROD}
+    networks:
+      - prod-kokomen-net
 
   nginx:
     image: nginx:1.28.0
@@ -37,6 +39,8 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Seoul
+    networks:
+      - prod-kokomen-net
 
   node:
     image: prom/node-exporter
@@ -51,6 +55,20 @@ services:
       - '/:/host:ro'
     environment:
       TZ: Asia/Seoul
+    networks:
+      - prod-kokomen-net
+
+  kokomen-redis:
+    image: valkey/valkey:8.0.1
+    container_name: kokomen-redis
+    ports:
+      - 6379:6379
+    volumes:
+      - kokomen-redis-data:/data
+    environment:
+      TZ: Asia/Seoul
+    networks:
+      - prod-kokomen-net
 
   promtail:
     image: grafana/promtail
@@ -66,6 +84,14 @@ services:
     environment:
       TZ: Asia/Seoul
       HOSTNAME: ${HOSTNAME}
+    networks:
+      - prod-kokomen-net
 
 volumes:
   promtail-tmp:
+  kokomen-redis-data:
+
+networks:
+  prod-kokomen-net:
+    external: true
+    driver: bridge
