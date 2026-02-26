@@ -15,6 +15,7 @@ import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.service.dto.CancelRequest;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import java.net.SocketTimeoutException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class PaymentFacadeService {
     private final TosspaymentsClient tosspaymentsClient;
     private final RetryTemplate tosspaymentsConfirmRetryTemplate;
 
+    @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
     public PaymentResponse confirmPayment(ConfirmRequest request) {
         TosspaymentsPayment tosspaymentsPayment = tosspaymentsPaymentService.saveTosspaymentsPayment(request);
         try {
