@@ -11,4 +11,8 @@ public enum PaymentState {
     SERVER_BAD_REQUEST, // 서버 문제로 토스페이먼츠로부터 400을 받은 경우 사용자에게 메시지 노출 불필요
     COMPLETED, // 결제 완료 후 비즈니스 반영도 완료된 상태
     ;
+
+    public boolean canCompleteByWebhook() {
+        return this == NEED_APPROVE || this == NEED_CANCEL || this == CONNECTION_TIMEOUT;
+    }
 }

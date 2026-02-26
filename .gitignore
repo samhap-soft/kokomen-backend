@@ -44,3 +44,4 @@ local-app-run.sh
 /**/bin/
 .serena
 .claude
+*.csv
