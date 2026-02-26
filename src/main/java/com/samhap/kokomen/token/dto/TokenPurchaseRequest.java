@@ -1,5 +1,11 @@
 package com.samhap.kokomen.token.dto;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.InternalServerErrorException;
+import com.samhap.kokomen.payment.domain.ServiceType;
+import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import jakarta.validation.constraints.NotBlank;
@@ -20,13 +26,20 @@ public record TokenPurchaseRequest(
         String productName
 ) {
 
-    public ConfirmRequest toConfirmRequest(Long memberId) {
-        TokenProduct product = TokenProduct.valueOf(productName);
+    public ConfirmRequest toPaymentConfirmRequest(Long memberId, ObjectMapper objectMapper) {
+        TokenProduct product = readTokenProduct(productName);
         PurchaseMetadata metadata = new PurchaseMetadata(
                 productName,
                 getTokenCountFromProduct(product),
                 product.getUnitPrice()
         );
+
+        String metadataJson;
+        try {
+            metadataJson = objectMapper.writeValueAsString(metadata);
+        } catch (JsonProcessingException e) {
+            throw new InternalServerErrorException("metadata 직렬화 중 오류가 발생했습니다.", e);
+        }
 
         return new ConfirmRequest(
                 paymentKey,
@@ -34,13 +47,13 @@ public record TokenPurchaseRequest(
                 price,
                 orderName,
                 memberId,
-                metadata,
-                "INTERVIEW"
+                metadataJson,
+                ServiceType.INTERVIEW
         );
     }
 
-    public TokenPurchase toTokenPurchase(Long memberId, PaymentResponse paymentResponse) {
-        TokenProduct product = TokenProduct.valueOf(productName);
+    public TokenPurchase toTokenPurchase(Long memberId, String paymentMethod, String easyPayProvider) {
+        TokenProduct product = readTokenProduct(productName);
         return TokenPurchase.builder()
                 .memberId(memberId)
                 .paymentKey(paymentKey)
@@ -50,12 +63,20 @@ public record TokenPurchaseRequest(
                 .productName(productName)
                 .purchaseCount(getTokenCountFromProduct(product))
                 .unitPrice(product.getUnitPrice())
-                .paymentMethod(paymentResponse.method())
-                .easyPayProvider(paymentResponse.easyPay() != null ? paymentResponse.easyPay().provider() : null)
+                .paymentMethod(paymentMethod)
+                .easyPayProvider(easyPayProvider)
                 .build();
     }
 
     private int getTokenCountFromProduct(TokenProduct product) {
         return product.getTokenCount();
+    }
+
+    private static TokenProduct readTokenProduct(String productName) {
+        try {
+            return TokenProduct.valueOf(productName);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("유효하지 않은 product_name 입니다.");
+        }
     }
 }

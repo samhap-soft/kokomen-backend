@@ -13,13 +13,17 @@ server:
     session:
       cookie:
         secure: true
-payment:
-  base-url: http://kokomen-payment-local-internal:8080
-  connect-timeout: 3s
-  read-timeout: 3s
 aws:
   root-question-s3-path: local/root-question-voice/
   next-question-s3-path: local/next-question-voice/
   resume-s3-path: local/resume/
   portfolio-s3-path: local/portfolio/
   company-s3-path: recruit/local/company/
+tosspayments:
+  widget-secret-key: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+retry:
+  tosspayments:
+    max-attempts: 3
+    initial-interval: 500
+    multiplier: 2.0
+    max-interval: 2000
