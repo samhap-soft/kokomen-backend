@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.category.domain.Category;
+import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.interview.domain.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.entity.RootQuestion;
@@ -37,7 +38,7 @@ public class RootQuestionService {
         RootQuestion lastRootQuestionReceived =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(category, member.getId(),
                                 RootQuestionState.ACTIVE)
-                        .orElseThrow(() -> new IllegalStateException("해당 카테고리의 질문을 찾을 수 없습니다."));
+                        .orElseThrow(() -> new NotFoundException("해당 카테고리의 질문을 찾을 수 없습니다."));
 
         int nextOrder = lastRootQuestionReceived.getQuestionOrder() + 1;
         return rootQuestionRepository.findRootQuestionByCategoryAndStateAndQuestionOrder(category,
@@ -48,7 +49,7 @@ public class RootQuestionService {
     private RootQuestion findFirstRootQuestion(Category category) {
         return rootQuestionRepository.findRootQuestionByCategoryAndStateAndQuestionOrder(category,
                         RootQuestionState.ACTIVE, 1)
-                .orElseThrow(() -> new IllegalStateException("해당 카테고리의 질문을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NotFoundException("해당 카테고리의 질문을 찾을 수 없습니다."));
     }
 
     public boolean isRootQuestionVoiceExists(Long rootQuestionId) {
@@ -78,7 +79,7 @@ public class RootQuestionService {
     public RootQuestion readRootQuestion(Long rootQuestionId) {
         return rootQuestionRepository.findById(rootQuestionId)
                 .orElseThrow(
-                        () -> new IllegalArgumentException("루트 질문이 존재하지 않습니다. rootQuestionId = " + rootQuestionId));
+                        () -> new NotFoundException("루트 질문이 존재하지 않습니다. rootQuestionId = " + rootQuestionId));
     }
 
     public List<RootQuestion> findAllRootQuestionByCategory(Category category) {

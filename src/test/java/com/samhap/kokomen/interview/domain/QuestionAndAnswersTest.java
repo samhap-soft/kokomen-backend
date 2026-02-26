@@ -112,7 +112,7 @@ class QuestionAndAnswersTest {
                 curAnswerContent,
                 questions.get(questions.size() - 1).getId(),
                 interview
-        )).isInstanceOf(IllegalArgumentException.class)
+        )).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("질문과 답변의 개수가 일치하지 않습니다.");
     }
 

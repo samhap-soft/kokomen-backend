@@ -1,5 +1,6 @@
 package com.samhap.kokomen.recruit.schedular.service;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.recruit.schedular.dto.ApiResponse;
 import com.samhap.kokomen.recruit.schedular.dto.PagedData;
 import com.samhap.kokomen.recruit.schedular.dto.RecruitmentDto;
@@ -108,13 +109,13 @@ public class RecruitmentApiClient {
 
     private void validateResponse(ApiResponse<PagedData<RecruitmentDto>> response, int page) {
         if (response == null) {
-            throw new IllegalStateException("API 응답이 null입니다 (페이지: " + page + ")");
+            throw new BadRequestException("API 응답이 null입니다 (페이지: " + page + ")");
         }
         if (response.getData() == null) {
-            throw new IllegalStateException("API 응답 데이터가 null입니다 (페이지: " + page + ")");
+            throw new BadRequestException("API 응답 데이터가 null입니다 (페이지: " + page + ")");
         }
         if (response.getData().getContent() == null) {
-            throw new IllegalStateException("API 응답 컨텐츠가 null입니다 (페이지: " + page + ")");
+            throw new BadRequestException("API 응답 컨텐츠가 null입니다 (페이지: " + page + ")");
         }
         if (!Boolean.TRUE.equals(response.getSuccess())) {
             log.error("API 응답 실패 (페이지: {}): {}", page, response);

@@ -2,6 +2,7 @@ package com.samhap.kokomen.global.service;
 
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.constant.AwsConstant;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -69,6 +70,6 @@ public class S3Service {
         if (cdnUrl.startsWith(AwsConstant.CLOUD_FRONT_DOMAIN_URL)) {
             return cdnUrl.substring(AwsConstant.CLOUD_FRONT_DOMAIN_URL.length());
         }
-        throw new IllegalArgumentException("Invalid CDN URL: " + cdnUrl);
+        throw new BadRequestException("Invalid CDN URL: " + cdnUrl);
     }
 }

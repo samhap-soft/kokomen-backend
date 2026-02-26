@@ -1,5 +1,6 @@
 package com.samhap.kokomen.auth.infrastructure;
 
+import com.samhap.kokomen.global.exception.BadRequestException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,7 +16,7 @@ public class SessionInvalidator {
         Cookie jSessionIdCookie = Arrays.stream(request.getCookies())
                 .filter(cookie -> "JSESSIONID".equals(cookie.getName()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("JSESSIONID 쿠키가 요청에 존재하지 않습니다."));
+                .orElseThrow(() -> new BadRequestException("JSESSIONID 쿠키가 요청에 존재하지 않습니다."));
         jSessionIdCookie.setValue("");
         jSessionIdCookie.setMaxAge(0);
         response.addCookie(jSessionIdCookie);

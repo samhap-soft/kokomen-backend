@@ -3,6 +3,7 @@ package com.samhap.kokomen.answer.service;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.interview.entity.Question;
 import java.util.List;
 import java.util.Optional;
@@ -23,12 +24,12 @@ public class AnswerService {
 
     public Answer readById(Long answerId) {
         return answerRepository.findById(answerId)
-                .orElseThrow(() -> new BadRequestException("존재하지 않는 답변입니다."));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 답변입니다."));
     }
 
     public Answer readByQuestionId(Long questionId) {
         return answerRepository.findByQuestionId(questionId)
-                .orElseThrow(() -> new IllegalStateException("다음 질문에 대한 답변이 존재하지 않습니다. question_id = " + questionId));
+                .orElseThrow(() -> new NotFoundException("다음 질문에 대한 답변이 존재하지 않습니다. question_id = " + questionId));
     }
 
     public Optional<Answer> findByQuestionId(Long questionId) {

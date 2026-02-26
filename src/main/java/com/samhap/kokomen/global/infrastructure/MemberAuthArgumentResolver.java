@@ -2,6 +2,7 @@ package com.samhap.kokomen.global.infrastructure;
 
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -29,7 +30,7 @@ public class MemberAuthArgumentResolver implements HandlerMethodArgumentResolver
                                   WebDataBinderFactory binderFactory) throws Exception {
         Authentication authentication = parameter.getParameterAnnotation(Authentication.class);
         if (authentication == null) {
-            throw new IllegalStateException("MemberAuth 파라미터는 @Authentication 어노테이션이 있어야 합니다.");
+            throw new InternalServerErrorException("MemberAuth 파라미터는 @Authentication 어노테이션이 있어야 합니다.");
         }
         boolean authenticationRequired = authentication.required();
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
@@ -56,7 +57,7 @@ public class MemberAuthArgumentResolver implements HandlerMethodArgumentResolver
             log.error("세션에 MEMBER_ID가 없습니다.");
         }
         if (memberId == null && authenticationRequired) {
-            throw new IllegalStateException("세션에 MEMBER_ID가 없습니다.");
+            throw new UnauthorizedException("세션에 MEMBER_ID가 없습니다.");
         }
     }
 }

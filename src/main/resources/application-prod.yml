@@ -14,13 +14,17 @@ server:
       cookie:
         domain: kokomen.kr
         secure: true
-payment:
-  base-url: ${PAYMENT_BASE_URL_PROD}
-  connect-timeout: 3s
-  read-timeout: 10s
 aws:
   root-question-s3-path: prod/root-question-voice/
   next-question-s3-path: prod/next-question-voice/
   resume-s3-path: prod/resume/
   portfolio-s3-path: prod/portfolio/
   company-s3-path: recruit/prod/company/
+tosspayments:
+  widget-secret-key: ${WIDGET_SECRET_KEY_PROD}
+retry:
+  tosspayments:
+    max-attempts: 3
+    initial-interval: 500
+    multiplier: 2.0
+    max-interval: 2000
