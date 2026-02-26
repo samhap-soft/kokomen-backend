@@ -1,6 +1,7 @@
 package com.samhap.kokomen.token.service;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
@@ -30,7 +31,7 @@ public class TokenService {
     public void addPaidTokens(Long memberId, int count) {
         int updatedRows = tokenRepository.incrementTokenCountModifying(memberId, TokenType.PAID, count);
         if (updatedRows == 0) {
-            throw new IllegalStateException("유료 토큰 구매에 실패했습니다. memberId: " + memberId);
+            throw new InternalServerErrorException("유료 토큰 구매에 실패했습니다. memberId: " + memberId);
         }
     }
 
@@ -68,7 +69,7 @@ public class TokenService {
     public void refundPaidTokenCount(Long memberId, int count) {
         int updatedRows = tokenRepository.decrementTokenCountModifying(memberId, TokenType.PAID, count);
         if (updatedRows == 0) {
-            throw new IllegalStateException("유료 토큰 환불에 실패했습니다. memberId: " + memberId);
+            throw new InternalServerErrorException("유료 토큰 환불에 실패했습니다. memberId: " + memberId);
         }
     }
 
@@ -101,6 +102,6 @@ public class TokenService {
     @Transactional(readOnly = true)
     public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
         return tokenRepository.findByMemberIdAndType(memberId, type)
-                .orElseThrow(() -> new IllegalStateException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
+                .orElseThrow(() -> new BadRequestException("해당 유형의 토큰이 존재하지 않습니다. type: " + type));
     }
 }

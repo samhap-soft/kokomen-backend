@@ -1,6 +1,7 @@
 package com.samhap.kokomen.payment.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -76,16 +77,16 @@ public class TosspaymentsPayment extends BaseEntity {
 
     private void validateConstructorParams(String paymentKey, Long memberId, String orderId, Long totalAmount) {
         if (paymentKey == null || paymentKey.isBlank()) {
-            throw new IllegalArgumentException("paymentKey는 필수입니다.");
+            throw new BadRequestException("paymentKey는 필수입니다.");
         }
         if (memberId == null) {
-            throw new IllegalArgumentException("memberId는 필수입니다.");
+            throw new BadRequestException("memberId는 필수입니다.");
         }
         if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("orderId는 필수입니다.");
+            throw new BadRequestException("orderId는 필수입니다.");
         }
         if (totalAmount == null || totalAmount < 0) {
-            throw new IllegalArgumentException("totalAmount는 0 이상이어야 합니다.");
+            throw new BadRequestException("totalAmount는 0 이상이어야 합니다.");
         }
     }
 

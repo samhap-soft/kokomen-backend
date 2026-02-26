@@ -1,6 +1,7 @@
 package com.samhap.kokomen.token.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -97,7 +98,8 @@ public class TokenPurchase extends BaseEntity {
 
     public TokenPurchase(Long memberId, String paymentKey, String orderId, Long totalAmount,
                          String orderName, String productName, Integer purchaseCount, Long unitPrice,
-                         Integer remainingCount, TokenPurchaseState state, String paymentMethod, String easyPayProvider) {
+                         Integer remainingCount, TokenPurchaseState state, String paymentMethod,
+                         String easyPayProvider) {
         this.memberId = memberId;
         this.paymentKey = paymentKey;
         this.orderId = orderId;
@@ -114,7 +116,7 @@ public class TokenPurchase extends BaseEntity {
 
     public void useToken() {
         if (!hasRemainingTokens()) {
-            throw new IllegalStateException("사용할 수 있는 토큰이 없습니다.");
+            throw new BadRequestException("사용할 수 있는 토큰이 없습니다.");
         }
 
         this.remainingCount--;
@@ -128,10 +130,10 @@ public class TokenPurchase extends BaseEntity {
 
     public int useTokens(int count) {
         if (count <= 0) {
-            throw new IllegalArgumentException("사용할 토큰 수는 0보다 커야 합니다.");
+            throw new BadRequestException("사용할 토큰 수는 0보다 커야 합니다.");
         }
         if (!hasRemainingTokens()) {
-            throw new IllegalStateException("사용할 수 있는 토큰이 없습니다.");
+            throw new BadRequestException("사용할 수 있는 토큰이 없습니다.");
         }
 
         int tokensToUse = Math.min(count, this.remainingCount);
@@ -152,15 +154,15 @@ public class TokenPurchase extends BaseEntity {
 
     public void refund(RefundReasonCode refundReasonCode, String refundReasonText) {
         if (!isRefundable()) {
-            throw new IllegalStateException("환불 불가능한 상태입니다.");
+            throw new BadRequestException("환불 불가능한 상태입니다.");
         }
 
         if (refundReasonCode == null) {
-            throw new IllegalArgumentException("환불 사유 코드는 필수입니다.");
+            throw new BadRequestException("환불 사유 코드는 필수입니다.");
         }
 
         if (refundReasonCode.requiresReasonText() && (refundReasonText == null || refundReasonText.trim().isEmpty())) {
-            throw new IllegalArgumentException("기타 환불 사유일 때는 상세한 사유를 입력해야 합니다.");
+            throw new BadRequestException("기타 환불 사유일 때는 상세한 사유를 입력해야 합니다.");
         }
 
         this.state = TokenPurchaseState.REFUNDED;

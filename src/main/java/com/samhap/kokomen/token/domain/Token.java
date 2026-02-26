@@ -48,7 +48,7 @@ public class Token extends BaseEntity {
 
     public void addTokens(int count) {
         if (count < 0) {
-            throw new IllegalStateException("추가할 토큰 수는 0보다 커야 합니다.");
+            throw new BadRequestException("추가할 토큰 수는 0보다 커야 합니다.");
         }
         this.tokenCount += count;
     }
@@ -62,7 +62,7 @@ public class Token extends BaseEntity {
 
     public void useTokens(int count) {
         if (count <= 0) {
-            throw new IllegalArgumentException("사용할 토큰 수는 0보다 커야 합니다.");
+            throw new BadRequestException("사용할 토큰 수는 0보다 커야 합니다.");
         }
         if (this.tokenCount < count) {
             throw new BadRequestException("사용할 수 있는 토큰이 부족합니다.");
@@ -80,7 +80,7 @@ public class Token extends BaseEntity {
 
     public void setTokenCount(int count) {
         if (count < 0) {
-            throw new IllegalStateException("토큰 수는 0보다 작을 수 없습니다.");
+            throw new BadRequestException("토큰 수는 0보다 작을 수 없습니다.");
         }
         this.tokenCount = count;
     }

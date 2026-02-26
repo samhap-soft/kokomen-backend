@@ -20,7 +20,8 @@ public class QuestionAndAnswers {
     private final Interview interview;
 
     // TODO: 생성자에서 예외가 발생하더라도 객체는 힙에 남아있는지 실험해보기
-    public QuestionAndAnswers(List<Question> questions, List<Answer> prevAnswers, String curAnswerContent, Long curQuestionId, Interview interview) {
+    public QuestionAndAnswers(List<Question> questions, List<Answer> prevAnswers, String curAnswerContent,
+                              Long curQuestionId, Interview interview) {
         this.questions = questions.stream()
                 .sorted(Comparator.comparing(Question::getId))
                 .toList();
@@ -43,7 +44,7 @@ public class QuestionAndAnswers {
 
     private void validateQuestionsAndAnswersSize() {
         if (questions.size() != prevAnswers.size() + 1) {
-            throw new IllegalArgumentException("질문과 답변의 개수가 일치하지 않습니다.");
+            throw new BadRequestException("질문과 답변의 개수가 일치하지 않습니다.");
         }
     }
 
