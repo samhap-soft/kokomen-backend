@@ -12,6 +12,7 @@ import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
 import com.samhap.kokomen.token.service.TokenPurchaseService;
 import com.samhap.kokomen.token.service.TokenService;
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class WebhookService {
     private final TokenPurchaseService tokenPurchaseService;
     private final ObjectMapper objectMapper;
 
+    @DistributedLock(prefix = "payment", key = "#payload.data().paymentKey()")
     @Transactional
     public void handlePaymentStatusChanged(WebhookPayload payload) {
         WebhookPaymentData data = payload.data();
