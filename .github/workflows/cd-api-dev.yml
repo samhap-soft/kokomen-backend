@@ -97,6 +97,7 @@ jobs:
           SUPERTONE_API_TOKEN: ${{ secrets.SUPERTONE_API_TOKEN }}
           GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
           GOOGLE_CLIENT_SECRET_DEV: ${{ secrets.GOOGLE_CLIENT_SECRET_DEV }}
+          WIDGET_SECRET_KEY_DEV: ${{ secrets.WIDGET_SECRET_KEY_DEV }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/dev
