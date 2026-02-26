@@ -32,7 +32,7 @@ public class TosspaymentsTransactionService {
         TosspaymentsPaymentResult result = tosspaymentsPaymentResultService.readByTosspaymentsPaymentId(payment.getId());
 
         if (response.cancels() != null && !response.cancels().isEmpty()) {
-            TosspaymentsCancel tosspaymentsCancel = response.cancels().get(0);
+            TosspaymentsCancel tosspaymentsCancel = response.cancels().get(response.cancels().size() - 1);
             result.updateCancelInfo(
                     tosspaymentsCancel.cancelReason(),
                     tosspaymentsCancel.canceledAt(),

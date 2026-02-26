@@ -63,6 +63,7 @@ public class TosspaymentsPayment extends BaseEntity {
 
     public TosspaymentsPayment(String paymentKey, Long memberId, String orderId, String orderName, Long totalAmount,
                                String metadata, ServiceType serviceType) {
+        validateConstructorParams(paymentKey, memberId, orderId, totalAmount);
         this.paymentKey = paymentKey;
         this.memberId = memberId;
         this.orderId = orderId;
@@ -73,13 +74,28 @@ public class TosspaymentsPayment extends BaseEntity {
         this.state = PaymentState.NEED_APPROVE;
     }
 
+    private void validateConstructorParams(String paymentKey, Long memberId, String orderId, Long totalAmount) {
+        if (paymentKey == null || paymentKey.isBlank()) {
+            throw new IllegalArgumentException("paymentKey는 필수입니다.");
+        }
+        if (memberId == null) {
+            throw new IllegalArgumentException("memberId는 필수입니다.");
+        }
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("orderId는 필수입니다.");
+        }
+        if (totalAmount == null || totalAmount < 0) {
+            throw new IllegalArgumentException("totalAmount는 0 이상이어야 합니다.");
+        }
+    }
+
     public void updateState(PaymentState state) {
         this.state = state;
     }
 
     public void validateTosspaymentsResult(String paymentKey, String orderId, Long totalAmount) {
         if (!this.paymentKey.equals(paymentKey)) {
-            log.error("paymentKey 불일치 - 응답: {}, DB: {}", paymentKey, this.paymentKey);
+            log.error("paymentKey 불일치 - 응답: {}, DB: {}", maskPaymentKey(paymentKey), maskPaymentKey(this.paymentKey));
             throw new InternalServerErrorException(PaymentErrorMessage.PAYMENT_KEY_MISMATCH.getMessage());
         }
         if (!this.orderId.equals(orderId)) {
@@ -90,5 +106,12 @@ public class TosspaymentsPayment extends BaseEntity {
             log.error("totalAmount 불일치 - 응답: {}, DB: {}", totalAmount, this.totalAmount);
             throw new InternalServerErrorException(PaymentErrorMessage.TOTAL_AMOUNT_MISMATCH.getMessage());
         }
+    }
+
+    private String maskPaymentKey(String key) {
+        if (key == null || key.length() <= 8) {
+            return "***";
+        }
+        return key.substring(0, 8) + "***";
     }
 }

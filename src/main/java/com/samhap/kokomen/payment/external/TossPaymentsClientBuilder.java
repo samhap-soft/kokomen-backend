@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,7 @@ public class TossPaymentsClientBuilder {
         requestFactory.setConnectTimeout(3000);
         requestFactory.setReadTimeout(15000);
 
-        String encodedSecretKey = Base64.getEncoder().encodeToString((tossPaymentsWidgetSecretKey + ":").getBytes());
+        String encodedSecretKey = Base64.getEncoder().encodeToString((tossPaymentsWidgetSecretKey + ":").getBytes(StandardCharsets.UTF_8));
 
         this.tossPaymentsClientBuilder = builder
                 .requestFactory(requestFactory)

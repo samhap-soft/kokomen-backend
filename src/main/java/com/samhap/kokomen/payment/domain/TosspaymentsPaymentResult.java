@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -111,6 +112,7 @@ public class TosspaymentsPaymentResult extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Builder
     public TosspaymentsPaymentResult(TosspaymentsPayment tosspaymentsPayment, PaymentType type, String mId, String currency, Long totalAmount, String method,
                                      Long balanceAmount, TosspaymentsStatus tosspaymentsStatus, LocalDateTime requestedAt, LocalDateTime approvedAt,
                                      String lastTransactionKey, Long suppliedAmount, Long vat, Long taxFreeAmount, Long taxExemptionAmount,

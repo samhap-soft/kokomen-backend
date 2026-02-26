@@ -23,10 +23,17 @@ public class TosspaymentsLoggingAspect {
 
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
-        Object result = joinPoint.proceed();
-        stopWatch.stop();
-        log.info("[토스페이먼츠 API 응답] {} - {}ms - response: {}",
-                methodName, stopWatch.getTotalTimeMillis(), result);
-        return result;
+        try {
+            Object result = joinPoint.proceed();
+            stopWatch.stop();
+            log.info("[토스페이먼츠 API 응답] {} - {}ms - response: {}",
+                    methodName, stopWatch.getTotalTimeMillis(), result);
+            return result;
+        } catch (Throwable e) {
+            stopWatch.stop();
+            log.error("[토스페이먼츠 API 에러] {} - {}ms - error: {}",
+                    methodName, stopWatch.getTotalTimeMillis(), e.getMessage());
+            throw e;
+        }
     }
 }

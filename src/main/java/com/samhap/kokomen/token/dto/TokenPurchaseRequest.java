@@ -2,6 +2,7 @@ package com.samhap.kokomen.token.dto;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.payment.domain.ServiceType;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
@@ -26,7 +27,7 @@ public record TokenPurchaseRequest(
 ) {
 
     public ConfirmRequest toPaymentConfirmRequest(Long memberId, ObjectMapper objectMapper) {
-        TokenProduct product = TokenProduct.valueOf(productName);
+        TokenProduct product = readTokenProduct(productName);
         PurchaseMetadata metadata = new PurchaseMetadata(
                 productName,
                 getTokenCountFromProduct(product),
@@ -52,7 +53,7 @@ public record TokenPurchaseRequest(
     }
 
     public TokenPurchase toTokenPurchase(Long memberId, String paymentMethod, String easyPayProvider) {
-        TokenProduct product = TokenProduct.valueOf(productName);
+        TokenProduct product = readTokenProduct(productName);
         return TokenPurchase.builder()
                 .memberId(memberId)
                 .paymentKey(paymentKey)
@@ -69,5 +70,13 @@ public record TokenPurchaseRequest(
 
     private int getTokenCountFromProduct(TokenProduct product) {
         return product.getTokenCount();
+    }
+
+    private static TokenProduct readTokenProduct(String productName) {
+        try {
+            return TokenProduct.valueOf(productName);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("유효하지 않은 product_name 입니다.");
+        }
     }
 }

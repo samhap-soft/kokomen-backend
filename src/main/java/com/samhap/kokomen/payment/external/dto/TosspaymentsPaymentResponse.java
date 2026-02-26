@@ -40,30 +40,30 @@ public record TosspaymentsPaymentResponse(
 ) {
 
     public TosspaymentsPaymentResult toTosspaymentsPaymentResult(TosspaymentsPayment tosspaymentsPayment) {
-        return new TosspaymentsPaymentResult(
-                tosspaymentsPayment,
-                this.type,
-                this.mId,
-                this.currency,
-                this.totalAmount,
-                this.method,
-                this.balanceAmount,
-                this.status,
-                this.requestedAt,
-                this.approvedAt,
-                this.lastTransactionKey,
-                this.suppliedAmount,
-                this.vat,
-                this.taxFreeAmount,
-                this.taxExemptionAmount,
-                this.isPartialCancelable,
-                this.receipt() != null ? this.receipt().url() : null,
-                this.easyPay() != null ? this.easyPay().provider() : null,
-                this.easyPay() != null ? this.easyPay().amount() : null,
-                this.easyPay() != null ? this.easyPay().discountAmount() : null,
-                this.country,
-                this.failure() != null ? this.failure().code() : null,
-                this.failure() != null ? this.failure().message() : null
-        );
+        return TosspaymentsPaymentResult.builder()
+                .tosspaymentsPayment(tosspaymentsPayment)
+                .type(this.type)
+                .mId(this.mId)
+                .currency(this.currency)
+                .totalAmount(this.totalAmount)
+                .method(this.method)
+                .balanceAmount(this.balanceAmount)
+                .tosspaymentsStatus(this.status)
+                .requestedAt(this.requestedAt)
+                .approvedAt(this.approvedAt)
+                .lastTransactionKey(this.lastTransactionKey)
+                .suppliedAmount(this.suppliedAmount)
+                .vat(this.vat)
+                .taxFreeAmount(this.taxFreeAmount)
+                .taxExemptionAmount(this.taxExemptionAmount)
+                .isPartialCancelable(this.isPartialCancelable)
+                .receiptUrl(this.receipt() != null ? this.receipt().url() : null)
+                .easyPayProvider(this.easyPay() != null ? this.easyPay().provider() : null)
+                .easyPayAmount(this.easyPay() != null ? this.easyPay().amount() : null)
+                .easyPayDiscountAmount(this.easyPay() != null ? this.easyPay().discountAmount() : null)
+                .country(this.country)
+                .failureCode(this.failure() != null ? this.failure().code() : null)
+                .failureMessage(this.failure() != null ? this.failure().message() : null)
+                .build();
     }
 }

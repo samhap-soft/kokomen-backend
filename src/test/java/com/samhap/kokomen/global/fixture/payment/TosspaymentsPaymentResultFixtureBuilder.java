@@ -77,30 +77,30 @@ public class TosspaymentsPaymentResultFixtureBuilder {
     }
 
     public TosspaymentsPaymentResult build() {
-        return new TosspaymentsPaymentResult(
-                tosspaymentsPayment,
-                type != null ? type : PaymentType.NORMAL,
-                mId != null ? mId : "tvivarepublica",
-                currency != null ? currency : "KRW",
-                totalAmount != null ? totalAmount : 10000L,
-                method != null ? method : "카드",
-                balanceAmount != null ? balanceAmount : 10000L,
-                tosspaymentsStatus != null ? tosspaymentsStatus : TosspaymentsStatus.DONE,
-                requestedAt != null ? requestedAt : LocalDateTime.now().minusMinutes(5),
-                approvedAt,
-                lastTransactionKey != null ? lastTransactionKey : "test_transaction_key",
-                suppliedAmount != null ? suppliedAmount : 9091L,
-                vat != null ? vat : 909L,
-                taxFreeAmount != null ? taxFreeAmount : 0L,
-                taxExemptionAmount != null ? taxExemptionAmount : 0L,
-                isPartialCancelable,
-                receiptUrl,
-                easyPayProvider,
-                easyPayAmount,
-                easyPayDiscountAmount,
-                country != null ? country : "KR",
-                failureCode,
-                failureMessage
-        );
+        return TosspaymentsPaymentResult.builder()
+                .tosspaymentsPayment(tosspaymentsPayment)
+                .type(type != null ? type : PaymentType.NORMAL)
+                .mId(mId != null ? mId : "tvivarepublica")
+                .currency(currency != null ? currency : "KRW")
+                .totalAmount(totalAmount != null ? totalAmount : 10000L)
+                .method(method != null ? method : "카드")
+                .balanceAmount(balanceAmount != null ? balanceAmount : 10000L)
+                .tosspaymentsStatus(tosspaymentsStatus != null ? tosspaymentsStatus : TosspaymentsStatus.DONE)
+                .requestedAt(requestedAt != null ? requestedAt : LocalDateTime.of(2024, 1, 1, 12, 0))
+                .approvedAt(approvedAt)
+                .lastTransactionKey(lastTransactionKey != null ? lastTransactionKey : "test_transaction_key")
+                .suppliedAmount(suppliedAmount != null ? suppliedAmount : 9091L)
+                .vat(vat != null ? vat : 909L)
+                .taxFreeAmount(taxFreeAmount != null ? taxFreeAmount : 0L)
+                .taxExemptionAmount(taxExemptionAmount != null ? taxExemptionAmount : 0L)
+                .isPartialCancelable(isPartialCancelable)
+                .receiptUrl(receiptUrl)
+                .easyPayProvider(easyPayProvider)
+                .easyPayAmount(easyPayAmount)
+                .easyPayDiscountAmount(easyPayDiscountAmount)
+                .country(country != null ? country : "KR")
+                .failureCode(failureCode)
+                .failureMessage(failureMessage)
+                .build();
     }
 }
