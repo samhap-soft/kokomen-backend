@@ -3,12 +3,12 @@ package com.samhap.kokomen.global.aop;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.service.AnswerService;
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.InterviewState;
-import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
-import com.samhap.kokomen.interview.service.InterviewService;
+import com.samhap.kokomen.interview.service.core.InterviewService;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Objects;
@@ -48,7 +48,7 @@ public class RootQuestionMetricAspect {
         ).increment();
     }
 
-    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
+    @Pointcut("execution(* com.samhap.kokomen.interview.service.infra.InterviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
     public void asyncProceedInterviewPointcut(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
     }
 

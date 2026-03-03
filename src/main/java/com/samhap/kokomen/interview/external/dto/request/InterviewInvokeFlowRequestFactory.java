@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.external.dto.request;
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.interview.domain.InterviewMessagesFactory;
-import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
+import com.samhap.kokomen.interview.tool.InterviewMessagesFactory;
+import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInput;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FlowInputContent;

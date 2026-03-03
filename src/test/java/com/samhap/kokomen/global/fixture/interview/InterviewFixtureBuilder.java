@@ -1,11 +1,11 @@
 package com.samhap.kokomen.global.fixture.interview;
 
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.InterviewMode;
-import com.samhap.kokomen.interview.entity.InterviewState;
-import com.samhap.kokomen.interview.entity.InterviewType;
-import com.samhap.kokomen.interview.entity.RootQuestion;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.member.domain.Member;
 import java.time.LocalDateTime;
 

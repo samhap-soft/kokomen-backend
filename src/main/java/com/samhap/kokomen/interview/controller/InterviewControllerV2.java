@@ -2,7 +2,7 @@ package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
-import com.samhap.kokomen.interview.entity.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;

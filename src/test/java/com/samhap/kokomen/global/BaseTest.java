@@ -7,7 +7,7 @@ import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
 import com.samhap.kokomen.interview.external.ResumeBasedQuestionGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
-import com.samhap.kokomen.interview.service.QuestionGenerationAsyncService;
+import com.samhap.kokomen.interview.service.question.QuestionGenerationAsyncService;
 import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
 import org.junit.jupiter.api.BeforeEach;

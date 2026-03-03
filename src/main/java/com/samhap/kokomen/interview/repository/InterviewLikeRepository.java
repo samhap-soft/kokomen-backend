@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.repository;
 
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.InterviewLike;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewLike;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import java.util.Set;

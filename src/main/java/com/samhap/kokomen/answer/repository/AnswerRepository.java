@@ -2,7 +2,7 @@ package com.samhap.kokomen.answer.repository;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.interview.entity.Question;
+import com.samhap.kokomen.interview.domain.Question;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
