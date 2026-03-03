@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.service.dto;
 
 import com.samhap.kokomen.category.domain.Category;
-import com.samhap.kokomen.interview.entity.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import jakarta.validation.constraints.NotNull;
 
 public record InterviewRequest(

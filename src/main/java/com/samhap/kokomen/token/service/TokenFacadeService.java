@@ -9,8 +9,10 @@ import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.RefundReasonCode;
+import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
@@ -46,10 +48,9 @@ public class TokenFacadeService {
 
         ConfirmRequest confirmRequest = request.toPaymentConfirmRequest(memberId, objectMapper);
         PaymentResponse paymentResponse = paymentFacadeService.confirmPayment(confirmRequest);
-        tokenPurchaseService.saveTokenPurchase(
-                request.toTokenPurchase(memberId, paymentResponse.method(),
-                        paymentResponse.easyPay() != null ? paymentResponse.easyPay().provider() : null));
-        tokenService.addPaidTokens(memberId, tokenCount);
+        TokenPurchase tokenPurchase = request.toTokenPurchase(memberId, paymentResponse.method(),
+                getEasyPayProvider(paymentResponse));
+        grantPurchasedTokens(tokenPurchase, tokenCount);
 
         log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);
     }
@@ -57,6 +58,13 @@ public class TokenFacadeService {
     private int getTokenCountFromProductName(String productName) {
         TokenProduct product = TokenProduct.valueOf(productName);
         return product.getTokenCount();
+    }
+
+    private static String getEasyPayProvider(PaymentResponse paymentResponse) {
+        if (paymentResponse.easyPay() != null) {
+            return paymentResponse.easyPay().provider();
+        }
+        return null;
     }
 
     private void validateTokenPrice(TokenPurchaseRequest request) {
@@ -147,6 +155,26 @@ public class TokenFacadeService {
 
         log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId,
                 refundTokenCount);
+    }
+
+    @Transactional
+    public void grantPurchasedTokens(TokenPurchase tokenPurchase, int tokenCount) {
+        tokenPurchaseService.saveTokenPurchase(tokenPurchase);
+        tokenService.addPaidTokens(tokenPurchase.getMemberId(), tokenCount);
+    }
+
+    public void createTokensForNewMember(Long memberId) {
+        tokenService.createTokensForNewMember(memberId);
+    }
+
+    @Transactional(readOnly = true)
+    public void validateEnoughTokens(Long memberId, int requiredCount) {
+        tokenService.validateEnoughTokens(memberId, requiredCount);
+    }
+
+    @Transactional(readOnly = true)
+    public Token readTokenByMemberIdAndType(Long memberId, TokenType type) {
+        return tokenService.readTokenByMemberIdAndType(memberId, type);
     }
 
     @Transactional(readOnly = true)

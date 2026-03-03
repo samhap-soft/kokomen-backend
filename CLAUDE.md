@@ -19,10 +19,10 @@ Kokomen (꼬꼬면) is an AI-powered mock interview platform for developers. The
 ./gradlew test
 
 # Run single test class
-./gradlew test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest"
+./gradlew test --tests "com.samhap.kokomen.interview.service.core.InterviewServiceTest"
 
 # Run single test method
-./gradlew test --tests "com.samhap.kokomen.interview.service.InterviewServiceTest.메소드명"
+./gradlew test --tests "com.samhap.kokomen.interview.service.core.InterviewServiceTest.메소드명"
 
 # Start test infrastructure (MySQL + Redis)
 docker compose -f test.yml up -d
@@ -33,59 +33,73 @@ docker compose -f test.yml up -d
 
 ## Architecture
 
-### Project Structure
-```
-kokomen-backend/
-├── src/main/java/com/samhap/kokomen/
-│   ├── admin/
-│   ├── answer/
-│   ├── auth/
-│   ├── category/
-│   ├── global/
-│   ├── interview/
-│   ├── member/
-│   ├── product/
-│   ├── recruit/
-│   ├── resume/
-│   └── token/
-├── src/main/resources/
-│   ├── db/migration/     # Flyway migrations
-│   ├── application.yml   # Common config
-│   └── application-{profile}.yml
-├── src/test/
-├── src/docs/asciidoc/    # REST Docs
-├── docker/               # Deployment configs
-└── build.gradle
-```
-
 ### Key Technologies
 - Java 17, Spring Boot 3.x
-- MySQL 8.0 (Primary DB), Redis/Valkey (Session & Cache)
+- MySQL 8.0 (Primary DB), Redis/Valkey (Session & Cache, Redisson for distributed locks)
 - OpenAI GPT-4 / AWS Bedrock for AI features
 - Supertone for TTS (voice mode)
 - Kakao/Google OAuth for authentication
 - Flyway for DB migrations (`src/main/resources/db/migration/`)
+- Spring REST Docs for API documentation
+- Micrometer + Prometheus for metrics (management port: 8081)
 
-### Domain Package Structure
+### Domain Packages
+```
+src/main/java/com/samhap/kokomen/
+├── admin/        # Admin operations (root question voice management)
+├── answer/       # Interview answers, likes, memos
+├── auth/         # OAuth login (Kakao, Google)
+├── category/     # Interview categories
+├── global/       # Cross-cutting concerns (AOP, config, exceptions, fixtures)
+├── interview/    # Core interview domain (start, proceed, questions, resume-based)
+├── member/       # User profiles and scores
+├── payment/      # Tosspayments integration (payments, webhooks, refunds)
+├── product/      # Purchasable products
+├── recruit/      # Job recruitment listings
+├── resume/       # Resume/portfolio upload and AI evaluation
+└── token/        # Interview tokens (purchase, consumption)
+```
+
+### Domain Package Convention
 ```
 {domain}/
 ├── controller/
 ├── service/
-│   └── dto/     # Request/Response DTOs
+│   └── dto/       # Request/Response DTOs (suffixed with Request or Response)
 ├── repository/
-│   └── dto/     # Query projections
-├── entity/      # JPA entities
-├── domain/      # Domain logic & enums
-├── tool/        # Utility classes
-└── external/    # External API clients
+│   └── dto/       # Query projections
+├── entity/        # JPA entities
+├── domain/        # Domain logic & enums
+├── tool/          # Utility classes
+└── external/      # External API clients
 ```
+
+### Interview Service Sub-Packages
+The interview domain uses sub-packages to organize its service layer. Facade services and InterviewQueryService remain at the root for controller access:
+```
+interview/service/
+├── InterviewStartFacadeService        # Orchestrates interview start flow
+├── InterviewProceedFacadeService      # Orchestrates answer submission flow
+├── InterviewQueryService              # Read-only query delegation for controllers
+├── core/       # InterviewService, InterviewProceedService
+├── question/   # QuestionService, RootQuestionService, QuestionGeneration*
+├── resume/     # ResumeBasedInterviewService, ResumeContentService
+├── social/     # InterviewLikeService, InterviewViewCountService
+├── infra/      # InterviewSchedulerService, InterviewProceedBedrockFlowAsyncService
+└── dto/
+```
+
+### Cross-Cutting Patterns
+- **Facade pattern**: Domains with complex orchestration use `*FacadeService` classes. Other domains should depend on facade services, not internal services directly.
+- **Custom annotations**: `@DistributedLock` (Redis-based), `@ExecutionTimer`, `@RedisExceptionWrapper`
+- **Base entity**: `BaseEntity` with `@CreatedDate createdAt`
 
 ## Code Conventions (from docs/convention.md)
 
 ### Style Guide
 - Follows Woowacourse Java Style Guide (based on Google Java Style)
-- Line limit: 160 characters
-- Indent: 4 spaces
+- Column limit: **120 characters**
+- Indent: 4 spaces, continuation indent: +8 spaces minimum
 
 ### Naming
 - Methods: `행위 + 도메인` (e.g., `saveMember()`)
@@ -108,38 +122,33 @@ public void example() {}
 3. Business methods (CRUD order, private methods after their calling public method)
 4. Override methods (equals, hashCode, toString)
 
-### Testing
-- Test method names in **Korean**
-- No `@DisplayName` annotation
-- Controller tests: MockMvc + real beans (integration test, generates RestDocs)
-- Service tests: integration with repository
-- Domain tests: unit tests
-- Test isolation: `MySQLDatabaseCleaner` (not `@Transactional`)
-- Fixtures: `global/fixture/XxxFixtureBuilder` classes
-- Tests use real MySQL container (not H2)
-
 ### Exception Handling
 - Custom exceptions: `BadRequestException`, `UnauthorizedException`, `ForbiddenException`, etc.
 - Validation: `@Valid` in DTO, entity-level validation in constructors
 - Business validation that needs external data goes in service layer
 
-## Test Infrastructure
+## Testing
 
+### Test Conventions
+- Test method names in **Korean**
+- No `@DisplayName` annotation
+- Controller tests: MockMvc + real beans (integration test, generates RestDocs)
+- Service tests: integration with repository
+- Domain tests: unit tests
+- Test isolation: `MySQLDatabaseCleaner` truncates all tables (not `@Transactional`)
+- Fixtures: `global/fixture/{domain}/XxxFixtureBuilder` — static `builder()`, fluent setters, sensible defaults
+
+### Test Infrastructure
 Tests require MySQL and Redis containers:
 - MySQL: port 13306 (database: kokomen-test, password: root)
 - Redis: port 16379
 
 Start with: `docker compose -f test.yml up -d`
 
-Test base classes:
-- `BaseTest`: `@SpringBootTest` with mock beans for external services (GPT, S3, etc.)
-- `BaseControllerTest`: Extends BaseTest, adds MockMvc with RestDocs configuration
-
-## API Documentation
-
-- Generated via Spring REST Docs
-- Build generates docs into `build/docs/`
-- Access at: `http://localhost:8080/docs/index.html`
+### Test Base Classes
+- **`BaseTest`**: `@SpringBootTest` with `@ActiveProfiles("test")`, mocks external services (GPT, S3, Supertone, Tosspayments, OAuth clients, Bedrock), spies on Redis. Uses real MySQL container + `MySQLDatabaseCleaner`.
+- **`BaseControllerTest`**: Extends BaseTest, adds MockMvc with RestDocs configuration.
+- **`DocsTest`**: `@ActiveProfiles("docs")`, uses H2 in-memory DB with `@Transactional`. For lightweight REST Docs generation without Docker.
 
 ## Environment Variables
 
@@ -158,7 +167,5 @@ SUPERTONE_API_TOKEN
 - `dev`: Development server
 - `prod`: Production
 - `load-test`: Load testing
-- `test`: Test environment (used by tests)
-
-# currentDate
-Today's date is 2026-02-24.
+- `test`: Test environment (real MySQL + Redis containers)
+- `docs`: REST Docs generation (H2 in-memory, no Docker needed)

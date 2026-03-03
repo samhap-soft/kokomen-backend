@@ -4,7 +4,7 @@ import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerMemo;
 import com.samhap.kokomen.answer.domain.AnswerMemoState;
 import com.samhap.kokomen.answer.domain.AnswerMemoVisibility;
-import com.samhap.kokomen.interview.entity.Interview;
+import com.samhap.kokomen.interview.domain.Interview;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 

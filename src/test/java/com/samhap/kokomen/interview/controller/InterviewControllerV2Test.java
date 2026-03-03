@@ -25,17 +25,17 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.InterviewMode;
-import com.samhap.kokomen.interview.domain.InterviewProceedState;
-import com.samhap.kokomen.interview.entity.InterviewState;
-import com.samhap.kokomen.interview.entity.Question;
-import com.samhap.kokomen.interview.entity.RootQuestion;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.tool.InterviewProceedState;
+import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
-import com.samhap.kokomen.interview.service.InterviewFacadeService;
+import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
@@ -127,7 +127,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
                 Duration.ofSeconds(10));
@@ -177,7 +177,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
                 Duration.ofSeconds(10));
@@ -228,7 +228,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(),
                 Duration.ofSeconds(10));
@@ -279,7 +279,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
                 Duration.ofSeconds(10));
@@ -331,7 +331,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
@@ -385,7 +385,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
@@ -447,7 +447,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
         questionRepository.save(
                 QuestionFixtureBuilder.builder().interview(interview).content("오상훈의 위 부피를 계산해주세요.").build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 

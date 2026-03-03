@@ -1,8 +1,8 @@
 package com.samhap.kokomen.global.fixture.interview;
 
 import com.samhap.kokomen.category.domain.Category;
-import com.samhap.kokomen.interview.entity.RootQuestion;
-import com.samhap.kokomen.interview.entity.RootQuestionState;
+import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.RootQuestionState;
 
 public class RootQuestionFixtureBuilder {
 

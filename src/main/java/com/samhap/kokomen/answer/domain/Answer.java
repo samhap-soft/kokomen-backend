@@ -1,7 +1,7 @@
 package com.samhap.kokomen.answer.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
-import com.samhap.kokomen.interview.entity.Question;
+import com.samhap.kokomen.interview.domain.Question;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

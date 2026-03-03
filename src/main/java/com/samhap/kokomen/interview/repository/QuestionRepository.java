@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.repository;
 
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.Question;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.Question;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
