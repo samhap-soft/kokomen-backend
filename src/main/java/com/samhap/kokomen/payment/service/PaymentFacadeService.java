@@ -145,8 +145,15 @@ public class PaymentFacadeService {
                 request.cancelReason());
         String idempotencyKey = UUID.randomUUID().toString();
         try {
-            TosspaymentsPaymentResponse response = tosspaymentsClient.cancelPayment(request.paymentKey(),
-                    tosspaymentsPaymentCancelRequest, idempotencyKey);
+            TosspaymentsPaymentResponse response = tosspaymentsConfirmRetryTemplate.execute(
+                    context -> {
+                        if (context.getRetryCount() > 0) {
+                            log.warn("토스페이먼츠 환불 승인 재시도 {}회차, paymentKey = {}",
+                                    context.getRetryCount(), request.paymentKey());
+                        }
+                        return tosspaymentsClient.cancelPayment(request.paymentKey(),
+                                tosspaymentsPaymentCancelRequest, idempotencyKey);
+                    });
             tosspaymentsTransactionService.applyCancelResult(response);
         } catch (HttpClientErrorException e) {
             Failure failure = e.getResponseBodyAs(Failure.class);
