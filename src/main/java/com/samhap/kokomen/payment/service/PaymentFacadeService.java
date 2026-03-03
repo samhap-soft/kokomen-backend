@@ -139,6 +139,7 @@ public class PaymentFacadeService {
         tosspaymentsPaymentService.updateState(tosspaymentsPayment.getId(), PaymentState.NEED_CANCEL);
     }
 
+    @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
     public void cancelPayment(CancelRequest request) {
         TosspaymentsPaymentCancelRequest tosspaymentsPaymentCancelRequest = new TosspaymentsPaymentCancelRequest(
                 request.cancelReason());
