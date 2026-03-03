@@ -6,7 +6,8 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.entity.InterviewMode;
 import com.samhap.kokomen.interview.entity.InterviewState;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
-import com.samhap.kokomen.interview.service.InterviewFacadeService;
+import com.samhap.kokomen.interview.service.InterviewQueryService;
+import com.samhap.kokomen.interview.service.InterviewStartFacadeService;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
@@ -34,14 +35,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InterviewController {
 
-    private final InterviewFacadeService interviewFacadeService;
+    private final InterviewStartFacadeService interviewStartFacadeService;
+    private final InterviewQueryService interviewQueryService;
 
     @PostMapping
     public ResponseEntity<InterviewStartResponse> startInterview(
             @RequestBody @Valid InterviewRequest interviewRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.startInterview(interviewRequest, memberAuth));
+        return ResponseEntity.ok(interviewStartFacadeService.startInterview(interviewRequest, memberAuth));
     }
 
     @PostMapping("/{interviewId}/like")
@@ -49,7 +51,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewFacadeService.likeInterview(interviewId, memberAuth);
+        interviewQueryService.likeInterview(interviewId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -59,7 +61,7 @@ public class InterviewController {
             @RequestParam InterviewMode mode,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.checkInterview(interviewId, mode, memberAuth));
+        return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth));
     }
 
     @GetMapping("/me")
@@ -68,7 +70,7 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findMyInterviews(memberAuth, state, pageable));
+        return ResponseEntity.ok(interviewQueryService.findMyInterviews(memberAuth, state, pageable));
     }
 
     @GetMapping
@@ -77,7 +79,7 @@ public class InterviewController {
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @Authentication(required = false) MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findOtherMemberInterviews(memberId, memberAuth, pageable));
+        return ResponseEntity.ok(interviewQueryService.findOtherMemberInterviews(memberId, memberAuth, pageable));
     }
 
     @GetMapping("/{interviewId}/my-result")
@@ -85,7 +87,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findMyInterviewResult(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewQueryService.findMyInterviewResult(interviewId, memberAuth));
     }
 
     @GetMapping("/{interviewId}/result")
@@ -95,7 +97,7 @@ public class InterviewController {
             ClientIp clientIp
     ) {
         return ResponseEntity.ok(
-                interviewFacadeService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
+                interviewQueryService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
     }
 
     @DeleteMapping("/{interviewId}/like")
@@ -103,7 +105,7 @@ public class InterviewController {
             @PathVariable Long interviewId,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewFacadeService.unlikeInterview(interviewId, memberAuth);
+        interviewQueryService.unlikeInterview(interviewId, memberAuth);
         return ResponseEntity.noContent().build();
     }
 }

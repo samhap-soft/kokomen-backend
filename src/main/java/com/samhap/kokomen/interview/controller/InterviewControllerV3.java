@@ -3,7 +3,8 @@ package com.samhap.kokomen.interview.controller;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
-import com.samhap.kokomen.interview.service.InterviewFacadeService;
+import com.samhap.kokomen.interview.service.InterviewQueryService;
+import com.samhap.kokomen.interview.service.InterviewStartFacadeService;
 import com.samhap.kokomen.interview.service.dto.RootQuestionCustomInterviewRequest;
 import com.samhap.kokomen.interview.service.dto.RootQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
@@ -24,13 +25,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InterviewControllerV3 {
 
-    private final InterviewFacadeService interviewFacadeService;
+    private final InterviewStartFacadeService interviewStartFacadeService;
+    private final InterviewQueryService interviewQueryService;
 
     @GetMapping("/questions")
     public ResponseEntity<List<RootQuestionResponse>> getRootQuestions(
             @RequestParam(name = "category") Category category
     ) {
-        return ResponseEntity.ok(interviewFacadeService.getRootQuestionsByCategory(category));
+        return ResponseEntity.ok(interviewQueryService.getRootQuestionsByCategory(category));
     }
 
     @PostMapping("/custom")
@@ -39,6 +41,6 @@ public class InterviewControllerV3 {
             @Authentication MemberAuth memberAuth
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(interviewFacadeService.startRootQuestionCustomInterview(request, memberAuth));
+                .body(interviewStartFacadeService.startRootQuestionCustomInterview(request, memberAuth));
     }
 }

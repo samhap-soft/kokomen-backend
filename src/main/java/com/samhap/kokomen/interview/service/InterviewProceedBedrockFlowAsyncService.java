@@ -62,8 +62,8 @@ public class InterviewProceedBedrockFlowAsyncService {
     public void proceedInterviewByBedrockFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
                                                    Long interviewId, String lockValue) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        String lockKey = InterviewFacadeService.createInterviewProceedLockKey(memberId);
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId,
+        String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(memberId);
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
         bedrockAgentRuntimeAsyncClient.invokeFlow(
@@ -77,8 +77,8 @@ public class InterviewProceedBedrockFlowAsyncService {
     public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
                                                Long interviewId, String lockValue) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        String lockKey = InterviewFacadeService.createInterviewProceedLockKey(memberId);
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interviewId,
+        String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(memberId);
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
         try {

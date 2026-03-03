@@ -27,14 +27,13 @@ import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedSta
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.time.Duration;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class InterviewFacadeServiceTest extends BaseTest {
+class InterviewProceedFacadeServiceTest extends BaseTest {
 
     @Autowired
-    private InterviewFacadeService interviewFacadeService;
+    private InterviewProceedFacadeService interviewProceedFacadeService;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
@@ -61,12 +60,12 @@ class InterviewFacadeServiceTest extends BaseTest {
         answerRepository.save(AnswerFixtureBuilder.builder().question(question2).answerRank(AnswerRank.A).build());
         questionRepository.save(QuestionFixtureBuilder.builder().build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question2.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
-        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question1.getId(),
+        assertThatThrownBy(() -> interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question1.getId(),
                 InterviewMode.TEXT,
                 new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
@@ -88,12 +87,12 @@ class InterviewFacadeServiceTest extends BaseTest {
         Question question3 = questionRepository.save(QuestionFixtureBuilder.builder().build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(question3).answerRank(AnswerRank.A).build());
 
-        String interviewProceedStateKey = InterviewFacadeService.createInterviewProceedStateKey(interview.getId(),
+        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interview.getId(),
                 question3.getId());
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(), Duration.ofSeconds(10));
 
         // when & then
-        assertThatThrownBy(() -> interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
+        assertThatThrownBy(() -> interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
                 InterviewMode.TEXT,
                 new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
@@ -114,78 +113,10 @@ class InterviewFacadeServiceTest extends BaseTest {
 
         // when
         InterviewProceedStateResponse interviewProceedState =
-                interviewFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
+                interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
                         InterviewMode.TEXT, new MemberAuth(member.getId()));
 
         // then
         assertThat(interviewProceedState.proceedState()).isEqualTo(InterviewProceedState.LLM_FAILED);
-    }
-
-    @Test
-    void 아직_좋아요를_누르지_않은_인터뷰에_좋아요를_요청할_수_있다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
-
-        // when
-        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // then
-        Interview found = interviewRepository.findById(interview.getId()).get();
-        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount() + 1);
-    }
-
-    @Disabled
-    @Test
-    void 이미_좋아요를_누른_인터뷰에_좋아요를_요청하면_예외가_발생한다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
-        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // when & then
-        assertThatThrownBy(
-                () -> interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId())))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("이미 좋아요를 누른 인터뷰입니다.");
-    }
-
-    @Test
-    void 이미_좋아요를_누른_인터뷰에_대해_좋아요를_취소할_수_있다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(1L).build());
-        interviewFacadeService.likeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // when
-        interviewFacadeService.unlikeInterview(interview.getId(), new MemberAuth(member.getId()));
-
-        // then
-        Interview found = interviewRepository.findById(interview.getId()).get();
-        assertThat(found.getLikeCount()).isEqualTo(interview.getLikeCount());
-    }
-
-    @Test
-    void 인터뷰에_좋아요를_누르면_최신_좋아요_수로_이벤트가_발행된다() {
-        // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        Interview interview = interviewRepository.save(
-                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).likeCount(0L).build());
-        MemberAuth memberAuth = new MemberAuth(member.getId());
-        Long beforeLikeCount = interview.getLikeCount();
-
-        // when
-        interviewFacadeService.likeInterview(interview.getId(), memberAuth);
-
-        // then
-        Interview updatedInterview = interviewRepository.findById(interview.getId()).get();
-        assertThat(updatedInterview.getLikeCount()).isEqualTo(beforeLikeCount + 1);
     }
 }

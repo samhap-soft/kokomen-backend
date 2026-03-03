@@ -9,11 +9,9 @@ import com.samhap.kokomen.interview.domain.QuestionAndAnswers;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewService;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Objects;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.AfterReturning;
@@ -35,7 +33,7 @@ public class RootQuestionMetricAspect {
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
 
-    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewFacadeService.startInterview(..))")
+    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewStartFacadeService.startInterview(..))")
     public void startInterviewMethod() {
     }
 
@@ -48,38 +46,6 @@ public class RootQuestionMetricAspect {
                 "root_question_interview_count",
                 "root_question_id", String.valueOf(rootQuestionId)
         ).increment();
-    }
-
-    @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewFacadeService.proceedInterview(..)) && args(interviewId, curQuestionId, ..)")
-    public void proceedInterviewPointcut(Long interviewId, Long curQuestionId) {
-    }
-
-    @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseRootQuestionInterviewEndCount(Optional<InterviewProceedResponse> result, Long interviewId,
-                                                      Long curQuestionId) {
-        boolean isInterviewEnded = result.isEmpty();
-        if (isInterviewEnded) {
-            Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            meterRegistry.counter(
-                    "root_question_interview_end_count_total",
-                    "root_question_id", String.valueOf(rootQuestionId)
-            ).increment();
-        }
-    }
-
-    @AfterReturning(pointcut = "proceedInterviewPointcut(interviewId, curQuestionId)", returning = "result")
-    public void increaseRootQuestionAnswerRankCount(Optional<InterviewProceedResponse> result, Long interviewId,
-                                                    Long curQuestionId) {
-        Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
-        boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
-        if (isRootQuestionAnswer) {
-            AnswerRank answerRank = result.get().curAnswerRank();
-            Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-            meterRegistry.counter(
-                    "root_question_answer_rank_count_" + answerRank.name().toLowerCase(),
-                    "root_question_id", String.valueOf(rootQuestionId)
-            ).increment();
-        }
     }
 
     @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
