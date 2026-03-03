@@ -26,10 +26,12 @@ public class TosspaymentsClient {
 
     public TosspaymentsPaymentResponse cancelPayment(
             String paymentKey,
-            TosspaymentsPaymentCancelRequest request
+            TosspaymentsPaymentCancelRequest request,
+            String idempotencyKey
     ) {
         return restClient.post()
                 .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
+                .header("Idempotency-Key", idempotencyKey)
                 .body(request)
                 .retrieve()
                 .body(TosspaymentsPaymentResponse.class);
