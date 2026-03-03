@@ -36,7 +36,7 @@ import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResp
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
-import com.samhap.kokomen.token.service.TokenService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +61,7 @@ public class InterviewFacadeService {
     private final InterviewService interviewService;
     private final InterviewLikeService interviewLikeService;
     private final MemberService memberService;
-    private final TokenService tokenService;
+    private final TokenFacadeService tokenFacadeService;
     private final RootQuestionService rootQuestionService;
     private final QuestionService questionService;
     private final AnswerService answerService;
@@ -73,7 +73,7 @@ public class InterviewFacadeService {
         InterviewMode interviewMode = interviewRequest.mode();
         int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
-        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
         Interview interview = interviewService.saveInterview(
@@ -93,7 +93,7 @@ public class InterviewFacadeService {
         InterviewMode interviewMode = request.mode();
         int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
-        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
         Interview interview = interviewService.saveInterview(
@@ -109,7 +109,7 @@ public class InterviewFacadeService {
 
     public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest,
                                               MemberAuth memberAuth) {
-        tokenService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
+        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
@@ -290,7 +290,7 @@ public class InterviewFacadeService {
 
         InterviewMode interviewMode = request.mode();
         int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount();
-        tokenService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
 
         Interview interview = interviewService.saveInterview(
                 new Interview(member, generatedQuestion, request.maxQuestionCount(), interviewMode));

@@ -10,8 +10,7 @@ import com.samhap.kokomen.payment.service.dto.WebhookPayload;
 import com.samhap.kokomen.payment.service.dto.WebhookPaymentData;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
-import com.samhap.kokomen.token.service.TokenPurchaseService;
-import com.samhap.kokomen.token.service.TokenService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import com.samhap.kokomen.global.annotation.DistributedLock;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookService {
 
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
-    private final TokenService tokenService;
-    private final TokenPurchaseService tokenPurchaseService;
+    private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
 
     @DistributedLock(prefix = "payment", key = "#payload.data().paymentKey()")
@@ -75,9 +73,7 @@ public class WebhookService {
                     .paymentMethod(data.method())
                     .easyPayProvider(data.easyPay() != null ? data.easyPay().provider() : null)
                     .build();
-            tokenPurchaseService.saveTokenPurchase(tokenPurchase);
-
-            tokenService.addPaidTokens(memberId, tokenCount);
+            tokenFacadeService.grantPurchasedTokens(tokenPurchase, tokenCount);
 
             log.info("웹훅으로 토큰 지급 완료 - memberId: {}, paymentKey: {}, tokenCount: {}",
                     memberId, payment.getPaymentKey(), tokenCount);
