@@ -17,6 +17,7 @@ import com.samhap.kokomen.payment.service.dto.CancelRequest;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +55,8 @@ public class PaymentFacadeService {
 
     private TosspaymentsPaymentResponse confirmPayment(ConfirmRequest request,
                                                        TosspaymentsPayment tosspaymentsPayment) {
-        String idempotencyKey = UUID.randomUUID().toString();
+        String idempotencyKey = UUID.nameUUIDFromBytes(
+                ("confirm:" + request.paymentKey()).getBytes(StandardCharsets.UTF_8)).toString();
         try {
             TosspaymentsPaymentResponse tosspaymentsConfirmResponse = tosspaymentsConfirmRetryTemplate.execute(
                     context -> {
@@ -143,7 +145,8 @@ public class PaymentFacadeService {
     public void cancelPayment(CancelRequest request) {
         TosspaymentsPaymentCancelRequest tosspaymentsPaymentCancelRequest = new TosspaymentsPaymentCancelRequest(
                 request.cancelReason());
-        String idempotencyKey = UUID.randomUUID().toString();
+        String idempotencyKey = UUID.nameUUIDFromBytes(
+                ("cancel:" + request.paymentKey()).getBytes(StandardCharsets.UTF_8)).toString();
         try {
             TosspaymentsPaymentResponse response = tosspaymentsConfirmRetryTemplate.execute(
                     context -> {
