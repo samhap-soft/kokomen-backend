@@ -1,8 +1,8 @@
 package com.samhap.kokomen.interview.service.dto.check;
 
 import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.interview.entity.Interview;
-import com.samhap.kokomen.interview.entity.Question;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.service.dto.QuestionAndAnswerResponse;
 import java.util.List;
 

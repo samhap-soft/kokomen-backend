@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.repository;
 
-import com.samhap.kokomen.interview.entity.GeneratedQuestion;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.repository;
 
-import com.samhap.kokomen.interview.entity.ResumeQuestionGeneration;
-import com.samhap.kokomen.interview.entity.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

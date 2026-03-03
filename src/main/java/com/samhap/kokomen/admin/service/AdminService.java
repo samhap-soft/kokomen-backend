@@ -2,9 +2,9 @@ package com.samhap.kokomen.admin.service;
 
 import com.samhap.kokomen.admin.service.dto.RootQuestionVoiceResponse;
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.entity.RootQuestion;
-import com.samhap.kokomen.interview.entity.RootQuestionState;
-import com.samhap.kokomen.interview.service.RootQuestionService;
+import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.service.question.RootQuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +30,8 @@ public class AdminService {
         if (rootQuestionService.isRootQuestionVoiceExists(rootQuestionId)) {
             throw new BadRequestException("이미 S3에 올라가있는 음성파일입니다. rootQuestionId = " + rootQuestionId);
         }
-        String rootQuestionVoiceCdnUrl = rootQuestionService.createAndUploadRootQuestionVoiceWithApiKey(rootQuestionId, oneTimeApiKey);
+        String rootQuestionVoiceCdnUrl = rootQuestionService.createAndUploadRootQuestionVoiceWithApiKey(rootQuestionId,
+                oneTimeApiKey);
         return new RootQuestionVoiceResponse(rootQuestionVoiceCdnUrl);
     }
 }

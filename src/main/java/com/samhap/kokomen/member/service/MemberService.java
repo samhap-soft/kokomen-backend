@@ -17,7 +17,7 @@ import com.samhap.kokomen.member.service.dto.RankingPageResponse;
 import com.samhap.kokomen.member.service.dto.RankingResponse;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenType;
-import com.samhap.kokomen.token.service.TokenService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +37,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final MemberSocialLoginRepository memberSocialLoginRepository;
-    private final TokenService tokenService;
+    private final TokenFacadeService tokenFacadeService;
     private final InterviewRepository interviewRepository;
 
     @Value("${spring.profiles.active:local}")
@@ -47,7 +47,7 @@ public class MemberService {
     public Member saveSocialMember(SocialProvider provider, String socialId, String nickname) {
         Member member = memberRepository.save(new Member(nickname));
         memberSocialLoginRepository.save(new MemberSocialLogin(member, provider, socialId));
-        tokenService.createTokensForNewMember(member.getId());
+        tokenFacadeService.createTokensForNewMember(member.getId());
         return member;
     }
 
@@ -71,8 +71,8 @@ public class MemberService {
         Member member = readById(memberAuth.memberId());
         long rank = memberRepository.findRankByScore(member.getScore());
         long totalMemberCount = memberRepository.count();
-        Token freeToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
-        Token paidToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
+        Token freeToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
+        Token paidToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
         boolean isTestUser = isTestUser(memberAuth.memberId());
         return new MyProfileResponse(member, totalMemberCount, rank,
                 freeToken.getTokenCount() + paidToken.getTokenCount(), isTestUser);
@@ -82,8 +82,8 @@ public class MemberService {
         Member member = readById(memberAuth.memberId());
         long rank = memberRepository.findRankByScore(member.getScore());
         long totalMemberCount = memberRepository.count();
-        Token freeToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
-        Token paidToken = tokenService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
+        Token freeToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
+        Token paidToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
         return new MyProfileResponseV2(member, totalMemberCount, rank, freeToken.getTokenCount(),
                 paidToken.getTokenCount());
     }

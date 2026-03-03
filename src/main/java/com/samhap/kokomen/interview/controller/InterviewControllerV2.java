@@ -2,8 +2,8 @@ package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
-import com.samhap.kokomen.interview.entity.InterviewMode;
-import com.samhap.kokomen.interview.service.InterviewFacadeService;
+import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import jakarta.validation.Valid;
@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InterviewControllerV2 {
 
-    private final InterviewFacadeService interviewFacadeService;
+    private final InterviewProceedFacadeService interviewProceedFacadeService;
 
     @PostMapping("/{interviewId}/questions/{curQuestionId}/answers")
     public ResponseEntity<Void> proceedInterviewBlockAsync(
@@ -31,7 +31,7 @@ public class InterviewControllerV2 {
             @RequestBody @Valid AnswerRequestV2 answerRequest,
             @Authentication MemberAuth memberAuth
     ) {
-        interviewFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth);
+        interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth);
         return ResponseEntity.noContent().build();
     }
 
@@ -42,6 +42,6 @@ public class InterviewControllerV2 {
             @RequestParam InterviewMode mode,
             @Authentication MemberAuth memberAuth
     ) {
-        return ResponseEntity.ok(interviewFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth));
+        return ResponseEntity.ok(interviewProceedFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth));
     }
 }

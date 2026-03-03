@@ -1,7 +1,7 @@
 package com.samhap.kokomen.interview.service.dto.resumebased;
 
-import com.samhap.kokomen.interview.entity.ResumeQuestionGeneration;
-import com.samhap.kokomen.interview.entity.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
 import java.time.LocalDateTime;
 
 public record ResumeQuestionGenerationResponse(

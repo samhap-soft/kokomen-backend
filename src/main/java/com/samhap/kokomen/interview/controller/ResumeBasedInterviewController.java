@@ -3,9 +3,9 @@ package com.samhap.kokomen.interview.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
-import com.samhap.kokomen.interview.entity.ResumeQuestionGenerationState;
-import com.samhap.kokomen.interview.service.InterviewFacadeService;
-import com.samhap.kokomen.interview.service.ResumeBasedInterviewService;
+import com.samhap.kokomen.interview.domain.ResumeQuestionGenerationState;
+import com.samhap.kokomen.interview.service.InterviewStartFacadeService;
+import com.samhap.kokomen.interview.service.resume.ResumeBasedInterviewService;
 import com.samhap.kokomen.interview.service.dto.resumebased.GeneratedQuestionsResponse;
 import com.samhap.kokomen.interview.service.dto.resumebased.QuestionGenerationStateResponse;
 import com.samhap.kokomen.interview.service.dto.resumebased.QuestionGenerationSubmitResponse;
@@ -38,7 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ResumeBasedInterviewController {
 
     private final ResumeBasedInterviewService resumeBasedInterviewService;
-    private final InterviewFacadeService interviewFacadeService;
+    private final InterviewStartFacadeService interviewStartFacadeService;
 
     @PostMapping(value = "/questions/generate", consumes = {"multipart/form-data"})
     public ResponseEntity<QuestionGenerationSubmitResponse> generateQuestions(
@@ -129,7 +129,7 @@ public class ResumeBasedInterviewController {
             @RequestBody @Valid ResumeBasedInterviewStartRequest request,
             @Authentication MemberAuth memberAuth
     ) {
-        InterviewStartResponse response = interviewFacadeService.startResumeBasedInterview(
+        InterviewStartResponse response = interviewStartFacadeService.startResumeBasedInterview(
                 resumeBasedInterviewResultId,
                 request,
                 memberAuth
