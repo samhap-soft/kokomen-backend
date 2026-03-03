@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
@@ -21,7 +22,6 @@ import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
-import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

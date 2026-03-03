@@ -1,5 +1,6 @@
 package com.samhap.kokomen.payment.service;
 
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.global.exception.KokomenException;
@@ -15,8 +16,8 @@ import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.service.dto.CancelRequest;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
-import com.samhap.kokomen.global.annotation.DistributedLock;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +55,8 @@ public class PaymentFacadeService {
 
     private TosspaymentsPaymentResponse confirmPayment(ConfirmRequest request,
                                                        TosspaymentsPayment tosspaymentsPayment) {
-        String idempotencyKey = UUID.randomUUID().toString();
+        String idempotencyKey = UUID.nameUUIDFromBytes(
+                ("confirm:" + request.paymentKey()).getBytes(StandardCharsets.UTF_8)).toString();
         try {
             TosspaymentsPaymentResponse tosspaymentsConfirmResponse = tosspaymentsConfirmRetryTemplate.execute(
                     context -> {
@@ -139,12 +141,22 @@ public class PaymentFacadeService {
         tosspaymentsPaymentService.updateState(tosspaymentsPayment.getId(), PaymentState.NEED_CANCEL);
     }
 
+    @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
     public void cancelPayment(CancelRequest request) {
         TosspaymentsPaymentCancelRequest tosspaymentsPaymentCancelRequest = new TosspaymentsPaymentCancelRequest(
                 request.cancelReason());
+        String idempotencyKey = UUID.nameUUIDFromBytes(
+                ("cancel:" + request.paymentKey()).getBytes(StandardCharsets.UTF_8)).toString();
         try {
-            TosspaymentsPaymentResponse response = tosspaymentsClient.cancelPayment(request.paymentKey(),
-                    tosspaymentsPaymentCancelRequest);
+            TosspaymentsPaymentResponse response = tosspaymentsConfirmRetryTemplate.execute(
+                    context -> {
+                        if (context.getRetryCount() > 0) {
+                            log.warn("토스페이먼츠 환불 승인 재시도 {}회차, paymentKey = {}",
+                                    context.getRetryCount(), request.paymentKey());
+                        }
+                        return tosspaymentsClient.cancelPayment(request.paymentKey(),
+                                tosspaymentsPaymentCancelRequest, idempotencyKey);
+                    });
             tosspaymentsTransactionService.applyCancelResult(response);
         } catch (HttpClientErrorException e) {
             Failure failure = e.getResponseBodyAs(Failure.class);
