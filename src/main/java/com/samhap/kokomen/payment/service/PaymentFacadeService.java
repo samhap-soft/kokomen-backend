@@ -1,5 +1,6 @@
 package com.samhap.kokomen.payment.service;
 
+import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.global.exception.KokomenException;
@@ -15,7 +16,6 @@ import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.service.dto.CancelRequest;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
 import com.samhap.kokomen.payment.service.dto.PaymentResponse;
-import com.samhap.kokomen.global.annotation.DistributedLock;
 import java.net.SocketTimeoutException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -142,9 +142,10 @@ public class PaymentFacadeService {
     public void cancelPayment(CancelRequest request) {
         TosspaymentsPaymentCancelRequest tosspaymentsPaymentCancelRequest = new TosspaymentsPaymentCancelRequest(
                 request.cancelReason());
+        String idempotencyKey = UUID.randomUUID().toString();
         try {
             TosspaymentsPaymentResponse response = tosspaymentsClient.cancelPayment(request.paymentKey(),
-                    tosspaymentsPaymentCancelRequest);
+                    tosspaymentsPaymentCancelRequest, idempotencyKey);
             tosspaymentsTransactionService.applyCancelResult(response);
         } catch (HttpClientErrorException e) {
             Failure failure = e.getResponseBodyAs(Failure.class);

@@ -300,7 +300,7 @@ class PaymentFacadeServiceTest extends BaseTest {
                 "cancel_tx_key", 9091L, 909L, 0L, 0L, true,
                 "{}", null, null, null, "KR", null, List.of(cancel)
         );
-        when(tosspaymentsClient.cancelPayment(any(), any())).thenReturn(cancelResponse);
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(cancelResponse);
 
         paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심"));
 
@@ -319,7 +319,7 @@ class PaymentFacadeServiceTest extends BaseTest {
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);
         when(clientError.getResponseBodyAs(Failure.class))
                 .thenReturn(new Failure("ALREADY_CANCELED_PAYMENT", "이미 취소된 결제입니다."));
-        when(tosspaymentsClient.cancelPayment(any(), any())).thenThrow(clientError);
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenThrow(clientError);
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
                 .isInstanceOf(BadRequestException.class);
@@ -329,7 +329,7 @@ class PaymentFacadeServiceTest extends BaseTest {
     void 결제_취소_시_400_에러_응답_파싱에_실패하면_InternalServerErrorException을_던진다() {
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);
         when(clientError.getResponseBodyAs(Failure.class)).thenReturn(null);
-        when(tosspaymentsClient.cancelPayment(any(), any())).thenThrow(clientError);
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenThrow(clientError);
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
                 .isInstanceOf(InternalServerErrorException.class)
@@ -338,7 +338,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_5xx_에러가_발생하면_InternalServerErrorException을_던진다() {
-        when(tosspaymentsClient.cancelPayment(any(), any()))
+        when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
@@ -348,7 +348,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_네트워크_에러가_발생하면_InternalServerErrorException을_던진다() {
-        when(tosspaymentsClient.cancelPayment(any(), any()))
+        when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new ResourceAccessException("네트워크 오류"));
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
@@ -358,7 +358,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_예상치_못한_예외가_발생하면_InternalServerErrorException을_던진다() {
-        when(tosspaymentsClient.cancelPayment(any(), any()))
+        when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new RuntimeException("예상치 못한 오류"));
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
