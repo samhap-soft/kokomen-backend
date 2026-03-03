@@ -317,6 +317,7 @@ class PaymentFacadeServiceTest extends BaseTest {
     @Test
     void 결제_취소_시_400_에러가_발생하면_BadRequestException을_던진다() {
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);
+        when(clientError.getStatusCode()).thenReturn(HttpStatus.BAD_REQUEST);
         when(clientError.getResponseBodyAs(Failure.class))
                 .thenReturn(new Failure("ALREADY_CANCELED_PAYMENT", "이미 취소된 결제입니다."));
         when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenThrow(clientError);
