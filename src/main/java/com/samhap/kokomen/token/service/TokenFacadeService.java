@@ -164,6 +164,11 @@ public class TokenFacadeService {
                 refundTokenCount);
     }
 
+    @Transactional(readOnly = true)
+    public boolean existsByPaymentKey(String paymentKey) {
+        return tokenPurchaseService.existsByPaymentKey(paymentKey);
+    }
+
     @Transactional
     public void grantPurchasedTokens(TokenPurchase tokenPurchase, int tokenCount) {
         tokenPurchaseService.saveTokenPurchase(tokenPurchase);

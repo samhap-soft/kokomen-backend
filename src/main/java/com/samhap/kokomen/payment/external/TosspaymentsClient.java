@@ -24,6 +24,13 @@ public class TosspaymentsClient {
                 .body(TosspaymentsPaymentResponse.class);
     }
 
+    public TosspaymentsPaymentResponse getPayment(String paymentKey) {
+        return restClient.get()
+                .uri("/v1/payments/{paymentKey}", paymentKey)
+                .retrieve()
+                .body(TosspaymentsPaymentResponse.class);
+    }
+
     public TosspaymentsPaymentResponse cancelPayment(
             String paymentKey,
             TosspaymentsPaymentCancelRequest request,

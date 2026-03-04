@@ -6,6 +6,8 @@ import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentRepository;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,5 +54,10 @@ public class TosspaymentsPaymentService {
     public void updateState(Long tosspaymentsPaymentId, PaymentState state) {
         TosspaymentsPayment tosspaymentsPayment = readById(tosspaymentsPaymentId);
         tosspaymentsPayment.updateState(state);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TosspaymentsPayment> findStalePayments(List<PaymentState> states, LocalDateTime threshold, int limit) {
+        return tosspaymentsPaymentRepository.findStalePaymentsByStates(states, threshold, limit);
     }
 }
