@@ -6,8 +6,9 @@ import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
+import com.samhap.kokomen.payment.external.TosspaymentsClient;
+import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.service.dto.WebhookPayload;
-import com.samhap.kokomen.payment.service.dto.WebhookPaymentData;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
 import com.samhap.kokomen.token.service.TokenFacadeService;
@@ -24,15 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookService {
 
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
+    private final TosspaymentsClient tosspaymentsClient;
     private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
 
     @DistributedLock(prefix = "payment", key = "#payload.data().paymentKey()")
     @Transactional
     public void handlePaymentStatusChanged(WebhookPayload payload) {
-        WebhookPaymentData data = payload.data();
-        String paymentKey = data.paymentKey();
-        TosspaymentsStatus webhookStatus = data.status();
+        String paymentKey = payload.data().paymentKey();
 
         Optional<TosspaymentsPayment> findPayment = tosspaymentsPaymentService.findByPaymentKey(paymentKey);
         if (findPayment.isEmpty()) {
@@ -45,15 +45,24 @@ public class WebhookService {
             return;
         }
 
-        switch (webhookStatus) {
-            case DONE -> handleDone(payment, data);
-            case CANCELED, PARTIAL_CANCELED -> handleCanceled(payment, webhookStatus);
-            case EXPIRED, ABORTED -> handleFailed(payment, webhookStatus);
-            default -> log.info("웹훅 무시 - 처리 불필요 status: {}", webhookStatus);
+        TosspaymentsPaymentResponse tossResponse;
+        try {
+            tossResponse = tosspaymentsClient.getPayment(paymentKey);
+        } catch (Exception e) {
+            log.warn("웹훅 처리 중 토스 결제 조회 실패 - paymentKey={}, 복구 스케줄러에서 재처리", paymentKey, e);
+            return;
+        }
+        TosspaymentsStatus verifiedStatus = tossResponse.status();
+
+        switch (verifiedStatus) {
+            case DONE -> handleDone(payment, tossResponse);
+            case CANCELED, PARTIAL_CANCELED -> handleCanceled(payment, verifiedStatus);
+            case EXPIRED, ABORTED -> handleFailed(payment, verifiedStatus);
+            default -> log.info("웹훅 무시 - 처리 불필요 status: {}", verifiedStatus);
         }
     }
 
-    private void handleDone(TosspaymentsPayment payment, WebhookPaymentData data) {
+    private void handleDone(TosspaymentsPayment payment, TosspaymentsPaymentResponse tossResponse) {
         if (payment.canCompleteByWebhook()) {
             PurchaseMetadata metadata = parseMetadata(payment.getMetadata());
             Long memberId = payment.getMemberId();
@@ -70,8 +79,8 @@ public class WebhookService {
                     .productName(metadata.productName())
                     .purchaseCount(tokenCount)
                     .unitPrice(metadata.unitPrice())
-                    .paymentMethod(data.method())
-                    .easyPayProvider(data.easyPay() != null ? data.easyPay().provider() : null)
+                    .paymentMethod(tossResponse.method())
+                    .easyPayProvider(tossResponse.easyPay() != null ? tossResponse.easyPay().provider() : null)
                     .build();
             tokenFacadeService.grantPurchasedTokens(tokenPurchase, tokenCount);
 
