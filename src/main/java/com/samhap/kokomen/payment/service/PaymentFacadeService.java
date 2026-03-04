@@ -145,6 +145,10 @@ public class PaymentFacadeService {
     @Transactional
     public void completePayment(String paymentKey) {
         TosspaymentsPayment payment = tosspaymentsPaymentService.readByPaymentKey(paymentKey);
+        if (!payment.isApproved()) {
+            log.warn("결제 완료 처리 불가 - paymentKey: {}, 현재 상태: {}", paymentKey, payment.getState());
+            return;
+        }
         payment.updateState(PaymentState.COMPLETED);
     }
 

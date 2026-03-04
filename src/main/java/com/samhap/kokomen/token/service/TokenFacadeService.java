@@ -48,6 +48,12 @@ public class TokenFacadeService {
 
         ConfirmRequest confirmRequest = request.toPaymentConfirmRequest(memberId, objectMapper);
         PaymentResponse paymentResponse = paymentFacadeService.confirmPayment(confirmRequest);
+
+        if (tokenPurchaseService.existsByPaymentKey(request.paymentKey())) {
+            log.info("토큰이 이미 지급됨 (웹훅 처리) - memberId: {}, paymentKey: {}", memberId, request.paymentKey());
+            return;
+        }
+
         TokenPurchase tokenPurchase = request.toTokenPurchase(memberId, paymentResponse.method(),
                 getEasyPayProvider(paymentResponse));
         grantPurchasedTokens(tokenPurchase, tokenCount);

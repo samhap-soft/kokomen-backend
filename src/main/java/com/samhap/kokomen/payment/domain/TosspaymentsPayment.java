@@ -106,6 +106,10 @@ public class TosspaymentsPayment extends BaseEntity {
         return state.canCancelByApi();
     }
 
+    public boolean isApproved() {
+        return state == PaymentState.APPROVED;
+    }
+
     public boolean isTerminal() {
         return state.isTerminal();
     }
