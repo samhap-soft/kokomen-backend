@@ -59,7 +59,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
         assertThat(response.paymentKey()).isEqualTo("payment_key");
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key").orElseThrow();
-        assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(payment.getState()).isEqualTo(PaymentState.APPROVED);
         assertThat(tosspaymentsPaymentResultRepository.findByTosspaymentsPaymentId(payment.getId())).isPresent();
     }
 
@@ -196,7 +196,7 @@ class PaymentFacadeServiceTest extends BaseTest {
     }
 
     @Test
-    void 결제_승인_시_5xx_에러_후_재시도에_성공하면_COMPLETED_상태로_변경한다() {
+    void 결제_승인_시_5xx_에러_후_재시도에_성공하면_APPROVED_상태로_변경한다() {
         ConfirmRequest request = createConfirmRequest();
         HttpServerErrorException serverError = mock(HttpServerErrorException.class);
         when(tosspaymentsClient.confirmPayment(any(), any()))
@@ -207,12 +207,12 @@ class PaymentFacadeServiceTest extends BaseTest {
 
         assertThat(response.paymentKey()).isEqualTo("payment_key");
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key").orElseThrow();
-        assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(payment.getState()).isEqualTo(PaymentState.APPROVED);
         verify(tosspaymentsClient, times(2)).confirmPayment(any(), any());
     }
 
     @Test
-    void 결제_승인_시_연결_타임아웃_후_재시도에_성공하면_COMPLETED_상태로_변경한다() {
+    void 결제_승인_시_연결_타임아웃_후_재시도에_성공하면_APPROVED_상태로_변경한다() {
         ConfirmRequest request = createConfirmRequest();
         when(tosspaymentsClient.confirmPayment(any(), any()))
                 .thenThrow(new ResourceAccessException("I/O error", new SocketTimeoutException("Connect timed out")))
@@ -222,12 +222,12 @@ class PaymentFacadeServiceTest extends BaseTest {
 
         assertThat(response.paymentKey()).isEqualTo("payment_key");
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key").orElseThrow();
-        assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(payment.getState()).isEqualTo(PaymentState.APPROVED);
         verify(tosspaymentsClient, times(2)).confirmPayment(any(), any());
     }
 
     @Test
-    void 결제_승인_시_409_에러_후_재시도에_성공하면_COMPLETED_상태로_변경한다() {
+    void 결제_승인_시_409_에러_후_재시도에_성공하면_APPROVED_상태로_변경한다() {
         ConfirmRequest request = createConfirmRequest();
         HttpClientErrorException conflictError = mock(HttpClientErrorException.class);
         when(conflictError.getStatusCode()).thenReturn(HttpStatus.CONFLICT);
@@ -239,7 +239,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
         assertThat(response.paymentKey()).isEqualTo("payment_key");
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key").orElseThrow();
-        assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(payment.getState()).isEqualTo(PaymentState.APPROVED);
         verify(tosspaymentsClient, times(2)).confirmPayment(any(), any());
     }
 
@@ -316,6 +316,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_400_에러가_발생하면_BadRequestException을_던진다() {
+        saveCancellablePayment("payment_key");
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);
         when(clientError.getStatusCode()).thenReturn(HttpStatus.BAD_REQUEST);
         when(clientError.getResponseBodyAs(Failure.class))
@@ -328,6 +329,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_400_에러_응답_파싱에_실패하면_InternalServerErrorException을_던진다() {
+        saveCancellablePayment("payment_key");
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);
         when(clientError.getResponseBodyAs(Failure.class)).thenReturn(null);
         when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenThrow(clientError);
@@ -339,6 +341,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_5xx_에러가_발생하면_InternalServerErrorException을_던진다() {
+        saveCancellablePayment("payment_key");
         when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
@@ -349,6 +352,7 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_네트워크_에러가_발생하면_InternalServerErrorException을_던진다() {
+        saveCancellablePayment("payment_key");
         when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new ResourceAccessException("네트워크 오류"));
 
@@ -359,12 +363,34 @@ class PaymentFacadeServiceTest extends BaseTest {
 
     @Test
     void 결제_취소_시_예상치_못한_예외가_발생하면_InternalServerErrorException을_던진다() {
+        saveCancellablePayment("payment_key");
         when(tosspaymentsClient.cancelPayment(any(), any(), any()))
                 .thenThrow(new RuntimeException("예상치 못한 오류"));
 
         assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
                 .isInstanceOf(InternalServerErrorException.class)
                 .hasMessage(PaymentServiceErrorMessage.CANCEL_SERVER_ERROR.getMessage());
+    }
+
+    @Test
+    void 취소_불가능한_상태에서_결제_취소를_시도하면_BadRequestException을_던진다() {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("payment_key")
+                .build();
+        payment.updateState(PaymentState.NEED_CANCEL);
+        tosspaymentsPaymentRepository.save(payment);
+
+        assertThatThrownBy(() -> paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("현재 결제 상태에서는 취소할 수 없습니다");
+    }
+
+    private void saveCancellablePayment(String paymentKey) {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey(paymentKey)
+                .build();
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
     }
 
     private ConfirmRequest createConfirmRequest() {

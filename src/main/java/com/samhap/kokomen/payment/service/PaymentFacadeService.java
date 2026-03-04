@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -73,7 +74,7 @@ public class PaymentFacadeService {
             TosspaymentsPaymentResult tosspaymentsPaymentResult = tosspaymentsConfirmResponse.toTosspaymentsPaymentResult(
                     tosspaymentsPayment);
             tosspaymentsTransactionService.applyTosspaymentsPaymentResult(tosspaymentsPaymentResult,
-                    PaymentState.COMPLETED);
+                    PaymentState.APPROVED);
             return tosspaymentsConfirmResponse;
         } catch (HttpClientErrorException e) {
             throw handleConfirmClientError(e, tosspaymentsPayment);
@@ -141,8 +142,22 @@ public class PaymentFacadeService {
         tosspaymentsPaymentService.updateState(tosspaymentsPayment.getId(), PaymentState.NEED_CANCEL);
     }
 
+    @Transactional
+    public void completePayment(String paymentKey) {
+        TosspaymentsPayment payment = tosspaymentsPaymentService.readByPaymentKey(paymentKey);
+        if (!payment.isApproved()) {
+            log.warn("결제 완료 처리 불가 - paymentKey: {}, 현재 상태: {}", paymentKey, payment.getState());
+            return;
+        }
+        payment.updateState(PaymentState.COMPLETED);
+    }
+
     @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
     public void cancelPayment(CancelRequest request) {
+        TosspaymentsPayment payment = tosspaymentsPaymentService.readByPaymentKey(request.paymentKey());
+        if (!payment.canCancelByApi()) {
+            throw new BadRequestException("현재 결제 상태에서는 취소할 수 없습니다. 현재 상태: " + payment.getState());
+        }
         TosspaymentsPaymentCancelRequest tosspaymentsPaymentCancelRequest = new TosspaymentsPaymentCancelRequest(
                 request.cancelReason());
         String idempotencyKey = UUID.nameUUIDFromBytes(
