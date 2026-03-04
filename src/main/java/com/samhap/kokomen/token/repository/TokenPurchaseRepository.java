@@ -34,6 +34,8 @@ public interface TokenPurchaseRepository extends JpaRepository<TokenPurchase, Lo
             @Param("states") List<TokenPurchaseState> states
     );
 
+    boolean existsByPaymentKey(String paymentKey);
+
     Page<TokenPurchase> findByMemberId(Long memberId, Pageable pageable);
     
     Page<TokenPurchase> findByMemberIdAndState(Long memberId, TokenPurchaseState state, Pageable pageable);

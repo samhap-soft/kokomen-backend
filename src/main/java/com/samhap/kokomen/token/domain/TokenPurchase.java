@@ -20,7 +20,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 
 @Entity
 @Table(name = "token_purchase", indexes = {
-        @Index(name = "idx_token_purchase_payment_key", columnList = "payment_key")
+        @Index(name = "uk_token_purchase_payment_key", columnList = "payment_key", unique = true)
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
