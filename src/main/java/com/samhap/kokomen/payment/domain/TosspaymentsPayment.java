@@ -3,6 +3,7 @@ package com.samhap.kokomen.payment.domain;
 import com.samhap.kokomen.global.domain.BaseEntity;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
+import com.samhap.kokomen.payment.tool.PaymentKeyMasker;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -120,7 +121,7 @@ public class TosspaymentsPayment extends BaseEntity {
 
     public void validateTosspaymentsResult(String paymentKey, String orderId, Long totalAmount) {
         if (!this.paymentKey.equals(paymentKey)) {
-            log.error("paymentKey 불일치 - 응답: {}, DB: {}", maskPaymentKey(paymentKey), maskPaymentKey(this.paymentKey));
+            log.error("paymentKey 불일치 - 응답: {}, DB: {}", PaymentKeyMasker.mask(paymentKey), PaymentKeyMasker.mask(this.paymentKey));
             throw new InternalServerErrorException(PaymentErrorMessage.PAYMENT_KEY_MISMATCH.getMessage());
         }
         if (!this.orderId.equals(orderId)) {
@@ -133,10 +134,4 @@ public class TosspaymentsPayment extends BaseEntity {
         }
     }
 
-    private String maskPaymentKey(String key) {
-        if (key == null || key.length() <= 8) {
-            return "***";
-        }
-        return key.substring(0, 8) + "***";
-    }
 }

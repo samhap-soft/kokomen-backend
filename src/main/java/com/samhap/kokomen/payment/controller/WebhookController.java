@@ -2,6 +2,7 @@ package com.samhap.kokomen.payment.controller;
 
 import com.samhap.kokomen.payment.service.WebhookService;
 import com.samhap.kokomen.payment.service.dto.WebhookPayload;
+import com.samhap.kokomen.payment.tool.PaymentKeyMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class WebhookController {
     ) {
         log.info("웹훅 수신 - transmissionId: {}, retriedCount: {}, transmissionTime: {}, state: {}, paymentKey: {}",
                 transmissionId, retriedCount,
-                transmissionTime, payload.data().status(), payload.data().paymentKey());
+                transmissionTime, payload.data().status(), PaymentKeyMasker.mask(payload.data().paymentKey()));
         webhookService.handlePaymentStatusChanged(payload);
         return ResponseEntity.ok().build();
     }

@@ -68,7 +68,7 @@ class WebhookServiceTest extends BaseTest {
         tosspaymentsPaymentRepository.save(payment);
 
         given(tosspaymentsClient.getPayment("webhook_test_key"))
-                .willReturn(createTossResponse("webhook_test_key", TosspaymentsStatus.DONE, "카드", null));
+                .willReturn(createTossResponse("webhook_test_key", "webhook_order_1", 1000L, TosspaymentsStatus.DONE, "카드", null));
 
         WebhookPayload payload = createWebhookPayload("webhook_test_key", "webhook_order_1", TosspaymentsStatus.DONE, 1000L, "카드", null);
         webhookService.handlePaymentStatusChanged(payload);
@@ -105,7 +105,7 @@ class WebhookServiceTest extends BaseTest {
         tosspaymentsPaymentRepository.save(payment);
 
         given(tosspaymentsClient.getPayment("timeout_test_key"))
-                .willReturn(createTossResponse("timeout_test_key", TosspaymentsStatus.DONE, "카드", null));
+                .willReturn(createTossResponse("timeout_test_key", "timeout_order_1", 2000L, TosspaymentsStatus.DONE, "카드", null));
 
         WebhookPayload payload = createWebhookPayload("timeout_test_key", "timeout_order_1", TosspaymentsStatus.DONE, 2000L, "카드", null);
         webhookService.handlePaymentStatusChanged(payload);
@@ -134,7 +134,7 @@ class WebhookServiceTest extends BaseTest {
         tosspaymentsPaymentRepository.save(payment);
 
         given(tosspaymentsClient.getPayment("approve_test_key"))
-                .willReturn(createTossResponse("approve_test_key", TosspaymentsStatus.DONE, "간편결제",
+                .willReturn(createTossResponse("approve_test_key", "approve_order_1", 1000L, TosspaymentsStatus.DONE, "간편결제",
                         new EasyPay("토스페이", 1000L, 0L)));
 
         WebhookPayload payload = createWebhookPayload("approve_test_key", "approve_order_1", TosspaymentsStatus.DONE, 1000L, "간편결제",
@@ -195,7 +195,7 @@ class WebhookServiceTest extends BaseTest {
         tosspaymentsPaymentRepository.save(payment);
 
         given(tosspaymentsClient.getPayment("expired_test_key"))
-                .willReturn(createTossResponse("expired_test_key", TosspaymentsStatus.EXPIRED, "카드", null));
+                .willReturn(createTossResponse("expired_test_key", "expired_order_1", 10000L, TosspaymentsStatus.EXPIRED, "카드", null));
 
         WebhookPayload payload = createWebhookPayload("expired_test_key", "expired_order_1", TosspaymentsStatus.EXPIRED, 10000L, "카드", null);
         webhookService.handlePaymentStatusChanged(payload);
@@ -214,7 +214,7 @@ class WebhookServiceTest extends BaseTest {
         tosspaymentsPaymentRepository.save(payment);
 
         given(tosspaymentsClient.getPayment("cancel_test_key"))
-                .willReturn(createTossResponse("cancel_test_key", TosspaymentsStatus.CANCELED, "카드", null));
+                .willReturn(createTossResponse("cancel_test_key", "cancel_order_1", 10000L, TosspaymentsStatus.CANCELED, "카드", null));
 
         WebhookPayload payload = createWebhookPayload("cancel_test_key", "cancel_order_1", TosspaymentsStatus.CANCELED, 10000L, "카드", null);
         webhookService.handlePaymentStatusChanged(payload);
@@ -223,11 +223,11 @@ class WebhookServiceTest extends BaseTest {
         assertThat(updatedPayment.getState()).isEqualTo(PaymentState.CANCELED);
     }
 
-    private TosspaymentsPaymentResponse createTossResponse(String paymentKey, TosspaymentsStatus status,
-                                                            String method, EasyPay easyPay) {
+    private TosspaymentsPaymentResponse createTossResponse(String paymentKey, String orderId, Long totalAmount,
+                                                            TosspaymentsStatus status, String method, EasyPay easyPay) {
         return new TosspaymentsPaymentResponse(
-                paymentKey, null, null, null, null, null, method,
-                null, null, status,
+                paymentKey, null, orderId, null, null, null, method,
+                totalAmount, null, status,
                 null, null, null,
                 null, null, null, null,
                 false, null, null, null, easyPay, null, null, null

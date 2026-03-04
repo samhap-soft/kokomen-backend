@@ -2,6 +2,7 @@ package com.samhap.kokomen.payment.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
@@ -67,7 +68,17 @@ public class PaymentRecoveryService {
             return;
         }
 
-        PurchaseMetadata metadata = parseMetadata(payment.getMetadata());
+        payment.validateTosspaymentsResult(
+                tossResponse.paymentKey(), tossResponse.orderId(), tossResponse.totalAmount());
+
+        PurchaseMetadata metadata;
+        try {
+            metadata = parseMetadata(payment.getMetadata());
+        } catch (InternalServerErrorException e) {
+            payment.updateState(PaymentState.SERVER_BAD_REQUEST);
+            log.error("복구 실패(메타데이터 파싱) - paymentKey={}", paymentKey, e);
+            return;
+        }
         int tokenCount = metadata.count();
 
         payment.updateState(PaymentState.COMPLETED);
@@ -94,7 +105,7 @@ public class PaymentRecoveryService {
         try {
             return objectMapper.readValue(metadataJson, PurchaseMetadata.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("메타데이터 파싱 실패: " + metadataJson, e);
+            throw new InternalServerErrorException("메타데이터 파싱에 실패했습니다.", e);
         }
     }
 }

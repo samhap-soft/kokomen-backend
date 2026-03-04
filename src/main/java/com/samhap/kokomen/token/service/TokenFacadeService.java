@@ -3,6 +3,7 @@ package com.samhap.kokomen.token.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.DistributedLock;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.samhap.kokomen.payment.service.PaymentFacadeService;
 import com.samhap.kokomen.payment.service.dto.CancelRequest;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
@@ -56,7 +57,12 @@ public class TokenFacadeService {
 
         TokenPurchase tokenPurchase = request.toTokenPurchase(memberId, paymentResponse.method(),
                 getEasyPayProvider(paymentResponse));
-        grantPurchasedTokens(tokenPurchase, tokenCount);
+        try {
+            grantPurchasedTokens(tokenPurchase, tokenCount);
+        } catch (DataIntegrityViolationException e) {
+            log.info("토큰이 이미 지급됨 (race condition) - memberId: {}, paymentKey: {}", memberId, request.paymentKey());
+            return;
+        }
         paymentFacadeService.completePayment(request.paymentKey());
 
         log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);

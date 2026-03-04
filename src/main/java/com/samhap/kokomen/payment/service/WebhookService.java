@@ -8,6 +8,7 @@ import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
+import com.samhap.kokomen.payment.tool.PaymentKeyMasker;
 import com.samhap.kokomen.payment.service.dto.WebhookPayload;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.dto.PurchaseMetadata;
@@ -36,12 +37,12 @@ public class WebhookService {
 
         Optional<TosspaymentsPayment> findPayment = tosspaymentsPaymentService.findByPaymentKey(paymentKey);
         if (findPayment.isEmpty()) {
-            log.info("웹훅 무시 - 등록되지 않은 paymentKey: {}", paymentKey);
+            log.info("웹훅 무시 - 등록되지 않은 paymentKey: {}", PaymentKeyMasker.mask(paymentKey));
             return;
         }
         TosspaymentsPayment payment = findPayment.get();
         if (payment.isTerminal()) {
-            log.info("웹훅 스킵 - 종료 상태: paymentKey={}, state={}", paymentKey, payment.getState());
+            log.info("웹훅 스킵 - 종료 상태: paymentKey={}, state={}", PaymentKeyMasker.mask(paymentKey), payment.getState());
             return;
         }
 
@@ -49,7 +50,7 @@ public class WebhookService {
         try {
             tossResponse = tosspaymentsClient.getPayment(paymentKey);
         } catch (Exception e) {
-            log.warn("웹훅 처리 중 토스 결제 조회 실패 - paymentKey={}, 복구 스케줄러에서 재처리", paymentKey, e);
+            log.warn("웹훅 처리 중 토스 결제 조회 실패 - paymentKey={}, 복구 스케줄러에서 재처리", PaymentKeyMasker.mask(paymentKey), e);
             return;
         }
         TosspaymentsStatus verifiedStatus = tossResponse.status();
@@ -63,30 +64,41 @@ public class WebhookService {
     }
 
     private void handleDone(TosspaymentsPayment payment, TosspaymentsPaymentResponse tossResponse) {
-        if (payment.canCompleteByWebhook()) {
-            PurchaseMetadata metadata = parseMetadata(payment.getMetadata());
-            Long memberId = payment.getMemberId();
-            int tokenCount = metadata.count();
-
-            payment.updateState(PaymentState.COMPLETED);
-
-            TokenPurchase tokenPurchase = TokenPurchase.builder()
-                    .memberId(memberId)
-                    .paymentKey(payment.getPaymentKey())
-                    .orderId(payment.getOrderId())
-                    .totalAmount(payment.getTotalAmount())
-                    .orderName(payment.getOrderName())
-                    .productName(metadata.productName())
-                    .purchaseCount(tokenCount)
-                    .unitPrice(metadata.unitPrice())
-                    .paymentMethod(tossResponse.method())
-                    .easyPayProvider(tossResponse.easyPay() != null ? tossResponse.easyPay().provider() : null)
-                    .build();
-            tokenFacadeService.grantPurchasedTokens(tokenPurchase, tokenCount);
-
-            log.info("웹훅으로 토큰 지급 완료 - memberId: {}, paymentKey: {}, tokenCount: {}",
-                    memberId, payment.getPaymentKey(), tokenCount);
+        if (!payment.canCompleteByWebhook()) {
+            return;
         }
+
+        if (tokenFacadeService.existsByPaymentKey(payment.getPaymentKey())) {
+            payment.updateState(PaymentState.COMPLETED);
+            log.info("웹훅 스킵 - 이미 토큰 지급됨: paymentKey={}", PaymentKeyMasker.mask(payment.getPaymentKey()));
+            return;
+        }
+
+        payment.validateTosspaymentsResult(
+                tossResponse.paymentKey(), tossResponse.orderId(), tossResponse.totalAmount());
+
+        PurchaseMetadata metadata = parseMetadata(payment.getMetadata());
+        Long memberId = payment.getMemberId();
+        int tokenCount = metadata.count();
+
+        payment.updateState(PaymentState.COMPLETED);
+
+        TokenPurchase tokenPurchase = TokenPurchase.builder()
+                .memberId(memberId)
+                .paymentKey(payment.getPaymentKey())
+                .orderId(payment.getOrderId())
+                .totalAmount(payment.getTotalAmount())
+                .orderName(payment.getOrderName())
+                .productName(metadata.productName())
+                .purchaseCount(tokenCount)
+                .unitPrice(metadata.unitPrice())
+                .paymentMethod(tossResponse.method())
+                .easyPayProvider(tossResponse.easyPay() != null ? tossResponse.easyPay().provider() : null)
+                .build();
+        tokenFacadeService.grantPurchasedTokens(tokenPurchase, tokenCount);
+
+        log.info("웹훅으로 토큰 지급 완료 - memberId: {}, paymentKey: {}, tokenCount: {}",
+                memberId, PaymentKeyMasker.mask(payment.getPaymentKey()), tokenCount);
     }
 
     private PurchaseMetadata parseMetadata(String metadataJson) {
@@ -101,18 +113,18 @@ public class WebhookService {
     private void handleCanceled(TosspaymentsPayment payment, TosspaymentsStatus status) {
         if (payment.canCancelByWebhook()) {
             payment.updateState(PaymentState.CANCELED);
-            log.info("웹훅 취소 처리 - paymentKey: {}, status: {}", payment.getPaymentKey(), status);
+            log.info("웹훅 취소 처리 - paymentKey: {}, status: {}", PaymentKeyMasker.mask(payment.getPaymentKey()), status);
         } else {
-            log.info("웹훅 취소 무시 - 취소 불가 상태: paymentKey={}, state={}", payment.getPaymentKey(), payment.getState());
+            log.info("웹훅 취소 무시 - 취소 불가 상태: paymentKey={}, state={}", PaymentKeyMasker.mask(payment.getPaymentKey()), payment.getState());
         }
     }
 
     private void handleFailed(TosspaymentsPayment payment, TosspaymentsStatus status) {
         if (payment.canResolveAsNotNeeded()) {
             payment.updateState(PaymentState.NOT_NEED_CANCEL);
-            log.info("웹훅 만료/실패 처리 - paymentKey: {}, status: {}", payment.getPaymentKey(), status);
+            log.info("웹훅 만료/실패 처리 - paymentKey: {}, status: {}", PaymentKeyMasker.mask(payment.getPaymentKey()), status);
         } else {
-            log.info("웹훅 만료/실패 무시 - 처리 불가 상태: paymentKey={}, state={}", payment.getPaymentKey(), payment.getState());
+            log.info("웹훅 만료/실패 무시 - 처리 불가 상태: paymentKey={}, state={}", PaymentKeyMasker.mask(payment.getPaymentKey()), payment.getState());
         }
     }
 }
