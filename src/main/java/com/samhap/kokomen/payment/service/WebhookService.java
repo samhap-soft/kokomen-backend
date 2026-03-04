@@ -40,8 +40,8 @@ public class WebhookService {
             return;
         }
         TosspaymentsPayment payment = findPayment.get();
-        if (payment.isCompleted()) {
-            log.info("웹훅 스킵 - 이미 완료된 결제: paymentKey={}", paymentKey);
+        if (payment.isTerminal()) {
+            log.info("웹훅 스킵 - 종료 상태: paymentKey={}, state={}", paymentKey, payment.getState());
             return;
         }
 
@@ -54,7 +54,7 @@ public class WebhookService {
     }
 
     private void handleDone(TosspaymentsPayment payment, WebhookPaymentData data) {
-        if (payment.getState().canCompleteByWebhook()) {
+        if (payment.canCompleteByWebhook()) {
             PurchaseMetadata metadata = parseMetadata(payment.getMetadata());
             Long memberId = payment.getMemberId();
             int tokenCount = metadata.count();
@@ -90,14 +90,20 @@ public class WebhookService {
     }
 
     private void handleCanceled(TosspaymentsPayment payment, TosspaymentsStatus status) {
-        payment.updateState(PaymentState.CANCELED);
-        log.info("웹훅 취소 처리 - paymentKey: {}, status: {}", payment.getPaymentKey(), status);
+        if (payment.canCancelByWebhook()) {
+            payment.updateState(PaymentState.CANCELED);
+            log.info("웹훅 취소 처리 - paymentKey: {}, status: {}", payment.getPaymentKey(), status);
+        } else {
+            log.info("웹훅 취소 무시 - 취소 불가 상태: paymentKey={}, state={}", payment.getPaymentKey(), payment.getState());
+        }
     }
 
     private void handleFailed(TosspaymentsPayment payment, TosspaymentsStatus status) {
-        if (payment.isNeedApprove()) {
+        if (payment.canResolveAsNotNeeded()) {
             payment.updateState(PaymentState.NOT_NEED_CANCEL);
             log.info("웹훅 만료/실패 처리 - paymentKey: {}, status: {}", payment.getPaymentKey(), status);
+        } else {
+            log.info("웹훅 만료/실패 무시 - 처리 불가 상태: paymentKey={}, state={}", payment.getPaymentKey(), payment.getState());
         }
     }
 }

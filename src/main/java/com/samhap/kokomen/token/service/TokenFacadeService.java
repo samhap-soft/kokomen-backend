@@ -51,6 +51,7 @@ public class TokenFacadeService {
         TokenPurchase tokenPurchase = request.toTokenPurchase(memberId, paymentResponse.method(),
                 getEasyPayProvider(paymentResponse));
         grantPurchasedTokens(tokenPurchase, tokenCount);
+        paymentFacadeService.completePayment(request.paymentKey());
 
         log.info("토큰 구매 완료 - memberId: {}, paymentKey: {}, 증가된 토큰: {}", memberId, request.paymentKey(), tokenCount);
     }

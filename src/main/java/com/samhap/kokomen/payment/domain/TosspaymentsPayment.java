@@ -90,12 +90,24 @@ public class TosspaymentsPayment extends BaseEntity {
         }
     }
 
-    public boolean isCompleted() {
-        return state == PaymentState.COMPLETED;
+    public boolean canCompleteByWebhook() {
+        return state.canCompleteByWebhook();
     }
 
-    public boolean isNeedApprove() {
-        return state == PaymentState.NEED_APPROVE;
+    public boolean canCancelByWebhook() {
+        return state.canCancelByWebhook();
+    }
+
+    public boolean canResolveAsNotNeeded() {
+        return state.canResolveAsNotNeeded();
+    }
+
+    public boolean canCancelByApi() {
+        return state.canCancelByApi();
+    }
+
+    public boolean isTerminal() {
+        return state.isTerminal();
     }
 
     public void updateState(PaymentState state) {

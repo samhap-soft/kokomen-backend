@@ -2,8 +2,8 @@ package com.samhap.kokomen.payment.domain;
 
 public enum PaymentState {
     NEED_APPROVE, // 결제 승인 대기 상태가 오래 지속되는 경우 결제 취소 필요
-    APPROVED, // 결제 완료 후 비즈니스 반영이 안된 상태
-    NOT_NEED_CANCEL, // NEED_CANCEL 상태에서 환불처리 시도했으나 애초에 결제가 안 된 것으로 확인된 경우
+    APPROVED, // 토스 결제 승인 완료, 비즈니스 반영(토큰 지급) 대기 상태
+    NOT_NEED_CANCEL, // 결제가 승인되지 않은 것으로 확인된 경우 (EXPIRED, ABORTED 등)
     NEED_CANCEL, // 리드 타임 아웃 or 토스페이먼츠 5xx 응답인 경우 결제 취소 필요
     CONNECTION_TIMEOUT, // 연결 타임 아웃인 경우에는 환불 처리 불필요
     CANCELED, // 환불 처리 완료
@@ -13,6 +13,24 @@ public enum PaymentState {
     ;
 
     public boolean canCompleteByWebhook() {
+        return this == NEED_APPROVE || this == APPROVED || this == NEED_CANCEL || this == CONNECTION_TIMEOUT;
+    }
+
+    public boolean canCancelByWebhook() {
+        return this == NEED_APPROVE || this == APPROVED || this == NEED_CANCEL || this == CONNECTION_TIMEOUT;
+    }
+
+    public boolean canResolveAsNotNeeded() {
         return this == NEED_APPROVE || this == NEED_CANCEL || this == CONNECTION_TIMEOUT;
+    }
+
+    public boolean canCancelByApi() {
+        return this == COMPLETED || this == APPROVED;
+    }
+
+    public boolean isTerminal() {
+        return this == COMPLETED || this == CANCELED
+                || this == CLIENT_BAD_REQUEST || this == SERVER_BAD_REQUEST
+                || this == NOT_NEED_CANCEL;
     }
 }
