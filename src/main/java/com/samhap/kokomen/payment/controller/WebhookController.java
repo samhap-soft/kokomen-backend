@@ -26,8 +26,9 @@ public class WebhookController {
             @RequestHeader("tosspayments-webhook-transmission-retried-count") int retriedCount,
             @RequestBody WebhookPayload payload
     ) {
-        log.info("웹훅 수신 - transmissionId: {}, retriedCount: {}, transmissionTime: {}", transmissionId, retriedCount,
-                transmissionTime);
+        log.info("웹훅 수신 - transmissionId: {}, retriedCount: {}, transmissionTime: {}, state: {}, paymentKey: {}",
+                transmissionId, retriedCount,
+                transmissionTime, payload.data().status(), payload.data().paymentKey());
         webhookService.handlePaymentStatusChanged(payload);
         return ResponseEntity.ok().build();
     }
