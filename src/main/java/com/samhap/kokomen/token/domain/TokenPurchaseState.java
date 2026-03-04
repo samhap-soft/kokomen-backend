@@ -6,6 +6,7 @@ import lombok.Getter;
 @Getter
 public enum TokenPurchaseState {
     REFUNDABLE("환불 가능"),
+    REFUND_EXPIRED("환불 기한 만료"),
     USABLE("사용 중"),
     EXHAUSTED("사용 완료"),
     REFUNDED("환불 완료");

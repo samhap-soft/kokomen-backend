@@ -146,6 +146,10 @@ public class TokenFacadeService {
             throw new BadRequestException("본인의 토큰 구매 내역만 환불할 수 있습니다.");
         }
 
+        if (tokenPurchase.isRefundExpired()) {
+            throw new BadRequestException("구매일로부터 1년이 경과하여 환불이 불가합니다.");
+        }
+
         if (tokenPurchase.isNotRefundable()) {
             throw new BadRequestException("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
         }

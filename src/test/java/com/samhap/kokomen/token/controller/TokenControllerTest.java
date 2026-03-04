@@ -54,6 +54,8 @@ class TokenControllerTest extends BaseControllerTest {
     private TokenService tokenService;
     @Autowired
     private TokenPurchaseRepository tokenPurchaseRepository;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Test
     void 토큰_구매_DTO_검증_실패() throws Exception {
@@ -626,6 +628,42 @@ class TokenControllerTest extends BaseControllerTest {
                                         .optional()
                         )
                 ));
+    }
+
+    @Test
+    void 구매일로부터_1년_경과한_토큰_환불_실패() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(
+                TokenPurchaseFixtureBuilder.builder()
+                        .memberId(member.getId())
+                        .count(10)
+                        .remainingCount(10)
+                        .state(TokenPurchaseState.REFUNDABLE)
+                        .build()
+        );
+
+        // created_at을 1년 전으로 변경 (native SQL로 @CreatedDate 필드 직접 수정)
+        jdbcTemplate.update(
+                "UPDATE token_purchase SET created_at = ? WHERE id = ?",
+                java.time.LocalDateTime.now().minusYears(1).minusDays(1),
+                tokenPurchase.getId()
+        );
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        TokenRefundRequest request = new TokenRefundRequest(RefundReasonCode.CHANGE_OF_MIND, null);
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/token-purchases/{tokenPurchaseId}/refund", tokenPurchase.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -26,6 +26,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TokenPurchase extends BaseEntity {
 
+    private static final long REFUND_EXPIRY_YEARS = 1;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -176,7 +178,11 @@ public class TokenPurchase extends BaseEntity {
     }
 
     public boolean isRefundable() {
-        return state == TokenPurchaseState.REFUNDABLE && purchaseCount.equals(remainingCount);
+        return state == TokenPurchaseState.REFUNDABLE && purchaseCount.equals(remainingCount) && !isRefundExpired();
+    }
+
+    public boolean isRefundExpired() {
+        return getCreatedAt().plusYears(REFUND_EXPIRY_YEARS).isBefore(LocalDateTime.now());
     }
 
     public boolean isNotOwnedBy(Long memberId) {

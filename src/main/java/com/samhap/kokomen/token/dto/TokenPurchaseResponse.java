@@ -2,6 +2,7 @@ package com.samhap.kokomen.token.dto;
 
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 
 public record TokenPurchaseResponse(
         Long id,
@@ -23,9 +24,16 @@ public record TokenPurchaseResponse(
                 tokenPurchase.getProductName(),
                 tokenPurchase.getPurchaseCount(),
                 tokenPurchase.getRemainingCount(),
-                tokenPurchase.getState().getDisplayMessage(),
+                resolveDisplayState(tokenPurchase),
                 tokenPurchase.getPaymentMethod(),
                 tokenPurchase.getEasyPayProvider()
         );
+    }
+
+    private static String resolveDisplayState(TokenPurchase tokenPurchase) {
+        if (tokenPurchase.getState() == TokenPurchaseState.REFUNDABLE && tokenPurchase.isRefundExpired()) {
+            return TokenPurchaseState.REFUND_EXPIRED.getDisplayMessage();
+        }
+        return tokenPurchase.getState().getDisplayMessage();
     }
 }
