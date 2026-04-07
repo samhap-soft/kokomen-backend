@@ -59,7 +59,7 @@ class AdminPaymentServiceTest extends BaseTest {
         PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         // when
-        AdminPaymentPageResponse response = adminPaymentService.findPayments(null, null, null, pageable);
+        AdminPaymentPageResponse response = adminPaymentService.findPayments(null, null, null, null, pageable);
 
         // then
         assertThat(response.totalCount()).isEqualTo(2);
@@ -88,7 +88,7 @@ class AdminPaymentServiceTest extends BaseTest {
         PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         // when
-        AdminPaymentPageResponse response = adminPaymentService.findPaymentsByMemberId(
+        AdminPaymentPageResponse response = adminPaymentService.findPayments(
                 targetMemberId, null, null, null, pageable
         );
 
@@ -123,7 +123,7 @@ class AdminPaymentServiceTest extends BaseTest {
 
         // when
         AdminPaymentPageResponse response = adminPaymentService.findPayments(
-                PaymentState.COMPLETED, null, null, pageable
+                null, PaymentState.COMPLETED, null, null, pageable
         );
 
         // then
@@ -152,7 +152,7 @@ class AdminPaymentServiceTest extends BaseTest {
         PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         // when
-        AdminPaymentPageResponse response = adminPaymentService.findPayments(null, null, null, pageable);
+        AdminPaymentPageResponse response = adminPaymentService.findPayments(null, null, null, null, pageable);
 
         // then
         assertThat(response.data()).hasSize(1);

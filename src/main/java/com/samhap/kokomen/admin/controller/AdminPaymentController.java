@@ -30,26 +30,13 @@ public class AdminPaymentController {
 
     @GetMapping
     public ResponseEntity<AdminPaymentPageResponse> findPayments(
+            @RequestParam(required = false) Long memberId,
             @RequestParam(required = false) PaymentState state,
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDate,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        AdminPaymentPageResponse response = adminPaymentService.findPayments(state, startDate, endDate, pageable);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/members/{memberId}")
-    public ResponseEntity<AdminPaymentPageResponse> findPaymentsByMemberId(
-            @PathVariable Long memberId,
-            @RequestParam(required = false) PaymentState state,
-            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDate,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        AdminPaymentPageResponse response = adminPaymentService.findPaymentsByMemberId(
-                memberId, state, startDate, endDate, pageable
-        );
+        AdminPaymentPageResponse response = adminPaymentService.findPayments(memberId, state, startDate, endDate, pageable);
         return ResponseEntity.ok(response);
     }
 

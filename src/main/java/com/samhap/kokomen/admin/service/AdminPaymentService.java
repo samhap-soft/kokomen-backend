@@ -31,19 +31,6 @@ public class AdminPaymentService {
 
     @Transactional(readOnly = true)
     public AdminPaymentPageResponse findPayments(
-            PaymentState state,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            Pageable pageable
-    ) {
-        Page<TosspaymentsPayment> page = tosspaymentsPaymentRepository.findPaymentsWithFilters(
-                null, state, startDate, endDate, pageable
-        );
-        return toPageResponse(page);
-    }
-
-    @Transactional(readOnly = true)
-    public AdminPaymentPageResponse findPaymentsByMemberId(
             Long memberId,
             PaymentState state,
             LocalDateTime startDate,
