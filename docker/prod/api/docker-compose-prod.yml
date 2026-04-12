@@ -39,6 +39,7 @@ services:
       GOOGLE_CLIENT_ID_PROD: ${GOOGLE_CLIENT_ID_PROD}
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
       WIDGET_SECRET_KEY_PROD: ${WIDGET_SECRET_KEY_PROD}
+      SLACK_WEBHOOK_URL_PROD: ${SLACK_WEBHOOK_URL_PROD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 10s
@@ -85,6 +86,7 @@ services:
       GOOGLE_CLIENT_ID_PROD: ${GOOGLE_CLIENT_ID_PROD}
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
       WIDGET_SECRET_KEY_PROD: ${WIDGET_SECRET_KEY_PROD}
+      SLACK_WEBHOOK_URL_PROD: ${SLACK_WEBHOOK_URL_PROD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 10s

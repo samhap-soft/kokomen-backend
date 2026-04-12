@@ -85,6 +85,7 @@ jobs:
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_CLIENT_SECRET_PROD: ${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}
           WIDGET_SECRET_KEY_PROD: ${{ secrets.WIDGET_SECRET_KEY_PROD }}
+          SLACK_WEBHOOK_URL_PROD: ${{ secrets.SLACK_WEBHOOK_URL_PROD }}
         run: |
           export HOSTNAME=$(hostname)
           sudo -E ./deploy.sh

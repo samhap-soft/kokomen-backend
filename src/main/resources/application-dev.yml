@@ -28,3 +28,7 @@ retry:
     initial-interval: 500
     multiplier: 2.0
     max-interval: 2000
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL_DEV}
+  channel: "#kokomen-dev-alerts"
+  environment: DEV
