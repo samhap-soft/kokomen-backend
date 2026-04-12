@@ -50,13 +50,7 @@ jobs:
     runs-on: [ self-hosted, prod, new ]
 
     steps:
-      - name: Stop existing container
-        run: sudo docker rm -f kokomen-interview-api-prod
-
-      - name: Docker Image prune
-        run: sudo docker image prune -f -a
-
-      - name: pull docker compose yaml files
+      - name: Pull docker compose and deployment files
         working-directory: /home/ubuntu
         run: |
           [ -d kokomen-backend ] || git clone --filter=blob:none --no-checkout https://github.com/samhap-soft/kokomen-backend.git
@@ -70,8 +64,14 @@ jobs:
       - name: Docker Image pull
         run: sudo docker pull samhap/kokomen-interview-api:prod
 
-      - name: Docker run
-        working-directory: /home/ubuntu
+      - name: Docker Image prune
+        run: sudo docker image prune -f
+
+      - name: Make deploy script executable
+        run: chmod +x /home/ubuntu/kokomen-backend/docker/prod/api/deploy.sh
+
+      - name: Run Blue-Green Deployment
+        working-directory: /home/ubuntu/kokomen-backend/docker/prod/api
         env:
           SPRING_DATASOURCE_URL_PROD: ${{ secrets.SPRING_DATASOURCE_URL_PROD }}
           SPRING_DATASOURCE_USERNAME_PROD: ${{ secrets.SPRING_DATASOURCE_USERNAME_PROD }}
@@ -87,5 +87,9 @@ jobs:
           WIDGET_SECRET_KEY_PROD: ${{ secrets.WIDGET_SECRET_KEY_PROD }}
         run: |
           export HOSTNAME=$(hostname)
-          cd kokomen-backend/docker/prod/api
-          sudo -E docker compose -f docker-compose-prod.yml up -d
+          sudo -E ./deploy.sh
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -sf http://localhost:80/actuator/health || echo "Health check endpoint not responding"
