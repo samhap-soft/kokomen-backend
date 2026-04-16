@@ -2,6 +2,9 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <springProperty scope="context" name="slackWebhookUrl" source="slack.webhook-url" defaultValue=""/>
+    <springProperty scope="context" name="slackChannel" source="slack.channel" defaultValue="#alerts"/>
+    <springProperty scope="context" name="slackEnvironment" source="slack.environment" defaultValue="UNKNOWN"/>
 
     <!-- 공통 Appender 정의 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -26,6 +29,34 @@
         </encoder>
     </appender>
 
+    <!-- Slack Appender -->
+    <appender name="SLACK" class="com.github.maricn.logback.SlackAppender">
+        <webhookUri>${slackWebhookUrl}</webhookUri>
+        <channel>${slackChannel}</channel>
+        <username>Kokomen-Alert-Bot</username>
+        <iconEmoji>:rotating_light:</iconEmoji>
+        <colorCoding>true</colorCoding>
+        <layout class="com.samhap.kokomen.global.logging.SlackErrorLayout">
+            <environment>${slackEnvironment}</environment>
+        </layout>
+    </appender>
+
+    <!-- Slack Async Appender (비동기 + ERROR 필터 + Rate Limiting) -->
+    <appender name="ASYNC_SLACK" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="SLACK"/>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <!-- 중복 알림 방지 필터 (동일 에러 1분 쿨다운) -->
+        <filter class="com.samhap.kokomen.global.logging.RateLimitingFilter">
+            <cooldownSeconds>60</cooldownSeconds>
+        </filter>
+        <queueSize>500</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
     <!-- local 환경: 콘솔만 사용 -->
     <springProfile name="local">
         <root level="INFO">
@@ -33,17 +64,19 @@
         </root>
     </springProfile>
 
-    <!-- dev 환경: FILE 저장 -->
+    <!-- dev 환경: FILE 저장 + Slack 알림 -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="FILE"/>
+            <appender-ref ref="ASYNC_SLACK"/>
         </root>
     </springProfile>
 
-    <!-- prod 환경: FILE 저장 -->
+    <!-- prod 환경: FILE 저장 + Slack 알림 -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="FILE"/>
+            <appender-ref ref="ASYNC_SLACK"/>
         </root>
     </springProfile>
 
