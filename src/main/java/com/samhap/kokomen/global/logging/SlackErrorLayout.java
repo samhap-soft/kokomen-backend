@@ -5,13 +5,15 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.LayoutBase;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 public class SlackErrorLayout extends LayoutBase<ILoggingEvent> {
 
     private static final int MAX_STACK_TRACE_LENGTH = 2000;
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private String environment = "UNKNOWN";
 
@@ -30,7 +32,7 @@ public class SlackErrorLayout extends LayoutBase<ILoggingEvent> {
             sb.append(":label: *Request ID:* `").append(requestId).append("`\n");
         }
 
-        sb.append(":clock3: *Time:* ").append(DATE_FORMAT.format(new Date(event.getTimeStamp()))).append("\n");
+        sb.append(":clock3: *Time:* ").append(DATE_FORMAT.format(Instant.ofEpochMilli(event.getTimeStamp()))).append("\n");
         sb.append(":page_facing_up: *Logger:* `").append(getShortLoggerName(event.getLoggerName())).append("`\n\n");
 
         sb.append(":speech_balloon: *Message:*\n```").append(event.getFormattedMessage()).append("```\n");

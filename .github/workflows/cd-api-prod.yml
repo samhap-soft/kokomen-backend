@@ -93,4 +93,4 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          curl -sf http://localhost:80/actuator/health || echo "Health check endpoint not responding"
+          curl -sf http://localhost:80/actuator/health

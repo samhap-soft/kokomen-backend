@@ -6,11 +6,6 @@
     <springProperty scope="context" name="slackChannel" source="slack.channel" defaultValue="#alerts"/>
     <springProperty scope="context" name="slackEnvironment" source="slack.environment" defaultValue="UNKNOWN"/>
 
-    <!-- 중복 알림 방지 TurboFilter (ERROR 레벨 1분 쿨다운) -->
-    <turboFilter class="com.samhap.kokomen.global.logging.RateLimitingTurboFilter">
-        <cooldownSeconds>60</cooldownSeconds>
-    </turboFilter>
-
     <!-- 공통 Appender 정의 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -46,14 +41,19 @@
         </layout>
     </appender>
 
-    <!-- Slack Async Appender (비동기 + ERROR 필터) -->
+    <!-- Slack Async Appender (비동기 + ERROR 필터 + Rate Limiting) -->
     <appender name="ASYNC_SLACK" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="SLACK"/>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>ERROR</level>
         </filter>
+        <!-- 중복 알림 방지 필터 (동일 에러 1분 쿨다운) -->
+        <filter class="com.samhap.kokomen.global.logging.RateLimitingFilter">
+            <cooldownSeconds>60</cooldownSeconds>
+        </filter>
         <queueSize>500</queueSize>
         <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
         <includeCallerData>true</includeCallerData>
     </appender>
 

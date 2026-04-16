@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-COMPOSE_FILE="docker-compose-prod.yml"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose-prod.yml"
 HEALTH_TIMEOUT=120
 HEALTH_INTERVAL=5
 GRACEFUL_SHUTDOWN_WAIT=65
