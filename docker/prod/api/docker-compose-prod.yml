@@ -48,7 +48,7 @@ services:
       start_period: 40s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.kokomen.kr`)"
+      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
       - "traefik.http.services.api.loadbalancer.healthcheck.path=/actuator/health"
@@ -95,7 +95,7 @@ services:
       start_period: 40s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.kokomen.kr`)"
+      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
       - "traefik.http.services.api.loadbalancer.healthcheck.path=/actuator/health"
