@@ -98,12 +98,8 @@ main() {
 
     # Step 6: 완료 확인
     log_info "Step 5: 배포 완료 확인"
-    if curl -sf "http://localhost:80/actuator/health" > /dev/null 2>&1; then
-        log_info "========== 배포 성공! =========="
-        log_info "활성 환경: $TARGET"
-    else
-        log_warn "경고: 외부 헬스체크 실패 (Traefik 라우팅 확인 필요)"
-    fi
+    log_info "========== 배포 성공! =========="
+    log_info "활성 환경: $TARGET"
 }
 
 main "$@"

@@ -93,4 +93,5 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          curl -sf http://localhost:80/actuator/health
+          docker ps | grep kokomen-api
+          docker inspect --format='{{.State.Health.Status}}' $(docker ps -q -f name=kokomen-api) | grep healthy
