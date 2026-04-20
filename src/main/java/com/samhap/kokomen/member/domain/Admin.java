@@ -27,4 +27,8 @@ public class Admin {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
+
+    public Admin(Member member) {
+        this.member = member;
+    }
 }

@@ -126,11 +126,6 @@ public class MemberService {
     }
 
     private boolean isAdmin(Long memberId) {
-        if ("dev".equals(activeProfile)) {
-            return memberId.equals(34L);
-        } else if ("prod".equals(activeProfile)) {
-            return memberId.equals(302L);
-        }
         return adminRepository.existsByMemberId(memberId);
     }
 

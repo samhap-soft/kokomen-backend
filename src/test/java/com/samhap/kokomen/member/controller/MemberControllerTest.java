@@ -22,7 +22,9 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.member.domain.Admin;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.service.TokenService;
 import java.time.LocalDateTime;
@@ -41,12 +43,15 @@ class MemberControllerTest extends BaseControllerTest {
     private InterviewRepository interviewRepository;
     @Autowired
     private TokenService tokenService;
+    @Autowired
+    private AdminRepository adminRepository;
 
     @Test
     void 멤버_프로필_조회() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenService.createTokensForNewMember(member.getId());
+        adminRepository.save(new Admin(member));
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("MEMBER_ID", member.getId());
 
@@ -59,7 +64,7 @@ class MemberControllerTest extends BaseControllerTest {
                     "rank": 1,
                     "token_count": 20,
                     "profile_completed": %s,
-                    "is_admin": false
+                    "is_admin": true
                 }
                 """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getProfileCompleted());
 
