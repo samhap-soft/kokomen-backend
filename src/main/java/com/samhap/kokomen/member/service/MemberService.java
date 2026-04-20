@@ -2,11 +2,12 @@ package com.samhap.kokomen.member.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.interview.repository.dto.DailyInterviewCount;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.dto.DailyInterviewCount;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.domain.MemberSocialLogin;
 import com.samhap.kokomen.member.domain.SocialProvider;
+import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
@@ -39,6 +40,7 @@ public class MemberService {
     private final MemberSocialLoginRepository memberSocialLoginRepository;
     private final TokenFacadeService tokenFacadeService;
     private final InterviewRepository interviewRepository;
+    private final AdminRepository adminRepository;
 
     @Value("${spring.profiles.active:local}")
     private String activeProfile;
@@ -73,9 +75,9 @@ public class MemberService {
         long totalMemberCount = memberRepository.count();
         Token freeToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
         Token paidToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
-        boolean isTestUser = isTestUser(memberAuth.memberId());
+        boolean isAdmin = isAdmin(memberAuth.memberId());
         return new MyProfileResponse(member, totalMemberCount, rank,
-                freeToken.getTokenCount() + paidToken.getTokenCount(), isTestUser);
+                freeToken.getTokenCount() + paidToken.getTokenCount(), isAdmin);
     }
 
     public MyProfileResponseV2 findMemberV2(MemberAuth memberAuth) {
@@ -123,13 +125,13 @@ public class MemberService {
         member.withdraw();
     }
 
-    private boolean isTestUser(Long memberId) {
+    private boolean isAdmin(Long memberId) {
         if ("dev".equals(activeProfile)) {
             return memberId.equals(34L);
         } else if ("prod".equals(activeProfile)) {
             return memberId.equals(302L);
         }
-        return false;
+        return adminRepository.existsByMemberId(memberId);
     }
 
     public MemberStreakResponse findMemberStreaks(MemberAuth memberAuth, LocalDate startDate, LocalDate endDate) {
