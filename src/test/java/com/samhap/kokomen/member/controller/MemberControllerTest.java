@@ -59,7 +59,7 @@ class MemberControllerTest extends BaseControllerTest {
                     "rank": 1,
                     "token_count": 20,
                     "profile_completed": %s,
-                    "is_test_user": false
+                    "is_admin": false
                 }
                 """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getProfileCompleted());
 
@@ -82,7 +82,7 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("rank").description("회원 등수"),
                                 fieldWithPath("token_count").description("현재 회원 토큰 개수"),
                                 fieldWithPath("profile_completed").description("프로필 완성 여부"),
-                                fieldWithPath("is_test_user").description("테스트 유저 여부")
+                                fieldWithPath("is_admin").description("어드민 유저 여부")
                         )
                 ));
     }
