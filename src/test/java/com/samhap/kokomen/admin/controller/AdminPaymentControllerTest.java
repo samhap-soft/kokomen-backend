@@ -22,7 +22,6 @@ import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResultFixtur
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.PaymentType;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
-import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsCancel;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
@@ -100,17 +99,28 @@ class AdminPaymentControllerTest extends BaseControllerTest {
                                 fieldWithPath("data[].service_type").type(JsonFieldType.STRING).description("서비스 타입"),
                                 fieldWithPath("data[].created_at").type(JsonFieldType.STRING).description("생성일시"),
                                 fieldWithPath("data[].updated_at").type(JsonFieldType.STRING).description("수정일시"),
-                                fieldWithPath("data[].result").type(JsonFieldType.OBJECT).description("결제 결과 상세").optional(),
-                                fieldWithPath("data[].result.method").type(JsonFieldType.STRING).description("결제 수단").optional(),
-                                fieldWithPath("data[].result.balance_amount").type(JsonFieldType.NUMBER).description("잔액").optional(),
-                                fieldWithPath("data[].result.tosspayments_status").type(JsonFieldType.STRING).description("토스페이먼츠 상태").optional(),
-                                fieldWithPath("data[].result.requested_at").type(JsonFieldType.STRING).description("요청일시").optional(),
-                                fieldWithPath("data[].result.approved_at").type(JsonFieldType.STRING).description("승인일시").optional(),
-                                fieldWithPath("data[].result.cancel_reason").type(JsonFieldType.STRING).description("취소 사유").optional(),
-                                fieldWithPath("data[].result.canceled_at").type(JsonFieldType.STRING).description("취소일시").optional(),
-                                fieldWithPath("data[].result.cancel_status").type(JsonFieldType.STRING).description("취소 상태").optional(),
-                                fieldWithPath("data[].result.receipt_url").type(JsonFieldType.STRING).description("영수증 URL").optional(),
-                                fieldWithPath("data[].result.easy_pay_provider").type(JsonFieldType.STRING).description("간편결제 제공자").optional(),
+                                fieldWithPath("data[].result").type(JsonFieldType.OBJECT).description("결제 결과 상세")
+                                        .optional(),
+                                fieldWithPath("data[].result.method").type(JsonFieldType.STRING).description("결제 수단")
+                                        .optional(),
+                                fieldWithPath("data[].result.balance_amount").type(JsonFieldType.NUMBER)
+                                        .description("잔액").optional(),
+                                fieldWithPath("data[].result.tosspayments_status").type(JsonFieldType.STRING)
+                                        .description("토스페이먼츠 상태").optional(),
+                                fieldWithPath("data[].result.requested_at").type(JsonFieldType.STRING)
+                                        .description("요청일시").optional(),
+                                fieldWithPath("data[].result.approved_at").type(JsonFieldType.STRING)
+                                        .description("승인일시").optional(),
+                                fieldWithPath("data[].result.cancel_reason").type(JsonFieldType.STRING)
+                                        .description("취소 사유").optional(),
+                                fieldWithPath("data[].result.canceled_at").type(JsonFieldType.STRING)
+                                        .description("취소일시").optional(),
+                                fieldWithPath("data[].result.cancel_status").type(JsonFieldType.STRING)
+                                        .description("취소 상태").optional(),
+                                fieldWithPath("data[].result.receipt_url").type(JsonFieldType.STRING)
+                                        .description("영수증 URL").optional(),
+                                fieldWithPath("data[].result.easy_pay_provider").type(JsonFieldType.STRING)
+                                        .description("간편결제 제공자").optional(),
                                 fieldWithPath("current_page").type(JsonFieldType.NUMBER).description("현재 페이지"),
                                 fieldWithPath("total_count").type(JsonFieldType.NUMBER).description("전체 건수"),
                                 fieldWithPath("total_pages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
