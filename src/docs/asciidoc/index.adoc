@@ -570,6 +570,7 @@ include::{snippetsDir}/token-refund-fail-not-owner/curl-request.adoc[]
 === 전체 결제목록 조회
 
 include::{snippetsDir}/admin-findPayments/http-request.adoc[]
+include::{snippetsDir}/admin-findPayments/request-headers.adoc[]
 include::{snippetsDir}/admin-findPayments/query-parameters.adoc[]
 include::{snippetsDir}/admin-findPayments/http-response.adoc[]
 include::{snippetsDir}/admin-findPayments/response-fields.adoc[]
@@ -578,6 +579,7 @@ include::{snippetsDir}/admin-findPayments/curl-request.adoc[]
 === 결제 취소
 
 include::{snippetsDir}/admin-cancelPayment/http-request.adoc[]
+include::{snippetsDir}/admin-cancelPayment/request-headers.adoc[]
 include::{snippetsDir}/admin-cancelPayment/path-parameters.adoc[]
 include::{snippetsDir}/admin-cancelPayment/request-fields.adoc[]
 include::{snippetsDir}/admin-cancelPayment/http-response.adoc[]

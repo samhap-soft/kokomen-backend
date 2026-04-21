@@ -2,6 +2,8 @@ package com.samhap.kokomen.admin.controller;
 
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
@@ -17,8 +19,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.admin.service.dto.AdminCancelPaymentRequest;
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResultFixtureBuilder;
+import com.samhap.kokomen.member.domain.Admin;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.AdminRepository;
+import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.PaymentType;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
@@ -32,6 +39,7 @@ import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.restdocs.payload.JsonFieldType;
 
 class AdminPaymentControllerTest extends BaseControllerTest {
@@ -45,9 +53,20 @@ class AdminPaymentControllerTest extends BaseControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private AdminRepository adminRepository;
+
     @Test
     void 전체_결제목록_조회_API() throws Exception {
         // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
                 TosspaymentsPaymentFixtureBuilder.builder()
                         .paymentKey("payment_key_list")
@@ -72,6 +91,8 @@ class AdminPaymentControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/admin/payments")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
@@ -85,6 +106,9 @@ class AdminPaymentControllerTest extends BaseControllerTest {
                                 parameterWithName("endDate").description("종료일 필터 (ISO 형식, 선택)").optional(),
                                 parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                 parameterWithName("size").description("페이지 크기").optional()
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         ),
                         responseFields(
                                 fieldWithPath("data").type(JsonFieldType.ARRAY).description("결제 목록"),
@@ -132,6 +156,11 @@ class AdminPaymentControllerTest extends BaseControllerTest {
     @Test
     void 멤버별_결제목록_조회_API() throws Exception {
         // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
         Long targetMemberId = 100L;
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
                 TosspaymentsPaymentFixtureBuilder.builder()
@@ -153,6 +182,8 @@ class AdminPaymentControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/admin/payments")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
                         .param("memberId", targetMemberId.toString())
                         .param("page", "0")
                         .param("size", "10"))
@@ -163,6 +194,11 @@ class AdminPaymentControllerTest extends BaseControllerTest {
     @Test
     void 결제_취소_API() throws Exception {
         // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
                 TosspaymentsPaymentFixtureBuilder.builder()
                         .paymentKey("payment_key_cancel_api")
@@ -190,6 +226,8 @@ class AdminPaymentControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(post("/api/v1/admin/payments/{paymentId}/cancel", payment.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -199,6 +237,9 @@ class AdminPaymentControllerTest extends BaseControllerTest {
                         ),
                         requestFields(
                                 fieldWithPath("cancel_reason").type(JsonFieldType.STRING).description("취소 사유")
+                        ),
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )
                 ));
     }
