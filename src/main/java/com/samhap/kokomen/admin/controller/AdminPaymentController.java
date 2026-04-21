@@ -3,9 +3,13 @@ package com.samhap.kokomen.admin.controller;
 import com.samhap.kokomen.admin.service.AdminPaymentService;
 import com.samhap.kokomen.admin.service.dto.AdminCancelPaymentRequest;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentPageResponse;
+import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import jakarta.validation.Valid;
+
 import java.time.LocalDateTime;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -34,18 +38,20 @@ public class AdminPaymentController {
             @RequestParam(required = false) PaymentState state,
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDate,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @Authentication MemberAuth memberAuth
     ) {
-        AdminPaymentPageResponse response = adminPaymentService.findPayments(memberId, state, startDate, endDate, pageable);
+        AdminPaymentPageResponse response = adminPaymentService.findPayments(memberId, state, startDate, endDate, pageable, memberAuth);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{paymentId}/cancel")
     public ResponseEntity<Void> cancelPayment(
             @PathVariable Long paymentId,
-            @RequestBody @Valid AdminCancelPaymentRequest request
+            @RequestBody @Valid AdminCancelPaymentRequest request,
+            @Authentication MemberAuth memberAuth
     ) {
-        adminPaymentService.cancelPayment(paymentId, request);
+        adminPaymentService.cancelPayment(paymentId, request, memberAuth);
         return ResponseEntity.ok().build();
     }
 }
