@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.controller;
 
 import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
@@ -29,9 +30,11 @@ public class InterviewControllerV2 {
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
             @RequestBody @Valid AnswerRequestV2 answerRequest,
-            @Authentication MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth);
+        interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth,
+                clientIp);
         return ResponseEntity.noContent().build();
     }
 
@@ -40,8 +43,11 @@ public class InterviewControllerV2 {
             @PathVariable Long interviewId,
             @PathVariable Long curQuestionId,
             @RequestParam InterviewMode mode,
-            @Authentication MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewProceedFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth));
+        return ResponseEntity.ok(
+                interviewProceedFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth,
+                        clientIp));
     }
 }

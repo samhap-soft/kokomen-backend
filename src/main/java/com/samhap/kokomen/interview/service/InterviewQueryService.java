@@ -55,8 +55,8 @@ public class InterviewQueryService {
         return interviewService.findOtherMemberInterviews(memberId, memberAuth, pageable);
     }
 
-    public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth) {
-        return interviewService.findMyInterviewResult(interviewId, memberAuth);
+    public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+        return interviewService.findMyInterviewResult(interviewId, memberAuth, clientIp);
     }
 
     public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth,

@@ -41,8 +41,11 @@ public class InterviewProceedService {
             LlmResponse llmResponse,
             Long interviewId
     ) {
-        Member member = memberService.readById(memberId);
-        tokenFacadeService.useToken(memberId);
+        Member member = null;
+        if (memberId != null) {
+            member = memberService.readById(memberId);
+            tokenFacadeService.useToken(memberId);
+        }
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
@@ -60,8 +63,11 @@ public class InterviewProceedService {
             LlmResponse llmResponse,
             Long interviewId
     ) {
-        Member member = memberService.readById(memberId);
-        tokenFacadeService.useToken(memberId);
+        Member member = null;
+        if (memberId != null) {
+            member = memberService.readById(memberId);
+            tokenFacadeService.useToken(memberId);
+        }
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {
             Question nextQuestion = saveNextQuestion(llmResponse, interview);
@@ -93,7 +99,9 @@ public class InterviewProceedService {
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
-        member.addScore(totalScore);
+        if (member != null) {
+            member.addScore(totalScore);
+        }
     }
 
     public boolean isVoiceMode(Long interviewId) {

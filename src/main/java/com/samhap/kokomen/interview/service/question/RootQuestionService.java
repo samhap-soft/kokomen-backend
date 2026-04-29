@@ -14,6 +14,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.member.domain.Member;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,14 @@ public class RootQuestionService {
     private final RootQuestionRepository rootQuestionRepository;
     private final SupertoneClient supertoneClient;
     private final QuestionVoicePathResolver questionVoicePathResolver;
+
+    public RootQuestion findRandomActiveRootQuestion() {
+        List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByState(RootQuestionState.ACTIVE);
+        if (rootQuestions.isEmpty()) {
+            throw new NotFoundException("활성화된 루트 질문이 존재하지 않습니다.");
+        }
+        return rootQuestions.get(ThreadLocalRandom.current().nextInt(rootQuestions.size()));
+    }
 
     public RootQuestion findNextRootQuestionForMember(Member member, InterviewRequest interviewRequest) {
         Category category = interviewRequest.category();

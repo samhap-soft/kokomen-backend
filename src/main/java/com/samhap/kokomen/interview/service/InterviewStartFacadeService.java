@@ -1,8 +1,10 @@
 package com.samhap.kokomen.interview.service;
 
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
@@ -23,6 +25,7 @@ import com.samhap.kokomen.interview.service.resume.ResumeBasedInterviewService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InterviewStartFacadeService {
 
+    public static final String GUEST_INTERVIEW_STARTED_LOCK_KEY_PREFIX = "guest:interview:started:";
+    public static final int GUEST_INTERVIEW_MAX_QUESTION_COUNT = 3;
+    public static final InterviewMode GUEST_INTERVIEW_MODE = InterviewMode.TEXT;
+    public static final Duration GUEST_INTERVIEW_LOCK_TTL = Duration.ofDays(365);
+
     private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
 
     private final QuestionVoicePathResolver questionVoicePathResolver;
@@ -42,6 +50,7 @@ public class InterviewStartFacadeService {
     private final RootQuestionService rootQuestionService;
     private final QuestionService questionService;
     private final ResumeBasedInterviewService resumeBasedInterviewService;
+    private final RedisService redisService;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -60,6 +69,28 @@ public class InterviewStartFacadeService {
                     questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    @Transactional
+    public InterviewStartResponse startGuestInterview(ClientIp clientIp) {
+        String lockKey = createGuestInterviewStartedLockKey(clientIp);
+        if (!redisService.acquireLock(lockKey, GUEST_INTERVIEW_LOCK_TTL)) {
+            throw new BadRequestException("비회원 면접은 1회만 가능합니다.");
+        }
+        try {
+            RootQuestion rootQuestion = rootQuestionService.findRandomActiveRootQuestion();
+            Interview interview = interviewService.saveInterview(Interview.forGuest(rootQuestion,
+                    GUEST_INTERVIEW_MAX_QUESTION_COUNT, GUEST_INTERVIEW_MODE, clientIp));
+            Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+            return new InterviewStartTextModeResponse(interview, question);
+        } catch (RuntimeException e) {
+            redisService.releaseLock(lockKey);
+            throw e;
+        }
+    }
+
+    public static String createGuestInterviewStartedLockKey(ClientIp clientIp) {
+        return GUEST_INTERVIEW_STARTED_LOCK_KEY_PREFIX + clientIp.address();
     }
 
     @Transactional

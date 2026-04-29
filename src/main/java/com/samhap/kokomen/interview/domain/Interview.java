@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.member.domain.Member;
 import jakarta.persistence.Column;
@@ -16,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +28,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "interview", indexes = {
         @Index(name = "idx_interview_like_count", columnList = "like_count"),
         @Index(name = "idx_interview_view_count", columnList = "view_count"),
-        @Index(name = "idx_interview_member_id_root_question_id", columnList = "member_id, root_question_id")
+        @Index(name = "idx_interview_member_id_root_question_id", columnList = "member_id, root_question_id"),
+        @Index(name = "idx_interview_guest_ip", columnList = "guest_ip")
 })
 public class Interview extends BaseEntity {
 
@@ -40,7 +43,7 @@ public class Interview extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @JoinColumn(name = "member_id")
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -81,6 +84,9 @@ public class Interview extends BaseEntity {
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 
+    @Column(name = "guest_ip", length = 45)
+    private String guestIp;
+
     public Interview(
             Long id,
             Member member,
@@ -93,7 +99,8 @@ public class Interview extends BaseEntity {
             Integer totalScore,
             Long likeCount,
             Long viewCount,
-            LocalDateTime finishedAt
+            LocalDateTime finishedAt,
+            String guestIp
     ) {
         validateMaxQuestionCount(maxQuestionCount);
         this.id = id;
@@ -108,18 +115,25 @@ public class Interview extends BaseEntity {
         this.likeCount = likeCount;
         this.viewCount = viewCount;
         this.finishedAt = finishedAt;
+        this.guestIp = guestIp;
     }
 
     public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode) {
         this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
-                InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null);
+                InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null, null);
     }
 
     public Interview(Member member, GeneratedQuestion generatedQuestion, Integer maxQuestionCount,
                      InterviewMode interviewMode) {
         this(null, member, null, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
-                InterviewType.RESUME_BASED, null, null, 0L, 0L, null);
+                InterviewType.RESUME_BASED, null, null, 0L, 0L, null, null);
         this.generatedQuestion = generatedQuestion;
+    }
+
+    public static Interview forGuest(RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode,
+                                     ClientIp clientIp) {
+        return new Interview(null, null, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
+                InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null, clientIp.address());
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {
@@ -130,7 +144,18 @@ public class Interview extends BaseEntity {
         }
     }
 
+    public boolean isGuestInterview() {
+        return this.member == null;
+    }
+
+    public boolean isSameGuestIp(ClientIp clientIp) {
+        return isGuestInterview() && Objects.equals(this.guestIp, clientIp.address());
+    }
+
     public boolean isInterviewee(Long memberId) {
+        if (isGuestInterview()) {
+            return false;
+        }
         return this.member.getId().equals(memberId);
     }
 
