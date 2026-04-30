@@ -41,8 +41,9 @@ public class InterviewQueryService {
                 interviewId); // X락을 사용하기 때문에 동시에 요청이 와도 올바른 likeCount 값으로 이벤트를 생성할 수 있다.
     }
 
-    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
-        return interviewService.checkInterview(interviewId, mode, memberAuth);
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth,
+                                                    ClientIp clientIp) {
+        return interviewService.checkInterview(interviewId, mode, memberAuth, clientIp);
     }
 
     public List<InterviewSummaryResponse> findMyInterviews(MemberAuth memberAuth, InterviewState state,

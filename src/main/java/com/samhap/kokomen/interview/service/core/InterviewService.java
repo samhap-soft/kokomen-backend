@@ -67,10 +67,15 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth,
+                                                 ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         validateInterviewMode(interviewId, mode);
-        validateInterviewee(interviewId, memberAuth.memberId());
+        if (memberAuth.isAuthenticated()) {
+            validateInterviewee(interviewId, memberAuth.memberId());
+        } else {
+            validateGuestInterviewee(interviewId, clientIp);
+        }
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 

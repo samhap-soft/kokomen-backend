@@ -66,9 +66,10 @@ public class InterviewController {
     public ResponseEntity<InterviewCheckResponse> checkInterview(
             @PathVariable Long interviewId,
             @RequestParam InterviewMode mode,
-            @Authentication MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth));
+        return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth, clientIp));
     }
 
     @GetMapping("/me")

@@ -27,7 +27,7 @@ public class RootQuestionService {
     private final SupertoneClient supertoneClient;
     private final QuestionVoicePathResolver questionVoicePathResolver;
 
-    public RootQuestion findRandomActiveRootQuestion() {
+    public RootQuestion readRandomActiveRootQuestion() {
         List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByState(RootQuestionState.ACTIVE);
         if (rootQuestions.isEmpty()) {
             throw new NotFoundException("활성화된 루트 질문이 존재하지 않습니다.");

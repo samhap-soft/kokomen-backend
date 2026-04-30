@@ -26,6 +26,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -74,17 +75,18 @@ public class InterviewStartFacadeService {
     @Transactional
     public InterviewStartResponse startGuestInterview(ClientIp clientIp) {
         String lockKey = createGuestInterviewStartedLockKey(clientIp);
-        if (!redisService.acquireLock(lockKey, GUEST_INTERVIEW_LOCK_TTL)) {
+        String lockValue = UUID.randomUUID().toString();
+        if (!redisService.acquireLockWithValue(lockKey, lockValue, GUEST_INTERVIEW_LOCK_TTL)) {
             throw new BadRequestException("비회원 면접은 1회만 가능합니다.");
         }
         try {
-            RootQuestion rootQuestion = rootQuestionService.findRandomActiveRootQuestion();
+            RootQuestion rootQuestion = rootQuestionService.readRandomActiveRootQuestion();
             Interview interview = interviewService.saveInterview(Interview.forGuest(rootQuestion,
                     GUEST_INTERVIEW_MAX_QUESTION_COUNT, GUEST_INTERVIEW_MODE, clientIp));
             Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
             return new InterviewStartTextModeResponse(interview, question);
         } catch (RuntimeException e) {
-            redisService.releaseLock(lockKey);
+            redisService.releaseLockSafely(lockKey, lockValue);
             throw e;
         }
     }

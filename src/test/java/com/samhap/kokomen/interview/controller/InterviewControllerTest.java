@@ -1385,7 +1385,7 @@ class InterviewControllerTest extends BaseControllerTest {
     void 비회원_인터뷰_시작_중복_IP_예외() throws Exception {
         // given
         rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        String guestIp = "11.22.33.44";
+        String guestIp = "11.22.33.45";
         redisService.acquireLock(
                 InterviewStartFacadeService.GUEST_INTERVIEW_STARTED_LOCK_KEY_PREFIX + guestIp,
                 InterviewStartFacadeService.GUEST_INTERVIEW_LOCK_TTL);
