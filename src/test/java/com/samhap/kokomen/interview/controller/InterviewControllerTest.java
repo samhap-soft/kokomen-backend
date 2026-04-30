@@ -49,6 +49,8 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.service.InterviewStartFacadeService;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,6 +78,8 @@ class InterviewControllerTest extends BaseControllerTest {
     private AnswerMemoRepository answerMemoRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private RedisService redisService;
 
     @Test
     void 인터뷰_시작_텍스트모드() throws Exception {
@@ -237,6 +241,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"cur_question": "%s",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
+                	"is_demo": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -270,6 +275,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("cur_question").description("현재 질문 내용 (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -303,6 +309,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"cur_question_voice_url": "https://dhtg8wzvkbfxr.cloudfront.net/mock-path/2.wav",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
+                	"is_demo": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -337,6 +344,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                         "현재 질문 음성 URL (면접이 IN_PROGRESS 인 경우에만)"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -375,6 +383,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"interview_state": "FINISHED",
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
+                	"is_demo": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -420,6 +429,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interview_state").description("인터뷰 상태"),
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
+                                fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -1334,6 +1344,159 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        )
+                ));
+    }
+
+    @Test
+    void 비회원_인터뷰_시작() throws Exception {
+        // given
+        String rootQuestionContent = "프로세스와 스레드 차이 설명해주세요.";
+        rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content(rootQuestionContent).build());
+
+        String responseJson = """
+                {
+                	"interview_id": 1,
+                	"question_id": 1,
+                	"root_question": "%s"
+                }
+                """.formatted(rootQuestionContent);
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/guest")
+                        .header("X-Real-IP", "11.22.33.44")
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-startGuestInterview",
+                        requestHeaders(
+                                headerWithName("X-Real-IP").description("클라이언트 실제 IP 주소 (비회원 식별용)")
+                        ),
+                        responseFields(
+                                fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
+                                fieldWithPath("question_id").description("생성된 질문 ID"),
+                                fieldWithPath("root_question").description("루트 질문 내용")
+                        )
+                ));
+    }
+
+    @Test
+    void 비회원_인터뷰_시작_중복_IP_예외() throws Exception {
+        // given
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        String guestIp = "11.22.33.44";
+        redisService.acquireLock(
+                InterviewStartFacadeService.GUEST_INTERVIEW_STARTED_LOCK_KEY_PREFIX + guestIp,
+                InterviewStartFacadeService.GUEST_INTERVIEW_LOCK_TTL);
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/guest")
+                        .header("X-Real-IP", guestIp)
+                )
+                .andExpect(status().isBadRequest())
+                .andDo(document("interview-startGuestInterview-duplicateIp",
+                        requestHeaders(
+                                headerWithName("X-Real-IP").description("클라이언트 실제 IP 주소 (비회원 식별용)")
+                        )
+                ));
+    }
+
+    @Test
+    void 비회원_자신의_인터뷰_결과_조회() throws Exception {
+        // given
+        String guestIp = "11.22.33.44";
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은 무엇인가요?").build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(null).rootQuestion(rootQuestion).guestIp(guestIp)
+                        .interviewMode(InterviewMode.TEXT)
+                        .maxQuestionCount(InterviewStartFacadeService.GUEST_INTERVIEW_MAX_QUESTION_COUNT).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        Answer answer1 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question1).content("자바는 객체지향 프로그래밍 언어입니다.")
+                        .answerRank(AnswerRank.C).feedback("부족합니다.").build());
+        Question question2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("객체지향의 특징을 설명해주세요.").build());
+        Answer answer2 = answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question2).content("객체가 각자 책임집니다.").answerRank(AnswerRank.D)
+                        .feedback("부족합니다.").build());
+        Question question3 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("객체는 무엇인가요?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(question3).content("클래스의 인스턴스 입니다.").answerRank(AnswerRank.F)
+                        .feedback("부족합니다.").build());
+
+        interview.evaluate("기본 개념을 잘 정리해보세요.", -10);
+        interviewRepository.save(interview);
+
+        String responseJson = """
+                {
+                	"feedbacks": [
+                		{
+                			"question_id": 1,
+                			"answer_id": 1,
+                			"question": "자바의 특징은 무엇인가요?",
+                			"answer": "자바는 객체지향 프로그래밍 언어입니다.",
+                			"answer_rank": "C",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 2,
+                			"answer_id": 2,
+                			"question": "객체지향의 특징을 설명해주세요.",
+                			"answer": "객체가 각자 책임집니다.",
+                			"answer_rank": "D",
+                			"answer_feedback": "부족합니다."
+                		},
+                		{
+                			"question_id": 3,
+                			"answer_id": 3,
+                			"question": "객체는 무엇인가요?",
+                			"answer": "클래스의 인스턴스 입니다.",
+                			"answer_rank": "F",
+                			"answer_feedback": "부족합니다."
+                		}
+                	],
+                	"total_feedback": "기본 개념을 잘 정리해보세요.",
+                	"total_score": -10,
+                	"interview_mode": "TEXT"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/interviews/{interview_id}/my-result", interview.getId())
+                        .header("X-Real-IP", guestIp)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson))
+                .andDo(document("interview-findMyResult-guest",
+                        pathParameters(
+                                parameterWithName("interview_id").description("인터뷰 ID")
+                        ),
+                        requestHeaders(
+                                headerWithName("X-Real-IP").description("클라이언트 실제 IP 주소 (비회원 식별용)")
+                        ),
+                        responseFields(
+                                fieldWithPath("feedbacks").description("피드백 목록"),
+                                fieldWithPath("feedbacks[].question_id").description("질문 ID"),
+                                fieldWithPath("feedbacks[].answer_id").description("답변 ID"),
+                                fieldWithPath("feedbacks[].question").description("질문 내용"),
+                                fieldWithPath("feedbacks[].answer").description("답변 내용"),
+                                fieldWithPath("feedbacks[].answer_rank").description("답변 등급"),
+                                fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"),
+                                fieldWithPath("feedbacks[].submitted_answer_memo_content").description("작성된 답변 메모 내용"),
+                                fieldWithPath("feedbacks[].temp_answer_memo_content").description("임시 답변 메모 내용"),
+                                fieldWithPath("feedbacks[].answer_memo_visibility")
+                                        .description("답변 메모 공개 여부 : " + Arrays.asList(AnswerMemoVisibility.values())
+                                                + ", 메모가 존재하지 않는 경우 PUBLIC 응답"),
+                                fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
+                                fieldWithPath("total_score").description("인터뷰 총 점수"),
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("root_question_reference_answers").description(
+                                        "루트 질문에 대한 다른 사용자의 우수 답변 목록 (최대 3개)")
                         )
                 ));
     }

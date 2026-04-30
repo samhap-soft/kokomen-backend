@@ -13,7 +13,8 @@ public interface InterviewCheckResponse {
                 interview.getInterviewState(),
                 createPrevQuestionAndAnswers(answers),
                 questions.size(),
-                interview.getMaxQuestionCount()
+                interview.getMaxQuestionCount(),
+                interview.isGuestInterview()
         );
     }
 
