@@ -46,6 +46,13 @@ public class InterviewController {
         return ResponseEntity.ok(interviewStartFacadeService.startInterview(interviewRequest, memberAuth));
     }
 
+    @PostMapping("/guest")
+    public ResponseEntity<InterviewStartResponse> startGuestInterview(
+            ClientIp clientIp
+    ) {
+        return ResponseEntity.ok(interviewStartFacadeService.startGuestInterview(clientIp));
+    }
+
     @PostMapping("/{interviewId}/like")
     public ResponseEntity<Void> likeInterview(
             @PathVariable Long interviewId,
@@ -59,9 +66,10 @@ public class InterviewController {
     public ResponseEntity<InterviewCheckResponse> checkInterview(
             @PathVariable Long interviewId,
             @RequestParam InterviewMode mode,
-            @Authentication MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth));
+        return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth, clientIp));
     }
 
     @GetMapping("/me")
@@ -85,9 +93,10 @@ public class InterviewController {
     @GetMapping("/{interviewId}/my-result")
     public ResponseEntity<InterviewResultResponse> findMyInterviewResult(
             @PathVariable Long interviewId,
-            @Authentication MemberAuth memberAuth
+            @Authentication(required = false) MemberAuth memberAuth,
+            ClientIp clientIp
     ) {
-        return ResponseEntity.ok(interviewQueryService.findMyInterviewResult(interviewId, memberAuth));
+        return ResponseEntity.ok(interviewQueryService.findMyInterviewResult(interviewId, memberAuth, clientIp));
     }
 
     @GetMapping("/{interviewId}/result")

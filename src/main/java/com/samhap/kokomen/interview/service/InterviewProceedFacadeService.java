@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.service.RedisService;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewProceedFacadeService {
 
     public static final String INTERVIEW_PROCEED_LOCK_KEY_PREFIX = "lock:interview:proceed:";
+    public static final String INTERVIEW_PROCEED_GUEST_LOCK_KEY_PREFIX = "lock:interview:proceed:guest:";
     public static final String INTERVIEW_PROCEED_STATE_KEY_PREFIX = "interview:proceed:state:";
 
     private final RedisService redisService;
@@ -44,11 +46,15 @@ public class InterviewProceedFacadeService {
     private final InterviewProceedBedrockFlowAsyncService interviewProceedBedrockFlowAsyncService;
 
     public void proceedInterviewByBedrockFlow(Long interviewId, Long curQuestionId, AnswerRequestV2 answerRequest,
-                                              MemberAuth memberAuth) {
-        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
+                                              MemberAuth memberAuth, ClientIp clientIp) {
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
-        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
-        String lockKey = createInterviewProceedLockKey(memberAuth.memberId());
+        if (memberAuth.isAuthenticated()) {
+            tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
+            interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        } else {
+            interviewService.validateGuestInterviewee(interviewId, clientIp);
+        }
+        String lockKey = resolveProceedLockKey(memberAuth, clientIp);
         String lockValue = UUID.randomUUID().toString();
         acquireLockForProceedInterview(lockKey, lockValue);
         QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
@@ -57,14 +63,14 @@ public class InterviewProceedFacadeService {
             log.info("Bedrock API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                     interviewId, curQuestionId, memberAuth.memberId());
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
-                    questionAndAnswers, interviewId, lockValue);
+                    questionAndAnswers, interviewId, lockKey, lockValue);
         } catch (Exception e) {
             try {
                 log.info("Gpt API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                         interviewId, curQuestionId, memberAuth.memberId());
                 log.error("Bedrock API 호출 실패, GPT 폴백에시 기록 - {}", e);
                 interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
-                        questionAndAnswers, interviewId, lockValue);
+                        questionAndAnswers, interviewId, lockKey, lockValue);
             } catch (Exception ex) {
                 log.error("Gpt API 호출 실패 - {}", ex);
                 redisService.releaseLockSafely(lockKey, lockValue);
@@ -74,6 +80,17 @@ public class InterviewProceedFacadeService {
 
     public static String createInterviewProceedLockKey(Long memberId) {
         return INTERVIEW_PROCEED_LOCK_KEY_PREFIX + memberId;
+    }
+
+    public static String createGuestInterviewProceedLockKey(ClientIp clientIp) {
+        return INTERVIEW_PROCEED_GUEST_LOCK_KEY_PREFIX + clientIp.address();
+    }
+
+    private static String resolveProceedLockKey(MemberAuth memberAuth, ClientIp clientIp) {
+        if (memberAuth.isAuthenticated()) {
+            return createInterviewProceedLockKey(memberAuth.memberId());
+        }
+        return createGuestInterviewProceedLockKey(clientIp);
     }
 
     private void acquireLockForProceedInterview(String lockKey, String lockValue) {
@@ -94,9 +111,14 @@ public class InterviewProceedFacadeService {
 
     @Transactional(readOnly = true)
     public InterviewProceedStateResponse findInterviewProceedState(Long interviewId, Long curQuestionId,
-                                                                   InterviewMode mode, MemberAuth memberAuth) {
+                                                                   InterviewMode mode, MemberAuth memberAuth,
+                                                                   ClientIp clientIp) {
         interviewService.validateInterviewMode(interviewId, mode);
-        interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        if (memberAuth.isAuthenticated()) {
+            interviewService.validateInterviewee(interviewId, memberAuth.memberId());
+        } else {
+            interviewService.validateGuestInterviewee(interviewId, clientIp);
+        }
         String interviewProceedStateKey = createInterviewProceedStateKey(interviewId, curQuestionId);
 
         Optional<String> interviewProceedStateOptional = redisService.get(interviewProceedStateKey, String.class);

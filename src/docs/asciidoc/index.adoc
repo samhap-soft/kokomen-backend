@@ -205,6 +205,28 @@ include::{snippetsDir}/resume-question-generation-list/http-response.adoc[]
 include::{snippetsDir}/resume-question-generation-list/response-fields.adoc[]
 include::{snippetsDir}/resume-question-generation-list/curl-request.adoc[]
 
+=== 비회원 인터뷰 시작
+
+include::{snippetsDir}/interview-startGuestInterview/http-request.adoc[]
+include::{snippetsDir}/interview-startGuestInterview/request-headers.adoc[]
+include::{snippetsDir}/interview-startGuestInterview/http-response.adoc[]
+include::{snippetsDir}/interview-startGuestInterview/response-fields.adoc[]
+include::{snippetsDir}/interview-startGuestInterview/curl-request.adoc[]
+
+==== 비회원 인터뷰 시작 예외 - 중복 IP
+
+include::{snippetsDir}/interview-startGuestInterview-duplicateIp/http-request.adoc[]
+include::{snippetsDir}/interview-startGuestInterview-duplicateIp/http-response.adoc[]
+
+=== 비회원 자신의 인터뷰 결과 조회
+
+include::{snippetsDir}/interview-findMyResult-guest/http-request.adoc[]
+include::{snippetsDir}/interview-findMyResult-guest/request-headers.adoc[]
+include::{snippetsDir}/interview-findMyResult-guest/path-parameters.adoc[]
+include::{snippetsDir}/interview-findMyResult-guest/http-response.adoc[]
+include::{snippetsDir}/interview-findMyResult-guest/response-fields.adoc[]
+include::{snippetsDir}/interview-findMyResult-guest/curl-request.adoc[]
+
 === 인터뷰 시작 텍스트모드
 
 include::{snippetsDir}/interview-startInterview-text-mode/http-request.adoc[]

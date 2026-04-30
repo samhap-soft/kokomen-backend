@@ -13,7 +13,8 @@ public record InterviewCheckTextModeResponse(
         Long curQuestionId,
         String curQuestion,
         Integer curQuestionCount,
-        Integer maxQuestionCount
+        Integer maxQuestionCount,
+        Boolean isDemo
 ) implements InterviewCheckResponse {
 
     public static InterviewCheckResponse of(Interview interview, List<Question> questions, List<Answer> answers) {
@@ -32,7 +33,8 @@ public record InterviewCheckTextModeResponse(
                 curQuestion.getId(),
                 curQuestion.getContent(),
                 questions.size(),
-                interview.getMaxQuestionCount()
+                interview.getMaxQuestionCount(),
+                interview.isGuestInterview()
         );
     }
 }

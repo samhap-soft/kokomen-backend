@@ -8,6 +8,7 @@ public record InterviewFinishedCheckResponse(
         InterviewState interviewState,
         List<QuestionAndAnswerResponse> prevQuestionsAndAnswers,
         Integer curQuestionCount,
-        Integer maxQuestionCount
+        Integer maxQuestionCount,
+        Boolean isDemo
 ) implements InterviewCheckResponse {
 }

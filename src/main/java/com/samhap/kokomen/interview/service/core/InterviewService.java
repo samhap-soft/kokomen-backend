@@ -67,10 +67,15 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth) {
+    public InterviewCheckResponse checkInterview(Long interviewId, InterviewMode mode, MemberAuth memberAuth,
+                                                 ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
         validateInterviewMode(interviewId, mode);
-        validateInterviewee(interviewId, memberAuth.memberId());
+        if (memberAuth.isAuthenticated()) {
+            validateInterviewee(interviewId, memberAuth.memberId());
+        } else {
+            validateGuestInterviewee(interviewId, clientIp);
+        }
         List<Question> questions = questionRepository.findByInterviewOrderById(interview);
         List<Answer> answers = answerRepository.findByQuestionInOrderById(questions);
 
@@ -190,7 +195,10 @@ public class InterviewService {
 
     // TODO: 인터뷰 안 끝나면 예외 던지기
     @Transactional(readOnly = true)
-    public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth) {
+    public InterviewResultResponse findMyInterviewResult(Long interviewId, MemberAuth memberAuth, ClientIp clientIp) {
+        if (!memberAuth.isAuthenticated()) {
+            return findGuestInterviewResult(interviewId, clientIp);
+        }
         validateInterviewee(interviewId, memberAuth.memberId());
         Member member = readMember(memberAuth.memberId());
         Interview interview = readInterview(interviewId);
@@ -201,6 +209,16 @@ public class InterviewService {
         List<RootQuestionReferenceAnswer> referenceAnswers = getReferenceAnswers(interview);
 
         return InterviewResultResponse.createMine(feedbackResponses, interview, member, referenceAnswers);
+    }
+
+    private InterviewResultResponse findGuestInterviewResult(Long interviewId, ClientIp clientIp) {
+        validateGuestInterviewee(interviewId, clientIp);
+        Interview interview = readInterview(interviewId);
+        validateInterviewFinished(interview);
+        List<Answer> answers = answerRepository.findByQuestionIn(questionRepository.findByInterview(interview));
+        List<FeedbackResponse> feedbackResponses = FeedbackResponse.createMine(answers, findAnswerMemos(answers));
+        List<RootQuestionReferenceAnswer> referenceAnswers = getReferenceAnswers(interview);
+        return InterviewResultResponse.createMineForGuest(feedbackResponses, interview, referenceAnswers);
     }
 
     private List<RootQuestionReferenceAnswer> getReferenceAnswers(Interview interview) {
@@ -251,6 +269,14 @@ public class InterviewService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void validateGuestInterviewee(Long interviewId, ClientIp clientIp) {
+        Interview interview = readInterview(interviewId);
+        if (!interview.isSameGuestIp(clientIp)) {
+            throw new ForbiddenException("해당 비회원 인터뷰에 접근할 수 없습니다.");
+        }
+    }
+
     private Map<Long, AnswerMemos> findAnswerMemos(List<Answer> answers) {
         return answers.stream()
                 .collect(Collectors.toMap(
@@ -268,6 +294,9 @@ public class InterviewService {
     public InterviewResultResponse findOtherMemberInterviewResult(Long interviewId, MemberAuth memberAuth,
                                                                   ClientIp clientIp) {
         Interview interview = readInterview(interviewId);
+        if (interview.isGuestInterview()) {
+            throw new BadRequestException("비회원이 진행한 면접의 결과는 공개되지 않습니다.");
+        }
         Member interviewee = interview.getMember();
         long totalMemberCount = memberRepository.count();
         long intervieweeRank = memberRepository.findRankByScore(interviewee.getScore());

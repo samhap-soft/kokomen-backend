@@ -458,7 +458,7 @@ class InterviewServiceTest extends BaseTest {
 
         // when
         InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
-                new MemberAuth(member.getId()));
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
@@ -527,7 +527,7 @@ class InterviewServiceTest extends BaseTest {
 
         // when
         InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
-                new MemberAuth(member.getId()));
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(3);
@@ -574,7 +574,7 @@ class InterviewServiceTest extends BaseTest {
 
         // when
         InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
-                new MemberAuth(member.getId()));
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
 
         // then
         assertThat(result.rootQuestionReferenceAnswers()).hasSize(1);
@@ -632,7 +632,7 @@ class InterviewServiceTest extends BaseTest {
 
         // when
         InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
-                new MemberAuth(member.getId()));
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
 
         // then - A, B 랭크가 없으므로 빈 리스트 반환
         assertThat(result.rootQuestionReferenceAnswers()).isEmpty();

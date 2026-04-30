@@ -63,9 +63,8 @@ public class InterviewProceedBedrockFlowAsyncService {
     }
 
     public void proceedInterviewByBedrockFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
-                                                   Long interviewId, String lockValue) {
+                                                   Long interviewId, String lockKey, String lockValue) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(memberId);
         String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
@@ -78,9 +77,8 @@ public class InterviewProceedBedrockFlowAsyncService {
     }
 
     public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
-                                               Long interviewId, String lockValue) {
+                                               Long interviewId, String lockKey, String lockValue) {
         Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(memberId);
         String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
@@ -254,7 +252,9 @@ public class InterviewProceedBedrockFlowAsyncService {
                                                     InterviewProceedResult result) {
         try {
             questionService.createAndUploadQuestionVoice(result.getNextQuestion());
-            tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
+            if (memberId != null) {
+                tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
+            }
         } catch (Exception e) {
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
                     Duration.ofSeconds(300));
