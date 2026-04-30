@@ -48,6 +48,28 @@ public record InterviewResultResponse(
         );
     }
 
+    public static InterviewResultResponse createMineForGuest(
+            List<FeedbackResponse> feedbacks,
+            Interview interview,
+            List<RootQuestionReferenceAnswer> rootQuestionReferenceAnswers
+    ) {
+        return new InterviewResultResponse(
+                feedbacks,
+                interview.getTotalFeedback(),
+                interview.getTotalScore(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                interview.getInterviewMode(),
+                rootQuestionReferenceAnswers
+        );
+    }
+
     public static InterviewResultResponse createOfOtherMemberForAuthorized(
             List<Answer> answers,
             Set<Long> likedAnswerIds,

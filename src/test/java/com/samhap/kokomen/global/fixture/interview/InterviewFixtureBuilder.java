@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class InterviewFixtureBuilder {
 
     private Long id;
+    private boolean memberSet;
     private Member member;
     private RootQuestion rootQuestion;
     private Integer maxQuestionCount;
@@ -23,6 +24,7 @@ public class InterviewFixtureBuilder {
     private Long likeCount;
     private Long viewCount;
     private LocalDateTime finishedAt;
+    private String guestIp;
 
     public static InterviewFixtureBuilder builder() {
         return new InterviewFixtureBuilder();
@@ -35,6 +37,12 @@ public class InterviewFixtureBuilder {
 
     public InterviewFixtureBuilder member(Member member) {
         this.member = member;
+        this.memberSet = true;
+        return this;
+    }
+
+    public InterviewFixtureBuilder guestIp(String guestIp) {
+        this.guestIp = guestIp;
         return this;
     }
 
@@ -91,7 +99,7 @@ public class InterviewFixtureBuilder {
     public Interview build() {
         return new Interview(
                 id,
-                member != null ? member : defaultMember(),
+                memberSet ? member : defaultMember(),
                 rootQuestion != null ? rootQuestion : defaultRootQuestion(),
                 maxQuestionCount != null ? maxQuestionCount : Interview.MIN_ALLOWED_MAX_QUESTION_COUNT,
                 interviewState != null ? interviewState : InterviewState.IN_PROGRESS,
@@ -101,7 +109,8 @@ public class InterviewFixtureBuilder {
                 totalScore,
                 likeCount != null ? likeCount : 0L,
                 viewCount != null ? viewCount : 0L,
-                finishedAt
+                finishedAt,
+                guestIp
         );
     }
 

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
@@ -67,7 +68,7 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
         // when & then
         assertThatThrownBy(() -> interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question1.getId(),
                 InterviewMode.TEXT,
-                new MemberAuth(member.getId())))
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 2");
     }
@@ -94,7 +95,7 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
         // when & then
         assertThatThrownBy(() -> interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
                 InterviewMode.TEXT,
-                new MemberAuth(member.getId())))
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("현재 질문이 아닙니다. 현재 질문 id: 3");
     }
@@ -114,7 +115,7 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
         // when
         InterviewProceedStateResponse interviewProceedState =
                 interviewProceedFacadeService.findInterviewProceedState(interview.getId(), question2.getId(),
-                        InterviewMode.TEXT, new MemberAuth(member.getId()));
+                        InterviewMode.TEXT, new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
 
         // then
         assertThat(interviewProceedState.proceedState()).isEqualTo(InterviewProceedState.LLM_FAILED);
