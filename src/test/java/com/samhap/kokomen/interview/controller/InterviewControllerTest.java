@@ -1392,12 +1392,12 @@ class InterviewControllerTest extends BaseControllerTest {
 
         // when & then
         mockMvc.perform(post("/api/v1/interviews/guest")
-                        .header("X-Real-IP", guestIp)
+                        .header("X-Forwarded-For", guestIp)
                 )
                 .andExpect(status().isBadRequest())
                 .andDo(document("interview-startGuestInterview-duplicateIp",
                         requestHeaders(
-                                headerWithName("X-Real-IP").description("클라이언트 실제 IP 주소 (비회원 식별용)")
+                                headerWithName("X-Forwarded-For").description("클라이언트 실제 IP 주소 (비회원 식별용)")
                         )
                 ));
     }
@@ -1468,7 +1468,7 @@ class InterviewControllerTest extends BaseControllerTest {
         // when & then
         mockMvc.perform(get(
                         "/api/v1/interviews/{interview_id}/my-result", interview.getId())
-                        .header("X-Real-IP", guestIp)
+                        .header("X-Forwarded-For", guestIp)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().json(responseJson))
@@ -1477,7 +1477,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 parameterWithName("interview_id").description("인터뷰 ID")
                         ),
                         requestHeaders(
-                                headerWithName("X-Real-IP").description("클라이언트 실제 IP 주소 (비회원 식별용)")
+                                headerWithName("X-Forwarded-For").description("클라이언트 실제 IP 주소 (비회원 식별용)")
                         ),
                         responseFields(
                                 fieldWithPath("feedbacks").description("피드백 목록"),
