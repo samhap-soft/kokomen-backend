@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/interviews")
 @RestController
-@Slf4j
 public class InterviewControllerV2 {
 
     private final InterviewProceedFacadeService interviewProceedFacadeService;
@@ -35,7 +34,6 @@ public class InterviewControllerV2 {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth,
                 clientIp);
         return ResponseEntity.noContent().build();
@@ -49,7 +47,6 @@ public class InterviewControllerV2 {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(
                 interviewProceedFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth,
                         clientIp));
