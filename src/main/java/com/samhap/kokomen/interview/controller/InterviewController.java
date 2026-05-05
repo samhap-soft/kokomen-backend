@@ -34,7 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/interviews")
 @RestController
-@Slf4j
 public class InterviewController {
 
     private final InterviewStartFacadeService interviewStartFacadeService;
@@ -52,7 +51,6 @@ public class InterviewController {
     public ResponseEntity<InterviewStartResponse> startGuestInterview(
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(interviewStartFacadeService.startGuestInterview(clientIp));
     }
 
@@ -72,7 +70,6 @@ public class InterviewController {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(interviewQueryService.checkInterview(interviewId, mode, memberAuth, clientIp));
     }
 
@@ -100,7 +97,6 @@ public class InterviewController {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(interviewQueryService.findMyInterviewResult(interviewId, memberAuth, clientIp));
     }
 
@@ -110,7 +106,6 @@ public class InterviewController {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
-        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(
                 interviewQueryService.findOtherMemberInterviewResult(interviewId, memberAuth, clientIp));
     }
