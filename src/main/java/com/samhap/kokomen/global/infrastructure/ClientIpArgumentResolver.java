@@ -28,9 +28,10 @@ public class ClientIpArgumentResolver implements HandlerMethodArgumentResolver {
                                   NativeWebRequest webRequest,
                                   WebDataBinderFactory binderFactory) throws Exception {
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
-        String ipAddress = Objects.requireNonNullElse(request.getHeader("X-Real-IP"), UNKNOWN_IP_ADDRESS);
+        String XForwardFors = Objects.requireNonNullElse(request.getHeader("X-Forwarded-For"), UNKNOWN_IP_ADDRESS);
+        String ipAddress = XForwardFors.split(",")[0];
         log.info("X-Forwarded-For: {}", Objects.requireNonNullElse(request.getHeader("X-Forwarded-For"), UNKNOWN_IP_ADDRESS));
-        log.info("X-Real-IP: {}", ipAddress);
+        log.info("X-Real-IP: {}", Objects.requireNonNullElse(request.getHeader("X-Real-IP"), UNKNOWN_IP_ADDRESS));
         return new ClientIp(ipAddress);
     }
 }
