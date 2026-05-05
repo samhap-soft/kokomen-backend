@@ -9,6 +9,7 @@ import com.samhap.kokomen.interview.service.dto.AnswerRequestV2;
 import com.samhap.kokomen.interview.service.dto.proceedstate.InterviewProceedStateResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/interviews")
 @RestController
+@Slf4j
 public class InterviewControllerV2 {
 
     private final InterviewProceedFacadeService interviewProceedFacadeService;
@@ -33,6 +35,7 @@ public class InterviewControllerV2 {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
+        log.info("clientIp address: {}", clientIp.address());
         interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId, answerRequest, memberAuth,
                 clientIp);
         return ResponseEntity.noContent().build();
@@ -46,6 +49,7 @@ public class InterviewControllerV2 {
             @Authentication(required = false) MemberAuth memberAuth,
             ClientIp clientIp
     ) {
+        log.info("clientIp address: {}", clientIp.address());
         return ResponseEntity.ok(
                 interviewProceedFacadeService.findInterviewProceedState(interviewId, curQuestionId, mode, memberAuth,
                         clientIp));
