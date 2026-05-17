@@ -114,8 +114,12 @@ public class InterviewProceedBedrockFlowAsyncService {
                         result.getCurAnswer().getAnswerRank(), result.getCurAnswer().getId());
             }
 
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
-                    Duration.ofSeconds(300));
+            // TTS 실패 시 createNextQuestionTtsAndUploadToS3가 이미 TTS_FAILED로 set했으므로 덮어쓰지 않음
+            String currentState = redisService.get(interviewProceedStateKey, String.class).orElse(null);
+            if (!InterviewProceedState.TTS_FAILED.name().equals(currentState)) {
+                redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
+                        Duration.ofSeconds(300));
+            }
             redisService.releaseLockSafely(lockKey, lockValue);
         } catch (Exception ex) {
             log.error("Bedrock API 호출 실패, GPT 폴백 시도 - {}", interviewProceedStateKey, ex);
@@ -188,9 +192,10 @@ public class InterviewProceedBedrockFlowAsyncService {
                 tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
             }
         } catch (Exception e) {
+            log.error("TTS 생성 실패 - 인터뷰 진행 자체는 정상 완료됨. interviewProceedStateKey={}",
+                    interviewProceedStateKey, e);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
                     Duration.ofSeconds(300));
-            throw e;
         }
     }
 
