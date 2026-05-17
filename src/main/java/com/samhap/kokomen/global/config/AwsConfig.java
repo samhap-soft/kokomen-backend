@@ -1,17 +1,18 @@
 package com.samhap.kokomen.global.config;
 
+import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
+@EnableConfigurationProperties(BedrockConverseProperties.class)
 public class AwsConfig {
 
     @Bean
@@ -22,21 +23,7 @@ public class AwsConfig {
                         .maxConnections(60)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(5))
                         .connectionTimeout(java.time.Duration.ofSeconds(3))
-                        .socketTimeout(java.time.Duration.ofSeconds(15))
-                )
-                .region(Region.AP_NORTHEAST_2)
-                .build();
-    }
-
-    @Bean
-    public BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeClient() {
-        return BedrockAgentRuntimeAsyncClient.builder()
-                .credentialsProvider(InstanceProfileCredentialsProvider.create())
-                .httpClientBuilder(NettyNioAsyncHttpClient.builder()
-                        .maxConcurrency(1000)
-                        .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(10))
-                        .connectionTimeout(java.time.Duration.ofSeconds(3))
-                        .readTimeout(java.time.Duration.ofSeconds(180))
+                        .socketTimeout(java.time.Duration.ofSeconds(60))
                 )
                 .region(Region.AP_NORTHEAST_2)
                 .build();
