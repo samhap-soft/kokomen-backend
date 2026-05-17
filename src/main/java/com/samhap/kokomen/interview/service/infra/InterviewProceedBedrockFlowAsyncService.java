@@ -69,8 +69,16 @@ public class InterviewProceedBedrockFlowAsyncService {
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
                 Duration.ofSeconds(300));
 
-        executor.execute(() -> processBedrockProceed(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
-                interviewProceedStateKey, mdcContext));
+        try {
+            executor.execute(() -> processBedrockProceed(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
+                    interviewProceedStateKey, mdcContext));
+        } catch (Exception e) {
+            log.error("Bedrock 비동기 작업 제출 실패 - {}", interviewProceedStateKey, e);
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                    Duration.ofSeconds(300));
+            redisService.releaseLockSafely(lockKey, lockValue);
+            throw e;
+        }
     }
 
     public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
@@ -203,17 +211,21 @@ public class InterviewProceedBedrockFlowAsyncService {
     private void requestAndSaveAnswerFeedbackAsync(QuestionAndAnswers questionAndAnswers,
                                                    Map<String, String> mdcContext,
                                                    AnswerRank curAnswerRank, Long curAnswerId) {
-        executor.execute(() -> {
-            try {
-                setMdcContext(mdcContext);
-                String feedback = answerFeedbackBedrockClient.requestAnswerFeedback(questionAndAnswers, curAnswerRank);
-                interviewProceedService.saveAnswerFeedback(curAnswerId, feedback);
-            } catch (Exception e) {
-                log.error("답변 피드백 Bedrock 호출 실패 curAnswerId={}", curAnswerId, e);
-            } finally {
-                MDC.clear();
-            }
-        });
+        try {
+            executor.execute(() -> {
+                try {
+                    setMdcContext(mdcContext);
+                    String feedback = answerFeedbackBedrockClient.requestAnswerFeedback(questionAndAnswers, curAnswerRank);
+                    interviewProceedService.saveAnswerFeedback(curAnswerId, feedback);
+                } catch (Exception e) {
+                    log.error("답변 피드백 Bedrock 호출 실패 curAnswerId={}", curAnswerId, e);
+                } finally {
+                    MDC.clear();
+                }
+            });
+        } catch (Exception e) {
+            log.error("답변 피드백 비동기 작업 제출 실패 curAnswerId={}", curAnswerId, e);
+        }
     }
 
     private void setMdcContext(Map<String, String> mdcContext) {

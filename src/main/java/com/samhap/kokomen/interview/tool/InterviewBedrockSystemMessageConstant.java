@@ -65,7 +65,7 @@ public final class InterviewBedrockSystemMessageConstant {
             - 답변 완성도 (0-2점)
             - 예시 활용 (0-1점)
             - 키워드 및 전문용어 사용 (0-1점)
-            **랭크 매핑** : A(4-6점) / B(3점) / C(2점) / D(1점) / F(0점)
+            **랭크 매핑** : A(5-6점) / B(3-4점) / C(2점) / D(1점) / F(0점)
 
             **출력**
             - 제공된 도구를 호출해 rank, feedback, total_feedback 세 필드를 함께 제출하라.

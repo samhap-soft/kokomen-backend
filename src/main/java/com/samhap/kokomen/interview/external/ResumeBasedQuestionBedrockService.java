@@ -56,7 +56,7 @@ public class ResumeBasedQuestionBedrockService {
             QuestionResponseWrapper wrapper = objectMapper.readValue(cleanedJson, QuestionResponseWrapper.class);
             return wrapper.questions();
         } catch (JsonProcessingException e) {
-            log.error("GPT 질문 응답 파싱 실패: {}", jsonResponse, e);
+            log.error("GPT 질문 응답 파싱 실패 - responseLength={}", jsonResponse == null ? 0 : jsonResponse.length(), e);
             throw new ExternalApiException("질문 응답을 파싱하는데 실패했습니다.");
         }
     }

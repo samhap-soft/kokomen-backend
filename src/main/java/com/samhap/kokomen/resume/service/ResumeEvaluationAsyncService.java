@@ -286,7 +286,8 @@ public class ResumeEvaluationAsyncService {
             String cleanedJson = unwrapJsonString(jsonResponse);
             return objectMapper.readValue(cleanedJson, ResumeEvaluationResponse.class);
         } catch (JsonProcessingException e) {
-            log.error("GPT 이력서 평가 응답 파싱 실패: {}", jsonResponse, e);
+            log.error("GPT 이력서 평가 응답 파싱 실패 - responseLength={}",
+                    jsonResponse == null ? 0 : jsonResponse.length(), e);
             throw new BadRequestException("이력서 평가 응답을 파싱하는데 실패했습니다.");
         }
     }

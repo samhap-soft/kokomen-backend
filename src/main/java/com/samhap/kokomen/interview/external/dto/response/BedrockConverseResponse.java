@@ -34,7 +34,7 @@ public record BedrockConverseResponse(
             Object javaObject = DocumentJsonConverter.toJavaObject(document);
             return objectMapper.convertValue(javaObject, type);
         } catch (Exception e) {
-            throw new ExternalApiException("Bedrock toolUse 파싱 실패: input=" + document, e);
+            throw new ExternalApiException("Bedrock toolUse 파싱 실패: type=" + type.getSimpleName(), e);
         }
     }
 }

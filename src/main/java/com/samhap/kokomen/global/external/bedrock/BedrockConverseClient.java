@@ -73,7 +73,7 @@ public class BedrockConverseClient {
             Object javaObject = DocumentJsonConverter.toJavaObject(toolUse.input());
             return objectMapper.convertValue(javaObject, type);
         } catch (Exception e) {
-            throw new ExternalApiException("Bedrock toolUse 파싱 실패: input=" + toolUse.input(), e);
+            throw new ExternalApiException("Bedrock toolUse 파싱 실패: toolName=" + toolUse.name(), e);
         }
     }
 }

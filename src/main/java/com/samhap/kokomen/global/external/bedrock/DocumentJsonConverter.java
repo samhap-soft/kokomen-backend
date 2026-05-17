@@ -1,5 +1,6 @@
 package com.samhap.kokomen.global.external.bedrock;
 
+import com.samhap.kokomen.global.exception.ExternalApiException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
@@ -32,6 +33,6 @@ public final class DocumentJsonConverter {
             document.asMap().forEach((key, value) -> map.put(key, toJavaObject(value)));
             return map;
         }
-        throw new IllegalStateException("알 수 없는 Document 타입입니다: " + document);
+        throw new ExternalApiException("알 수 없는 Document 타입입니다.");
     }
 }
