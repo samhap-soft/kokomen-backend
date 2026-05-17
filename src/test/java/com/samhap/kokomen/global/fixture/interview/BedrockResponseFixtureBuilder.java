@@ -1,7 +1,10 @@
 package com.samhap.kokomen.global.fixture.interview;
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
+import com.samhap.kokomen.interview.external.dto.response.BedrockConverseResponse;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import software.amazon.awssdk.core.document.Document;
 
 public class BedrockResponseFixtureBuilder {
 
@@ -34,33 +37,20 @@ public class BedrockResponseFixtureBuilder {
         return this;
     }
 
-    public BedrockResponse buildProceed() {
-        String content = """
-                {
-                  "rank": "%s",
-                  "feedback": "%s",
-                  "next_question": "%s"
-                }
-                """.formatted(
-                answerRank != null ? answerRank.name() : "A",
-                feedback != null ? feedback : "좋은 답변입니다.",
-                nextQuestion != null ? nextQuestion : "스레드 안전하다는 것은 무엇인가요?"
-        );
-        return new BedrockResponse(content);
+    public BedrockConverseResponse buildProceed() {
+        Map<String, Document> input = new LinkedHashMap<>();
+        input.put("rank", Document.fromString(answerRank != null ? answerRank.name() : "A"));
+        input.put("next_question",
+                Document.fromString(nextQuestion != null ? nextQuestion : "스레드 안전하다는 것은 무엇인가요?"));
+        return new BedrockConverseResponse(Document.fromMap(input));
     }
 
-    public BedrockResponse buildEnd() {
-        String content = """
-                {
-                  "rank": "%s",
-                  "feedback": "%s",
-                  "total_feedback": "%s"
-                }
-                """.formatted(
-                answerRank != null ? answerRank.name() : "A",
-                feedback != null ? feedback : "좋은 답변입니다.",
-                totalFeedback != null ? totalFeedback : "전체적으로 완벽한 대답입니다."
-        );
-        return new BedrockResponse(content);
+    public BedrockConverseResponse buildEnd() {
+        Map<String, Document> input = new LinkedHashMap<>();
+        input.put("rank", Document.fromString(answerRank != null ? answerRank.name() : "A"));
+        input.put("feedback", Document.fromString(feedback != null ? feedback : "좋은 답변입니다."));
+        input.put("total_feedback",
+                Document.fromString(totalFeedback != null ? totalFeedback : "전체적으로 완벽한 대답입니다."));
+        return new BedrockConverseResponse(Document.fromMap(input));
     }
-} 
+}

@@ -3,30 +3,25 @@ package com.samhap.kokomen.interview.service.infra;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
-import com.samhap.kokomen.interview.tool.InterviewProceedResult;
-import com.samhap.kokomen.interview.tool.InterviewProceedState;
-import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
+import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
+import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
-import com.samhap.kokomen.interview.external.dto.request.InterviewInvokeFlowRequestFactory;
-import com.samhap.kokomen.interview.external.dto.response.BedrockResponse;
+import com.samhap.kokomen.interview.external.dto.response.BedrockConverseResponse;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
-import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.service.core.InterviewProceedService;
 import com.samhap.kokomen.interview.service.question.QuestionService;
+import com.samhap.kokomen.interview.tool.InterviewProceedResult;
+import com.samhap.kokomen.interview.tool.InterviewProceedState;
+import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
-import software.amazon.awssdk.services.bedrockagentruntime.model.FlowOutputEvent;
-import software.amazon.awssdk.services.bedrockagentruntime.model.FlowResponseStream;
-import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeFlowResponseHandler;
 
 @Slf4j
 @Service
@@ -35,7 +30,8 @@ public class InterviewProceedBedrockFlowAsyncService {
     private final InterviewProceedService interviewProceedService;
     private final QuestionService questionService;
     private final TokenFacadeService tokenFacadeService;
-    private final BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
+    private final InterviewProceedBedrockClient interviewProceedBedrockClient;
+    private final AnswerFeedbackBedrockClient answerFeedbackBedrockClient;
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
     private final ThreadPoolTaskExecutor gptCallbackExecutor;
@@ -45,7 +41,8 @@ public class InterviewProceedBedrockFlowAsyncService {
             InterviewProceedService interviewProceedService,
             QuestionService questionService,
             TokenFacadeService tokenFacadeService,
-            BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient,
+            InterviewProceedBedrockClient interviewProceedBedrockClient,
+            AnswerFeedbackBedrockClient answerFeedbackBedrockClient,
             RedisService redisService,
             @Qualifier("bedrockFlowCallbackExecutor")
             ThreadPoolTaskExecutor bedrockFlowCallbackExecutor,
@@ -55,7 +52,8 @@ public class InterviewProceedBedrockFlowAsyncService {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
         this.tokenFacadeService = tokenFacadeService;
-        this.bedrockAgentRuntimeAsyncClient = bedrockAgentRuntimeAsyncClient;
+        this.interviewProceedBedrockClient = interviewProceedBedrockClient;
+        this.answerFeedbackBedrockClient = answerFeedbackBedrockClient;
         this.redisService = redisService;
         this.executor = bedrockFlowCallbackExecutor;
         this.gptCallbackExecutor = gptCallbackExecutor;
@@ -68,12 +66,19 @@ public class InterviewProceedBedrockFlowAsyncService {
         String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
                 questionAndAnswers.readCurQuestion().getId());
 
-        bedrockAgentRuntimeAsyncClient.invokeFlow(
-                InterviewInvokeFlowRequestFactory.createInterviewProceedInvokeFlowRequest(questionAndAnswers),
-                createInterviewProceedInvokeFlowResponseHandler(memberId, questionAndAnswers, interviewId, lockKey,
-                        lockValue, interviewProceedStateKey, mdcContext));
         redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
                 Duration.ofSeconds(300));
+
+        try {
+            executor.execute(() -> processBedrockProceed(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
+                    interviewProceedStateKey, mdcContext));
+        } catch (Exception e) {
+            log.error("Bedrock 비동기 작업 제출 실패 - {}", interviewProceedStateKey, e);
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                    Duration.ofSeconds(300));
+            redisService.releaseLockSafely(lockKey, lockValue);
+            throw e;
+        }
     }
 
     public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
@@ -92,6 +97,46 @@ public class InterviewProceedBedrockFlowAsyncService {
         } catch (Exception e) {
             redisService.releaseLockSafely(lockKey, lockValue);
             throw e;
+        }
+    }
+
+    private void processBedrockProceed(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
+                                       String lockKey, String lockValue, String interviewProceedStateKey,
+                                       Map<String, String> mdcContext) {
+        try {
+            setMdcContext(mdcContext);
+            BedrockConverseResponse llmResponse = interviewProceedBedrockClient.requestToBedrock(questionAndAnswers);
+            log.info("Bedrock 응답 받음 interviewProceedStateKey={}", interviewProceedStateKey);
+
+            InterviewProceedResult result = interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(
+                    memberId, questionAndAnswers, llmResponse, interviewId);
+
+            if (result.isInProgress() && interviewProceedService.isVoiceMode(interviewId)) {
+                redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(),
+                        Duration.ofSeconds(300));
+                createNextQuestionTtsAndUploadToS3(memberId, interviewProceedStateKey, result);
+            }
+
+            if (result.isInProgress()) {
+                requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext,
+                        result.getCurAnswer().getAnswerRank(), result.getCurAnswer().getId());
+            }
+
+            // TTS 실패 시 createNextQuestionTtsAndUploadToS3가 이미 TTS_FAILED로 set했으므로 덮어쓰지 않음
+            String currentState = redisService.get(interviewProceedStateKey, String.class).orElse(null);
+            if (!InterviewProceedState.TTS_FAILED.name().equals(currentState)) {
+                redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
+                        Duration.ofSeconds(300));
+            }
+            redisService.releaseLockSafely(lockKey, lockValue);
+        } catch (Exception ex) {
+            log.error("Bedrock API 호출 실패, GPT 폴백 시도 - {}", interviewProceedStateKey, ex);
+            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
+                    Duration.ofSeconds(300));
+            fallbackToGptForInterview(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
+                    interviewProceedStateKey, mdcContext);
+        } finally {
+            MDC.clear();
         }
     }
 
@@ -115,63 +160,6 @@ public class InterviewProceedBedrockFlowAsyncService {
                     Duration.ofSeconds(300));
         } finally {
             redisService.releaseLockSafely(lockKey, lockValue);
-            MDC.clear();
-        }
-    }
-
-    private InvokeFlowResponseHandler createInterviewProceedInvokeFlowResponseHandler(Long memberId,
-                                                                                      QuestionAndAnswers questionAndAnswers,
-                                                                                      Long interviewId,
-                                                                                      String lockKey,
-                                                                                      String lockValue,
-                                                                                      String interviewProceedStateKey,
-                                                                                      Map<String, String> mdcContext) {
-        return InvokeFlowResponseHandler.builder()
-                .onEventStream(publisher -> publisher.subscribe(event ->
-                        executor.execute(() ->
-                                callbackInterviewProceedBedrockFlow(event, memberId, questionAndAnswers, interviewId,
-                                        lockKey, lockValue, interviewProceedStateKey,
-                                        mdcContext))))
-                .onError(ex ->
-                        executor.execute(
-                                () -> handleInterviewProceedBedrockFlowException(ex, memberId, questionAndAnswers,
-                                        interviewId, lockKey, lockValue, interviewProceedStateKey, mdcContext)))
-                .build();
-    }
-
-    // TODO: FlowFailureEvent 이 있던데 베드락 흐름 실패 시 어떻게 처리해야하는지 다시 확인하기
-    private void callbackInterviewProceedBedrockFlow(FlowResponseStream event, Long memberId,
-                                                     QuestionAndAnswers questionAndAnswers, Long interviewId,
-                                                     String lockKey, String lockValue,
-                                                     String interviewProceedStateKey,
-                                                     Map<String, String> mdcContext) {
-        log.info("callbackInterviewProceedBedrockFlow 호출됨 interviewProceedStateKey={}", interviewProceedStateKey);
-        try {
-            setMdcContext(mdcContext);
-            if (event instanceof FlowOutputEvent outputEvent) {
-                callbackInterviewProceedBedrockFlow(outputEvent, memberId, questionAndAnswers, interviewId, lockKey,
-                        lockValue, interviewProceedStateKey, mdcContext);
-            }
-        } catch (Exception e) {
-            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
-                    e.getMessage(), e);
-        } finally {
-            MDC.clear();
-        }
-    }
-
-    private void handleInterviewProceedBedrockFlowException(Throwable ex, Long memberId,
-                                                            QuestionAndAnswers questionAndAnswers,
-                                                            Long interviewId, String lockKey,
-                                                            String lockValue,
-                                                            String interviewProceedStateKey,
-                                                            Map<String, String> mdcContext) {
-        try {
-            setMdcContext(mdcContext);
-            log.error("Bedrock API 호출 실패, GPT 폴백 시도 - {}", interviewProceedStateKey, ex);
-            fallbackToGptForInterview(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
-                    interviewProceedStateKey, mdcContext);
-        } finally {
             MDC.clear();
         }
     }
@@ -204,50 +192,6 @@ public class InterviewProceedBedrockFlowAsyncService {
         });
     }
 
-    private void callbackInterviewProceedBedrockFlow(FlowOutputEvent outputEvent, Long memberId,
-                                                     QuestionAndAnswers questionAndAnswers, Long interviewId,
-                                                     String lockKey, String lockValue,
-                                                     String interviewProceedStateKey,
-                                                     Map<String, String> mdcContext) {
-        try {
-            InterviewProceedResult result = submitAnswerToLlm(outputEvent, memberId, questionAndAnswers, interviewId,
-                    interviewProceedStateKey, mdcContext);
-            if (result.isInProgress() && interviewProceedService.isVoiceMode(interviewId)) {
-                createNextQuestionTtsAndUploadToS3(memberId, interviewProceedStateKey, result);
-            }
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
-                    Duration.ofSeconds(300));
-        } finally {
-            redisService.releaseLockSafely(lockKey, lockValue);
-        }
-    }
-
-    private InterviewProceedResult submitAnswerToLlm(FlowOutputEvent outputEvent, Long memberId,
-                                                     QuestionAndAnswers questionAndAnswers,
-                                                     Long interviewId, String interviewProceedStateKey,
-                                                     Map<String, String> mdcContext) {
-        try {
-            String jsonPayload = outputEvent.content()
-                    .document()
-                    .toString();
-            log.info("Bedrock 응답 받음 interviewProceedStateKey={}, payload={}", interviewProceedStateKey, jsonPayload);
-            LlmResponse llmResponse = new BedrockResponse(jsonPayload);
-            InterviewProceedResult result =
-                    interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(memberId, questionAndAnswers,
-                            llmResponse, interviewId);
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_PENDING.name(),
-                    Duration.ofSeconds(300));
-            Answer curAnswer = result.getCurAnswer();
-            requestAndSaveAnswerFeedbackAsync(questionAndAnswers, mdcContext, curAnswer.getAnswerRank(),
-                    curAnswer.getId());
-            return result;
-        } catch (Exception e) {
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
-                    Duration.ofSeconds(300));
-            throw e;
-        }
-    }
-
     private void createNextQuestionTtsAndUploadToS3(Long memberId, String interviewProceedStateKey,
                                                     InterviewProceedResult result) {
         try {
@@ -256,9 +200,10 @@ public class InterviewProceedBedrockFlowAsyncService {
                 tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
             }
         } catch (Exception e) {
+            log.error("TTS 생성 실패 - 인터뷰 진행 자체는 정상 완료됨. interviewProceedStateKey={}",
+                    interviewProceedStateKey, e);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
                     Duration.ofSeconds(300));
-            throw e;
         }
     }
 
@@ -267,54 +212,19 @@ public class InterviewProceedBedrockFlowAsyncService {
                                                    Map<String, String> mdcContext,
                                                    AnswerRank curAnswerRank, Long curAnswerId) {
         try {
-            bedrockAgentRuntimeAsyncClient.invokeFlow(
-                    InterviewInvokeFlowRequestFactory.createAnswerFeedbackInvokeFlowRequest(questionAndAnswers,
-                            curAnswerRank),
-                    createAnswerFeedbackInvokeFlowResponseHandler(curAnswerId, mdcContext));
+            executor.execute(() -> {
+                try {
+                    setMdcContext(mdcContext);
+                    String feedback = answerFeedbackBedrockClient.requestAnswerFeedback(questionAndAnswers, curAnswerRank);
+                    interviewProceedService.saveAnswerFeedback(curAnswerId, feedback);
+                } catch (Exception e) {
+                    log.error("답변 피드백 Bedrock 호출 실패 curAnswerId={}", curAnswerId, e);
+                } finally {
+                    MDC.clear();
+                }
+            });
         } catch (Exception e) {
-            log.error("답변 피드백 베드락 흐름 요청 실패 curAnswerId={}", curAnswerId, e);
-        }
-    }
-
-    private InvokeFlowResponseHandler createAnswerFeedbackInvokeFlowResponseHandler(Long curAnswerId,
-                                                                                    Map<String, String> mdcContext) {
-        return InvokeFlowResponseHandler.builder()
-                .onEventStream(publisher -> publisher.subscribe(event ->
-                        executor.execute(() -> callbackAnswerFeedbackBedrockFlow(event, curAnswerId, mdcContext))))
-                .onError(ex ->
-                        executor.execute(() -> handleAnswerFeedbackBedrockFlowException(ex, curAnswerId, mdcContext)))
-                .build();
-    }
-
-    private void callbackAnswerFeedbackBedrockFlow(FlowResponseStream event, Long curAnswerId,
-                                                   Map<String, String> mdcContext) {
-        try {
-            setMdcContext(mdcContext);
-            if (event instanceof FlowOutputEvent outputEvent) {
-                callbackAnswerFeedbackBedrockFlow(outputEvent, curAnswerId);
-            }
-        } catch (Exception e) {
-            log.error("Exception :: status: {}, message: {}, stackTrace: ", HttpStatus.INTERNAL_SERVER_ERROR,
-                    e.getMessage(), e);
-        } finally {
-            MDC.clear();
-        }
-    }
-
-    private void callbackAnswerFeedbackBedrockFlow(FlowOutputEvent outputEvent, Long curAnswerId) {
-        String curAnswerFeedback = outputEvent.content()
-                .document()
-                .asString();
-        interviewProceedService.saveAnswerFeedback(curAnswerId, curAnswerFeedback);
-    }
-
-    private void handleAnswerFeedbackBedrockFlowException(Throwable ex, Long curAnswerId,
-                                                          Map<String, String> mdcContext) {
-        try {
-            setMdcContext(mdcContext);
-            log.error("Bedrock API 호출 실패 - curAnswerId={}", curAnswerId, ex);
-        } finally {
-            MDC.clear();
+            log.error("답변 피드백 비동기 작업 제출 실패 curAnswerId={}", curAnswerId, e);
         }
     }
 
