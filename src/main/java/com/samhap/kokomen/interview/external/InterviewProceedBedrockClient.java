@@ -39,7 +39,8 @@ public class InterviewProceedBedrockClient {
                 InterviewBedrockRequestFactory.createProceedSystem(),
                 InterviewBedrockRequestFactory.createProceedMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createProceedToolConfig(),
-                properties.proceedMaxTokens());
+                properties.proceedMaxTokens(),
+                properties.evaluationTemperature());
         ToolUseBlock toolUse = converseClient.extractToolUse(response, InterviewBedrockRequestFactory.PROCEED_TOOL_NAME);
         return new BedrockConverseResponse(toolUse.input());
     }
@@ -49,7 +50,8 @@ public class InterviewProceedBedrockClient {
                 InterviewBedrockRequestFactory.createEndSystem(),
                 InterviewBedrockRequestFactory.createProceedMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createEndToolConfig(),
-                properties.endMaxTokens());
+                properties.endMaxTokens(),
+                properties.evaluationTemperature());
         ToolUseBlock toolUse = converseClient.extractToolUse(response, InterviewBedrockRequestFactory.END_TOOL_NAME);
         return new BedrockConverseResponse(toolUse.input());
     }

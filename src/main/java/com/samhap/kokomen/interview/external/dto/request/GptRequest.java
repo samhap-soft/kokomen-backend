@@ -10,17 +10,18 @@ public record GptRequest(
         List<GptMessage> gptMessages,
         List<Tool> tools,
         @JsonProperty("tool_choice")
-        ToolChoice toolChoice
+        ToolChoice toolChoice,
+        Double temperature
 ) {
 
     private static final String GPT_MODEL = "gpt-4.1-mini";
 
-    public static GptRequest createProceedGptRequest(List<GptMessage> gptMessages) {
-        return new GptRequest(GPT_MODEL, gptMessages, createProceedTools(), createProceedToolChoice());
+    public static GptRequest createProceedGptRequest(List<GptMessage> gptMessages, double temperature) {
+        return new GptRequest(GPT_MODEL, gptMessages, createProceedTools(), createProceedToolChoice(), temperature);
     }
 
-    public static GptRequest createEndGptRequest(List<GptMessage> gptMessages) {
-        return new GptRequest(GPT_MODEL, gptMessages, createEndTools(), createEndToolChoice());
+    public static GptRequest createEndGptRequest(List<GptMessage> gptMessages, double temperature) {
+        return new GptRequest(GPT_MODEL, gptMessages, createEndTools(), createEndToolChoice(), temperature);
     }
 
     private static List<Tool> createProceedTools() {
@@ -35,7 +36,7 @@ public record GptRequest(
         return new GptFunctionParameters(
                 "object",
                 createProceedProperties(),
-                List.of("rank", "feedback", "next_question")
+                List.of("reasoning", "rank", "feedback", "next_question")
         );
     }
 
@@ -43,23 +44,39 @@ public record GptRequest(
         return new GptFunctionParameters(
                 "object",
                 createEndProperties(),
-                List.of("rank", "feedback", "total_feedback")
+                List.of("reasoning", "rank", "feedback", "overall_summary")
         );
     }
 
-    private static Map<String, FunctionParamProperty> createProceedProperties() {
+    private static Map<String, Object> createProceedProperties() {
         return Map.of(
+                "reasoning", new FunctionParamProperty("string"),
                 "rank", new FunctionParamProperty("string"),
                 "feedback", new FunctionParamProperty("string"),
                 "next_question", new FunctionParamProperty("string")
         );
     }
 
-    private static Map<String, FunctionParamProperty> createEndProperties() {
+    private static Map<String, Object> createEndProperties() {
         return Map.of(
+                "reasoning", new FunctionParamProperty("string"),
                 "rank", new FunctionParamProperty("string"),
                 "feedback", new FunctionParamProperty("string"),
-                "total_feedback", new FunctionParamProperty("string")
+                "overall_summary", Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "strengths", Map.of(
+                                        "type", "string",
+                                        "description", "면접자의 강점 1-2문장. 존댓말, 점수/랭크 미언급"),
+                                "improvements", Map.of(
+                                        "type", "string",
+                                        "description", "보완·개선 영역 1-2문장. 존댓말, 점수/랭크 미언급"),
+                                "learning_direction", Map.of(
+                                        "type", "string",
+                                        "description", "향후 학습 방향 1-2문장. 존댓말, 점수/랭크 미언급")
+                        ),
+                        "required", List.of("strengths", "improvements", "learning_direction")
+                )
         );
     }
 

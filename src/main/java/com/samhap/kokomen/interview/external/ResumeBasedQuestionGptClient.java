@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.BaseGptClient;
+import com.samhap.kokomen.global.external.gpt.GptProperties;
 import com.samhap.kokomen.interview.external.dto.request.ResumeBasedQuestionGptRequest;
 import com.samhap.kokomen.interview.external.dto.response.ResumeBasedQuestionGptResponse;
+import com.samhap.kokomen.interview.external.dto.response.ResumeBasedQuestionGptResponseMessage;
+import com.samhap.kokomen.interview.external.dto.response.ToolCall;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -19,20 +21,22 @@ public class ResumeBasedQuestionGptClient extends BaseGptClient {
     public ResumeBasedQuestionGptClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
-            @Value("${open-ai.api-key}")
-            String gptApiKey
+            GptProperties gptProperties
     ) {
-        super(builder, objectMapper, gptApiKey);
+        super(builder, objectMapper, gptProperties);
     }
 
     public String generateQuestions(String resumeText, String portfolioText, String jobCareer) {
         ResumeBasedQuestionGptRequest request = ResumeBasedQuestionGptRequest.create(
                 resumeText,
                 portfolioText,
-                jobCareer
+                jobCareer,
+                gptProperties.generationTemperature()
         );
         ResumeBasedQuestionGptResponse response = executeRequest(request, ResumeBasedQuestionGptResponse.class);
-        return response.choices().get(0).message().content();
+        ResumeBasedQuestionGptResponseMessage message = response.choices().get(0).message();
+        ToolCall toolCall = message.toolCalls().get(0);
+        return toolCall.function().arguments();
     }
 
     @Override
@@ -45,6 +49,13 @@ public class ResumeBasedQuestionGptClient extends BaseGptClient {
         }
         if (gptResponse.choices() == null || gptResponse.choices().isEmpty()) {
             throw new ExternalApiException("GPT API 응답에 choices가 없습니다.");
+        }
+        ResumeBasedQuestionGptResponseMessage message = gptResponse.choices().get(0).message();
+        if (message == null) {
+            throw new ExternalApiException("GPT API 응답에 message가 없습니다.");
+        }
+        if (message.toolCalls() == null || message.toolCalls().isEmpty()) {
+            throw new ExternalApiException("GPT API 응답에 tool_calls가 없습니다.");
         }
     }
 }

@@ -52,29 +52,11 @@ public class ResumeBasedQuestionBedrockService {
 
     private List<GeneratedQuestionDto> parseQuestionResponse(String jsonResponse) {
         try {
-            String cleanedJson = cleanJsonContent(jsonResponse);
-            QuestionResponseWrapper wrapper = objectMapper.readValue(cleanedJson, QuestionResponseWrapper.class);
+            QuestionResponseWrapper wrapper = objectMapper.readValue(jsonResponse, QuestionResponseWrapper.class);
             return wrapper.questions();
         } catch (JsonProcessingException e) {
             log.error("GPT 질문 응답 파싱 실패 - responseLength={}", jsonResponse == null ? 0 : jsonResponse.length(), e);
             throw new ExternalApiException("질문 응답을 파싱하는데 실패했습니다.");
         }
-    }
-
-    private String cleanJsonContent(String rawText) {
-        if (rawText == null || rawText.isEmpty()) {
-            return rawText;
-        }
-        String cleaned = rawText
-                .replace("```json", "")
-                .replace("```", "")
-                .replace("`", "")
-                .trim();
-
-        if (cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
-            String unwrapped = cleaned.substring(1, cleaned.length() - 1);
-            return unwrapped.replace("\\\"", "\"").replace("\\n", "\n");
-        }
-        return cleaned;
     }
 }

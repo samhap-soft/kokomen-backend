@@ -31,10 +31,11 @@ public class AnswerFeedbackBedrockClient {
 
     public String requestAnswerFeedback(QuestionAndAnswers questionAndAnswers, AnswerRank curAnswerRank) {
         ConverseResponse response = converseClient.converse(
-                InterviewBedrockRequestFactory.createAnswerFeedbackSystem(),
-                InterviewBedrockRequestFactory.createAnswerFeedbackMessages(questionAndAnswers, curAnswerRank),
+                InterviewBedrockRequestFactory.createAnswerFeedbackSystem(curAnswerRank),
+                InterviewBedrockRequestFactory.createAnswerFeedbackMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createAnswerFeedbackToolConfig(),
-                properties.answerFeedbackMaxTokens());
+                properties.answerFeedbackMaxTokens(),
+                properties.feedbackTemperature());
         ToolUseBlock toolUse = converseClient.extractToolUse(response, InterviewBedrockRequestFactory.ANSWER_FEEDBACK_TOOL_NAME);
         AnswerFeedbackOnlyResponse parsed = converseClient.parseToolInput(toolUse, AnswerFeedbackOnlyResponse.class);
         if (parsed.feedback() == null || parsed.feedback().isBlank()) {
