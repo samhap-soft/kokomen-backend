@@ -10,6 +10,8 @@ public record BedrockConverseProperties(
         Integer answerFeedbackMaxTokens,
         Integer resumeQuestionMaxTokens,
         Integer resumeEvaluationMaxTokens,
-        Float temperature
+        Float evaluationTemperature,
+        Float generationTemperature,
+        Float feedbackTemperature
 ) {
 }

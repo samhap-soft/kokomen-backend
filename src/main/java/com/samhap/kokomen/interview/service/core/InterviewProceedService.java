@@ -98,7 +98,7 @@ public class InterviewProceedService {
                                    LlmResponse llmResponse, Member member) {
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
-        interview.evaluate(totalFeedbackResponse.totalFeedback(), totalScore);
+        interview.evaluate(totalFeedbackResponse.composeTotalFeedback(), totalScore);
         if (member != null) {
             member.addScore(totalScore);
         }

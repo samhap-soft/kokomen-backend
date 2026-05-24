@@ -4,15 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.BaseGptClient;
-import com.samhap.kokomen.interview.tool.InterviewMessagesFactory;
-import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
+import com.samhap.kokomen.global.external.gpt.GptProperties;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import com.samhap.kokomen.interview.external.dto.request.GptRequest;
 import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.external.dto.response.Message;
+import com.samhap.kokomen.interview.tool.InterviewMessagesFactory;
+import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -24,9 +24,9 @@ public class InterviewProceedGptClient extends BaseGptClient {
     public InterviewProceedGptClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
-            @Value("${open-ai.api-key}") String gptApiKey
+            GptProperties gptProperties
     ) {
-        super(builder, objectMapper, gptApiKey);
+        super(builder, objectMapper, gptProperties);
     }
 
     public GptResponse requestToGpt(QuestionAndAnswers questionAndAnswers) {
@@ -37,10 +37,10 @@ public class InterviewProceedGptClient extends BaseGptClient {
     private GptRequest createGptRequest(QuestionAndAnswers questionAndAnswers) {
         if (questionAndAnswers.isProceedRequest()) {
             List<GptMessage> gptMessages = InterviewMessagesFactory.createGptProceedMessages(questionAndAnswers);
-            return GptRequest.createProceedGptRequest(gptMessages);
+            return GptRequest.createProceedGptRequest(gptMessages, gptProperties.evaluationTemperature());
         }
         List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
-        return GptRequest.createEndGptRequest(gptMessages);
+        return GptRequest.createEndGptRequest(gptMessages, gptProperties.evaluationTemperature());
     }
 
     @Override

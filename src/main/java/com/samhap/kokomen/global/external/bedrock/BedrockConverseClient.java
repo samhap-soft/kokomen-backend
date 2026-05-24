@@ -2,10 +2,13 @@ package com.samhap.kokomen.global.external.bedrock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointType;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -38,19 +41,28 @@ public class BedrockConverseClient {
             List<SystemContentBlock> systemMessages,
             List<Message> messages,
             ToolConfiguration toolConfiguration,
-            int maxTokens
+            int maxTokens,
+            float temperature
     ) {
         ConverseRequest request = ConverseRequest.builder()
                 .modelId(properties.modelId())
-                .system(systemMessages)
+                .system(appendCachePoint(systemMessages))
                 .messages(messages)
                 .toolConfig(toolConfiguration)
                 .inferenceConfig(InferenceConfiguration.builder()
                         .maxTokens(maxTokens)
-                        .temperature(properties.temperature())
+                        .temperature(temperature)
                         .build())
                 .build();
         return bedrockRuntimeClient.converse(request);
+    }
+
+    private List<SystemContentBlock> appendCachePoint(List<SystemContentBlock> systemMessages) {
+        List<SystemContentBlock> withCache = new ArrayList<>(systemMessages);
+        withCache.add(SystemContentBlock.builder()
+                .cachePoint(CachePointBlock.builder().type(CachePointType.DEFAULT).build())
+                .build());
+        return withCache;
     }
 
     public ToolUseBlock extractToolUse(ConverseResponse response, String expectedToolName) {

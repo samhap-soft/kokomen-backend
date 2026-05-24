@@ -72,7 +72,9 @@ public final class ResumeBedrockRequestFactory {
                         "questions", Document.fromMap(Map.of(
                                 "type", Document.fromString("array"),
                                 "items", questionItemSchema,
-                                "description", Document.fromString("이력서/포트폴리오 기반 면접 질문 목록."))))),
+                                "minItems", Document.fromNumber(5),
+                                "maxItems", Document.fromNumber(7),
+                                "description", Document.fromString("이력서/포트폴리오 기반 면접 질문 목록. 정확히 5-7개."))))),
                 "required", Document.fromList(List.of(Document.fromString("questions")))));
 
         return buildToolConfig(QUESTION_GENERATION_TOOL_NAME,
@@ -123,18 +125,18 @@ public final class ResumeBedrockRequestFactory {
         Document categorySchema = Document.fromMap(Map.of(
                 "type", Document.fromString("object"),
                 "properties", Document.fromMap(Map.of(
+                        "reasoning", Document.fromMap(Map.of(
+                                "type", Document.fromString("string"),
+                                "description", Document.fromString("점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성."))),
                         "score", Document.fromMap(Map.of(
                                 "type", Document.fromString("integer"),
                                 "minimum", Document.fromNumber(0),
                                 "maximum", Document.fromNumber(100),
-                                "description", Document.fromString("0-100 점수."))),
-                        "reason", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString("평가 이유. 불렛 포인트(-) 사용."))),
-                        "improvements", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString("보완 사항. 불렛 포인트(-) 사용."))))),
+                                "description", Document.fromString("0-100 점수. score_anchors 기준."))),
+                        "reason", bulletArraySchema("평가 이유 항목들. 각 항목은 한 문장."),
+                        "improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 한 문장."))),
                 "required", Document.fromList(List.of(
+                        Document.fromString("reasoning"),
                         Document.fromString("score"),
                         Document.fromString("reason"),
                         Document.fromString("improvements")))));
@@ -147,24 +149,27 @@ public final class ResumeBedrockRequestFactory {
                         Map.entry("problem_solving", categorySchema),
                         Map.entry("career_growth", categorySchema),
                         Map.entry("documentation", categorySchema),
-                        Map.entry("total_score", Document.fromMap(Map.of(
-                                "type", Document.fromString("integer"),
-                                "minimum", Document.fromNumber(0),
-                                "maximum", Document.fromNumber(100),
-                                "description", Document.fromString("종합 점수.")))),
                         Map.entry("total_feedback", Document.fromMap(Map.of(
                                 "type", Document.fromString("string"),
-                                "description", Document.fromString("종합 점수에 대한 설명과 보완 사항.")))))),
+                                "description", Document.fromString("종합 총평. 강점·개선·학습 방향 포함, 한 단락.")))))),
                 "required", Document.fromList(List.of(
                         Document.fromString("technical_skills"),
                         Document.fromString("project_experience"),
                         Document.fromString("problem_solving"),
                         Document.fromString("career_growth"),
                         Document.fromString("documentation"),
-                        Document.fromString("total_score"),
                         Document.fromString("total_feedback")))));
 
         return buildToolConfig(EVALUATION_TOOL_NAME, "이력서/포트폴리오 종합 평가를 제출한다.", schema);
+    }
+
+    private static Document bulletArraySchema(String description) {
+        return Document.fromMap(Map.of(
+                "type", Document.fromString("array"),
+                "items", Document.fromMap(Map.of("type", Document.fromString("string"))),
+                "minItems", Document.fromNumber(2),
+                "maxItems", Document.fromNumber(6),
+                "description", Document.fromString(description)));
     }
 
     private static ToolConfiguration buildToolConfig(String toolName, String description, Document schema) {

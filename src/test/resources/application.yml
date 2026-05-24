@@ -10,6 +10,9 @@ spring:
 
 open-ai:
   api-key: test_api_key
+  evaluation-temperature: 0.2
+  generation-temperature: 0.7
+  feedback-temperature: 0.5
 
 cors:
   allowed-origins: http://localhost:8080
