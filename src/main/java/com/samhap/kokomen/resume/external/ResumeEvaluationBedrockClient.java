@@ -32,7 +32,8 @@ public class ResumeEvaluationBedrockClient {
                 ResumeBedrockRequestFactory.createEvaluationSystem(),
                 ResumeBedrockRequestFactory.createEvaluationMessages(request),
                 ResumeBedrockRequestFactory.createEvaluationToolConfig(),
-                properties.resumeEvaluationMaxTokens());
+                properties.resumeEvaluationMaxTokens(),
+                properties.evaluationTemperature());
 
         ToolUseBlock toolUse = converseClient.extractToolUse(response,
                 ResumeBedrockRequestFactory.EVALUATION_TOOL_NAME);

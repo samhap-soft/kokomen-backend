@@ -4,6 +4,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
+import java.util.List;
 
 public class ResumeEvaluationFixtureBuilder {
 
@@ -17,20 +18,20 @@ public class ResumeEvaluationFixtureBuilder {
     private boolean failed;
 
     private int technicalSkillsScore = 80;
-    private String technicalSkillsReason = "기술 역량이 우수합니다.";
-    private String technicalSkillsImprovements = "최신 기술 트렌드를 더 익히면 좋겠습니다.";
+    private List<String> technicalSkillsReason = List.of("기술 역량이 우수합니다.");
+    private List<String> technicalSkillsImprovements = List.of("최신 기술 트렌드를 더 익히면 좋겠습니다.");
     private int projectExperienceScore = 85;
-    private String projectExperienceReason = "프로젝트 경험이 풍부합니다.";
-    private String projectExperienceImprovements = "팀 프로젝트 경험을 더 늘리면 좋겠습니다.";
+    private List<String> projectExperienceReason = List.of("프로젝트 경험이 풍부합니다.");
+    private List<String> projectExperienceImprovements = List.of("팀 프로젝트 경험을 더 늘리면 좋겠습니다.");
     private int problemSolvingScore = 75;
-    private String problemSolvingReason = "문제 해결 능력이 좋습니다.";
-    private String problemSolvingImprovements = "알고리즘 학습을 권장합니다.";
+    private List<String> problemSolvingReason = List.of("문제 해결 능력이 좋습니다.");
+    private List<String> problemSolvingImprovements = List.of("알고리즘 학습을 권장합니다.");
     private int careerGrowthScore = 80;
-    private String careerGrowthReason = "성장 가능성이 높습니다.";
-    private String careerGrowthImprovements = "목표 설정을 더 구체화하면 좋겠습니다.";
+    private List<String> careerGrowthReason = List.of("성장 가능성이 높습니다.");
+    private List<String> careerGrowthImprovements = List.of("목표 설정을 더 구체화하면 좋겠습니다.");
     private int documentationScore = 85;
-    private String documentationReason = "이력서 작성이 잘 되어 있습니다.";
-    private String documentationImprovements = "프로젝트 설명을 더 상세히 작성하면 좋겠습니다.";
+    private List<String> documentationReason = List.of("이력서 작성이 잘 되어 있습니다.");
+    private List<String> documentationImprovements = List.of("프로젝트 설명을 더 상세히 작성하면 좋겠습니다.");
     private int totalScore = 81;
     private String totalFeedback = "전반적으로 우수한 지원자입니다.";
 

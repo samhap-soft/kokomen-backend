@@ -1,8 +1,10 @@
 package com.samhap.kokomen.resume.domain;
 
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.persistence.StringListJsonConverter;
 import com.samhap.kokomen.member.domain.Member;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +16,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -59,47 +62,57 @@ public class ResumeEvaluation extends BaseEntity {
     @Column(name = "technical_skills_score")
     private Integer technicalSkillsScore;
 
-    @Column(name = "technical_skills_reason", columnDefinition = "TEXT")
-    private String technicalSkillsReason;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "technical_skills_reason", columnDefinition = "JSON")
+    private List<String> technicalSkillsReason;
 
-    @Column(name = "technical_skills_improvements", columnDefinition = "TEXT")
-    private String technicalSkillsImprovements;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "technical_skills_improvements", columnDefinition = "JSON")
+    private List<String> technicalSkillsImprovements;
 
     @Column(name = "project_experience_score")
     private Integer projectExperienceScore;
 
-    @Column(name = "project_experience_reason", columnDefinition = "TEXT")
-    private String projectExperienceReason;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "project_experience_reason", columnDefinition = "JSON")
+    private List<String> projectExperienceReason;
 
-    @Column(name = "project_experience_improvements", columnDefinition = "TEXT")
-    private String projectExperienceImprovements;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "project_experience_improvements", columnDefinition = "JSON")
+    private List<String> projectExperienceImprovements;
 
     @Column(name = "problem_solving_score")
     private Integer problemSolvingScore;
 
-    @Column(name = "problem_solving_reason", columnDefinition = "TEXT")
-    private String problemSolvingReason;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "problem_solving_reason", columnDefinition = "JSON")
+    private List<String> problemSolvingReason;
 
-    @Column(name = "problem_solving_improvements", columnDefinition = "TEXT")
-    private String problemSolvingImprovements;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "problem_solving_improvements", columnDefinition = "JSON")
+    private List<String> problemSolvingImprovements;
 
     @Column(name = "career_growth_score")
     private Integer careerGrowthScore;
 
-    @Column(name = "career_growth_reason", columnDefinition = "TEXT")
-    private String careerGrowthReason;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "career_growth_reason", columnDefinition = "JSON")
+    private List<String> careerGrowthReason;
 
-    @Column(name = "career_growth_improvements", columnDefinition = "TEXT")
-    private String careerGrowthImprovements;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "career_growth_improvements", columnDefinition = "JSON")
+    private List<String> careerGrowthImprovements;
 
     @Column(name = "documentation_score")
     private Integer documentationScore;
 
-    @Column(name = "documentation_reason", columnDefinition = "TEXT")
-    private String documentationReason;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "documentation_reason", columnDefinition = "JSON")
+    private List<String> documentationReason;
 
-    @Column(name = "documentation_improvements", columnDefinition = "TEXT")
-    private String documentationImprovements;
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "documentation_improvements", columnDefinition = "JSON")
+    private List<String> documentationImprovements;
 
     @Column(name = "total_score")
     private Integer totalScore;
@@ -118,12 +131,16 @@ public class ResumeEvaluation extends BaseEntity {
         this.jobCareer = jobCareer;
     }
 
-    public void complete(int technicalSkillsScore, String technicalSkillsReason, String technicalSkillsImprovements,
-                         int projectExperienceScore, String projectExperienceReason,
-                         String projectExperienceImprovements,
-                         int problemSolvingScore, String problemSolvingReason, String problemSolvingImprovements,
-                         int careerGrowthScore, String careerGrowthReason, String careerGrowthImprovements,
-                         int documentationScore, String documentationReason, String documentationImprovements,
+    public void complete(int technicalSkillsScore, List<String> technicalSkillsReason,
+                         List<String> technicalSkillsImprovements,
+                         int projectExperienceScore, List<String> projectExperienceReason,
+                         List<String> projectExperienceImprovements,
+                         int problemSolvingScore, List<String> problemSolvingReason,
+                         List<String> problemSolvingImprovements,
+                         int careerGrowthScore, List<String> careerGrowthReason,
+                         List<String> careerGrowthImprovements,
+                         int documentationScore, List<String> documentationReason,
+                         List<String> documentationImprovements,
                          int totalScore, String totalFeedback) {
         this.state = ResumeEvaluationState.COMPLETED;
         this.technicalSkillsScore = technicalSkillsScore;

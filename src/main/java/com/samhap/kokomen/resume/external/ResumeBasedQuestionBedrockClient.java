@@ -33,7 +33,8 @@ public class ResumeBasedQuestionBedrockClient {
                 ResumeBedrockRequestFactory.createQuestionGenerationSystem(),
                 ResumeBedrockRequestFactory.createQuestionGenerationMessages(resumeText, portfolioText, jobCareer),
                 ResumeBedrockRequestFactory.createQuestionGenerationToolConfig(),
-                properties.resumeQuestionMaxTokens());
+                properties.resumeQuestionMaxTokens(),
+                properties.generationTemperature());
 
         ToolUseBlock toolUse = converseClient.extractToolUse(response,
                 ResumeBedrockRequestFactory.QUESTION_GENERATION_TOOL_NAME);

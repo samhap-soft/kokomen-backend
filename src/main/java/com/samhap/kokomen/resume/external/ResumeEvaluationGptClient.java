@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.BaseGptClient;
+import com.samhap.kokomen.global.external.gpt.GptProperties;
+import com.samhap.kokomen.interview.external.dto.response.ToolCall;
 import com.samhap.kokomen.resume.external.dto.ResumeGptRequest;
 import com.samhap.kokomen.resume.external.dto.ResumeGptResponse;
+import com.samhap.kokomen.resume.external.dto.ResumeGptResponseMessage;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -20,15 +22,17 @@ public class ResumeEvaluationGptClient extends BaseGptClient {
     public ResumeEvaluationGptClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
-            @Value("${open-ai.api-key}") String gptApiKey
+            GptProperties gptProperties
     ) {
-        super(builder, objectMapper, gptApiKey);
+        super(builder, objectMapper, gptProperties);
     }
 
     public String requestResumeEvaluation(ResumeEvaluationRequest request) {
-        ResumeGptRequest gptRequest = ResumeGptRequest.create(request);
+        ResumeGptRequest gptRequest = ResumeGptRequest.create(request, gptProperties.evaluationTemperature());
         ResumeGptResponse gptResponse = executeRequest(gptRequest, ResumeGptResponse.class);
-        return gptResponse.choices().get(0).message().content();
+        ResumeGptResponseMessage message = gptResponse.choices().get(0).message();
+        ToolCall toolCall = message.toolCalls().get(0);
+        return toolCall.function().arguments();
     }
 
     @Override
@@ -41,6 +45,13 @@ public class ResumeEvaluationGptClient extends BaseGptClient {
         }
         if (gptResponse.choices() == null || gptResponse.choices().isEmpty()) {
             throw new ExternalApiException("GPT API 응답에 choices가 없습니다.");
+        }
+        ResumeGptResponseMessage message = gptResponse.choices().get(0).message();
+        if (message == null) {
+            throw new ExternalApiException("GPT API 응답에 message가 없습니다.");
+        }
+        if (message.toolCalls() == null || message.toolCalls().isEmpty()) {
+            throw new ExternalApiException("GPT API 응답에 tool_calls가 없습니다.");
         }
     }
 }

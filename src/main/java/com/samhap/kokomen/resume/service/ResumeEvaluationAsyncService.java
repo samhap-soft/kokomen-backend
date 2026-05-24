@@ -206,7 +206,8 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationResponse response = resumeEvaluationBedrockClient.evaluate(request);
+                ResumeEvaluationResponse response = resumeEvaluationBedrockClient.evaluate(request)
+                        .withCalculatedTotalScore();
                 resumeEvaluationService.updateCompleted(evaluationId, response);
             } catch (Exception e) {
                 log.error("Bedrock 이력서 평가 실패, GPT 폴백 시도 - evaluationId: {}", evaluationId, e);
@@ -223,7 +224,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationResponse response = parseGptResponse(jsonResponse);
+                ResumeEvaluationResponse response = parseGptResponse(jsonResponse).withCalculatedTotalScore();
                 resumeEvaluationService.updateCompleted(evaluationId, response);
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - evaluationId: {}", evaluationId, e);
@@ -242,7 +243,8 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationResponse response = resumeEvaluationBedrockClient.evaluate(request);
+                ResumeEvaluationResponse response = resumeEvaluationBedrockClient.evaluate(request)
+                        .withCalculatedTotalScore();
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
                 log.error("Bedrock 이력서 평가 실패, GPT 폴백 시도 - uuid: {}", uuid, e);
@@ -260,7 +262,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationResponse response = parseGptResponse(jsonResponse);
+                ResumeEvaluationResponse response = parseGptResponse(jsonResponse).withCalculatedTotalScore();
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - uuid: {}", uuid, e);

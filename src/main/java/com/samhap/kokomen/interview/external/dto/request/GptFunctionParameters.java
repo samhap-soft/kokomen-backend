@@ -5,7 +5,7 @@ import java.util.Map;
 
 public record GptFunctionParameters(
         String type,
-        Map<String, FunctionParamProperty> properties,
+        Map<String, Object> properties,
         List<String> required
 ) {
 }

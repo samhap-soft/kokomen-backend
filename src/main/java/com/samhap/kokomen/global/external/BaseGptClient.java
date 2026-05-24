@@ -2,6 +2,7 @@ package com.samhap.kokomen.global.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import com.samhap.kokomen.global.external.gpt.GptProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -15,9 +16,9 @@ public abstract class BaseGptClient {
     protected static final String GPT_BASE_URL = "https://api.openai.com";
 
     protected final RestClient restClient;
-    protected final String gptApiKey;
+    protected final GptProperties gptProperties;
 
-    protected BaseGptClient(RestClient.Builder builder, ObjectMapper objectMapper, String gptApiKey) {
+    protected BaseGptClient(RestClient.Builder builder, ObjectMapper objectMapper, GptProperties gptProperties) {
         this.restClient = builder
                 .baseUrl(GPT_BASE_URL)
                 .messageConverters(converters -> {
@@ -25,14 +26,14 @@ public abstract class BaseGptClient {
                     converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
                 })
                 .build();
-        this.gptApiKey = gptApiKey;
+        this.gptProperties = gptProperties;
     }
 
     protected <T> T executeRequest(Object request, Class<T> responseType) {
         try {
             T response = restClient.post()
                     .uri(GPT_API_URL)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + gptApiKey)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + gptProperties.apiKey())
                     .body(request)
                     .retrieve()
                     .body(responseType);
