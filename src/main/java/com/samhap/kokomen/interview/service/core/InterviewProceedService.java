@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service.core;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
+import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.tool.InterviewProceedResult;
@@ -98,7 +99,11 @@ public class InterviewProceedService {
                                    LlmResponse llmResponse, Member member) {
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
-        interview.evaluate(totalFeedbackResponse.composeTotalFeedback(), totalScore);
+        String composedTotalFeedback = totalFeedbackResponse.composeTotalFeedback();
+        if (composedTotalFeedback.isBlank()) {
+            throw new ExternalApiException("면접 종합 피드백 응답이 비어있습니다.");
+        }
+        interview.evaluate(composedTotalFeedback, totalScore);
         if (member != null) {
             member.addScore(totalScore);
         }

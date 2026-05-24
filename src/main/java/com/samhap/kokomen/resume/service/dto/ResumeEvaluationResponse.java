@@ -19,11 +19,11 @@ public record ResumeEvaluationResponse(
 ) {
     public ResumeEvaluationResponse withCalculatedTotalScore() {
         int calculated = (int) Math.round(
-                0.30 * technicalSkills.score()
-                        + 0.25 * projectExperience.score()
-                        + 0.20 * problemSolving.score()
-                        + 0.15 * careerGrowth.score()
-                        + 0.10 * documentation.score()
+                0.30 * (technicalSkills != null ? technicalSkills.score() : 0)
+                        + 0.25 * (projectExperience != null ? projectExperience.score() : 0)
+                        + 0.20 * (problemSolving != null ? problemSolving.score() : 0)
+                        + 0.15 * (careerGrowth != null ? careerGrowth.score() : 0)
+                        + 0.10 * (documentation != null ? documentation.score() : 0)
         );
         return new ResumeEvaluationResponse(
                 technicalSkills, projectExperience, problemSolving, careerGrowth, documentation,

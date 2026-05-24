@@ -11,6 +11,8 @@ import com.samhap.kokomen.resume.tool.ResumePromptFragments;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public record ResumeGptRequest(
         String model,
@@ -74,13 +76,20 @@ public record ResumeGptRequest(
             </job_career>
             """;
 
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
+
     public static ResumeGptRequest create(ResumeEvaluationRequest request, double temperature) {
-        String userPrompt = USER_PROMPT_TEMPLATE
-                .replace("{{resume_text}}", nullToEmpty(request.resume()))
-                .replace("{{portfolio_text}}", nullToEmpty(request.portfolio()))
-                .replace("{{job_position}}", nullToEmpty(request.jobPosition()))
-                .replace("{{job_description}}", nullToEmpty(request.jobDescription()))
-                .replace("{{job_career}}", nullToEmpty(request.jobCareer()));
+        Map<String, String> placeholderValues = Map.of(
+                "resume_text", nullToEmpty(request.resume()),
+                "portfolio_text", nullToEmpty(request.portfolio()),
+                "job_position", nullToEmpty(request.jobPosition()),
+                "job_description", nullToEmpty(request.jobDescription()),
+                "job_career", nullToEmpty(request.jobCareer())
+        );
+        String userPrompt = PLACEHOLDER_PATTERN.matcher(USER_PROMPT_TEMPLATE)
+                .replaceAll(match -> Matcher.quoteReplacement(
+                        placeholderValues.getOrDefault(match.group(1), match.group(0))
+                ));
 
         List<ResumeGptMessage> messages = List.of(
                 new ResumeGptMessage("system", SYSTEM_PROMPT),
