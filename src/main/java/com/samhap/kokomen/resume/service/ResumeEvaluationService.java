@@ -4,8 +4,10 @@ import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse.CategoryScore;
 import com.samhap.kokomen.resume.repository.ResumeEvaluationRepository;
-import com.samhap.kokomen.resume.service.dto.ResumeEvaluationResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,28 +40,40 @@ public class ResumeEvaluationService {
     }
 
     @Transactional
-    public void updateCompleted(Long evaluationId, ResumeEvaluationResponse response) {
+    public void updateCompleted(Long evaluationId, ResumeEvaluationLlmResponse response) {
         ResumeEvaluation evaluation = resumeEvaluationRepository.findById(evaluationId)
                 .orElseThrow(() -> new BadRequestException("이력서 평가를 찾을 수 없습니다. id: " + evaluationId));
         evaluation.complete(
-                response.technicalSkills().score(),
-                response.technicalSkills().reason(),
-                response.technicalSkills().improvements(),
-                response.projectExperience().score(),
-                response.projectExperience().reason(),
-                response.projectExperience().improvements(),
-                response.problemSolving().score(),
-                response.problemSolving().reason(),
-                response.problemSolving().improvements(),
-                response.careerGrowth().score(),
-                response.careerGrowth().reason(),
-                response.careerGrowth().improvements(),
-                response.documentation().score(),
-                response.documentation().reason(),
-                response.documentation().improvements(),
+                scoreOf(response.technicalSkills()),
+                reasonOf(response.technicalSkills()),
+                improvementsOf(response.technicalSkills()),
+                scoreOf(response.projectExperience()),
+                reasonOf(response.projectExperience()),
+                improvementsOf(response.projectExperience()),
+                scoreOf(response.problemSolving()),
+                reasonOf(response.problemSolving()),
+                improvementsOf(response.problemSolving()),
+                scoreOf(response.careerGrowth()),
+                reasonOf(response.careerGrowth()),
+                improvementsOf(response.careerGrowth()),
+                scoreOf(response.documentation()),
+                reasonOf(response.documentation()),
+                improvementsOf(response.documentation()),
                 response.totalScore(),
                 response.totalFeedback()
         );
+    }
+
+    private static int scoreOf(CategoryScore category) {
+        return category != null ? category.score() : 0;
+    }
+
+    private static List<String> reasonOf(CategoryScore category) {
+        return category != null ? category.reason() : List.of();
+    }
+
+    private static List<String> improvementsOf(CategoryScore category) {
+        return category != null ? category.improvements() : List.of();
     }
 
     @Transactional
