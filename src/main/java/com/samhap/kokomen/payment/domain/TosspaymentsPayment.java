@@ -111,6 +111,14 @@ public class TosspaymentsPayment extends BaseEntity {
         return state == PaymentState.APPROVED;
     }
 
+    public boolean isApprovedOrCompleted() {
+        return state.isApprovedOrCompleted();
+    }
+
+    public boolean isClientBadRequest() {
+        return state.isClientBadRequest();
+    }
+
     public boolean isTerminal() {
         return state.isTerminal();
     }
