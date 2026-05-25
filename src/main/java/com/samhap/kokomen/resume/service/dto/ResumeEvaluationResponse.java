@@ -1,6 +1,8 @@
 package com.samhap.kokomen.resume.service.dto;
 
 import com.samhap.kokomen.resume.domain.ResumeEvaluation;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse.CategoryScore;
 import com.samhap.kokomen.resume.service.dto.evaluation.CareerGrowthResponse;
 import com.samhap.kokomen.resume.service.dto.evaluation.DocumentationResponse;
 import com.samhap.kokomen.resume.service.dto.evaluation.ProblemSolvingResponse;
@@ -17,17 +19,15 @@ public record ResumeEvaluationResponse(
         int totalScore,
         String totalFeedback
 ) {
-    public ResumeEvaluationResponse withCalculatedTotalScore() {
-        int calculated = (int) Math.round(
-                0.30 * (technicalSkills != null ? technicalSkills.score() : 0)
-                        + 0.25 * (projectExperience != null ? projectExperience.score() : 0)
-                        + 0.20 * (problemSolving != null ? problemSolving.score() : 0)
-                        + 0.15 * (careerGrowth != null ? careerGrowth.score() : 0)
-                        + 0.10 * (documentation != null ? documentation.score() : 0)
-        );
+    public static ResumeEvaluationResponse from(ResumeEvaluationLlmResponse llm) {
         return new ResumeEvaluationResponse(
-                technicalSkills, projectExperience, problemSolving, careerGrowth, documentation,
-                calculated, totalFeedback
+                toCategoryResponse(llm.technicalSkills(), TechnicalSkillsResponse::new),
+                toCategoryResponse(llm.projectExperience(), ProjectExperienceResponse::new),
+                toCategoryResponse(llm.problemSolving(), ProblemSolvingResponse::new),
+                toCategoryResponse(llm.careerGrowth(), CareerGrowthResponse::new),
+                toCategoryResponse(llm.documentation(), DocumentationResponse::new),
+                llm.totalScore(),
+                llm.totalFeedback()
         );
     }
 
@@ -35,39 +35,55 @@ public record ResumeEvaluationResponse(
         return new ResumeEvaluationResponse(
                 new TechnicalSkillsResponse(
                         nullToZero(evaluation.getTechnicalSkillsScore()),
-                        nullToEmpty(evaluation.getTechnicalSkillsReason()),
-                        nullToEmpty(evaluation.getTechnicalSkillsImprovements())
+                        joinWithNewline(evaluation.getTechnicalSkillsReason()),
+                        joinWithNewline(evaluation.getTechnicalSkillsImprovements())
                 ),
                 new ProjectExperienceResponse(
                         nullToZero(evaluation.getProjectExperienceScore()),
-                        nullToEmpty(evaluation.getProjectExperienceReason()),
-                        nullToEmpty(evaluation.getProjectExperienceImprovements())
+                        joinWithNewline(evaluation.getProjectExperienceReason()),
+                        joinWithNewline(evaluation.getProjectExperienceImprovements())
                 ),
                 new ProblemSolvingResponse(
                         nullToZero(evaluation.getProblemSolvingScore()),
-                        nullToEmpty(evaluation.getProblemSolvingReason()),
-                        nullToEmpty(evaluation.getProblemSolvingImprovements())
+                        joinWithNewline(evaluation.getProblemSolvingReason()),
+                        joinWithNewline(evaluation.getProblemSolvingImprovements())
                 ),
                 new CareerGrowthResponse(
                         nullToZero(evaluation.getCareerGrowthScore()),
-                        nullToEmpty(evaluation.getCareerGrowthReason()),
-                        nullToEmpty(evaluation.getCareerGrowthImprovements())
+                        joinWithNewline(evaluation.getCareerGrowthReason()),
+                        joinWithNewline(evaluation.getCareerGrowthImprovements())
                 ),
                 new DocumentationResponse(
                         nullToZero(evaluation.getDocumentationScore()),
-                        nullToEmpty(evaluation.getDocumentationReason()),
-                        nullToEmpty(evaluation.getDocumentationImprovements())
+                        joinWithNewline(evaluation.getDocumentationReason()),
+                        joinWithNewline(evaluation.getDocumentationImprovements())
                 ),
                 nullToZero(evaluation.getTotalScore()),
                 evaluation.getTotalFeedback()
         );
     }
 
+    private static <T> T toCategoryResponse(CategoryScore category, CategoryResponseFactory<T> factory) {
+        if (category == null) {
+            return factory.create(0, "", "");
+        }
+        return factory.create(
+                category.score(),
+                joinWithNewline(category.reason()),
+                joinWithNewline(category.improvements())
+        );
+    }
+
+    @FunctionalInterface
+    private interface CategoryResponseFactory<T> {
+        T create(int score, String reason, String improvements);
+    }
+
     private static int nullToZero(Integer value) {
         return value != null ? value : 0;
     }
 
-    private static List<String> nullToEmpty(List<String> value) {
-        return value != null ? value : List.of();
+    private static String joinWithNewline(List<String> value) {
+        return value == null || value.isEmpty() ? "" : String.join("\n", value);
     }
 }
