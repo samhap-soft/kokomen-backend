@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
 
 public record AnswerRequestV2(
-        @Length(max = 2000, message = "answer는 최대 2000자까지 입력할 수 있습니다.")
+        @Length(max = 10000, message = "answer는 최대 10000자까지 입력할 수 있습니다.")
         @NotBlank(message = "answer는 비어있을 수 없습니다.")
         String answer,
         @NotNull(message = "mode는 null일 수 없습니다.")

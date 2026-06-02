@@ -3,6 +3,8 @@ package com.samhap.kokomen.payment.service.dto;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.samhap.kokomen.global.infrastructure.ObjectToStringDeserializer;
 import com.samhap.kokomen.payment.domain.PaymentType;
+import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
+import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.payment.external.dto.TossDateTimeDeserializer;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
@@ -69,6 +71,39 @@ public record PaymentResponse(
                 response.cancels() != null ? response.cancels().stream()
                         .map(TosspaymentsCancel::from)
                         .toList() : null
+        );
+    }
+
+    public static PaymentResponse fromExisting(TosspaymentsPayment payment, TosspaymentsPaymentResult result) {
+        return new PaymentResponse(
+                payment.getPaymentKey(),
+                result.getType(),
+                payment.getOrderId(),
+                payment.getOrderName(),
+                result.getMId(),
+                result.getCurrency(),
+                result.getMethod(),
+                result.getTotalAmount(),
+                result.getBalanceAmount(),
+                result.getTosspaymentsStatus(),
+                result.getRequestedAt(),
+                result.getApprovedAt(),
+                result.getLastTransactionKey(),
+                result.getSuppliedAmount(),
+                result.getVat(),
+                result.getTaxFreeAmount(),
+                result.getTaxExemptionAmount(),
+                result.isPartialCancelable(),
+                payment.getMetadata(),
+                result.getReceiptUrl() != null ? new Receipt(result.getReceiptUrl()) : null,
+                null,
+                result.getEasyPayProvider() != null
+                        ? new EasyPay(result.getEasyPayProvider(), result.getEasyPayAmount(),
+                        result.getEasyPayDiscountAmount())
+                        : null,
+                result.getCountry(),
+                result.getFailureCode() != null ? new Failure(result.getFailureCode(), result.getFailureMessage()) : null,
+                null
         );
     }
 }

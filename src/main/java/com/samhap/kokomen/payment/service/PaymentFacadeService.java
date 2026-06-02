@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,12 +36,20 @@ public class PaymentFacadeService {
 
     private final TosspaymentsTransactionService tosspaymentsTransactionService;
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
+    private final TosspaymentsPaymentResultService tosspaymentsPaymentResultService;
     private final TosspaymentsClient tosspaymentsClient;
     private final RetryTemplate tosspaymentsConfirmRetryTemplate;
 
     @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
     public PaymentResponse confirmPayment(ConfirmRequest request) {
-        TosspaymentsPayment tosspaymentsPayment = tosspaymentsPaymentService.saveTosspaymentsPayment(request);
+        TosspaymentsPayment tosspaymentsPayment;
+        try {
+            tosspaymentsPayment = tosspaymentsPaymentService.saveTosspaymentsPayment(request);
+        } catch (DataIntegrityViolationException e) {
+            log.info("동일 paymentKey 결제 재요청 - 멱등 분기 처리, paymentKey: {}", request.paymentKey());
+            return resolveExistingPayment(tosspaymentsPaymentService.readByPaymentKey(request.paymentKey()));
+        }
+
         try {
             TosspaymentsPaymentResponse tosspaymentsPaymentResponse = confirmPayment(request, tosspaymentsPayment);
             return PaymentResponse.from(tosspaymentsPaymentResponse);
@@ -52,6 +61,28 @@ public class PaymentFacadeService {
             tosspaymentsPaymentService.updateState(tosspaymentsPayment.getId(), PaymentState.NEED_CANCEL);
             throw e;
         }
+    }
+
+    private PaymentResponse resolveExistingPayment(TosspaymentsPayment payment) {
+        if (payment.isApprovedOrCompleted()) {
+            log.info("이미 승인된 결제 재요청 - 멱등 응답 반환, paymentKey: {}, state: {}",
+                    payment.getPaymentKey(), payment.getState());
+            TosspaymentsPaymentResult result = tosspaymentsPaymentResultService.readByTosspaymentsPaymentId(payment.getId());
+            return PaymentResponse.fromExisting(payment, result);
+        }
+        if (payment.isClientBadRequest()) {
+            log.info("클라이언트 원인 실패 결제 재요청 - paymentKey: {}", payment.getPaymentKey());
+            throw new BadRequestException(readClientFailureMessage(payment.getId()));
+        }
+        log.error("비정상 상태 결제 재요청 - paymentKey: {}, state: {}", payment.getPaymentKey(), payment.getState());
+        throw new InternalServerErrorException(PaymentServiceErrorMessage.CONFIRM_SERVER_ERROR.getMessage());
+    }
+
+    private String readClientFailureMessage(Long paymentId) {
+        return tosspaymentsPaymentResultService.findByTosspaymentsPaymentId(paymentId)
+                .map(TosspaymentsPaymentResult::getFailureMessage)
+                .filter(message -> message != null && !message.isBlank())
+                .orElse(PaymentServiceErrorMessage.INVALID_REQUEST.getMessage());
     }
 
     private TosspaymentsPaymentResponse confirmPayment(ConfirmRequest request,

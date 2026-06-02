@@ -2,7 +2,9 @@ package com.samhap.kokomen.interview.external.dto.request;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
+import com.samhap.kokomen.interview.tool.CodingInterviewBedrockSystemMessageConstant;
 import com.samhap.kokomen.interview.tool.InterviewBedrockSystemMessageConstant;
 import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import java.util.ArrayList;
@@ -28,22 +30,32 @@ public final class InterviewBedrockRequestFactory {
     private InterviewBedrockRequestFactory() {
     }
 
-    public static List<SystemContentBlock> createProceedSystem() {
+    public static List<SystemContentBlock> createProceedSystem(InterviewType interviewType) {
+        String prompt = interviewType == InterviewType.LIVE_CODING
+                ? CodingInterviewBedrockSystemMessageConstant.CODING_IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT
+                : InterviewBedrockSystemMessageConstant.IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT;
         return List.of(SystemContentBlock.builder()
-                .text(InterviewBedrockSystemMessageConstant.IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT)
+                .text(prompt)
                 .build());
     }
 
-    public static List<SystemContentBlock> createEndSystem() {
+    public static List<SystemContentBlock> createEndSystem(InterviewType interviewType) {
+        String prompt = interviewType == InterviewType.LIVE_CODING
+                ? CodingInterviewBedrockSystemMessageConstant.CODING_END_PROMPT
+                : InterviewBedrockSystemMessageConstant.END_PROMPT;
         return List.of(SystemContentBlock.builder()
-                .text(InterviewBedrockSystemMessageConstant.END_PROMPT)
+                .text(prompt)
                 .build());
     }
 
-    public static List<SystemContentBlock> createAnswerFeedbackSystem(AnswerRank curAnswerRank) {
+    public static List<SystemContentBlock> createAnswerFeedbackSystem(InterviewType interviewType,
+                                                                      AnswerRank curAnswerRank) {
+        String prompt = interviewType == InterviewType.LIVE_CODING
+                ? CodingInterviewBedrockSystemMessageConstant.CODING_ANSWER_FEEDBACK_PROMPT
+                : InterviewBedrockSystemMessageConstant.ANSWER_FEEDBACK_PROMPT;
         return List.of(
                 SystemContentBlock.builder()
-                        .text(InterviewBedrockSystemMessageConstant.ANSWER_FEEDBACK_PROMPT)
+                        .text(prompt)
                         .build(),
                 SystemContentBlock.builder()
                         .text("<context>대상 답변 rank: " + curAnswerRank.name() + "</context>")
