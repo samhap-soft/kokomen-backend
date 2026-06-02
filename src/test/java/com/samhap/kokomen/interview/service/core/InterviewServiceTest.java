@@ -11,6 +11,7 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerLikeRepository;
 import com.samhap.kokomen.answer.repository.AnswerMemoRepository;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -25,6 +26,7 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
@@ -477,6 +479,41 @@ class InterviewServiceTest extends BaseTest {
                 () -> assertThat(referenceAnswers.get(2).answerContent()).isEqualTo("괜찮은 답변"),
                 () -> assertThat(referenceAnswers.get(2).answerRank()).isEqualTo(AnswerRank.B)
         );
+    }
+
+    @Test
+    void 라이브_코테_인터뷰_결과_조회시_참조_답변은_노출되지_않는다() {
+        // given
+        RootQuestion codingRootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.LIVE_CODING).content("두 수의 합")
+                        .questionOrder(201).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(codingRootQuestion)
+                        .interviewType(InterviewType.LIVE_CODING).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+
+        // 같은 코딩 문제에 대한 다른 사용자의 A랭크 답변(참조 답변 후보)
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember).rootQuestion(codingRootQuestion)
+                        .interviewType(InterviewType.LIVE_CODING).likeCount(10L).build());
+        Question otherQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherQuestion).content("우수한 코드").answerRank(AnswerRank.A)
+                        .build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers()).isEmpty();
     }
 
     @Test

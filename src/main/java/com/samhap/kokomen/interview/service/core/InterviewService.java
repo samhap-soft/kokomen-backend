@@ -222,7 +222,7 @@ public class InterviewService {
     }
 
     private List<RootQuestionReferenceAnswer> getReferenceAnswers(Interview interview) {
-        if (interview.isResumeBased()) {
+        if (interview.isResumeBased() || interview.isLiveCoding()) {
             return List.of();
         }
         return findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());

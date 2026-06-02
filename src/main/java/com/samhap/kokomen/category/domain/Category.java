@@ -1,6 +1,7 @@
 package com.samhap.kokomen.category.domain;
 
 import com.samhap.kokomen.global.constant.AwsConstant;
+import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
 
@@ -71,7 +72,14 @@ public enum Category {
                     자바스크립트는 웹 브라우저와 서버에서 실행되는 동적 프로그래밍 언어로, 현대 웹 개발의 핵심 기술입니다.
                     주로 자바스크립트의 언어에 대한 이해도를 묻는 질문과 자바스크립트를 동작시키는 엔진, 추가적으로 정적 분석을 위한 타입스크립트에 대한 질문 또한 일부 출제됩니다.
                     """,
-            "kokomen-javascript-typescript.png");
+            "kokomen-javascript-typescript.png"),
+    LIVE_CODING("라이브 코테",
+            """
+                    라이브 코테는 실제 코딩 인터뷰처럼 코딩 문제를 풀고, 제출한 코드에 대해 면접관과 대화하며 진행됩니다.
+                    문제를 해결하는 코드를 작성한 뒤에는 시간·공간 복잡도, 최적화 방안, 엣지 케이스, 자료구조 선택 근거 등에 대한 꼬리 질문이 이어집니다.
+                    단순히 정답 코드를 작성하는 것을 넘어, 자신의 풀이를 설명하고 개선할 수 있는 능력을 평가하는 영역입니다.
+                    """,
+            "kokomen-live-coding.png");
 
     private static final String BASE_URL = AwsConstant.CLOUD_FRONT_DOMAIN_URL + "category-image/";
 
@@ -85,7 +93,9 @@ public enum Category {
         this.imageUrl = BASE_URL + imageUrl;
     }
 
-    private static final List<Category> CATEGORIES = List.of(values());
+    private static final List<Category> CATEGORIES = Arrays.stream(values())
+            .filter(category -> category != LIVE_CODING)
+            .toList();
 
     public static List<Category> getCategories() {
         return CATEGORIES;
