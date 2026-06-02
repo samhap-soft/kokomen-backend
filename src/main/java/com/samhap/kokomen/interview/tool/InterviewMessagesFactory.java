@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.tool;
 
 import com.samhap.kokomen.answer.domain.Answer;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.ArrayList;
@@ -12,16 +13,22 @@ public final class InterviewMessagesFactory {
     }
 
     public static List<GptMessage> createGptProceedMessages(QuestionAndAnswers questionAndAnswers) {
+        String systemMessage = questionAndAnswers.getInterview().getInterviewType() == InterviewType.LIVE_CODING
+                ? GptSystemMessageConstant.CODING_PROCEED_SYSTEM_MESSAGE
+                : GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE;
         List<GptMessage> gptMessages = new ArrayList<>();
-        gptMessages.add(new GptMessage("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE));
+        gptMessages.add(new GptMessage("system", systemMessage));
         addGptMessages(questionAndAnswers, gptMessages);
 
         return gptMessages;
     }
 
     public static List<GptMessage> createGptEndMessages(QuestionAndAnswers questionAndAnswers) {
+        String systemMessage = questionAndAnswers.getInterview().getInterviewType() == InterviewType.LIVE_CODING
+                ? GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE
+                : GptSystemMessageConstant.END_SYSTEM_MESSAGE;
         List<GptMessage> gptMessages = new ArrayList<>();
-        gptMessages.add(new GptMessage("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE));
+        gptMessages.add(new GptMessage("system", systemMessage));
         addGptMessages(questionAndAnswers, gptMessages);
 
         return gptMessages;

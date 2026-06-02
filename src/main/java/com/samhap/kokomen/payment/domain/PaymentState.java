@@ -28,6 +28,14 @@ public enum PaymentState {
         return this == COMPLETED || this == APPROVED;
     }
 
+    public boolean isApprovedOrCompleted() {
+        return this == APPROVED || this == COMPLETED;
+    }
+
+    public boolean isClientBadRequest() {
+        return this == CLIENT_BAD_REQUEST;
+    }
+
     public boolean isTerminal() {
         return this == COMPLETED || this == CANCELED
                 || this == CLIENT_BAD_REQUEST || this == SERVER_BAD_REQUEST

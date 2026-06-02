@@ -276,6 +276,92 @@ class PaymentFacadeServiceTest extends BaseTest {
     }
 
     @Test
+    void 이미_APPROVED된_paymentKey로_재호출하면_외부_토스_호출_없이_멱등_응답을_반환한다() {
+        saveApprovedPayment("payment_key");
+        ConfirmRequest request = createConfirmRequest();
+
+        PaymentResponse response = paymentFacadeService.confirmPayment(request);
+
+        assertThat(response.paymentKey()).isEqualTo("payment_key");
+        assertThat(response.method()).isEqualTo("카드");
+        verify(tosspaymentsClient, times(0)).confirmPayment(any(), any());
+    }
+
+    @Test
+    void 이미_COMPLETED된_paymentKey로_재호출하면_외부_토스_호출_없이_멱등_응답을_반환한다() {
+        TosspaymentsPayment payment = saveApprovedPayment("payment_key");
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
+        ConfirmRequest request = createConfirmRequest();
+
+        PaymentResponse response = paymentFacadeService.confirmPayment(request);
+
+        assertThat(response.paymentKey()).isEqualTo("payment_key");
+        verify(tosspaymentsClient, times(0)).confirmPayment(any(), any());
+    }
+
+    @Test
+    void CLIENT_BAD_REQUEST_상태에서_재호출하면_저장된_failureMessage로_BadRequestException을_던진다() {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("payment_key")
+                .build();
+        payment.updateState(PaymentState.CLIENT_BAD_REQUEST);
+        tosspaymentsPaymentRepository.save(payment);
+        TosspaymentsPaymentResult result = TosspaymentsPaymentResultFixtureBuilder.builder()
+                .tosspaymentsPayment(payment)
+                .failureCode("INVALID_CARD_NUMBER")
+                .failureMessage("카드 번호가 유효하지 않습니다.")
+                .build();
+        tosspaymentsPaymentResultRepository.save(result);
+        ConfirmRequest request = createConfirmRequest();
+
+        assertThatThrownBy(() -> paymentFacadeService.confirmPayment(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("카드 번호가 유효하지 않습니다.");
+        verify(tosspaymentsClient, times(0)).confirmPayment(any(), any());
+    }
+
+    @Test
+    void CLIENT_BAD_REQUEST_상태에_failure_정보가_없으면_기본_메시지로_BadRequestException을_던진다() {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("payment_key")
+                .build();
+        payment.updateState(PaymentState.CLIENT_BAD_REQUEST);
+        tosspaymentsPaymentRepository.save(payment);
+        ConfirmRequest request = createConfirmRequest();
+
+        assertThatThrownBy(() -> paymentFacadeService.confirmPayment(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage(PaymentServiceErrorMessage.INVALID_REQUEST.getMessage());
+    }
+
+    @Test
+    void NEED_CANCEL_상태에서_재호출하면_InternalServerErrorException을_던진다() {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("payment_key")
+                .build();
+        payment.updateState(PaymentState.NEED_CANCEL);
+        tosspaymentsPaymentRepository.save(payment);
+        ConfirmRequest request = createConfirmRequest();
+
+        assertThatThrownBy(() -> paymentFacadeService.confirmPayment(request))
+                .isInstanceOf(InternalServerErrorException.class);
+        verify(tosspaymentsClient, times(0)).confirmPayment(any(), any());
+    }
+
+    @Test
+    void 같은_요청을_연속_두_번_보내면_외부_토스_API는_한_번만_호출된다() {
+        ConfirmRequest request = createConfirmRequest();
+        when(tosspaymentsClient.confirmPayment(any(), any())).thenReturn(createSuccessResponse());
+
+        paymentFacadeService.confirmPayment(request);
+        PaymentResponse second = paymentFacadeService.confirmPayment(request);
+
+        assertThat(second.paymentKey()).isEqualTo("payment_key");
+        verify(tosspaymentsClient, times(1)).confirmPayment(any(), any());
+    }
+
+    @Test
     void 결제_취소에_성공한다() {
         TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
                 .paymentKey("payment_key")
@@ -391,6 +477,24 @@ class PaymentFacadeServiceTest extends BaseTest {
                 .build();
         payment.updateState(PaymentState.COMPLETED);
         tosspaymentsPaymentRepository.save(payment);
+    }
+
+    private TosspaymentsPayment saveApprovedPayment(String paymentKey) {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey(paymentKey)
+                .orderId("order_id")
+                .totalAmount(10000L)
+                .build();
+        payment.updateState(PaymentState.APPROVED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        TosspaymentsPaymentResult result = TosspaymentsPaymentResultFixtureBuilder.builder()
+                .tosspaymentsPayment(payment)
+                .method("카드")
+                .approvedAt(LocalDateTime.of(2025, 1, 1, 12, 0))
+                .build();
+        tosspaymentsPaymentResultRepository.save(result);
+        return payment;
     }
 
     private ConfirmRequest createConfirmRequest() {

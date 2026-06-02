@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.exception.PaymentServiceErrorMessage;
 import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentResultRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,5 +29,10 @@ public class TosspaymentsPaymentResultService {
                     log.error("결제 결과 조회 실패 - tosspaymentsPaymentId: {}", tosspaymentsPaymentId);
                     return new NotFoundException(PaymentServiceErrorMessage.PAYMENT_RESULT_NOT_FOUND.getMessage());
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TosspaymentsPaymentResult> findByTosspaymentsPaymentId(Long tosspaymentsPaymentId) {
+        return tosspaymentsPaymentResultRepository.findByTosspaymentsPaymentId(tosspaymentsPaymentId);
     }
 }

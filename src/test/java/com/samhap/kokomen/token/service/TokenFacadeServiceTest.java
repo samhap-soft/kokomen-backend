@@ -2,6 +2,10 @@ package com.samhap.kokomen.token.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -10,13 +14,18 @@ import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.payment.domain.PaymentType;
+import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
+import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.Token;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -202,6 +211,43 @@ class TokenFacadeServiceTest extends BaseTest {
         // then
         assertThat(result.totalPageCount()).isZero(); // 데이터 없음 → 0페이지
         assertThat(result.tokenPurchases()).isEmpty(); // 빈 리스트
+    }
+
+    @Test
+    void 같은_paymentKey로_두_번_구매해도_토큰은_한_번만_지급되고_구매_내역도_하나만_생성된다() {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId())
+                .type(TokenType.PAID)
+                .tokenCount(0)
+                .build());
+        when(tosspaymentsClient.confirmPayment(any(), any())).thenReturn(createSuccessTossResponse());
+
+        TokenPurchaseRequest request = new TokenPurchaseRequest(
+                "payment_key",
+                "order_id",
+                TokenProduct.TOKEN_10.getPrice(),
+                TokenProduct.TOKEN_10.getOrderName(),
+                TokenProduct.TOKEN_10.name()
+        );
+
+        tokenFacadeService.purchaseTokens(member.getId(), request);
+        tokenFacadeService.purchaseTokens(member.getId(), request);
+
+        Token paidToken = tokenRepository.findByMemberIdAndType(member.getId(), TokenType.PAID).get();
+        assertThat(paidToken.getTokenCount()).isEqualTo(TokenProduct.TOKEN_10.getTokenCount());
+        assertThat(tokenPurchaseRepository.findAll()).hasSize(1);
+        verify(tosspaymentsClient, times(1)).confirmPayment(any(), any());
+    }
+
+    private TosspaymentsPaymentResponse createSuccessTossResponse() {
+        return new TosspaymentsPaymentResponse(
+                "payment_key", PaymentType.NORMAL, "order_id", TokenProduct.TOKEN_10.getOrderName(),
+                "tvivarepublica", "KRW", "카드", TokenProduct.TOKEN_10.getPrice(), TokenProduct.TOKEN_10.getPrice(),
+                TosspaymentsStatus.DONE, LocalDateTime.now(), LocalDateTime.now(),
+                "transaction_key", 9091L, 909L, 0L, 0L, true,
+                "{}", null, null, null, "KR", null, null
+        );
     }
 
     @Test
