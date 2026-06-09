@@ -31,8 +31,7 @@ public class AnswerFeedbackBedrockClient {
 
     public String requestAnswerFeedback(QuestionAndAnswers questionAndAnswers, AnswerRank curAnswerRank) {
         ConverseResponse response = converseClient.converse(
-                InterviewBedrockRequestFactory.createAnswerFeedbackSystem(
-                        questionAndAnswers.getInterview().getInterviewType(), curAnswerRank),
+                InterviewBedrockRequestFactory.createAnswerFeedbackSystem(curAnswerRank),
                 InterviewBedrockRequestFactory.createAnswerFeedbackMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createAnswerFeedbackToolConfig(),
                 properties.answerFeedbackMaxTokens(),

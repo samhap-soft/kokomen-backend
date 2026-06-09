@@ -28,8 +28,7 @@ public class RootQuestionService {
     private final QuestionVoicePathResolver questionVoicePathResolver;
 
     public RootQuestion readRandomActiveRootQuestion() {
-        List<RootQuestion> rootQuestions =
-                rootQuestionRepository.findAllByStateAndCategoryNot(RootQuestionState.ACTIVE, Category.LIVE_CODING);
+        List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByState(RootQuestionState.ACTIVE);
         if (rootQuestions.isEmpty()) {
             throw new NotFoundException("활성화된 루트 질문이 존재하지 않습니다.");
         }

@@ -50,6 +50,4 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
     List<RootQuestion> findAllByCategoryAndState(Category category, RootQuestionState state);
 
     List<RootQuestion> findAllByState(RootQuestionState state);
-
-    List<RootQuestion> findAllByStateAndCategoryNot(RootQuestionState state, Category category);
 }

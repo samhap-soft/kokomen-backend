@@ -36,7 +36,7 @@ public class InterviewProceedBedrockClient {
 
     private BedrockConverseResponse requestProceed(QuestionAndAnswers questionAndAnswers) {
         ConverseResponse response = converseClient.converse(
-                InterviewBedrockRequestFactory.createProceedSystem(questionAndAnswers.getInterview().getInterviewType()),
+                InterviewBedrockRequestFactory.createProceedSystem(),
                 InterviewBedrockRequestFactory.createProceedMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createProceedToolConfig(),
                 properties.proceedMaxTokens(),
@@ -47,7 +47,7 @@ public class InterviewProceedBedrockClient {
 
     private BedrockConverseResponse requestEnd(QuestionAndAnswers questionAndAnswers) {
         ConverseResponse response = converseClient.converse(
-                InterviewBedrockRequestFactory.createEndSystem(questionAndAnswers.getInterview().getInterviewType()),
+                InterviewBedrockRequestFactory.createEndSystem(),
                 InterviewBedrockRequestFactory.createProceedMessages(questionAndAnswers),
                 InterviewBedrockRequestFactory.createEndToolConfig(),
                 properties.endMaxTokens(),

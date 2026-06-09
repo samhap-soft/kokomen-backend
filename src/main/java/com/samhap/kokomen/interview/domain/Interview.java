@@ -123,12 +123,6 @@ public class Interview extends BaseEntity {
                 InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null, null);
     }
 
-    public Interview(Member member, RootQuestion rootQuestion, Integer maxQuestionCount, InterviewMode interviewMode,
-                     InterviewType interviewType) {
-        this(null, member, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
-                interviewType, null, null, 0L, 0L, null, null);
-    }
-
     public Interview(Member member, GeneratedQuestion generatedQuestion, Integer maxQuestionCount,
                      InterviewMode interviewMode) {
         this(null, member, null, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
@@ -182,10 +176,6 @@ public class Interview extends BaseEntity {
 
     public boolean isResumeBased() {
         return this.interviewType == InterviewType.RESUME_BASED;
-    }
-
-    public boolean isLiveCoding() {
-        return this.interviewType == InterviewType.LIVE_CODING;
     }
 
     public String getDisplayCategory() {
