@@ -1,11 +1,9 @@
 package com.samhap.kokomen.interview.service.question;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
-import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
@@ -167,30 +165,5 @@ class RootQuestionServiceTest extends BaseTest {
         assertThat(rootQuestion)
                 .extracting(RootQuestion::getId)
                 .isEqualTo(operatingSystemRootQuestion2.getId());
-    }
-
-    @Test
-    void 라이브_코테_질문만_활성화된_경우_랜덤_루트_질문_선택에서_제외되어_예외가_발생한다() {
-        // given
-        rootQuestionRepository.save(
-                RootQuestionFixtureBuilder.builder().category(Category.LIVE_CODING).questionOrder(1).build());
-
-        // when & then
-        assertThatThrownBy(() -> rootQuestionService.readRandomActiveRootQuestion())
-                .isInstanceOf(NotFoundException.class);
-    }
-
-    @Test
-    void 랜덤_루트_질문_선택은_라이브_코테를_제외한_카테고리에서만_이루어진다() {
-        // given
-        RootQuestion csRootQuestion = rootQuestionRepository.save(
-                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).questionOrder(1).build());
-        rootQuestionRepository.save(
-                RootQuestionFixtureBuilder.builder().category(Category.LIVE_CODING).questionOrder(1).build());
-
-        // when & then
-        for (int i = 0; i < 20; i++) {
-            assertThat(rootQuestionService.readRandomActiveRootQuestion().getId()).isEqualTo(csRootQuestion.getId());
-        }
     }
 }

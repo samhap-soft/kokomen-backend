@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service;
 
-import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -9,7 +8,6 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -58,15 +56,13 @@ public class InterviewStartFacadeService {
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         InterviewMode interviewMode = interviewRequest.mode();
-        validateModeSupportedForCategory(interviewRequest.category(), interviewMode);
         int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
         Interview interview = interviewService.saveInterview(
-                new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode,
-                        resolveInterviewType(rootQuestion.getCategory())));
+                new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
@@ -103,15 +99,13 @@ public class InterviewStartFacadeService {
     public InterviewStartResponse startRootQuestionCustomInterview(RootQuestionCustomInterviewRequest request,
                                                                    MemberAuth memberAuth) {
         InterviewMode interviewMode = request.mode();
-        RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
-        validateModeSupportedForCategory(rootQuestion.getCategory(), interviewMode);
         int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
+        RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
         Interview interview = interviewService.saveInterview(
-                new Interview(member, rootQuestion, request.maxQuestionCount(), interviewMode,
-                        resolveInterviewType(rootQuestion.getCategory())));
+                new Interview(member, rootQuestion, request.maxQuestionCount(), interviewMode));
         Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
@@ -158,16 +152,6 @@ public class InterviewStartFacadeService {
     private void validateGenerationCompleted(ResumeQuestionGeneration generation) {
         if (!generation.isCompleted()) {
             throw new BadRequestException("질문 생성이 완료되지 않았습니다.");
-        }
-    }
-
-    private InterviewType resolveInterviewType(Category category) {
-        return category == Category.LIVE_CODING ? InterviewType.LIVE_CODING : InterviewType.CATEGORY_BASED;
-    }
-
-    private void validateModeSupportedForCategory(Category category, InterviewMode interviewMode) {
-        if (category == Category.LIVE_CODING && interviewMode == InterviewMode.VOICE) {
-            throw new BadRequestException("라이브 코테는 음성 모드를 지원하지 않습니다.");
         }
     }
 }
