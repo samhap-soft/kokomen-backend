@@ -57,6 +57,7 @@ public class InterviewStartFacadeService {
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         InterviewMode interviewMode = interviewRequest.mode();
+        validateLiveCodingNotVoice(interviewRequest, interviewMode);
         int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
@@ -125,6 +126,12 @@ public class InterviewStartFacadeService {
 
     private InterviewType resolveInterviewType(RootQuestion rootQuestion) {
         return rootQuestion.isCode() ? InterviewType.LIVE_CODING : InterviewType.CATEGORY_BASED;
+    }
+
+    private void validateLiveCodingNotVoice(InterviewRequest interviewRequest, InterviewMode interviewMode) {
+        if (interviewRequest.includeLiveCoding() && interviewMode == InterviewMode.VOICE) {
+            throw new BadRequestException("라이브 코테는 음성 모드를 지원하지 않습니다.");
+        }
     }
 
     private void validateModeSupportedForRootQuestion(RootQuestion rootQuestion, InterviewMode interviewMode) {

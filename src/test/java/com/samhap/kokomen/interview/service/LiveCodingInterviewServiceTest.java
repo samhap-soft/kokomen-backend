@@ -19,6 +19,7 @@ import com.samhap.kokomen.interview.domain.RootQuestionType;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.RootQuestionCustomInterviewRequest;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import com.samhap.kokomen.member.domain.Member;
@@ -110,6 +111,19 @@ class LiveCodingInterviewServiceTest extends BaseTest {
         Question question = questionRepository.findById(response.questionId()).orElseThrow();
         assertThat(question.getContent())
                 .isEqualTo("Two Sum\n\n정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환하세요.");
+    }
+
+    @Test
+    void 라이브_코테_포함_요청은_음성_모드와_함께_사용하면_선택_결과와_무관하게_예외가_발생한다() {
+        Member member = saveMemberWithTokens();
+        // 일반 질문만 존재해 랜덤 선택은 항상 성공하지만, 음성 + 라이브 코테 포함 조합 자체를 선제 차단해야 한다.
+        rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.ALGORITHM_DATA_STRUCTURE).build());
+        InterviewRequest request = new InterviewRequest(Category.ALGORITHM_DATA_STRUCTURE, 3, InterviewMode.VOICE, true);
+
+        assertThatThrownBy(() -> interviewStartFacadeService.startInterview(request, new MemberAuth(member.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("라이브 코테");
     }
 
     private Member saveMemberWithTokens() {

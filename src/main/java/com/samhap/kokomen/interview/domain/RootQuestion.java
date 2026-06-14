@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.domain;
 
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.domain.BaseEntity;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -59,6 +60,9 @@ public class RootQuestion extends BaseEntity {
     }
 
     public static RootQuestion forCode(Category category, String title, String content) {
+        if (title == null || title.isBlank()) {
+            throw new BadRequestException("코드 타입 루트 질문은 제목(title)이 필수입니다.");
+        }
         RootQuestion rootQuestion = new RootQuestion();
         rootQuestion.category = category;
         rootQuestion.state = RootQuestionState.ACTIVE;
@@ -69,7 +73,7 @@ public class RootQuestion extends BaseEntity {
     }
 
     public String createInitialQuestionContent() {
-        if (questionType == RootQuestionType.CODE) {
+        if (questionType == RootQuestionType.CODE && title != null && !title.isBlank()) {
             return title + "\n\n" + content;
         }
         return content;

@@ -1,8 +1,11 @@
 package com.samhap.kokomen.interview.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.samhap.kokomen.category.domain.Category;
+import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import org.junit.jupiter.api.Test;
 
 class RootQuestionTest {
@@ -25,5 +28,30 @@ class RootQuestionTest {
         String initialQuestionContent = rootQuestion.createInitialQuestionContent();
 
         assertThat(initialQuestionContent).isEqualTo("프로세스와 스레드 차이 설명해주세요.");
+    }
+
+    @Test
+    void 코드_타입_루트_질문을_제목_없이_생성하면_예외가_발생한다() {
+        assertThatThrownBy(() -> RootQuestion.forCode(Category.ALGORITHM_DATA_STRUCTURE, null, "본문"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void 코드_타입_루트_질문을_공백_제목으로_생성하면_예외가_발생한다() {
+        assertThatThrownBy(() -> RootQuestion.forCode(Category.ALGORITHM_DATA_STRUCTURE, "  ", "본문"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void 코드_타입이지만_제목이_없으면_초기_질문_내용은_본문만_반환한다() {
+        RootQuestion rootQuestion = RootQuestionFixtureBuilder.builder()
+                .questionType(RootQuestionType.CODE)
+                .title(null)
+                .content("본문만 존재")
+                .build();
+
+        String initialQuestionContent = rootQuestion.createInitialQuestionContent();
+
+        assertThat(initialQuestionContent).isEqualTo("본문만 존재");
     }
 }
