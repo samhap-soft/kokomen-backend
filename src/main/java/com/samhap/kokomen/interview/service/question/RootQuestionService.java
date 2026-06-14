@@ -6,6 +6,7 @@ import com.samhap.kokomen.global.service.S3Service;
 import com.samhap.kokomen.interview.tool.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.domain.RootQuestionType;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.external.dto.request.SupertoneRequest;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
@@ -28,7 +29,8 @@ public class RootQuestionService {
     private final QuestionVoicePathResolver questionVoicePathResolver;
 
     public RootQuestion readRandomActiveRootQuestion() {
-        List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByState(RootQuestionState.ACTIVE);
+        List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByStateAndQuestionType(
+                RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
         if (rootQuestions.isEmpty()) {
             throw new NotFoundException("활성화된 루트 질문이 존재하지 않습니다.");
         }
@@ -37,22 +39,35 @@ public class RootQuestionService {
 
     public RootQuestion findNextRootQuestionForMember(Member member, InterviewRequest interviewRequest) {
         Category category = interviewRequest.category();
+        if (interviewRequest.includeLiveCoding()) {
+            return readRandomActiveRootQuestionByCategory(category);
+        }
+
         Optional<RootQuestion> firstRootQuestionNotReceived =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(category, member.getId(),
-                        RootQuestionState.ACTIVE);
+                        RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
         if (firstRootQuestionNotReceived.isPresent()) {
             return firstRootQuestionNotReceived.get();
         }
 
         RootQuestion lastRootQuestionReceived =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(category, member.getId(),
-                                RootQuestionState.ACTIVE)
+                                RootQuestionState.ACTIVE, RootQuestionType.GENERAL)
                         .orElseThrow(() -> new NotFoundException("해당 카테고리의 질문을 찾을 수 없습니다."));
 
         int nextOrder = lastRootQuestionReceived.getQuestionOrder() + 1;
         return rootQuestionRepository.findRootQuestionByCategoryAndStateAndQuestionOrder(category,
                         RootQuestionState.ACTIVE, nextOrder)
                 .orElseGet(() -> findFirstRootQuestion(category));
+    }
+
+    private RootQuestion readRandomActiveRootQuestionByCategory(Category category) {
+        List<RootQuestion> rootQuestions = rootQuestionRepository.findAllByCategoryAndState(category,
+                RootQuestionState.ACTIVE);
+        if (rootQuestions.isEmpty()) {
+            throw new NotFoundException("해당 카테고리의 질문을 찾을 수 없습니다.");
+        }
+        return rootQuestions.get(ThreadLocalRandom.current().nextInt(rootQuestions.size()));
     }
 
     private RootQuestion findFirstRootQuestion(Category category) {

@@ -10,6 +10,12 @@ public record InterviewRequest(
         @NotNull(message = "max_question_count는 null일 수 없습니다.")
         Integer maxQuestionCount,
         @NotNull(message = "mode는 null일 수 없습니다.")
-        InterviewMode mode
+        InterviewMode mode,
+        Boolean includeLiveCoding
 ) {
+    public InterviewRequest {
+        if (includeLiveCoding == null) {
+            includeLiveCoding = false;
+        }
+    }
 }

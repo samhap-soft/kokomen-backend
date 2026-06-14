@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.repository;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.domain.RootQuestionType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,7 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
             SELECT r
             FROM RootQuestion r
             WHERE r.category = :category AND r.state = :rootQuestionState
+              AND r.questionType = :questionType
               AND NOT EXISTS (
                 SELECT 1
                 FROM Interview i
@@ -26,7 +28,8 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
     Optional<RootQuestion> findFirstRootQuestionMemberNotReceivedByCategory(
             @Param("category") Category category,
             @Param("memberId") Long memberId,
-            @Param("rootQuestionState") RootQuestionState rootQuestionState
+            @Param("rootQuestionState") RootQuestionState rootQuestionState,
+            @Param("questionType") RootQuestionType questionType
     );
 
     @Query(value = """
@@ -34,13 +37,15 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
             FROM Interview i JOIN RootQuestion r
             ON i.rootQuestion = r
             WHERE i.member.id = :memberId AND r.category = :category AND r.state = :rootQuestionState
+              AND r.questionType = :questionType
             ORDER BY i.id DESC
             LIMIT 1
             """)
     Optional<RootQuestion> findLastRootQuestionMemberReceivedByCategory(
             @Param("category") Category category,
             @Param("memberId") Long memberId,
-            @Param("rootQuestionState") RootQuestionState rootQuestionState
+            @Param("rootQuestionState") RootQuestionState rootQuestionState,
+            @Param("questionType") RootQuestionType questionType
     );
 
     Optional<RootQuestion> findRootQuestionByCategoryAndStateAndQuestionOrder(Category category,
@@ -50,4 +55,6 @@ public interface RootQuestionRepository extends JpaRepository<RootQuestion, Long
     List<RootQuestion> findAllByCategoryAndState(Category category, RootQuestionState state);
 
     List<RootQuestion> findAllByState(RootQuestionState state);
+
+    List<RootQuestion> findAllByStateAndQuestionType(RootQuestionState state, RootQuestionType questionType);
 }

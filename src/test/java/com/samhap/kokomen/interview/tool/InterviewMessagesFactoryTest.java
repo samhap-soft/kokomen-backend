@@ -7,6 +7,7 @@ import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.List;
@@ -98,5 +99,41 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages).isEqualTo(expectedGptMessages);
+    }
+
+    @Test
+    void 라이브_코테_진행을_위해_GPT에게_보낼_메시지는_코딩용_시스템_프롬프트를_사용한다() {
+        // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .interviewType(InterviewType.LIVE_CODING)
+                .build();
+        Question question = QuestionFixtureBuilder.builder().id(1L).content("코딩 문제").build();
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(List.of(question), List.of(), "제출한 코드",
+                question.getId(), interview);
+
+        // when
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptProceedMessages(questionAndAnswers);
+
+        // then
+        assertThat(gptMessages.get(0))
+                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.CODING_PROCEED_SYSTEM_MESSAGE));
+    }
+
+    @Test
+    void 라이브_코테_종료를_위해_GPT에게_보낼_메시지는_코딩용_시스템_프롬프트를_사용한다() {
+        // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .interviewType(InterviewType.LIVE_CODING)
+                .build();
+        Question question = QuestionFixtureBuilder.builder().id(1L).content("코딩 문제").build();
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(List.of(question), List.of(), "제출한 코드",
+                question.getId(), interview);
+
+        // when
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
+
+        // then
+        assertThat(gptMessages.get(0))
+                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE));
     }
 }

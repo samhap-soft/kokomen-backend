@@ -1,5 +1,7 @@
 package com.samhap.kokomen.interview.controller;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
@@ -10,7 +12,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.samhap.kokomen.category.domain.Category;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.restdocs.payload.JsonFieldType;
 
 class InterviewControllerV3Test extends BaseControllerTest {
 
@@ -44,56 +47,41 @@ class InterviewControllerV3Test extends BaseControllerTest {
         // given
         rootQuestionRepository.save(
                 RootQuestionFixtureBuilder.builder()
-                        .category(Category.OPERATING_SYSTEM)
+                        .category(Category.ALGORITHM_DATA_STRUCTURE)
                         .rootQuestionState(RootQuestionState.ACTIVE)
-                        .content("프로세스와 스레드 차이 설명해주세요.")
+                        .content("이진 탐색의 시간 복잡도를 설명해주세요.")
                         .questionOrder(1)
                         .build()
         );
         rootQuestionRepository.save(
-                RootQuestionFixtureBuilder.builder()
-                        .category(Category.OPERATING_SYSTEM)
-                        .rootQuestionState(RootQuestionState.ACTIVE)
-                        .content("뮤텍스와 세마포어의 차이를 설명해주세요.")
-                        .questionOrder(2)
-                        .build()
+                RootQuestion.forCode(Category.ALGORITHM_DATA_STRUCTURE, "Two Sum",
+                        "정수 배열 nums와 정수 target이 주어집니다. 두 원소를 더해 target이 되는 인덱스를 반환하세요.")
         );
-        rootQuestionRepository.save(
-                RootQuestionFixtureBuilder.builder()
-                        .category(Category.JAVA_SPRING)
-                        .rootQuestionState(RootQuestionState.ACTIVE)
-                        .content("스프링에서 AOP가 무엇인지 설명해주세요.")
-                        .questionOrder(1)
-                        .build()
-        );
-
-        String expectedJson = """
-                [
-                  {
-                    "id": 1,
-                    "content": "프로세스와 스레드 차이 설명해주세요."
-                  },
-                  {
-                    "id": 2,
-                    "content": "뮤텍스와 세마포어의 차이를 설명해주세요."
-                  }
-                ]
-                """;
 
         // when & then
         mockMvc.perform(get("/api/v3/interview/questions")
-                        .param("category", "OPERATING_SYSTEM")
+                        .param("category", "ALGORITHM_DATA_STRUCTURE")
                         .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(content().json(expectedJson))
+                // 일반 + 라이브 코테 문제가 모두 조회된다
+                .andExpect(jsonPath("$", hasSize(2)))
+                // 일반 질문은 GENERAL 타입 (title은 non_null 정책상 응답에서 생략됨)
+                .andExpect(jsonPath("$[?(@.question_type == 'GENERAL')]", hasSize(1)))
+                // 라이브 코테 문제는 CODE 타입으로 구분되고 제목이 전달된다
+                .andExpect(jsonPath("$[?(@.question_type == 'CODE')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.question_type == 'CODE')].title", contains("Two Sum")))
                 .andDo(document("interview-v3-getRootQuestions",
                         queryParameters(
                                 parameterWithName("category").description("질문 카테고리")
                         ),
                         responseFields(
                                 fieldWithPath("[].id").description("루트 질문 ID"),
-                                fieldWithPath("[].content").description("루트 질문 내용")
+                                fieldWithPath("[].question_type").description(
+                                        "질문 타입 (GENERAL: 일반 질문, CODE: 라이브 코딩테스트)"),
+                                fieldWithPath("[].title").type(JsonFieldType.STRING).optional()
+                                        .description("코딩테스트 문제 제목 (CODE 타입만 존재, GENERAL은 null)"),
+                                fieldWithPath("[].content").description("루트 질문 내용 (CODE 타입은 마크다운 문제 설명)")
                         )
                 ));
     }

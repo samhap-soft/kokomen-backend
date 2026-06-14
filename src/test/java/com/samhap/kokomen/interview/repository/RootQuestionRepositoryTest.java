@@ -9,6 +9,7 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.domain.RootQuestionType;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Optional;
@@ -44,7 +45,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -74,7 +75,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -98,7 +99,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -130,7 +131,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result).isEmpty();
@@ -154,7 +155,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -184,7 +185,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -220,7 +221,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -228,5 +229,53 @@ class RootQuestionRepositoryTest extends BaseTest {
                 .get()
                 .extracting(RootQuestion::getId)
                 .isEqualTo(operatingSystemRootQuestion2.getId());
+    }
+
+    @Test
+    void 사용자가_받지_않은_첫_루트_질문_조회는_questionType으로_필터링한다() {
+        // given
+        RootQuestion generalRootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM)
+                        .questionType(RootQuestionType.GENERAL).questionOrder(1).build());
+        RootQuestion codeRootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM)
+                        .questionType(RootQuestionType.CODE).title("Two Sum").build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+
+        // when
+        Optional<RootQuestion> generalResult = rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(
+                Category.OPERATING_SYSTEM, member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
+        Optional<RootQuestion> codeResult = rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(
+                Category.OPERATING_SYSTEM, member.getId(), RootQuestionState.ACTIVE, RootQuestionType.CODE);
+
+        // then
+        assertThat(generalResult).get().extracting(RootQuestion::getId).isEqualTo(generalRootQuestion.getId());
+        assertThat(codeResult).get().extracting(RootQuestion::getId).isEqualTo(codeRootQuestion.getId());
+    }
+
+    @Test
+    void 사용자가_본_마지막_루트_질문_조회는_questionType으로_필터링한다() {
+        // given
+        RootQuestion generalRootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM)
+                        .questionType(RootQuestionType.GENERAL).questionOrder(1).build());
+        RootQuestion codeRootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM)
+                        .questionType(RootQuestionType.CODE).title("Two Sum").build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(generalRootQuestion).member(member).build());
+        interviewRepository.save(
+                InterviewFixtureBuilder.builder().rootQuestion(codeRootQuestion).member(member).build());
+
+        // when
+        Optional<RootQuestion> generalResult = rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(
+                Category.OPERATING_SYSTEM, member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
+        Optional<RootQuestion> codeResult = rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(
+                Category.OPERATING_SYSTEM, member.getId(), RootQuestionState.ACTIVE, RootQuestionType.CODE);
+
+        // then
+        assertThat(generalResult).get().extracting(RootQuestion::getId).isEqualTo(generalRootQuestion.getId());
+        assertThat(codeResult).get().extracting(RootQuestion::getId).isEqualTo(codeRootQuestion.getId());
     }
 }

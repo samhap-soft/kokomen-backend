@@ -34,6 +34,25 @@ class AnswerRepositoryTest extends BaseTest {
     private RootQuestionRepository rootQuestionRepository;
 
     @Test
+    void 답변_내용은_2000자를_초과해_저장할_수_있다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        String longContent = "a".repeat(3000);
+
+        // when
+        Answer saved = answerRepository.saveAndFlush(
+                AnswerFixtureBuilder.builder().question(question).content(longContent).build());
+
+        // then
+        Answer found = answerRepository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getContent()).hasSize(3000);
+    }
+
+    @Test
     void 답변이_회원에게_속하면_true를_반환한다() {
         // given
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
