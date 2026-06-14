@@ -29,7 +29,7 @@ public class Question extends BaseEntity {
     @JoinColumn(name = "interview_id", nullable = false)
     private Interview interview;
 
-    @Column(name = "content", nullable = false, length = 1_000)
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     public Question(Interview interview, String content) {

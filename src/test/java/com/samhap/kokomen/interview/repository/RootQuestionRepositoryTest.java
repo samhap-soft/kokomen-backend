@@ -9,6 +9,7 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
+import com.samhap.kokomen.interview.domain.RootQuestionType;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.Optional;
@@ -44,7 +45,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -74,7 +75,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -98,7 +99,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -130,7 +131,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findFirstRootQuestionMemberNotReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result).isEmpty();
@@ -154,7 +155,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -184,7 +185,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)
@@ -220,7 +221,7 @@ class RootQuestionRepositoryTest extends BaseTest {
         // when
         Optional<RootQuestion> result =
                 rootQuestionRepository.findLastRootQuestionMemberReceivedByCategory(Category.OPERATING_SYSTEM,
-                        member.getId(), RootQuestionState.ACTIVE);
+                        member.getId(), RootQuestionState.ACTIVE, RootQuestionType.GENERAL);
 
         // then
         assertThat(result)

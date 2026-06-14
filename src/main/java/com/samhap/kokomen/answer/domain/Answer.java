@@ -37,7 +37,7 @@ public class Answer extends BaseEntity {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @Column(name = "content", nullable = false, length = 2_000)
+    @Column(name = "content", nullable = false, length = 10_000)
     private String content;
 
     @Column(name = "answer_rank", nullable = false)

@@ -61,7 +61,8 @@ class InterviewDocsTest extends DocsTest {
                         "/api/v1/interviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new InterviewRequest(Category.OPERATING_SYSTEM, maxQuestionCount, InterviewMode.TEXT)))
+                                new InterviewRequest(Category.OPERATING_SYSTEM, maxQuestionCount, InterviewMode.TEXT,
+                                        false)))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session))
                 .andDo(document("interview-startInterview-exception" + docsNo));

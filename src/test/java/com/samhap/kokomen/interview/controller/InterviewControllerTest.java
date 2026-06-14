@@ -56,6 +56,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.json.JsonCompareMode;
 
 class InterviewControllerTest extends BaseControllerTest {
@@ -99,7 +100,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                   "category": "OPERATING_SYSTEM",
                   "max_question_count": 3,
-                  "mode": "TEXT"
+                  "mode": "TEXT",
+                  "include_live_coding": false
                 }
                 """;
 
@@ -128,7 +130,9 @@ class InterviewControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)"),
+                                fieldWithPath("include_live_coding").type(JsonFieldType.BOOLEAN).optional()
+                                        .description("라이브 코테 포함 여부 (true면 해당 카테고리의 일반/코딩 질문 중 랜덤 출제, 미입력 시 false)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),
@@ -154,7 +158,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 {
                   "category": "OPERATING_SYSTEM",
                   "max_question_count": 3,
-                  "mode": "VOICE"
+                  "mode": "VOICE",
+                  "include_live_coding": false
                 }
                 """;
 
@@ -183,7 +188,9 @@ class InterviewControllerTest extends BaseControllerTest {
                         requestFields(
                                 fieldWithPath("category").description("인터뷰 카테고리"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
-                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)")
+                                fieldWithPath("mode").description("인터뷰 모드(음성, 텍스트)"),
+                                fieldWithPath("include_live_coding").type(JsonFieldType.BOOLEAN).optional()
+                                        .description("라이브 코테 포함 여부 (true면 해당 카테고리의 일반/코딩 질문 중 랜덤 출제, 미입력 시 false)")
                         ),
                         responseFields(
                                 fieldWithPath("interview_id").description("생성된 인터뷰 ID"),

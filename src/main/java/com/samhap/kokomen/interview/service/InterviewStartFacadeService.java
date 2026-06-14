@@ -8,6 +8,7 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.ResumeQuestionGeneration;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -61,9 +62,12 @@ public class InterviewStartFacadeService {
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
+        validateModeSupportedForRootQuestion(rootQuestion, interviewMode);
         Interview interview = interviewService.saveInterview(
-                new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode));
-        Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+                new Interview(member, rootQuestion, interviewRequest.maxQuestionCount(), interviewMode,
+                        resolveInterviewType(rootQuestion)));
+        Question question = questionService.saveQuestion(
+                new Question(interview, rootQuestion.createInitialQuestionContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
             return new InterviewStartVoiceModeResponse(interview, question,
@@ -83,7 +87,8 @@ public class InterviewStartFacadeService {
             RootQuestion rootQuestion = rootQuestionService.readRandomActiveRootQuestion();
             Interview interview = interviewService.saveInterview(Interview.forGuest(rootQuestion,
                     GUEST_INTERVIEW_MAX_QUESTION_COUNT, GUEST_INTERVIEW_MODE, clientIp));
-            Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+            Question question = questionService.saveQuestion(
+                    new Question(interview, rootQuestion.createInitialQuestionContent()));
             return new InterviewStartTextModeResponse(interview, question);
         } catch (RuntimeException e) {
             redisService.releaseLockSafely(lockKey, lockValue);
@@ -99,20 +104,33 @@ public class InterviewStartFacadeService {
     public InterviewStartResponse startRootQuestionCustomInterview(RootQuestionCustomInterviewRequest request,
                                                                    MemberAuth memberAuth) {
         InterviewMode interviewMode = request.mode();
+        RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
+        validateModeSupportedForRootQuestion(rootQuestion, interviewMode);
         int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount()
                 - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
-        RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
         Interview interview = interviewService.saveInterview(
-                new Interview(member, rootQuestion, request.maxQuestionCount(), interviewMode));
-        Question question = questionService.saveQuestion(new Question(interview, rootQuestion.getContent()));
+                new Interview(member, rootQuestion, request.maxQuestionCount(), interviewMode,
+                        resolveInterviewType(rootQuestion)));
+        Question question = questionService.saveQuestion(
+                new Question(interview, rootQuestion.createInitialQuestionContent()));
 
         if (interviewMode == InterviewMode.VOICE) {
             return new InterviewStartVoiceModeResponse(interview, question,
                     questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    private InterviewType resolveInterviewType(RootQuestion rootQuestion) {
+        return rootQuestion.isCode() ? InterviewType.LIVE_CODING : InterviewType.CATEGORY_BASED;
+    }
+
+    private void validateModeSupportedForRootQuestion(RootQuestion rootQuestion, InterviewMode interviewMode) {
+        if (rootQuestion.isCode() && interviewMode == InterviewMode.VOICE) {
+            throw new BadRequestException("라이브 코테는 음성 모드를 지원하지 않습니다.");
+        }
     }
 
     @Transactional

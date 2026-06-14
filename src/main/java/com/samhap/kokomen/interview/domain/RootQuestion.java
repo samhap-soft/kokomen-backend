@@ -38,7 +38,14 @@ public class RootQuestion extends BaseEntity {
     @Column(name = "state", nullable = false)
     private RootQuestionState state;
 
-    @Column(name = "content", nullable = false, length = 1_000)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "question_type", nullable = false)
+    private RootQuestionType questionType;
+
+    @Column(name = "title", length = 255)
+    private String title;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "question_order")
@@ -47,6 +54,28 @@ public class RootQuestion extends BaseEntity {
     public RootQuestion(Category category, String content) {
         this.category = category;
         this.state = RootQuestionState.ACTIVE;
+        this.questionType = RootQuestionType.GENERAL;
         this.content = content;
+    }
+
+    public static RootQuestion forCode(Category category, String title, String content) {
+        RootQuestion rootQuestion = new RootQuestion();
+        rootQuestion.category = category;
+        rootQuestion.state = RootQuestionState.ACTIVE;
+        rootQuestion.questionType = RootQuestionType.CODE;
+        rootQuestion.title = title;
+        rootQuestion.content = content;
+        return rootQuestion;
+    }
+
+    public String createInitialQuestionContent() {
+        if (questionType == RootQuestionType.CODE) {
+            return title + "\n\n" + content;
+        }
+        return content;
+    }
+
+    public boolean isCode() {
+        return this.questionType == RootQuestionType.CODE;
     }
 }
