@@ -14,7 +14,8 @@ public record InterviewCheckTextModeResponse(
         String curQuestion,
         Integer curQuestionCount,
         Integer maxQuestionCount,
-        Boolean isDemo
+        Boolean isDemo,
+        Boolean includeLiveCoding
 ) implements InterviewCheckResponse {
 
     public static InterviewCheckResponse of(Interview interview, List<Question> questions, List<Answer> answers) {
@@ -34,7 +35,8 @@ public record InterviewCheckTextModeResponse(
                 curQuestion.getContent(),
                 questions.size(),
                 interview.getMaxQuestionCount(),
-                interview.isGuestInterview()
+                interview.isGuestInterview(),
+                interview.isLiveCoding()
         );
     }
 }
