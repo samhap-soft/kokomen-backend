@@ -14,7 +14,8 @@ public interface InterviewCheckResponse {
                 createPrevQuestionAndAnswers(answers),
                 questions.size(),
                 interview.getMaxQuestionCount(),
-                interview.isGuestInterview()
+                interview.isGuestInterview(),
+                interview.isLiveCoding()
         );
     }
 

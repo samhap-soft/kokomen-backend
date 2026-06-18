@@ -22,6 +22,7 @@ public record InterviewResultResponse(
         Integer userCurScore,
         Integer userPrevScore,
         InterviewMode interviewMode,
+        Boolean includeLiveCoding,
         List<RootQuestionReferenceAnswer> rootQuestionReferenceAnswers
 ) {
 
@@ -44,6 +45,7 @@ public record InterviewResultResponse(
                 member.getScore(),
                 member.getScore() - interview.getTotalScore(),
                 interview.getInterviewMode(),
+                interview.isLiveCoding(),
                 rootQuestionReferenceAnswers
         );
     }
@@ -66,6 +68,7 @@ public record InterviewResultResponse(
                 null,
                 null,
                 interview.getInterviewMode(),
+                interview.isLiveCoding(),
                 rootQuestionReferenceAnswers
         );
     }
@@ -98,6 +101,7 @@ public record InterviewResultResponse(
                 null,
                 null,
                 interview.getInterviewMode(),
+                interview.isLiveCoding(),
                 null
         );
     }
@@ -128,6 +132,7 @@ public record InterviewResultResponse(
                 null,
                 null,
                 interview.getInterviewMode(),
+                interview.isLiveCoding(),
                 null
         );
     }

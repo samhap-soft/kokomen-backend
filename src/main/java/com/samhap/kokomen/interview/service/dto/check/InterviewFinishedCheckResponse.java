@@ -9,6 +9,7 @@ public record InterviewFinishedCheckResponse(
         List<QuestionAndAnswerResponse> prevQuestionsAndAnswers,
         Integer curQuestionCount,
         Integer maxQuestionCount,
-        Boolean isDemo
+        Boolean isDemo,
+        Boolean includeLiveCoding
 ) implements InterviewCheckResponse {
 }

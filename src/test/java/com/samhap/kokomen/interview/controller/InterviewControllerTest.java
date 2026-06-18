@@ -249,6 +249,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"is_demo": false,
+                	"include_live_coding": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -283,6 +284,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -317,6 +319,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"is_demo": false,
+                	"include_live_coding": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -352,6 +355,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -391,6 +395,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"cur_question_count": %d,
                 	"max_question_count": %d,
                 	"is_demo": false,
+                	"include_live_coding": false,
                 	"prev_questions_and_answers": [
                 		{
                 			"question_id": %d,
@@ -437,6 +442,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("cur_question_count").description("현재까지 받은 질문 개수"),
                                 fieldWithPath("max_question_count").description("최대 질문 개수"),
                                 fieldWithPath("is_demo").description("비회원 체험 면접 여부"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부"),
                                 fieldWithPath("prev_questions_and_answers").description("이전 질문과 답변 목록"),
                                 fieldWithPath("prev_questions_and_answers[].question_id").description("이전 질문 ID"),
                                 fieldWithPath("prev_questions_and_answers[].question").description("이전 질문 내용"),
@@ -1008,6 +1014,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"user_cur_score": 70,
                 	"user_prev_score": 100,
                 	"interview_mode": "TEXT",
+                	"include_live_coding": false,
                 	"root_question_reference_answers": [
                 		{
                 			"nickname": "김철수",
@@ -1063,6 +1070,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("user_cur_score").description("현재 사용자 점수"),
                                 fieldWithPath("user_prev_score").description("이전 사용자 점수"),
                                 fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부"),
                                 fieldWithPath("root_question_reference_answers").description(
                                         "루트 질문에 대한 다른 사용자의 우수 답변 목록 (최대 3개)"),
                                 fieldWithPath("root_question_reference_answers[].nickname").description("답변자 닉네임"),
@@ -1167,7 +1175,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	"interviewee_nickname": "오상훈",
                 	"total_member_count": 2,
                 	"interviewee_rank": 1,
-                	"interview_mode": "TEXT"
+                	"interview_mode": "TEXT",
+                	"include_live_coding": false
                 }
                 """;
 
@@ -1202,7 +1211,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
                                 fieldWithPath("interviewee_rank").description("면접자 등수"),
-                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부")
                         )
                 ));
     }
@@ -1290,7 +1300,8 @@ class InterviewControllerTest extends BaseControllerTest {
                     "interviewee_nickname": "오상훈",
                 	"total_member_count": 1,
                 	"interviewee_rank": 1,
-                	"interview_mode": "TEXT"
+                	"interview_mode": "TEXT",
+                	"include_live_coding": false
                 }
                 """;
 
@@ -1323,7 +1334,8 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("interviewee_nickname").description("면접자 닉네임"),
                                 fieldWithPath("total_member_count").description("전체 회원 수"),
                                 fieldWithPath("interviewee_rank").description("면접자 등수"),
-                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)")
+                                fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부")
                         )
                 ));
     }
@@ -1468,7 +1480,8 @@ class InterviewControllerTest extends BaseControllerTest {
                 	],
                 	"total_feedback": "기본 개념을 잘 정리해보세요.",
                 	"total_score": -10,
-                	"interview_mode": "TEXT"
+                	"interview_mode": "TEXT",
+                	"include_live_coding": false
                 }
                 """;
 
@@ -1502,6 +1515,7 @@ class InterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("total_feedback").description("인터뷰 총 피드백"),
                                 fieldWithPath("total_score").description("인터뷰 총 점수"),
                                 fieldWithPath("interview_mode").description("인터뷰 모드 (TEXT, VOICE)"),
+                                fieldWithPath("include_live_coding").description("라이브 코테 면접 여부"),
                                 fieldWithPath("root_question_reference_answers").description(
                                         "루트 질문에 대한 다른 사용자의 우수 답변 목록 (최대 3개)")
                         )
