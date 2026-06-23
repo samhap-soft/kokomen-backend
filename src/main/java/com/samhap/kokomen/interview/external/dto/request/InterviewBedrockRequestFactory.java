@@ -95,9 +95,21 @@ public final class InterviewBedrockRequestFactory {
     }
 
     public static ToolConfiguration createEndToolConfig() {
-        Document overallSummarySchema = Document.fromMap(Map.of(
+        Document schema = Document.fromMap(Map.of(
                 "type", Document.fromString("object"),
                 "properties", Document.fromMap(Map.of(
+                        "reasoning", Document.fromMap(Map.of(
+                                "type", Document.fromString("string"),
+                                "description", Document.fromString(
+                                        "마지막 답변 평가 근거와 전체 면접 종합 평가 근거를 정리한 사고 과정. "
+                                                + "last_answer_analysis와 strengths/improvements/learning_direction 정리를 포함."))),
+                        "rank", Document.fromMap(Map.of(
+                                "type", Document.fromString("string"),
+                                "enum", Document.fromList(rankEnumDocs()),
+                                "description", Document.fromString("가장 최근 답변에 대한 평가 등급. A, B, C, D, F 중 한 글자."))),
+                        "feedback", Document.fromMap(Map.of(
+                                "type", Document.fromString("string"),
+                                "description", Document.fromString("가장 최근 답변에 대한 3-4문장 피드백. 존댓말, 점수/랭크 미언급."))),
                         "strengths", Document.fromMap(Map.of(
                                 "type", Document.fromString("string"),
                                 "description", Document.fromString("면접자의 강점 1-2문장. 존댓말, 점수/랭크 미언급."))),
@@ -108,33 +120,14 @@ public final class InterviewBedrockRequestFactory {
                                 "type", Document.fromString("string"),
                                 "description", Document.fromString("향후 학습 방향 1-2문장. 존댓말, 점수/랭크 미언급."))))),
                 "required", Document.fromList(List.of(
+                        Document.fromString("reasoning"),
+                        Document.fromString("rank"),
+                        Document.fromString("feedback"),
                         Document.fromString("strengths"),
                         Document.fromString("improvements"),
                         Document.fromString("learning_direction")))));
 
-        Document schema = Document.fromMap(Map.of(
-                "type", Document.fromString("object"),
-                "properties", Document.fromMap(Map.of(
-                        "reasoning", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString(
-                                        "마지막 답변 평가 근거와 전체 면접 종합 평가 근거를 정리한 사고 과정. "
-                                                + "last_answer_analysis와 overall_summary를 포함."))),
-                        "rank", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "enum", Document.fromList(rankEnumDocs()),
-                                "description", Document.fromString("가장 최근 답변에 대한 평가 등급. A, B, C, D, F 중 한 글자."))),
-                        "feedback", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString("가장 최근 답변에 대한 3-4문장 피드백. 존댓말, 점수/랭크 미언급."))),
-                        "overall_summary", overallSummarySchema)),
-                "required", Document.fromList(List.of(
-                        Document.fromString("reasoning"),
-                        Document.fromString("rank"),
-                        Document.fromString("feedback"),
-                        Document.fromString("overall_summary")))));
-
-        return buildToolConfig(END_TOOL_NAME, "면접 종료 시점의 rank와 마지막 답변 피드백·전체 종합 평가(서브필드)를 함께 제출한다.", schema);
+        return buildToolConfig(END_TOOL_NAME, "면접 종료 시점의 rank와 마지막 답변 피드백·전체 종합 평가를 함께 제출한다.", schema);
     }
 
     public static ToolConfiguration createAnswerFeedbackToolConfig() {

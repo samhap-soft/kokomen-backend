@@ -80,11 +80,9 @@ public class GptResponseFixtureBuilder {
                   "reasoning": "%s",
                   "rank": "%s",
                   "feedback": "%s",
-                  "overall_summary": {
-                    "strengths": "%s",
-                    "improvements": "%s",
-                    "learning_direction": "%s"
-                  }
+                  "strengths": "%s",
+                  "improvements": "%s",
+                  "learning_direction": "%s"
                 }
                 """.formatted(
                 reasoning != null ? reasoning : "마지막 답변 평가 근거와 전체 면접 종합 평가 근거입니다.",

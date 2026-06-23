@@ -44,7 +44,7 @@ public record GptRequest(
         return new GptFunctionParameters(
                 "object",
                 createEndProperties(),
-                List.of("reasoning", "rank", "feedback", "overall_summary")
+                List.of("reasoning", "rank", "feedback", "strengths", "improvements", "learning_direction")
         );
     }
 
@@ -62,21 +62,9 @@ public record GptRequest(
                 "reasoning", new FunctionParamProperty("string"),
                 "rank", new FunctionParamProperty("string"),
                 "feedback", new FunctionParamProperty("string"),
-                "overall_summary", Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "strengths", Map.of(
-                                        "type", "string",
-                                        "description", "면접자의 강점 1-2문장. 존댓말, 점수/랭크 미언급"),
-                                "improvements", Map.of(
-                                        "type", "string",
-                                        "description", "보완·개선 영역 1-2문장. 존댓말, 점수/랭크 미언급"),
-                                "learning_direction", Map.of(
-                                        "type", "string",
-                                        "description", "향후 학습 방향 1-2문장. 존댓말, 점수/랭크 미언급")
-                        ),
-                        "required", List.of("strengths", "improvements", "learning_direction")
-                )
+                "strengths", new FunctionParamProperty("string"),
+                "improvements", new FunctionParamProperty("string"),
+                "learning_direction", new FunctionParamProperty("string")
         );
     }
 

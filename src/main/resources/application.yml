@@ -49,7 +49,7 @@ aws:
   bedrock:
     model-id: apac.anthropic.claude-sonnet-4-20250514-v1:0
     proceed-max-tokens: 2048
-    end-max-tokens: 2048
+    end-max-tokens: 4096
     answer-feedback-max-tokens: 1024
     resume-question-max-tokens: 2048
     resume-evaluation-max-tokens: 10000
