@@ -136,4 +136,40 @@ class InterviewMessagesFactoryTest {
         assertThat(gptMessages.get(0))
                 .isEqualTo(new GptMessage("system", GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE));
     }
+
+    @Test
+    void 인성_면접_진행을_위해_GPT에게_보낼_메시지는_인성용_시스템_프롬프트를_사용한다() {
+        // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .interviewType(InterviewType.PERSONALITY)
+                .build();
+        Question question = QuestionFixtureBuilder.builder().id(1L).content("인성 질문").build();
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(List.of(question), List.of(), "제 경험은",
+                question.getId(), interview);
+
+        // when
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptProceedMessages(questionAndAnswers);
+
+        // then
+        assertThat(gptMessages.get(0))
+                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.PERSONALITY_PROCEED_SYSTEM_MESSAGE));
+    }
+
+    @Test
+    void 인성_면접_종료를_위해_GPT에게_보낼_메시지는_인성용_시스템_프롬프트를_사용한다() {
+        // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .interviewType(InterviewType.PERSONALITY)
+                .build();
+        Question question = QuestionFixtureBuilder.builder().id(1L).content("인성 질문").build();
+        QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(List.of(question), List.of(), "제 경험은",
+                question.getId(), interview);
+
+        // when
+        List<GptMessage> gptMessages = InterviewMessagesFactory.createGptEndMessages(questionAndAnswers);
+
+        // then
+        assertThat(gptMessages.get(0))
+                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.PERSONALITY_END_SYSTEM_MESSAGE));
+    }
 }

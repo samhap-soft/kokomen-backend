@@ -82,4 +82,8 @@ public class RootQuestion extends BaseEntity {
     public boolean isCode() {
         return this.questionType == RootQuestionType.CODE;
     }
+
+    public boolean isPersonality() {
+        return this.category == Category.PERSONALITY;
+    }
 }

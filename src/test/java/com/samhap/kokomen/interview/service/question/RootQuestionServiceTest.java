@@ -210,6 +210,32 @@ class RootQuestionServiceTest extends BaseTest {
     }
 
     @Test
+    void 게스트_랜덤_선택은_인성_질문을_제외하고_일반_질문을_반환한다() {
+        // given
+        RootQuestion generalRootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.OPERATING_SYSTEM).questionOrder(1).build());
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.PERSONALITY).questionType(RootQuestionType.GENERAL).questionOrder(1).build());
+
+        // when
+        RootQuestion rootQuestion = rootQuestionService.readRandomActiveRootQuestion();
+
+        // then
+        assertThat(rootQuestion.getId()).isEqualTo(generalRootQuestion.getId());
+    }
+
+    @Test
+    void 게스트_랜덤_선택은_활성_인성_질문만_존재하면_예외를_던진다() {
+        // given
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.PERSONALITY).questionType(RootQuestionType.GENERAL).questionOrder(1).build());
+
+        // when & then
+        assertThatThrownBy(() -> rootQuestionService.readRandomActiveRootQuestion())
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
     void 회원이_라이브_코테_미포함이면_코드_질문은_선택되지_않는다() {
         // given
         InterviewRequest interviewRequest = new InterviewRequest(Category.ALGORITHM_DATA_STRUCTURE, 3,

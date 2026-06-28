@@ -1,7 +1,6 @@
 package com.samhap.kokomen.interview.tool;
 
 import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.request.GptMessage;
 import java.util.ArrayList;
@@ -13,9 +12,11 @@ public final class InterviewMessagesFactory {
     }
 
     public static List<GptMessage> createGptProceedMessages(QuestionAndAnswers questionAndAnswers) {
-        String systemMessage = isLiveCoding(questionAndAnswers)
-                ? GptSystemMessageConstant.CODING_PROCEED_SYSTEM_MESSAGE
-                : GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE;
+        String systemMessage = switch (questionAndAnswers.getInterview().getInterviewType()) {
+            case LIVE_CODING -> GptSystemMessageConstant.CODING_PROCEED_SYSTEM_MESSAGE;
+            case PERSONALITY -> GptSystemMessageConstant.PERSONALITY_PROCEED_SYSTEM_MESSAGE;
+            case CATEGORY_BASED, RESUME_BASED -> GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE;
+        };
         List<GptMessage> gptMessages = new ArrayList<>();
         gptMessages.add(new GptMessage("system", systemMessage));
         addGptMessages(questionAndAnswers, gptMessages);
@@ -24,18 +25,16 @@ public final class InterviewMessagesFactory {
     }
 
     public static List<GptMessage> createGptEndMessages(QuestionAndAnswers questionAndAnswers) {
-        String systemMessage = isLiveCoding(questionAndAnswers)
-                ? GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE
-                : GptSystemMessageConstant.END_SYSTEM_MESSAGE;
+        String systemMessage = switch (questionAndAnswers.getInterview().getInterviewType()) {
+            case LIVE_CODING -> GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE;
+            case PERSONALITY -> GptSystemMessageConstant.PERSONALITY_END_SYSTEM_MESSAGE;
+            case CATEGORY_BASED, RESUME_BASED -> GptSystemMessageConstant.END_SYSTEM_MESSAGE;
+        };
         List<GptMessage> gptMessages = new ArrayList<>();
         gptMessages.add(new GptMessage("system", systemMessage));
         addGptMessages(questionAndAnswers, gptMessages);
 
         return gptMessages;
-    }
-
-    private static boolean isLiveCoding(QuestionAndAnswers questionAndAnswers) {
-        return questionAndAnswers.getInterview().getInterviewType() == InterviewType.LIVE_CODING;
     }
 
     private static void addGptMessages(QuestionAndAnswers questionAndAnswers, List<GptMessage> gptMessages) {

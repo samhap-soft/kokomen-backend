@@ -71,6 +71,12 @@ class CategoryControllerTest extends BaseControllerTest {
                     "title": "%s",
                     "description": "%s",
                     "image_url": "%s"
+                  },
+                  {
+                    "key": "%s",
+                    "title": "%s",
+                    "description": "%s",
+                    "image_url": "%s"
                   }
                 ]
                 """.formatted(
@@ -91,7 +97,9 @@ class CategoryControllerTest extends BaseControllerTest {
                 Category.FRONTEND.name(), Category.FRONTEND.getTitle(),
                 Category.FRONTEND.getDescription(), Category.FRONTEND.getImageUrl(),
                 Category.JAVASCRIPT_TYPESCRIPT.name(), Category.JAVASCRIPT_TYPESCRIPT.getTitle(),
-                Category.JAVASCRIPT_TYPESCRIPT.getDescription(), Category.JAVASCRIPT_TYPESCRIPT.getImageUrl());
+                Category.JAVASCRIPT_TYPESCRIPT.getDescription(), Category.JAVASCRIPT_TYPESCRIPT.getImageUrl(),
+                Category.PERSONALITY.name(), Category.PERSONALITY.getTitle(),
+                Category.PERSONALITY.getDescription(), Category.PERSONALITY.getImageUrl());
 
         // when & then
         mockMvc.perform(get("/api/v1/categories"))
