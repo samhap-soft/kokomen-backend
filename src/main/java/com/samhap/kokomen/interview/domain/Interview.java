@@ -188,6 +188,10 @@ public class Interview extends BaseEntity {
         return this.interviewType == InterviewType.LIVE_CODING;
     }
 
+    public boolean isPersonality() {
+        return this.interviewType == InterviewType.PERSONALITY;
+    }
+
     public String getDisplayCategory() {
         if (isResumeBased()) {
             return RESUME_BASED_DISPLAY_CATEGORY;

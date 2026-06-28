@@ -1,0 +1,13 @@
+ALTER TABLE root_question
+    MODIFY COLUMN category ENUM(
+    'ALGORITHM_DATA_STRUCTURE',
+    'DATABASE',
+    'NETWORK',
+    'OPERATING_SYSTEM',
+    'JAVA_SPRING',
+    'INFRA',
+    'FRONTEND',
+    'REACT',
+    'JAVASCRIPT_TYPESCRIPT',
+    'PERSONALITY'
+    ) NOT NULL;

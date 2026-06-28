@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
@@ -29,6 +30,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
@@ -111,6 +113,47 @@ class InterviewControllerV2Test extends BaseControllerTest {
                                 fieldWithPath("mode").description("인터뷰 모드(TEXT, VOICE)")
                         )
                 ));
+    }
+
+    @Test
+    void 인성_면접도_V2_진행_파이프라인을_예외_없이_통과한다() throws Exception {
+        // 프롬프트 문자열 선택 자체는 팩토리 단위 테스트(InterviewBedrockRequestFactoryTest, InterviewMessagesFactoryTest)에서
+        // 검증한다(여기서는 LLM 클라이언트가 mock 이므로 프롬프트가 호출되지 않는다).
+        // 이 테스트는 PERSONALITY 인터뷰가 V2 진행 파이프라인(검증/토큰/답변 저장/비동기 디스패치)을 통과하는지 확인한다.
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().category(Category.PERSONALITY).build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion)
+                        .interviewType(InterviewType.PERSONALITY).build());
+        Question question1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content(rootQuestion.getContent()).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        Question question2 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+
+        String requestJson = """
+                {
+                  "answer": "팀 프로젝트에서 일정 조율을 맡아 충돌을 줄였던 경험이 있습니다.",
+                  "mode": "TEXT"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v2/interviews/{interview_id}/questions/{cur_question_id}/answers", interview.getId(),
+                        question2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isNoContent());
     }
 
     @Test

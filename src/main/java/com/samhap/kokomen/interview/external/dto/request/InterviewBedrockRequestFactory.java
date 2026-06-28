@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.tool.CodingInterviewBedrockSystemMessageConstant;
 import com.samhap.kokomen.interview.tool.InterviewBedrockSystemMessageConstant;
+import com.samhap.kokomen.interview.tool.PersonalityInterviewBedrockSystemMessageConstant;
 import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,18 +32,25 @@ public final class InterviewBedrockRequestFactory {
     }
 
     public static List<SystemContentBlock> createProceedSystem(InterviewType interviewType) {
-        String prompt = interviewType == InterviewType.LIVE_CODING
-                ? CodingInterviewBedrockSystemMessageConstant.CODING_IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT
-                : InterviewBedrockSystemMessageConstant.IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT;
+        String prompt = switch (interviewType) {
+            case LIVE_CODING ->
+                    CodingInterviewBedrockSystemMessageConstant.CODING_IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT;
+            case PERSONALITY ->
+                    PersonalityInterviewBedrockSystemMessageConstant.PERSONALITY_IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT;
+            case CATEGORY_BASED, RESUME_BASED ->
+                    InterviewBedrockSystemMessageConstant.IN_PROGRESS_RANK_AND_NEXT_QUESTION_PROMPT;
+        };
         return List.of(SystemContentBlock.builder()
                 .text(prompt)
                 .build());
     }
 
     public static List<SystemContentBlock> createEndSystem(InterviewType interviewType) {
-        String prompt = interviewType == InterviewType.LIVE_CODING
-                ? CodingInterviewBedrockSystemMessageConstant.CODING_END_PROMPT
-                : InterviewBedrockSystemMessageConstant.END_PROMPT;
+        String prompt = switch (interviewType) {
+            case LIVE_CODING -> CodingInterviewBedrockSystemMessageConstant.CODING_END_PROMPT;
+            case PERSONALITY -> PersonalityInterviewBedrockSystemMessageConstant.PERSONALITY_END_PROMPT;
+            case CATEGORY_BASED, RESUME_BASED -> InterviewBedrockSystemMessageConstant.END_PROMPT;
+        };
         return List.of(SystemContentBlock.builder()
                 .text(prompt)
                 .build());
@@ -50,9 +58,11 @@ public final class InterviewBedrockRequestFactory {
 
     public static List<SystemContentBlock> createAnswerFeedbackSystem(InterviewType interviewType,
                                                                       AnswerRank curAnswerRank) {
-        String prompt = interviewType == InterviewType.LIVE_CODING
-                ? CodingInterviewBedrockSystemMessageConstant.CODING_ANSWER_FEEDBACK_PROMPT
-                : InterviewBedrockSystemMessageConstant.ANSWER_FEEDBACK_PROMPT;
+        String prompt = switch (interviewType) {
+            case LIVE_CODING -> CodingInterviewBedrockSystemMessageConstant.CODING_ANSWER_FEEDBACK_PROMPT;
+            case PERSONALITY -> PersonalityInterviewBedrockSystemMessageConstant.PERSONALITY_ANSWER_FEEDBACK_PROMPT;
+            case CATEGORY_BASED, RESUME_BASED -> InterviewBedrockSystemMessageConstant.ANSWER_FEEDBACK_PROMPT;
+        };
         return List.of(
                 SystemContentBlock.builder()
                         .text(prompt)

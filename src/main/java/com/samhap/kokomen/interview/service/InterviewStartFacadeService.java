@@ -125,7 +125,13 @@ public class InterviewStartFacadeService {
     }
 
     private InterviewType resolveInterviewType(RootQuestion rootQuestion) {
-        return rootQuestion.isCode() ? InterviewType.LIVE_CODING : InterviewType.CATEGORY_BASED;
+        if (rootQuestion.isCode()) {
+            return InterviewType.LIVE_CODING;
+        }
+        if (rootQuestion.isPersonality()) {
+            return InterviewType.PERSONALITY;
+        }
+        return InterviewType.CATEGORY_BASED;
     }
 
     private void validateLiveCodingNotVoice(InterviewRequest interviewRequest, InterviewMode interviewMode) {

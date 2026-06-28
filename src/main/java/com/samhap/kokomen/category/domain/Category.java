@@ -71,7 +71,14 @@ public enum Category {
                     자바스크립트는 웹 브라우저와 서버에서 실행되는 동적 프로그래밍 언어로, 현대 웹 개발의 핵심 기술입니다.
                     주로 자바스크립트의 언어에 대한 이해도를 묻는 질문과 자바스크립트를 동작시키는 엔진, 추가적으로 정적 분석을 위한 타입스크립트에 대한 질문 또한 일부 출제됩니다.
                     """,
-            "kokomen-javascript-typescript.png");
+            "kokomen-javascript-typescript.png"),
+    PERSONALITY("인성 면접",
+            """
+                    인성 면접은 지원자의 가치관, 협업 태도, 문제 해결 방식 등 소프트 스킬을 평가하는 면접입니다.
+                    실제 경험을 바탕으로 한 행동 기반(STAR) 질문이 출제되며, 상황·본인의 역할·행동·결과를 구체적으로 설명하는 것이 중요합니다.
+                    기술 역량을 넘어 팀워크, 소통, 자기 성찰, 직무 적합성을 보여줄 수 있는지를 중점적으로 살펴봅니다.
+                    """,
+            "kokomen-personality.png");
 
     private static final String BASE_URL = AwsConstant.CLOUD_FRONT_DOMAIN_URL + "category-image/";
 
