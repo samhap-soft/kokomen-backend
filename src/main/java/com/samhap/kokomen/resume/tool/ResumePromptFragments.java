@@ -105,7 +105,7 @@ public final class ResumePromptFragments {
             - 어느 경우든 <job_career>에 적힌 연차 수준에 맞는 기대치를 기준으로 삼는다(신입에게 시니어 기준을, 시니어에게 신입 기준을 적용하지 않는다).
             </job_alignment>
 
-            - reason과 improvements는 각각 2-6개 항목의 배열이며, 각 항목은 서로 다른 지적을 담은 정보 밀도 높은 1-2문장이다(여러 지적을 한 항목에 뭉쳐 넣지 않는다).
+            - reason과 improvements는 각각 2-6개 항목의 배열이며, 각 항목은 서로 다른 내용을 담은 정보 밀도 높은 1-2문장이다(여러 내용을 한 항목에 뭉쳐 넣지 않는다).
             </evaluation_instruction>
             """;
 

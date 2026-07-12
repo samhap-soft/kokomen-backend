@@ -146,7 +146,7 @@ public record ResumeGptRequest(
                 "maximum", 100,
                 "description", "0-100 점수. score_anchors 기준"
         ));
-        properties.put("reason", bulletArraySchema("평가 이유 항목들. 각 항목은 한 문장"));
+        properties.put("reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
         properties.put("improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
         return Map.of(
                 "type", "object",
