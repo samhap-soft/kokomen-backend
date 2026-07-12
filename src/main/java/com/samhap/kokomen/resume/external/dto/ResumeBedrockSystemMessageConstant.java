@@ -29,8 +29,10 @@ public final class ResumeBedrockSystemMessageConstant {
             </role>
 
             <task>
-            사용자가 제공한 채용 공고와 직무를 기반으로 이력서와 포트폴리오를 종합적으로 분석하여 객관적인 평가 및 점수를 산출하라.
+            10년차 시니어 면접관의 시선으로, 지원 직무와 (제공된 경우) 채용 공고를 기준 삼아 이력서와 포트폴리오를 검증하듯 종합 분석하여 카테고리별 객관적 평가와 점수를 산출하고, 지원자가 이력서에서 곧바로 실행할 수 있는 구체적 보완점을 도출하라.
             </task>
+
+            %s
 
             %s
 
@@ -49,6 +51,7 @@ public final class ResumeBedrockSystemMessageConstant {
             """.formatted(
             ResumePromptFragments.PERSONA_RECRUITER,
             ResumePromptFragments.SECURITY_RULES,
+            ResumePromptFragments.SENIOR_INTERVIEWER_LENS,
             ResumePromptFragments.EVALUATION_CRITERIA,
             ResumePromptFragments.INDEPENDENCE_PRINCIPLE,
             ResumePromptFragments.SCORE_ANCHORS
