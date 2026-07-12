@@ -134,7 +134,7 @@ public final class ResumeBedrockRequestFactory {
                                 "maximum", Document.fromNumber(100),
                                 "description", Document.fromString("0-100 점수. score_anchors 기준."))),
                         "reason", bulletArraySchema("평가 이유 항목들. 각 항목은 한 문장."),
-                        "improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 한 문장."))),
+                        "improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장."))),
                 "required", Document.fromList(List.of(
                         Document.fromString("reasoning"),
                         Document.fromString("score"),
