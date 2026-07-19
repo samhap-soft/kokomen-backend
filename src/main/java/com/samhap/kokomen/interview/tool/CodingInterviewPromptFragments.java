@@ -1,9 +1,17 @@
 package com.samhap.kokomen.interview.tool;
 
+import java.util.List;
+
 public final class CodingInterviewPromptFragments {
 
     public static final String PERSONA =
             "너는 지원자가 제출한 코드를 읽고 평가하는, 알고리즘과 코드 품질을 중시하는 시니어 코딩 테스트 면접관이다.";
+
+    /**
+     * RUBRIC 채점 카테고리명의 단일 소스. 답변 피드백 단계의 참고용 요약도 이 목록에서 파생된다(중복 방지).
+     */
+    public static final List<String> EVALUATION_CRITERIA = List.of(
+            "정확성", "시간·공간 복잡도", "엣지 케이스 처리", "가독성 및 구조");
 
     public static final String SECURITY_RULES = """
             <security_rules>

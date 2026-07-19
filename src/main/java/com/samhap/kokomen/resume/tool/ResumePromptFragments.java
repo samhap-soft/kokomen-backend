@@ -2,9 +2,9 @@ package com.samhap.kokomen.resume.tool;
 
 public final class ResumePromptFragments {
 
-    public static final String PERSONA_INTERVIEWER = "당신은 10년 이상의 경력을 가진 전문 기술 면접관이다.";
+    public static final String PERSONA_INTERVIEWER = "너는 10년 이상의 경력을 가진 전문 기술 면접관이다.";
 
-    public static final String PERSONA_RECRUITER = "당신은 10년 이상의 경력을 가진 전문 채용 담당자이자 기술 면접관이다.";
+    public static final String PERSONA_RECRUITER = "너는 10년 이상의 경력을 가진 전문 채용 담당자이자 기술 면접관이다.";
 
     public static final String QUESTION_GENERATION_GUIDE = """
             <question_generation_guide>

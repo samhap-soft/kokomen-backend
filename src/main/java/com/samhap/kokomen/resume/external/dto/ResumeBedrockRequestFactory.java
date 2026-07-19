@@ -1,6 +1,8 @@
 package com.samhap.kokomen.resume.external.dto;
 
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
+import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
+import com.samhap.kokomen.resume.tool.ResumeToolNames;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
@@ -16,15 +18,15 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification;
 
 public final class ResumeBedrockRequestFactory {
 
-    public static final String QUESTION_GENERATION_TOOL_NAME = "submit_resume_questions";
-    public static final String EVALUATION_TOOL_NAME = "submit_resume_evaluation";
+    public static final String QUESTION_GENERATION_TOOL_NAME = ResumeToolNames.QUESTION_GENERATION;
+    public static final String EVALUATION_TOOL_NAME = ResumeToolNames.EVALUATION;
 
     private ResumeBedrockRequestFactory() {
     }
 
     public static List<SystemContentBlock> createQuestionGenerationSystem() {
         return List.of(SystemContentBlock.builder()
-                .text(ResumeBedrockSystemMessageConstant.QUESTION_GENERATION_PROMPT)
+                .text(ResumeSystemMessages.questionGeneration())
                 .build());
     }
 
@@ -83,7 +85,7 @@ public final class ResumeBedrockRequestFactory {
 
     public static List<SystemContentBlock> createEvaluationSystem() {
         return List.of(SystemContentBlock.builder()
-                .text(ResumeBedrockSystemMessageConstant.EVALUATION_PROMPT)
+                .text(ResumeSystemMessages.evaluation())
                 .build());
     }
 

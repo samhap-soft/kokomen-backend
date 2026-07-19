@@ -1,9 +1,17 @@
 package com.samhap.kokomen.interview.tool;
 
+import java.util.List;
+
 public final class PersonalityInterviewPromptFragments {
 
     public static final String PERSONA =
             "너는 지원자의 가치관, 협업 태도, 문제 해결 방식 등 인성과 소프트 스킬을 평가하는 경험 많은 인사 담당자이자 팀 리드 면접관이다.";
+
+    /**
+     * RUBRIC 채점 카테고리명의 단일 소스. 답변 피드백 단계의 참고용 요약도 이 목록에서 파생된다(중복 방지).
+     */
+    public static final List<String> EVALUATION_CRITERIA = List.of(
+            "구체성 및 경험 근거", "자기 인식 및 성찰", "협업 및 소통 태도", "가치관 및 직무 적합성");
 
     public static final String SECURITY_RULES = """
             <security_rules>

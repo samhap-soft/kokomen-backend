@@ -44,7 +44,7 @@ class InterviewMessagesFactoryTest {
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<GptMessage> expectedGptMessages = List.of(
-                new GptMessage("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE),
+                new GptMessage("system", InterviewSystemMessageBuilder.proceed(InterviewType.CATEGORY_BASED, true)),
                 new GptMessage("assistant", "첫 번째 질문"),
                 new GptMessage("user", "첫 번째 답변"),
                 new GptMessage("assistant", "두 번째 질문"),
@@ -87,7 +87,7 @@ class InterviewMessagesFactoryTest {
         QuestionAndAnswers questionAndAnswers = new QuestionAndAnswers(questions, prevAnswers, curAnswerContent, question2.getId(), interview);
 
         List<GptMessage> expectedGptMessages = List.of(
-                new GptMessage("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE),
+                new GptMessage("system", InterviewSystemMessageBuilder.end(InterviewType.CATEGORY_BASED)),
                 new GptMessage("assistant", "첫 번째 질문"),
                 new GptMessage("user", "첫 번째 답변"),
                 new GptMessage("assistant", "두 번째 질문"),
@@ -116,7 +116,7 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.CODING_PROCEED_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.proceed(InterviewType.LIVE_CODING, true)));
     }
 
     @Test
@@ -134,7 +134,7 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.CODING_END_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.end(InterviewType.LIVE_CODING)));
     }
 
     @Test
@@ -152,7 +152,7 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.PERSONALITY_PROCEED_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.proceed(InterviewType.PERSONALITY, true)));
     }
 
     @Test
@@ -170,7 +170,7 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.PERSONALITY_END_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.end(InterviewType.PERSONALITY)));
     }
 
     @Test
@@ -188,7 +188,7 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.PROCEED_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.proceed(InterviewType.RESUME_BASED, true)));
     }
 
     @Test
@@ -206,6 +206,6 @@ class InterviewMessagesFactoryTest {
 
         // then
         assertThat(gptMessages.get(0))
-                .isEqualTo(new GptMessage("system", GptSystemMessageConstant.END_SYSTEM_MESSAGE));
+                .isEqualTo(new GptMessage("system", InterviewSystemMessageBuilder.end(InterviewType.RESUME_BASED)));
     }
 }
