@@ -10,6 +10,7 @@ import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.external.ResumeEvaluationBedrockClient;
 import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationFlatResponse;
 import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
@@ -207,8 +208,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request)
-                        .withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request);
                 resumeEvaluationService.updateCompleted(evaluationId, llmResponse);
             } catch (Exception e) {
                 log.error("Bedrock 이력서 평가 실패, GPT 폴백 시도 - evaluationId: {}", evaluationId, e);
@@ -225,7 +225,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse).withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse);
                 resumeEvaluationService.updateCompleted(evaluationId, llmResponse);
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - evaluationId: {}", evaluationId, e);
@@ -244,8 +244,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request)
-                        .withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request);
                 ResumeEvaluationResponse response = ResumeEvaluationResponse.from(llmResponse);
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
@@ -264,7 +263,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse).withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse);
                 ResumeEvaluationResponse response = ResumeEvaluationResponse.from(llmResponse);
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
@@ -289,7 +288,7 @@ public class ResumeEvaluationAsyncService {
     private ResumeEvaluationLlmResponse parseGptResponse(String jsonResponse) {
         try {
             String cleanedJson = unwrapJsonString(jsonResponse);
-            return objectMapper.readValue(cleanedJson, ResumeEvaluationLlmResponse.class);
+            return objectMapper.readValue(cleanedJson, ResumeEvaluationFlatResponse.class).toLlmResponse();
         } catch (JsonProcessingException e) {
             log.error("GPT 이력서 평가 응답 파싱 실패 - responseLength={}",
                     jsonResponse == null ? 0 : jsonResponse.length(), e);

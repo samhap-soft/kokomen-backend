@@ -7,7 +7,9 @@ import com.samhap.kokomen.interview.external.dto.request.Tool;
 import com.samhap.kokomen.interview.external.dto.request.ToolChoice;
 import com.samhap.kokomen.interview.external.dto.request.ToolChoiceFunction;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
-import com.samhap.kokomen.resume.tool.ResumePromptFragments;
+import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
+import com.samhap.kokomen.resume.tool.ResumeToolNames;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,42 +26,8 @@ public record ResumeGptRequest(
         Double temperature
 ) {
 
-    public static final String EVALUATION_FUNCTION_NAME = "submit_resume_evaluation";
+    public static final String EVALUATION_FUNCTION_NAME = ResumeToolNames.EVALUATION;
     private static final String GPT_MODEL = "gpt-4.1-mini";
-
-    private static final String SYSTEM_PROMPT = """
-            <role>
-            %s
-            </role>
-
-            <task>
-            10년차 시니어 면접관의 시선으로, 지원 직무와 (제공된 경우) 채용 공고를 기준 삼아 이력서와 포트폴리오를 검증하듯 종합 분석하여 카테고리별 객관적 평가와 점수를 산출하고, 지원자가 이력서에서 곧바로 실행할 수 있는 구체적 보완점을 도출하라.
-            </task>
-
-            %s
-
-            %s
-
-            %s
-
-            %s
-
-            %s
-
-            <output>
-            반드시 제공된 함수(submit_resume_evaluation)를 호출하여 다음 필드를 모두 제출하라.
-            - technical_skills, project_experience, problem_solving, career_growth, documentation : 각 카테고리는 reasoning(점수 산정 전 사고 과정), score(0-100, score_anchors 기준), reason(평가 이유 항목 배열, 2-6개), improvements(보완 사항 항목 배열, 2-6개)
-            - total_feedback : 강점·개선·학습 방향을 포함한 종합 총평 (한 단락)
-            (종합 점수는 서버에서 가중평균으로 재계산하므로 별도 출력하지 않는다.)
-            </output>
-            """.formatted(
-            ResumePromptFragments.PERSONA_RECRUITER,
-            ResumePromptFragments.SECURITY_RULES,
-            ResumePromptFragments.SENIOR_INTERVIEWER_LENS,
-            ResumePromptFragments.EVALUATION_CRITERIA,
-            ResumePromptFragments.INDEPENDENCE_PRINCIPLE,
-            ResumePromptFragments.SCORE_ANCHORS
-    );
 
     private static final String USER_PROMPT_TEMPLATE = """
             <resume>
@@ -95,7 +63,7 @@ public record ResumeGptRequest(
                 ));
 
         List<ResumeGptMessage> messages = List.of(
-                new ResumeGptMessage("system", SYSTEM_PROMPT),
+                new ResumeGptMessage("system", ResumeSystemMessages.evaluation()),
                 new ResumeGptMessage("user", userPrompt)
         );
 
@@ -108,59 +76,47 @@ public record ResumeGptRequest(
         );
     }
 
+    // 중첩 object는 XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다. 카테고리·경계는 ResumeEvaluationSchema 공용 사양 참조.
     private static GptFunctionParameters createEvaluationParams() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("technical_skills", categorySchema());
-        properties.put("project_experience", categorySchema());
-        properties.put("problem_solving", categorySchema());
-        properties.put("career_growth", categorySchema());
-        properties.put("documentation", categorySchema());
+        List<String> required = new ArrayList<>();
+        for (String category : ResumeEvaluationSchema.CATEGORIES) {
+            putCategoryFields(properties, required, category);
+        }
         properties.put("total_feedback", Map.of(
                 "type", "string",
                 "description", "종합 총평. 강점·개선·학습 방향 포함, 한 단락"
         ));
+        required.add("total_feedback");
 
-        return new GptFunctionParameters(
-                "object",
-                properties,
-                List.of(
-                        "technical_skills",
-                        "project_experience",
-                        "problem_solving",
-                        "career_growth",
-                        "documentation",
-                        "total_feedback"
-                )
-        );
+        return new GptFunctionParameters("object", properties, required);
     }
 
-    private static Map<String, Object> categorySchema() {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("reasoning", Map.of(
+    private static void putCategoryFields(Map<String, Object> properties, List<String> required, String category) {
+        properties.put(category + "_reasoning", Map.of(
                 "type", "string",
-                "description", "점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성"
+                "description", "이 카테고리 점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성"
         ));
-        properties.put("score", Map.of(
+        properties.put(category + "_score", Map.of(
                 "type", "integer",
-                "minimum", 0,
-                "maximum", 100,
+                "minimum", ResumeEvaluationSchema.SCORE_MIN,
+                "maximum", ResumeEvaluationSchema.SCORE_MAX,
                 "description", "0-100 점수. score_anchors 기준"
         ));
-        properties.put("reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
-        properties.put("improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
-        return Map.of(
-                "type", "object",
-                "properties", properties,
-                "required", List.of("reasoning", "score", "reason", "improvements")
-        );
+        properties.put(category + "_reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
+        properties.put(category + "_improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
+        required.add(category + "_reasoning");
+        required.add(category + "_score");
+        required.add(category + "_reason");
+        required.add(category + "_improvements");
     }
 
     private static Map<String, Object> bulletArraySchema(String description) {
         return Map.of(
                 "type", "array",
                 "items", Map.of("type", "string"),
-                "minItems", 2,
-                "maxItems", 6,
+                "minItems", ResumeEvaluationSchema.BULLET_MIN_ITEMS,
+                "maxItems", ResumeEvaluationSchema.BULLET_MAX_ITEMS,
                 "description", description
         );
     }

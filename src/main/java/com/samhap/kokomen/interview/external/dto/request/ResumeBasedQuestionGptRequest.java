@@ -1,7 +1,8 @@
 package com.samhap.kokomen.interview.external.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.samhap.kokomen.resume.tool.ResumePromptFragments;
+import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
+import com.samhap.kokomen.resume.tool.ResumeToolNames;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,28 +17,8 @@ public record ResumeBasedQuestionGptRequest(
         Double temperature
 ) {
 
-    public static final String QUESTION_GENERATION_FUNCTION_NAME = "submit_resume_questions";
+    public static final String QUESTION_GENERATION_FUNCTION_NAME = ResumeToolNames.QUESTION_GENERATION;
     private static final String GPT_MODEL = "gpt-4.1-mini";
-
-    private static final String SYSTEM_PROMPT = """
-            <role>
-            %s
-            </role>
-
-            <task>
-            제공된 이력서, 포트폴리오, 직무 경력 정보를 분석하여 기술 면접에서 물어볼 핵심 질문들을 생성하라.
-            </task>
-
-            %s
-
-            <output>
-            반드시 제공된 함수(submit_resume_questions)를 호출하여 questions 배열을 제출하라.
-            각 항목은 question(질문 내용)과 reason(질문 선정 이유)을 포함해야 한다.
-            </output>
-            """.formatted(
-            ResumePromptFragments.PERSONA_INTERVIEWER,
-            ResumePromptFragments.QUESTION_GENERATION_GUIDE
-    );
 
     private static final String USER_PROMPT_TEMPLATE = """
             <resume>
@@ -63,7 +44,7 @@ public record ResumeBasedQuestionGptRequest(
                 .replace("{{job_career}}", jobCareer != null ? jobCareer : "");
 
         List<ResumeBasedQuestionGptMessage> messages = List.of(
-                new ResumeBasedQuestionGptMessage("system", SYSTEM_PROMPT),
+                new ResumeBasedQuestionGptMessage("system", ResumeSystemMessages.questionGeneration()),
                 new ResumeBasedQuestionGptMessage("user", userPrompt)
         );
 
@@ -87,7 +68,7 @@ public record ResumeBasedQuestionGptRequest(
         ));
         itemProps.put("reason", Map.of(
                 "type", "string",
-                "description", "이 질문을 선택한 이유"
+                "description", "이 질문이 겨냥하는 이력서/포트폴리오의 구체적 항목·문장과, 이 질문으로 검증하려는 역량"
         ));
         questionItem.put("properties", itemProps);
         questionItem.put("required", List.of("question", "reason"));

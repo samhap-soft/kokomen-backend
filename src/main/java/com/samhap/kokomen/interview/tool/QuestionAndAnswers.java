@@ -7,6 +7,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.response.AnswerFeedbackResponse;
 import com.samhap.kokomen.interview.external.dto.response.AnswerRankResponse;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lombok.Getter;
@@ -75,6 +76,21 @@ public class QuestionAndAnswers {
 
     public Question readCurQuestion() {
         return questions.get(questions.size() - 1);
+    }
+
+    /**
+     * (assistant=질문, user=답변) 순서로 이어진 대화 히스토리를 provider 중립 턴 목록으로 만든다.
+     * 마지막에 현재 질문과 현재 답변을 덧붙인다. GPT/Bedrock 메시지 팩토리가 공용으로 사용한다.
+     */
+    public List<ConversationTurn> toConversationTurns() {
+        List<ConversationTurn> turns = new ArrayList<>();
+        for (int i = 0; i < prevAnswers.size(); i++) {
+            turns.add(ConversationTurn.assistant(questions.get(i).getContent()));
+            turns.add(ConversationTurn.user(prevAnswers.get(i).getContent()));
+        }
+        turns.add(ConversationTurn.assistant(readCurQuestion().getContent()));
+        turns.add(ConversationTurn.user(curAnswerContent));
+        return turns;
     }
 
     public boolean isProceedRequest() {

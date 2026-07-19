@@ -1,8 +1,9 @@
 package com.samhap.kokomen.interview.external.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.samhap.kokomen.global.external.llm.ToolSchema;
+import com.samhap.kokomen.interview.tool.InterviewToolSchemas;
 import java.util.List;
-import java.util.Map;
 
 public record GptRequest(
         String model,
@@ -17,62 +18,15 @@ public record GptRequest(
     private static final String GPT_MODEL = "gpt-4.1-mini";
 
     public static GptRequest createProceedGptRequest(List<GptMessage> gptMessages, double temperature) {
-        return new GptRequest(GPT_MODEL, gptMessages, createProceedTools(), createProceedToolChoice(), temperature);
+        // GPT는 한 번의 호출로 feedback까지 생성하므로 feedbackInline=true
+        ToolSchema schema = InterviewToolSchemas.proceed(true);
+        return new GptRequest(GPT_MODEL, gptMessages,
+                GptToolRenderer.renderTools(schema), GptToolRenderer.renderToolChoice(schema), temperature);
     }
 
     public static GptRequest createEndGptRequest(List<GptMessage> gptMessages, double temperature) {
-        return new GptRequest(GPT_MODEL, gptMessages, createEndTools(), createEndToolChoice(), temperature);
-    }
-
-    private static List<Tool> createProceedTools() {
-        return List.of(new Tool("function", new GptFunction("generate_feedback", createProceedParams())));
-    }
-
-    private static List<Tool> createEndTools() {
-        return List.of(new Tool("function", new GptFunction("generate_total_feedback", createEndParams())));
-    }
-
-    private static GptFunctionParameters createProceedParams() {
-        return new GptFunctionParameters(
-                "object",
-                createProceedProperties(),
-                List.of("reasoning", "rank", "feedback", "next_question")
-        );
-    }
-
-    private static GptFunctionParameters createEndParams() {
-        return new GptFunctionParameters(
-                "object",
-                createEndProperties(),
-                List.of("reasoning", "rank", "feedback", "strengths", "improvements", "learning_direction")
-        );
-    }
-
-    private static Map<String, Object> createProceedProperties() {
-        return Map.of(
-                "reasoning", new FunctionParamProperty("string"),
-                "rank", new FunctionParamProperty("string"),
-                "feedback", new FunctionParamProperty("string"),
-                "next_question", new FunctionParamProperty("string")
-        );
-    }
-
-    private static Map<String, Object> createEndProperties() {
-        return Map.of(
-                "reasoning", new FunctionParamProperty("string"),
-                "rank", new FunctionParamProperty("string"),
-                "feedback", new FunctionParamProperty("string"),
-                "strengths", new FunctionParamProperty("string"),
-                "improvements", new FunctionParamProperty("string"),
-                "learning_direction", new FunctionParamProperty("string")
-        );
-    }
-
-    private static ToolChoice createProceedToolChoice() {
-        return new ToolChoice("function", new ToolChoiceFunction("generate_feedback"));
-    }
-
-    private static ToolChoice createEndToolChoice() {
-        return new ToolChoice("function", new ToolChoiceFunction("generate_total_feedback"));
+        ToolSchema schema = InterviewToolSchemas.end();
+        return new GptRequest(GPT_MODEL, gptMessages,
+                GptToolRenderer.renderTools(schema), GptToolRenderer.renderToolChoice(schema), temperature);
     }
 }

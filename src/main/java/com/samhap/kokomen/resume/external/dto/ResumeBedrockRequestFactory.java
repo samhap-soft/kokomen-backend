@@ -1,6 +1,10 @@
 package com.samhap.kokomen.resume.external.dto;
 
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
+import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
+import com.samhap.kokomen.resume.tool.ResumeToolNames;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
@@ -16,15 +20,15 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification;
 
 public final class ResumeBedrockRequestFactory {
 
-    public static final String QUESTION_GENERATION_TOOL_NAME = "submit_resume_questions";
-    public static final String EVALUATION_TOOL_NAME = "submit_resume_evaluation";
+    public static final String QUESTION_GENERATION_TOOL_NAME = ResumeToolNames.QUESTION_GENERATION;
+    public static final String EVALUATION_TOOL_NAME = ResumeToolNames.EVALUATION;
 
     private ResumeBedrockRequestFactory() {
     }
 
     public static List<SystemContentBlock> createQuestionGenerationSystem() {
         return List.of(SystemContentBlock.builder()
-                .text(ResumeBedrockSystemMessageConstant.QUESTION_GENERATION_PROMPT)
+                .text(ResumeSystemMessages.questionGeneration())
                 .build());
     }
 
@@ -61,7 +65,8 @@ public final class ResumeBedrockRequestFactory {
                                 "description", Document.fromString("기술 면접에서 물어볼 질문 1문장."))),
                         "reason", Document.fromMap(Map.of(
                                 "type", Document.fromString("string"),
-                                "description", Document.fromString("이 질문을 선택한 이유."))))),
+                                "description", Document.fromString(
+                                        "이 질문이 겨냥하는 이력서/포트폴리오의 구체적 항목·문장과, 이 질문으로 검증하려는 역량."))))),
                 "required", Document.fromList(List.of(
                         Document.fromString("question"),
                         Document.fromString("reason")))));
@@ -83,7 +88,7 @@ public final class ResumeBedrockRequestFactory {
 
     public static List<SystemContentBlock> createEvaluationSystem() {
         return List.of(SystemContentBlock.builder()
-                .text(ResumeBedrockSystemMessageConstant.EVALUATION_PROMPT)
+                .text(ResumeSystemMessages.evaluation())
                 .build());
     }
 
@@ -122,53 +127,48 @@ public final class ResumeBedrockRequestFactory {
     }
 
     public static ToolConfiguration createEvaluationToolConfig() {
-        Document categorySchema = Document.fromMap(Map.of(
-                "type", Document.fromString("object"),
-                "properties", Document.fromMap(Map.of(
-                        "reasoning", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString("점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성."))),
-                        "score", Document.fromMap(Map.of(
-                                "type", Document.fromString("integer"),
-                                "minimum", Document.fromNumber(0),
-                                "maximum", Document.fromNumber(100),
-                                "description", Document.fromString("0-100 점수. score_anchors 기준."))),
-                        "reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장."),
-                        "improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장."))),
-                "required", Document.fromList(List.of(
-                        Document.fromString("reasoning"),
-                        Document.fromString("score"),
-                        Document.fromString("reason"),
-                        Document.fromString("improvements")))));
+        // 중첩 object는 Claude XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다.
+        Map<String, Document> properties = new LinkedHashMap<>();
+        List<Document> required = new ArrayList<>();
+        for (String category : ResumeEvaluationSchema.CATEGORIES) {
+            putCategoryFields(properties, required, category);
+        }
+        properties.put("total_feedback", Document.fromMap(Map.of(
+                "type", Document.fromString("string"),
+                "description", Document.fromString("종합 총평. 강점·개선·학습 방향 포함, 한 단락."))));
+        required.add(Document.fromString("total_feedback"));
 
         Document schema = Document.fromMap(Map.of(
                 "type", Document.fromString("object"),
-                "properties", Document.fromMap(Map.ofEntries(
-                        Map.entry("technical_skills", categorySchema),
-                        Map.entry("project_experience", categorySchema),
-                        Map.entry("problem_solving", categorySchema),
-                        Map.entry("career_growth", categorySchema),
-                        Map.entry("documentation", categorySchema),
-                        Map.entry("total_feedback", Document.fromMap(Map.of(
-                                "type", Document.fromString("string"),
-                                "description", Document.fromString("종합 총평. 강점·개선·학습 방향 포함, 한 단락.")))))),
-                "required", Document.fromList(List.of(
-                        Document.fromString("technical_skills"),
-                        Document.fromString("project_experience"),
-                        Document.fromString("problem_solving"),
-                        Document.fromString("career_growth"),
-                        Document.fromString("documentation"),
-                        Document.fromString("total_feedback")))));
+                "properties", Document.fromMap(properties),
+                "required", Document.fromList(required)));
 
         return buildToolConfig(EVALUATION_TOOL_NAME, "이력서/포트폴리오 종합 평가를 제출한다.", schema);
+    }
+
+    private static void putCategoryFields(Map<String, Document> properties, List<Document> required, String category) {
+        properties.put(category + "_reasoning", Document.fromMap(Map.of(
+                "type", Document.fromString("string"),
+                "description", Document.fromString("이 카테고리 점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성."))));
+        properties.put(category + "_score", Document.fromMap(Map.of(
+                "type", Document.fromString("integer"),
+                "minimum", Document.fromNumber(ResumeEvaluationSchema.SCORE_MIN),
+                "maximum", Document.fromNumber(ResumeEvaluationSchema.SCORE_MAX),
+                "description", Document.fromString("0-100 점수. score_anchors 기준."))));
+        properties.put(category + "_reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장."));
+        properties.put(category + "_improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장."));
+        required.add(Document.fromString(category + "_reasoning"));
+        required.add(Document.fromString(category + "_score"));
+        required.add(Document.fromString(category + "_reason"));
+        required.add(Document.fromString(category + "_improvements"));
     }
 
     private static Document bulletArraySchema(String description) {
         return Document.fromMap(Map.of(
                 "type", Document.fromString("array"),
                 "items", Document.fromMap(Map.of("type", Document.fromString("string"))),
-                "minItems", Document.fromNumber(2),
-                "maxItems", Document.fromNumber(6),
+                "minItems", Document.fromNumber(ResumeEvaluationSchema.BULLET_MIN_ITEMS),
+                "maxItems", Document.fromNumber(ResumeEvaluationSchema.BULLET_MAX_ITEMS),
                 "description", Document.fromString(description)));
     }
 
