@@ -9,6 +9,7 @@ import com.samhap.kokomen.interview.external.dto.request.ToolChoiceFunction;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
 import com.samhap.kokomen.resume.tool.ResumeToolNames;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,51 +76,42 @@ public record ResumeGptRequest(
         );
     }
 
+    // 중첩 object는 XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다(Bedrock 경로와 동일 구조).
+    private static final List<String> EVALUATION_CATEGORIES = List.of(
+            "technical_skills", "project_experience", "problem_solving", "career_growth", "documentation");
+
     private static GptFunctionParameters createEvaluationParams() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("technical_skills", categorySchema());
-        properties.put("project_experience", categorySchema());
-        properties.put("problem_solving", categorySchema());
-        properties.put("career_growth", categorySchema());
-        properties.put("documentation", categorySchema());
+        List<String> required = new ArrayList<>();
+        for (String category : EVALUATION_CATEGORIES) {
+            putCategoryFields(properties, required, category);
+        }
         properties.put("total_feedback", Map.of(
                 "type", "string",
                 "description", "종합 총평. 강점·개선·학습 방향 포함, 한 단락"
         ));
+        required.add("total_feedback");
 
-        return new GptFunctionParameters(
-                "object",
-                properties,
-                List.of(
-                        "technical_skills",
-                        "project_experience",
-                        "problem_solving",
-                        "career_growth",
-                        "documentation",
-                        "total_feedback"
-                )
-        );
+        return new GptFunctionParameters("object", properties, required);
     }
 
-    private static Map<String, Object> categorySchema() {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("reasoning", Map.of(
+    private static void putCategoryFields(Map<String, Object> properties, List<String> required, String category) {
+        properties.put(category + "_reasoning", Map.of(
                 "type", "string",
-                "description", "점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성"
+                "description", "이 카테고리 점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성"
         ));
-        properties.put("score", Map.of(
+        properties.put(category + "_score", Map.of(
                 "type", "integer",
                 "minimum", 0,
                 "maximum", 100,
                 "description", "0-100 점수. score_anchors 기준"
         ));
-        properties.put("reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
-        properties.put("improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
-        return Map.of(
-                "type", "object",
-                "properties", properties,
-                "required", List.of("reasoning", "score", "reason", "improvements")
-        );
+        properties.put(category + "_reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
+        properties.put(category + "_improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
+        required.add(category + "_reasoning");
+        required.add(category + "_score");
+        required.add(category + "_reason");
+        required.add(category + "_improvements");
     }
 
     private static Map<String, Object> bulletArraySchema(String description) {

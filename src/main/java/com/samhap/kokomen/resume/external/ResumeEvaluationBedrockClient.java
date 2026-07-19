@@ -4,6 +4,7 @@ import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.resume.external.dto.ResumeBedrockRequestFactory;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationFlatResponse;
 import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,6 @@ public class ResumeEvaluationBedrockClient {
 
         ToolUseBlock toolUse = converseClient.extractToolUse(response,
                 ResumeBedrockRequestFactory.EVALUATION_TOOL_NAME);
-        return converseClient.parseToolInput(toolUse, ResumeEvaluationLlmResponse.class);
+        return converseClient.parseToolInput(toolUse, ResumeEvaluationFlatResponse.class).toLlmResponse();
     }
 }

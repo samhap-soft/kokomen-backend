@@ -10,6 +10,7 @@ import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.external.ResumeEvaluationBedrockClient;
 import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
+import com.samhap.kokomen.resume.external.dto.ResumeEvaluationFlatResponse;
 import com.samhap.kokomen.resume.external.dto.ResumeEvaluationLlmResponse;
 import com.samhap.kokomen.resume.service.dto.NonMemberResumeEvaluationData;
 import com.samhap.kokomen.resume.service.dto.ResumeEvaluationRequest;
@@ -289,7 +290,7 @@ public class ResumeEvaluationAsyncService {
     private ResumeEvaluationLlmResponse parseGptResponse(String jsonResponse) {
         try {
             String cleanedJson = unwrapJsonString(jsonResponse);
-            return objectMapper.readValue(cleanedJson, ResumeEvaluationLlmResponse.class);
+            return objectMapper.readValue(cleanedJson, ResumeEvaluationFlatResponse.class).toLlmResponse();
         } catch (JsonProcessingException e) {
             log.error("GPT 이력서 평가 응답 파싱 실패 - responseLength={}",
                     jsonResponse == null ? 0 : jsonResponse.length(), e);
