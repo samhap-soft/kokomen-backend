@@ -18,10 +18,11 @@ import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 class ResumeSystemMessageConsistencyTest {
 
     @Test
-    void 질문생성_시스템_메시지는_면접관_페르소나와_질문생성_가이드를_포함한다() {
+    void 질문생성_시스템_메시지는_면접관_페르소나와_질문생성_가이드와_probe_렌즈를_포함한다() {
         assertThat(ResumeSystemMessages.questionGeneration()).contains(
                 ResumePromptFragments.PERSONA_INTERVIEWER,
-                ResumePromptFragments.QUESTION_GENERATION_GUIDE);
+                ResumePromptFragments.QUESTION_GENERATION_GUIDE,
+                ResumePromptFragments.QUESTION_PROBE_LENS);
     }
 
     @Test

@@ -49,7 +49,8 @@ public final class InterviewToolSchemas {
                         "가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다."),
                 ToolField.required("strengths", "면접자의 강점 1-2문장."),
                 ToolField.required("improvements", "보완·개선 영역 1-2문장."),
-                ToolField.required("learning_direction", "향후 학습 방향 1-2문장."));
+                ToolField.required("learning_direction",
+                        "이번 면접에서 드러난 약점에 근거한 구체적 하위 주제·다음 학습 스텝 1-2문장. 일반론 금지."));
         return new ToolSchema(END_TOOL_NAME, "면접 종료 시점의 rank·마지막 답변 피드백·전체 종합 평가를 제출한다.", fields);
     }
 

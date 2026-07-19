@@ -6,6 +6,18 @@ public final class ResumePromptFragments {
 
     public static final String PERSONA_RECRUITER = "너는 10년 이상의 경력을 가진 전문 채용 담당자이자 기술 면접관이다.";
 
+    /** 질문 생성 시 이력서의 약한 지점을 겨냥하도록 하는 시니어 probe/red-flag 렌즈. */
+    public static final String QUESTION_PROBE_LENS = """
+            <probe_lens>
+            이 질문 세트의 목적은 무난한 확인이 아니라, 이 지원자를 뽑았을 때 실패할 지점을 면접에서 검증하는 것이다. 이력서에서 다음을 발견하면 그 지점을 겨냥한 질문을 반드시 포함한다.
+            - 원리·트레이드오프 언급 없이 기술만 나열된 부분: 동작 원리와 대안 배제 이유를 캐묻는다.
+            - 결과만 있고 원인 분석·검증 과정이 없는 성과: 무엇을 언제 어떻게 측정했는지 묻는다.
+            - 팀 성과와 개인 기여가 뒤섞인 서술: 본인이 직접 한 부분을 특정하게 만든다.
+            - 연차 대비 과도해 보이는 주장: 구체적 구현·의사결정을 확인한다.
+            단, red flag를 겨냥하는 강도는 job_career(연차)에 맞춘다. 신입·저연차에게는 시스템 설계 부재를 겨냥하지 말고 기본기·학습 과정·문제를 끝까지 파고든 흔적을 캐묻는다.
+            </probe_lens>
+            """;
+
     public static final String QUESTION_GENERATION_GUIDE = """
             <question_generation_guide>
             1. 이력서와 포트폴리오에 기재된 기술 스택과 프로젝트 경험을 기반으로 질문을 생성한다.
@@ -13,6 +25,8 @@ public final class ResumePromptFragments {
             3. 단순 암기가 아닌 경험과 이해도를 확인할 수 있는 질문을 생성한다.
             4. 각 질문에 대해 왜 이 질문을 선택했는지 이유를 함께 제공한다.
             5. 정확히 5-7개의 질문을 생성한다.
+            6. 각 질문은 이력서/포트폴리오에 실제로 기재된 특정 프로젝트·기술·문장을 지목해 구성한다. 문서에 없는 기술·경험을 전제한 질문이나 이력서와 무관한 교과서적 정의 질문, 예/아니오로 끝나는 질문은 만들지 않는다. 이력서 정보가 얇으면 지어내지 말고 기재된 근거 범위 안에서 만든다.
+            7. 질문 간 내용이 중복되지 않게 하고, 기초 확인에서 심화로 자연스럽게 이어지도록 배열한다. 표면적 서술일수록 원리·트레이드오프·검증을 파고드는 방향으로 설계한다.
             </question_generation_guide>
 
             <diversity_rule>
@@ -121,7 +135,8 @@ public final class ResumePromptFragments {
 
     public static final String SCORE_ANCHORS = """
             <score_anchors>
-            카테고리별 절대 기준 anchor. 점수 산정 시 가장 가까운 anchor에 맞춘다.
+            카테고리별 기준 anchor. 점수 산정 시 가장 가까운 anchor에 맞춘다.
+            아래 anchor 서술은 절대 난이도가 아니라 <job_career> 연차의 기대치에 상대적으로 해석한다. 신입에게는 해당 연차에서 기대되는 최상위 수준의 근거가 갖춰지면 90-100으로 본다. 시스템 설계·대규모 트래픽처럼 연차상 기대되지 않는 항목의 부재를 상위 밴드 미달의 근거로 쓰지 않는다.
 
             <anchor category="technical_skills">
             90-100: 다양한 스택의 깊이 + 시스템 설계 경험 + 최신 트렌드 반영, 원리 수준 이해 명확

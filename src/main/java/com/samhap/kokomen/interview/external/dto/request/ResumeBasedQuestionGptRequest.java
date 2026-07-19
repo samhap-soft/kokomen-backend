@@ -68,7 +68,7 @@ public record ResumeBasedQuestionGptRequest(
         ));
         itemProps.put("reason", Map.of(
                 "type", "string",
-                "description", "이 질문을 선택한 이유"
+                "description", "이 질문이 겨냥하는 이력서/포트폴리오의 구체적 항목·문장과, 이 질문으로 검증하려는 역량"
         ));
         questionItem.put("properties", itemProps);
         questionItem.put("required", List.of("question", "reason"));

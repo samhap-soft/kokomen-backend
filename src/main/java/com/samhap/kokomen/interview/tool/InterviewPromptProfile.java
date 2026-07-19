@@ -88,6 +88,41 @@ enum InterviewPromptProfile {
         };
     }
 
+    /** 도메인별 "시니어 면접관 수준" 기준. 코딩/인성은 CS 어휘가 어색하므로 각자 전용 조각을 쓴다. */
+    String seniorStandard() {
+        return switch (this) {
+            case GENERAL -> InterviewPromptFragments.SENIOR_STANDARD;
+            case CODING -> CodingInterviewPromptFragments.SENIOR_STANDARD;
+            case PERSONALITY -> PersonalityInterviewPromptFragments.SENIOR_STANDARD;
+        };
+    }
+
+    /** 도메인별 피드백 말투 규칙. 코딩은 코드블록 허용, 인성은 STAR 언어 등 도메인에 맞춘다. */
+    String feedbackTone() {
+        return switch (this) {
+            case GENERAL -> InterviewPromptFragments.FEEDBACK_TONE_BY_RANK;
+            case CODING -> CodingInterviewPromptFragments.FEEDBACK_TONE_BY_RANK;
+            case PERSONALITY -> PersonalityInterviewPromptFragments.FEEDBACK_TONE_BY_RANK;
+        };
+    }
+
+    /** 도메인별 추가 채점 지침(현재 코딩만: 코드/설명 턴 분기 + dry-run). 없으면 빈 문자열 → 빌더가 생략. */
+    String scoringGuidance() {
+        return switch (this) {
+            case CODING -> CodingInterviewPromptFragments.CODE_SCORING_GUIDANCE;
+            case GENERAL, PERSONALITY -> "";
+        };
+    }
+
+    /** 도메인별 채점 캘리브레이션 앵커(저득점·경계·red flag 예시). */
+    String rubricExamples() {
+        return switch (this) {
+            case GENERAL -> InterviewPromptFragments.RUBRIC_EXAMPLES;
+            case CODING -> CodingInterviewPromptFragments.RUBRIC_EXAMPLES;
+            case PERSONALITY -> PersonalityInterviewPromptFragments.RUBRIC_EXAMPLES;
+        };
+    }
+
     String persona() {
         return persona;
     }

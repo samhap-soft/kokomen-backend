@@ -38,16 +38,23 @@ public final class InterviewSystemMessageBuilder {
                 proceedActionClause(profile, feedbackInline));
 
         List<String> fragments = new ArrayList<>(List.of(
-                InterviewPromptFragments.SENIOR_STANDARD,
+                profile.seniorStandard(),
                 profile.securityRules(),
+                InterviewPromptFragments.GROUNDING_RULE,
                 profile.lengthNeutral(),
                 profile.rubric(),
-                InterviewPromptFragments.RANK_MAPPING));
+                InterviewPromptFragments.CALIBRATION_NOTE,
+                profile.rubricExamples(),
+                profile.scoringGuidance(),
+                InterviewPromptFragments.RANK_MAPPING,
+                InterviewPromptFragments.INDEPENDENCE_PRINCIPLE));
         if (feedbackInline) {
-            fragments.add(InterviewPromptFragments.FEEDBACK_TONE_BY_RANK);
+            fragments.add(profile.feedbackTone());
         }
+        fragments.add(InterviewPromptFragments.ADAPTIVE_FOLLOWUP_PRINCIPLE);
         fragments.add(profile.followUpAlgorithm());
         fragments.add(profile.singleQuestionConstraint());
+        fragments.add(InterviewPromptFragments.QUESTION_HYGIENE_GUARD);
 
         return assemble(profile.persona(), task, fragments, proceedOutput(profile, feedbackInline));
     }
@@ -65,12 +72,17 @@ public final class InterviewSystemMessageBuilder {
                 profile.conversationContext());
 
         List<String> fragments = List.of(
-                InterviewPromptFragments.SENIOR_STANDARD,
+                profile.seniorStandard(),
                 profile.securityRules(),
+                InterviewPromptFragments.GROUNDING_RULE,
                 profile.lengthNeutral(),
                 profile.rubric(),
+                InterviewPromptFragments.CALIBRATION_NOTE,
+                profile.rubricExamples(),
+                profile.scoringGuidance(),
                 InterviewPromptFragments.RANK_MAPPING,
-                InterviewPromptFragments.FEEDBACK_TONE_BY_RANK);
+                InterviewPromptFragments.INDEPENDENCE_PRINCIPLE,
+                profile.feedbackTone());
 
         return assemble(profile.persona(), task, fragments, endOutput(profile));
     }
@@ -88,11 +100,12 @@ public final class InterviewSystemMessageBuilder {
                 profile.answerNoun());
 
         List<String> fragments = List.of(
-                InterviewPromptFragments.SENIOR_STANDARD,
+                profile.seniorStandard(),
                 profile.securityRules(),
+                InterviewPromptFragments.GROUNDING_RULE,
                 profile.lengthNeutral(),
                 evaluationCriteriaBlock(profile),
-                InterviewPromptFragments.FEEDBACK_TONE_BY_RANK);
+                profile.feedbackTone());
 
         return assemble(profile.persona(), task, fragments, answerFeedbackOutput(profile));
     }
@@ -108,7 +121,7 @@ public final class InterviewSystemMessageBuilder {
         if (feedbackInline) {
             return """
                     제공된 도구를 호출해 reasoning, rank, feedback, next_question 네 필드를 함께 제출하라.
-                    - reasoning : answer_analysis(rubric 항목별 평가 근거)와 question_planning(follow_up_question_algorithm 단계별 사고 과정)을 한 단락으로 작성한다. 사용자에게 노출되지 않으므로 자유 형식이되 두 항목을 모두 포함한다.
+                    - reasoning : answer_analysis(rubric 항목별 평가 근거)와 question_planning(follow_up_question_algorithm 단계별 사고 과정)을 한 단락으로 작성한다. question_planning에서는 rank를 먼저 확정한 뒤 그 rank에 맞춰(adaptive_followup_principle) 다음 질문을 설계한다. 사용자에게 노출되지 않으므로 자유 형식이되 두 항목을 모두 포함한다.
                     - rank : 위 평가 기준과 rank_mapping에 따라 산출한 A/B/C/D/F 중 한 글자.
                     - feedback : 가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다.%s
                     - next_question : single_question_constraint를 모두 충족하는 꼬리 질문 1문장.""".formatted(
@@ -129,7 +142,7 @@ public final class InterviewSystemMessageBuilder {
                 - feedback : 가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다.%s
                 - strengths : 면접자의 강점 1-2문장.
                 - improvements : 보완·개선 영역 1-2문장.
-                - learning_direction : 향후 학습 방향 1-2문장.
+                - learning_direction : 이번 면접에서 드러난 약점에 근거해 구체적 하위 주제와 다음 학습 스텝을 제시하는 1-2문장(예: "~개념의 ~원리부터 정리한 뒤 ~로 확장"). "더 공부하라" 류 일반론 금지.
                 strengths/improvements/learning_direction 세 필드는 서버에서 한 단락으로 합성되므로 각 항목을 독립적인 한두 문장의 존댓말로 자연스럽게 작성하고, 인사·점수·랭크는 언급하지 않는다.""".formatted(
                 profile.feedbackFormatNote());
     }
@@ -148,6 +161,12 @@ public final class InterviewSystemMessageBuilder {
                 </evaluation_criteria>""".formatted(profile.evaluationCriteriaSummary());
     }
 
+    private static String joinFragments(List<String> fragments) {
+        return String.join("\n", fragments.stream()
+                .filter(fragment -> fragment != null && !fragment.isBlank())
+                .toList());
+    }
+
     private static String assemble(String persona, String task, List<String> fragments, String output) {
         return """
                 <role>
@@ -163,6 +182,6 @@ public final class InterviewSystemMessageBuilder {
                 <output>
                 %s
                 </output>
-                """.formatted(persona, task, String.join("\n", fragments), output);
+                """.formatted(persona, task, joinFragments(fragments), output);
     }
 }
