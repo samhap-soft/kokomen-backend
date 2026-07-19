@@ -7,7 +7,8 @@ import java.util.List;
  * 면접 유형(도메인)별 프롬프트 구성 요소를 한곳에 모은 프로파일.
  * interviewType → 도메인 fragment 세트 + 도메인 프레이밍 문구 매핑을 이 enum이 단일하게 소유하며,
  * {@link InterviewSystemMessageBuilder}가 GPT/Bedrock 공용으로 이 프로파일을 사용해 시스템 메시지를 조립한다.
- * rank_mapping/feedback_tone_by_rank 는 도메인과 무관하게 공유되므로 여기 두지 않고 빌더가 직접 참조한다.
+ * senior_standard·feedback_tone_by_rank·rubric_examples 는 도메인별로 이 프로파일이 소유·분기하며(seniorStandard()/feedbackTone()/rubricExamples()),
+ * rank_mapping 등 도메인과 무관한 공용 조각만 빌더가 {@link InterviewPromptFragments}에서 직접 참조한다.
  */
 enum InterviewPromptProfile {
 

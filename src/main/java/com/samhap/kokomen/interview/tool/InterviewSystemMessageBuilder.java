@@ -14,7 +14,8 @@ import java.util.List;
  *   <li>provider 차이는 진행(proceed) 단계의 {@code feedbackInline} 하나로 수렴한다.
  *       GPT는 한 번의 호출로 feedback까지 생성하므로 {@code true}, Bedrock은 rank/next_question만 먼저
  *       생성(2콜 구조)하므로 {@code false}. 종료(end)는 두 provider가 동일하다.</li>
- *   <li>말투 규칙은 {@link InterviewPromptFragments#FEEDBACK_TONE_BY_RANK} 한곳만 참조한다(재기입 금지).</li>
+ *   <li>말투 규칙은 도메인별로 {@code profile.feedbackTone()}을 통해 단일 상수를 참조한다(GENERAL은 공용
+ *       {@link InterviewPromptFragments#FEEDBACK_TONE_BY_RANK}, CODING/PERSONALITY는 각 도메인 전용 상수).</li>
  * </ul>
  */
 public final class InterviewSystemMessageBuilder {

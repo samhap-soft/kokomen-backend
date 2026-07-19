@@ -20,6 +20,8 @@ public final class InterviewToolSchemas {
     private static final List<String> RANK_ENUM = Arrays.stream(AnswerRank.values())
             .map(AnswerRank::name)
             .toList();
+    private static final String RANK_DESCRIPTION =
+            "가장 최근 답변에 대한 평가 등급. " + String.join(", ", RANK_ENUM) + " 중 한 글자.";
 
     private InterviewToolSchemas() {
     }
@@ -28,8 +30,7 @@ public final class InterviewToolSchemas {
         List<ToolField> fields = new ArrayList<>();
         fields.add(ToolField.required("reasoning",
                 "답변 평가 근거(answer_analysis)와 다음 질문 설계 과정(question_planning)을 담은 사고 과정. 사용자에게 노출되지 않는다."));
-        fields.add(ToolField.requiredEnum("rank",
-                "가장 최근 답변에 대한 평가 등급. A, B, C, D, F 중 한 글자.", RANK_ENUM));
+        fields.add(ToolField.requiredEnum("rank", RANK_DESCRIPTION, RANK_ENUM));
         if (feedbackInline) {
             fields.add(ToolField.required("feedback",
                     "가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다."));
@@ -43,8 +44,7 @@ public final class InterviewToolSchemas {
         List<ToolField> fields = List.of(
                 ToolField.required("reasoning",
                         "마지막 답변 평가 근거와 전체 종합 평가 정리를 담은 사고 과정. 사용자에게 노출되지 않는다."),
-                ToolField.requiredEnum("rank",
-                        "가장 최근 답변에 대한 평가 등급. A, B, C, D, F 중 한 글자.", RANK_ENUM),
+                ToolField.requiredEnum("rank", RANK_DESCRIPTION, RANK_ENUM),
                 ToolField.required("feedback",
                         "가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다."),
                 ToolField.required("strengths", "면접자의 강점 1-2문장."),

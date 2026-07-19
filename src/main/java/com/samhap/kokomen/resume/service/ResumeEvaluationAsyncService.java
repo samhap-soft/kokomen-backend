@@ -208,8 +208,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request)
-                        .withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request);
                 resumeEvaluationService.updateCompleted(evaluationId, llmResponse);
             } catch (Exception e) {
                 log.error("Bedrock 이력서 평가 실패, GPT 폴백 시도 - evaluationId: {}", evaluationId, e);
@@ -226,7 +225,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse).withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse);
                 resumeEvaluationService.updateCompleted(evaluationId, llmResponse);
             } catch (Exception e) {
                 log.error("GPT 폴백 실패 - evaluationId: {}", evaluationId, e);
@@ -245,8 +244,7 @@ public class ResumeEvaluationAsyncService {
         executor.execute(() -> {
             try {
                 setMdcContext(mdcContext);
-                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request)
-                        .withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = resumeEvaluationBedrockClient.evaluate(request);
                 ResumeEvaluationResponse response = ResumeEvaluationResponse.from(llmResponse);
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {
@@ -265,7 +263,7 @@ public class ResumeEvaluationAsyncService {
             try {
                 setMdcContext(mdcContext);
                 String jsonResponse = resumeEvaluationGptClient.requestResumeEvaluation(request);
-                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse).withCalculatedTotalScore();
+                ResumeEvaluationLlmResponse llmResponse = parseGptResponse(jsonResponse);
                 ResumeEvaluationResponse response = ResumeEvaluationResponse.from(llmResponse);
                 saveNonMemberDataToRedis(redisKey, NonMemberResumeEvaluationData.completed(request, response));
             } catch (Exception e) {

@@ -29,7 +29,10 @@ public record ResumeEvaluationFlatResponse(
         String totalFeedback
 ) {
 
-    /** flat 와이어 응답을 기존 중첩 도메인 모델로 변환한다. 종합 점수는 호출부에서 withCalculatedTotalScore로 계산한다. */
+    /**
+     * flat 와이어 응답을 기존 중첩 도메인 모델로 변환한다. 종합 점수(가중평균)를 이 시점에 항상 계산해 반환하므로
+     * 호출부가 별도로 withCalculatedTotalScore를 부를 필요가 없다(종합 점수 0 저장 같은 시간적 결합 방지).
+     */
     public ResumeEvaluationLlmResponse toLlmResponse() {
         return new ResumeEvaluationLlmResponse(
                 new CategoryScore(technicalSkillsScore, technicalSkillsReason, technicalSkillsImprovements),
@@ -39,6 +42,6 @@ public record ResumeEvaluationFlatResponse(
                 new CategoryScore(documentationScore, documentationReason, documentationImprovements),
                 0,
                 totalFeedback
-        );
+        ).withCalculatedTotalScore();
     }
 }

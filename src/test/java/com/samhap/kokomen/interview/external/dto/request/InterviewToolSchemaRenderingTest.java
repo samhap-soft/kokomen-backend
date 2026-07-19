@@ -106,6 +106,32 @@ class InterviewToolSchemaRenderingTest {
         assertThat(properties).doesNotContainKey("feedback");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void Bedrock_종료_도구는_여섯_필드를_모두_렌더한다() {
+        ToolConfiguration config = BedrockToolSchemaRenderer.render(InterviewToolSchemas.end());
+
+        assertThat(config.tools().get(0).toolSpec().name()).isEqualTo("submit_interview_end");
+        Map<String, Object> json = (Map<String, Object>) DocumentJsonConverter.toJavaObject(
+                config.tools().get(0).toolSpec().inputSchema().json());
+        Map<String, Object> properties = (Map<String, Object>) json.get("properties");
+        assertThat(properties.keySet()).containsExactlyInAnyOrder(
+                "reasoning", "rank", "feedback", "strengths", "improvements", "learning_direction");
+        assertThat((List<Object>) json.get("required")).hasSize(6);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void Bedrock_답변피드백_도구는_feedback_필드만_렌더한다() {
+        ToolConfiguration config = BedrockToolSchemaRenderer.render(InterviewToolSchemas.answerFeedback());
+
+        assertThat(config.tools().get(0).toolSpec().name()).isEqualTo("submit_answer_feedback");
+        Map<String, Object> json = (Map<String, Object>) DocumentJsonConverter.toJavaObject(
+                config.tools().get(0).toolSpec().inputSchema().json());
+        Map<String, Object> properties = (Map<String, Object>) json.get("properties");
+        assertThat(properties.keySet()).containsExactly("feedback");
+    }
+
     private List<String> fieldNames(ToolSchema schema) {
         return schema.fields().stream()
                 .map(ToolField::name)

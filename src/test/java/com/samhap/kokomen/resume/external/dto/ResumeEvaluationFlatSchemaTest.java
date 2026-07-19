@@ -83,9 +83,9 @@ class ResumeEvaluationFlatSchemaTest {
                 }
                 """;
 
+        // toLlmResponse()가 종합 점수(가중평균)까지 계산해 반환하므로 별도 호출이 필요 없다.
         ResumeEvaluationLlmResponse llm = objectMapper.readValue(flatJson, ResumeEvaluationFlatResponse.class)
-                .toLlmResponse()
-                .withCalculatedTotalScore();
+                .toLlmResponse();
 
         assertThat(llm.technicalSkills().score()).isEqualTo(90);
         assertThat(llm.technicalSkills().reason()).containsExactly("근거1", "근거2");

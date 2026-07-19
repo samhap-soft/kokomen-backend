@@ -76,14 +76,11 @@ public record ResumeGptRequest(
         );
     }
 
-    // 중첩 object는 XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다(Bedrock 경로와 동일 구조).
-    private static final List<String> EVALUATION_CATEGORIES = List.of(
-            "technical_skills", "project_experience", "problem_solving", "career_growth", "documentation");
-
+    // 중첩 object는 XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다. 카테고리·경계는 ResumeEvaluationSchema 공용 사양 참조.
     private static GptFunctionParameters createEvaluationParams() {
         Map<String, Object> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (String category : EVALUATION_CATEGORIES) {
+        for (String category : ResumeEvaluationSchema.CATEGORIES) {
             putCategoryFields(properties, required, category);
         }
         properties.put("total_feedback", Map.of(
@@ -102,8 +99,8 @@ public record ResumeGptRequest(
         ));
         properties.put(category + "_score", Map.of(
                 "type", "integer",
-                "minimum", 0,
-                "maximum", 100,
+                "minimum", ResumeEvaluationSchema.SCORE_MIN,
+                "maximum", ResumeEvaluationSchema.SCORE_MAX,
                 "description", "0-100 점수. score_anchors 기준"
         ));
         properties.put(category + "_reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장"));
@@ -118,8 +115,8 @@ public record ResumeGptRequest(
         return Map.of(
                 "type", "array",
                 "items", Map.of("type", "string"),
-                "minItems", 2,
-                "maxItems", 6,
+                "minItems", ResumeEvaluationSchema.BULLET_MIN_ITEMS,
+                "maxItems", ResumeEvaluationSchema.BULLET_MAX_ITEMS,
                 "description", description
         );
     }

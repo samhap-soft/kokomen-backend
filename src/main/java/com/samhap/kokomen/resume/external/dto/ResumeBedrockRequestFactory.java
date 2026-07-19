@@ -23,9 +23,6 @@ public final class ResumeBedrockRequestFactory {
     public static final String QUESTION_GENERATION_TOOL_NAME = ResumeToolNames.QUESTION_GENERATION;
     public static final String EVALUATION_TOOL_NAME = ResumeToolNames.EVALUATION;
 
-    private static final List<String> EVALUATION_CATEGORIES = List.of(
-            "technical_skills", "project_experience", "problem_solving", "career_growth", "documentation");
-
     private ResumeBedrockRequestFactory() {
     }
 
@@ -133,7 +130,7 @@ public final class ResumeBedrockRequestFactory {
         // 중첩 object는 Claude XML 누수를 유발하므로 5개 카테고리를 flat 필드로 펼친다.
         Map<String, Document> properties = new LinkedHashMap<>();
         List<Document> required = new ArrayList<>();
-        for (String category : EVALUATION_CATEGORIES) {
+        for (String category : ResumeEvaluationSchema.CATEGORIES) {
             putCategoryFields(properties, required, category);
         }
         properties.put("total_feedback", Document.fromMap(Map.of(
@@ -155,8 +152,8 @@ public final class ResumeBedrockRequestFactory {
                 "description", Document.fromString("이 카테고리 점수 산정 전 사고 과정. 카테고리에 한정된 근거만 작성."))));
         properties.put(category + "_score", Document.fromMap(Map.of(
                 "type", Document.fromString("integer"),
-                "minimum", Document.fromNumber(0),
-                "maximum", Document.fromNumber(100),
+                "minimum", Document.fromNumber(ResumeEvaluationSchema.SCORE_MIN),
+                "maximum", Document.fromNumber(ResumeEvaluationSchema.SCORE_MAX),
                 "description", Document.fromString("0-100 점수. score_anchors 기준."))));
         properties.put(category + "_reason", bulletArraySchema("평가 이유 항목들. 각 항목은 정보 밀도 높은 1-2문장."));
         properties.put(category + "_improvements", bulletArraySchema("보완 사항 항목들. 각 항목은 정보 밀도 높은 1-2문장."));
@@ -170,8 +167,8 @@ public final class ResumeBedrockRequestFactory {
         return Document.fromMap(Map.of(
                 "type", Document.fromString("array"),
                 "items", Document.fromMap(Map.of("type", Document.fromString("string"))),
-                "minItems", Document.fromNumber(2),
-                "maxItems", Document.fromNumber(6),
+                "minItems", Document.fromNumber(ResumeEvaluationSchema.BULLET_MIN_ITEMS),
+                "maxItems", Document.fromNumber(ResumeEvaluationSchema.BULLET_MAX_ITEMS),
                 "description", Document.fromString(description)));
     }
 
