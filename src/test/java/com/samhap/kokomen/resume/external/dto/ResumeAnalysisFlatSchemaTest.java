@@ -1,10 +1,12 @@
 package com.samhap.kokomen.resume.external.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.interview.external.dto.request.GptFunctionParameters;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
@@ -249,6 +251,54 @@ class ResumeAnalysisFlatSchemaTest {
                 .toEvaluation(false);
 
         assertThat(evaluation.totalScore()).isEqualTo(78);
+    }
+
+    /**
+     * 도구 스키마의 required는 모델에 대한 지시일 뿐 서버가 강제하는 계약이 아니므로, 구조적으로 유효한 JSON이
+     * _score 필드를 누락할 수 있다. DimensionScore.score가 primitive int라 그대로 두면 언박싱 NPE가 나므로
+     * toEvaluation이 ExternalApiException으로 통일한다. 이 테스트는 그 가드를 되돌리면 실패한다
+     * (가드가 없으면 NullPointerException이 던져져 isInstanceOf(ExternalApiException) 단정이 깨진다).
+     */
+    @Test
+    void 점수_필드가_누락된_응답은_NPE가_아니라_ExternalApiException으로_변환된다() throws Exception {
+        String json = """
+                {
+                  "problem_solving_reason": ["근거1", "근거2"],
+                  "problem_solving_improvements": ["보완1", "보완2"],
+                  "project_experience_score": 80,
+                  "project_experience_reason": ["근거1", "근거2"],
+                  "project_experience_improvements": ["보완1", "보완2"],
+                  "technical_skills_score": 70,
+                  "technical_skills_reason": ["근거1", "근거2"],
+                  "technical_skills_improvements": ["보완1", "보완2"],
+                  "soft_skills_score": 60,
+                  "soft_skills_reason": ["근거1", "근거2"],
+                  "soft_skills_improvements": ["보완1", "보완2"],
+                  "total_feedback": "종합 총평"
+                }
+                """;
+        ResumeAnalysisEvaluationFlatResponse response = objectMapper
+                .readValue(json, ResumeAnalysisEvaluationFlatResponse.class);
+
+        assertThatThrownBy(() -> response.toEvaluation(false))
+                .isInstanceOf(ExternalApiException.class)
+                .isNotInstanceOf(NullPointerException.class)
+                .hasMessageContaining("jdProvided=false");
+    }
+
+    /**
+     * 두 provider가 동일하게 행동하는 근거: Bedrock 클라이언트는 parseToolInput 후, GPT 클라이언트는
+     * readValue 후 각각 같은 toEvaluation을 호출한다. 응답 변형 방어가 그 메서드 한 곳에 있으므로
+     * provider별로 갈리지 않는다. GPT 경로는 ExternalApiException을 재던져 이 구체적 메시지를 보존한다.
+     */
+    @Test
+    void JD가_제공됐는데_JD적합성_점수가_누락되면_ExternalApiException이_발생한다() throws Exception {
+        ResumeAnalysisEvaluationFlatResponse response = objectMapper
+                .readValue(flatEvaluationJson(false), ResumeAnalysisEvaluationFlatResponse.class);
+
+        assertThatThrownBy(() -> response.toEvaluation(true))
+                .isInstanceOf(ExternalApiException.class)
+                .isNotInstanceOf(NullPointerException.class);
     }
 
     @Test

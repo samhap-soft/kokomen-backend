@@ -10,7 +10,6 @@ import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionGptRequest;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionsFlatResponse;
 import com.samhap.kokomen.resume.external.dto.ResumeGptResponse;
-import com.samhap.kokomen.resume.external.dto.ResumeGptResponseMessage;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -42,7 +41,9 @@ public class ResumeAnalysisQuestionGptClient extends BaseGptClient {
 
     private ResumeAnalysisQuestionResult parseQuestions(String arguments) {
         try {
-            return objectMapper.readValue(unwrapJsonString(arguments), ResumeAnalysisQuestionsFlatResponse.class)
+            return objectMapper.readValue(
+                            ResumeAnalysisGptResponses.unwrapJsonString(arguments),
+                            ResumeAnalysisQuestionsFlatResponse.class)
                     .toResult();
         } catch (ExternalApiException e) {
             throw e;
@@ -51,35 +52,8 @@ public class ResumeAnalysisQuestionGptClient extends BaseGptClient {
         }
     }
 
-    private String unwrapJsonString(String json) {
-        if (json == null || json.isEmpty()) {
-            return json;
-        }
-        String trimmed = json.trim();
-        if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-            return trimmed.substring(1, trimmed.length() - 1).replace("\\\"", "\"");
-        }
-        return json;
-    }
-
     @Override
     protected void validateResponse(Object response) {
-        if (response == null) {
-            throw new ExternalApiException("GPT API로부터 유효한 응답을 받지 못했습니다.");
-        }
-        if (!(response instanceof ResumeGptResponse gptResponse)) {
-            throw new ExternalApiException(
-                    "GPT API로부터 예기치 않은 타입의 응답을 받았습니다: " + response.getClass().getName());
-        }
-        if (gptResponse.choices() == null || gptResponse.choices().isEmpty()) {
-            throw new ExternalApiException("GPT API 응답에 choices가 없습니다.");
-        }
-        ResumeGptResponseMessage message = gptResponse.choices().get(0).message();
-        if (message == null) {
-            throw new ExternalApiException("GPT API 응답에 message가 없습니다.");
-        }
-        if (message.toolCalls() == null || message.toolCalls().isEmpty()) {
-            throw new ExternalApiException("GPT API 응답에 tool_calls가 없습니다.");
-        }
+        ResumeAnalysisGptResponses.validate(response);
     }
 }

@@ -10,7 +10,6 @@ import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisEvaluationFlatResponse;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisEvaluationGptRequest;
 import com.samhap.kokomen.resume.external.dto.ResumeGptResponse;
-import com.samhap.kokomen.resume.external.dto.ResumeGptResponseMessage;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -40,45 +39,26 @@ public class ResumeAnalysisEvaluationGptClient extends BaseGptClient {
         return parseEvaluation(toolCall.function().arguments(), command.jdProvided());
     }
 
+    /**
+     * ExternalApiException을 먼저 재던지는 이유: toEvaluation이 _score 누락 같은 응답 변형을
+     * 구체적 메시지가 담긴 ExternalApiException으로 이미 변환하므로, 여기서 무조건 재포장하면
+     * 그 메시지가 일반 문구로 덮인다. 질문 클라이언트의 parseQuestions와 같은 형태다.
+     */
     private ResumeAnalysisEvaluation parseEvaluation(String arguments, boolean jdProvided) {
         try {
-            return objectMapper.readValue(unwrapJsonString(arguments), ResumeAnalysisEvaluationFlatResponse.class)
+            return objectMapper.readValue(
+                            ResumeAnalysisGptResponses.unwrapJsonString(arguments),
+                            ResumeAnalysisEvaluationFlatResponse.class)
                     .toEvaluation(jdProvided);
+        } catch (ExternalApiException e) {
+            throw e;
         } catch (Exception e) {
             throw new ExternalApiException("GPT 이력서 분석 평가 응답 파싱에 실패했습니다.", e);
         }
     }
 
-    // GPT가 tool_calls.arguments를 이중 인코딩해 보내는 경우가 있어 한 겹 벗긴다(구 플로우와 동일 처리).
-    private String unwrapJsonString(String json) {
-        if (json == null || json.isEmpty()) {
-            return json;
-        }
-        String trimmed = json.trim();
-        if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-            return trimmed.substring(1, trimmed.length() - 1).replace("\\\"", "\"");
-        }
-        return json;
-    }
-
     @Override
     protected void validateResponse(Object response) {
-        if (response == null) {
-            throw new ExternalApiException("GPT API로부터 유효한 응답을 받지 못했습니다.");
-        }
-        if (!(response instanceof ResumeGptResponse gptResponse)) {
-            throw new ExternalApiException(
-                    "GPT API로부터 예기치 않은 타입의 응답을 받았습니다: " + response.getClass().getName());
-        }
-        if (gptResponse.choices() == null || gptResponse.choices().isEmpty()) {
-            throw new ExternalApiException("GPT API 응답에 choices가 없습니다.");
-        }
-        ResumeGptResponseMessage message = gptResponse.choices().get(0).message();
-        if (message == null) {
-            throw new ExternalApiException("GPT API 응답에 message가 없습니다.");
-        }
-        if (message.toolCalls() == null || message.toolCalls().isEmpty()) {
-            throw new ExternalApiException("GPT API 응답에 tool_calls가 없습니다.");
-        }
+        ResumeAnalysisGptResponses.validate(response);
     }
 }
