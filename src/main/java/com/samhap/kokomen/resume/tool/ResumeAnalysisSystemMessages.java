@@ -7,8 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 이력서 분석(신규 5지표) 시스템 메시지의 GPT·Bedrock 공용 단일 소스.
- * 구 {@link ResumeSystemMessages}는 동결이므로 {@code evaluation(boolean)} 오버로드를 그쪽에 추가하지 않는다.
+ * 이력서 분석(5지표) 시스템 메시지의 GPT·Bedrock 공용 단일 소스.
  * {@code questionGeneration()}은 의도적으로 무인자다: 평가 결과는 user 메시지에만 주입하며,
  * system을 요청별로 바꾸면 Bedrock 캐시 프리픽스가 요청마다 갈려 캐시가 전면 무효화된다(D8).
  */
@@ -19,8 +18,8 @@ public final class ResumeAnalysisSystemMessages {
 
     public static String evaluation(boolean jdProvided) {
         List<String> fragments = new ArrayList<>();
-        fragments.add(ResumePromptFragments.SECURITY_RULES);
-        fragments.add(ResumePromptFragments.SENIOR_INTERVIEWER_LENS);
+        fragments.add(ResumeAnalysisPromptFragments.SECURITY_RULES);
+        fragments.add(ResumeAnalysisPromptFragments.SENIOR_INTERVIEWER_LENS);
         fragments.add(evaluationCriteria(jdProvided));
         fragments.add(jdProvided
                 ? ResumeAnalysisPromptFragments.SCORING_WEIGHTS_WITH_JD
@@ -54,7 +53,7 @@ public final class ResumeAnalysisSystemMessages {
                 - 도구 입력 스키마에 없는 필드는 절대 만들어 내지 않는다. (종합 점수는 서버에서 가중평균으로 재계산하므로 별도 출력하지 않는다.)
                 </output>
                 """.formatted(
-                ResumePromptFragments.PERSONA_RECRUITER,
+                ResumeAnalysisPromptFragments.PERSONA_RECRUITER,
                 joinFragments(fragments),
                 dimensionKeys.size(),
                 String.join(", ", dimensionKeys));
@@ -80,9 +79,9 @@ public final class ResumeAnalysisSystemMessages {
                 제공된 도구를 호출하여 questions 배열을 제출하라. 각 항목은 question(질문 내용)과 reason(질문 선정 이유)을 포함해야 한다.
                 </output>
                 """.formatted(
-                ResumePromptFragments.PERSONA_INTERVIEWER,
+                ResumeAnalysisPromptFragments.PERSONA_INTERVIEWER,
                 ResumeAnalysisPromptFragments.QUESTION_GENERATION_GUIDE,
-                ResumePromptFragments.QUESTION_PROBE_LENS,
+                ResumeAnalysisPromptFragments.QUESTION_PROBE_LENS,
                 ResumeAnalysisPromptFragments.EVALUATION_GROUNDING_RULE);
     }
 

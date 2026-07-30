@@ -11,7 +11,6 @@ import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.interview.external.dto.request.GptFunctionParameters;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
-import com.samhap.kokomen.resume.tool.ResumeToolNames;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +19,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 
 /**
  * 신규 이력서 분석 tool 스키마가 JD 유무에 따라 두 가지 필드 집합으로 갈리고(D6), 중첩 object 없이 flat으로 구성되며,
- * Bedrock과 GPT가 완전히 같은 사양을 렌더하는지 검증한다. 기존 ResumeEvaluationFlatSchemaTest는 무수정이다.
+ * Bedrock과 GPT가 완전히 같은 사양을 렌더하는지 검증한다.
  * ResumeAnalysisQuestionResult / ResumeAnalysisQuestionsFlatResponse는 이 테스트와 같은 패키지라 import하지 않는다.
  */
 class ResumeAnalysisFlatSchemaTest {
@@ -170,13 +169,12 @@ class ResumeAnalysisFlatSchemaTest {
     }
 
     @Test
-    void 신규_도구_이름은_기존_도구_이름과_겹치지_않는다() {
+    void 도구_이름은_평가와_질문이_서로_다르다() {
         assertThat(ResumeAnalysisToolNames.EVALUATION)
-                .isEqualTo("submit_resume_analysis_evaluation")
-                .isNotEqualTo(ResumeToolNames.EVALUATION);
+                .isEqualTo("submit_resume_analysis_evaluation");
         assertThat(ResumeAnalysisToolNames.QUESTION_GENERATION)
                 .isEqualTo("submit_resume_analysis_questions")
-                .isNotEqualTo(ResumeToolNames.QUESTION_GENERATION);
+                .isNotEqualTo(ResumeAnalysisToolNames.EVALUATION);
     }
 
     @Test

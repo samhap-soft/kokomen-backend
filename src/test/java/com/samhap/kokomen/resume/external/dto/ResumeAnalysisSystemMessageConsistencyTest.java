@@ -8,17 +8,12 @@ import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisEvaluationResultRenderer;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPromptFragments;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisSystemMessages;
-import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
-import com.samhap.kokomen.resume.tool.ResumePromptFragments;
-import com.samhap.kokomen.resume.tool.ResumeSystemMessages;
-import com.samhap.kokomen.resume.tool.ResumeToolNames;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * 이력서 분석(신규 5지표) 프롬프트의 일관성과 구 프롬프트와의 격리를 검증한다(§8-4).
- * 구 평가·구 질문생성 프롬프트는 동결이므로 "신규가 구지표를 포함하지 않는다"와
- * "구 프롬프트가 신규지표를 포함하지 않는다"를 양방향으로 단정한다(D2).
+ * 이력서 분석(5지표) 프롬프트의 일관성을 검증한다.
+ * 폐기된 구 지표명·구 관찰항목이 신규 프롬프트에 재유입되지 않는지도 함께 단정한다.
  */
 class ResumeAnalysisSystemMessageConsistencyTest {
 
@@ -39,17 +34,6 @@ class ResumeAnalysisSystemMessageConsistencyTest {
                 .doesNotContain("career_growth", "documentation");
         assertThat(ResumeAnalysisSystemMessages.evaluation(false))
                 .doesNotContain("career_growth", "documentation");
-    }
-
-    @Test
-    void 기존_평가_시스템_메시지는_신규지표를_포함하지_않는다() {
-        assertThat(ResumeSystemMessages.evaluation()).doesNotContain("soft_skills", "jd_fit");
-    }
-
-    @Test
-    void 기존_질문_시스템_메시지는_평가결과_규칙을_포함하지_않는다() {
-        assertThat(ResumeSystemMessages.questionGeneration())
-                .doesNotContain("<evaluation_result>", "<evaluation_grounding_rule>");
     }
 
     @Test
@@ -106,22 +90,23 @@ class ResumeAnalysisSystemMessageConsistencyTest {
                 "기술 블로그",
                 "멘토링",
                 "조직 개편",
+                "갈등 해결",
                 "기재되어 있을 때에만 채점");
     }
 
     @Test
     void 폐기된_구_관찰항목은_신규_프롬프트에_없다() {
         assertThat(ResumeAnalysisSystemMessages.evaluation(true))
-                .doesNotContain("오탈자", "경력 발전 경로", "지속적 학습");
+                .doesNotContain("오탈자", "경력 발전 경로", "지속적인 학습");
         assertThat(ResumeAnalysisSystemMessages.evaluation(false))
-                .doesNotContain("오탈자", "경력 발전 경로", "지속적 학습");
+                .doesNotContain("오탈자", "경력 발전 경로", "지속적인 학습");
     }
 
     @Test
     void 독립성_원칙과_보안규칙은_신규_평가_프롬프트에도_포함된다() {
         assertThat(ResumeAnalysisSystemMessages.evaluation(true)).contains(
-                ResumePromptFragments.SECURITY_RULES,
-                ResumePromptFragments.SENIOR_INTERVIEWER_LENS,
+                ResumeAnalysisPromptFragments.SECURITY_RULES,
+                ResumeAnalysisPromptFragments.SENIOR_INTERVIEWER_LENS,
                 ResumeAnalysisPromptFragments.INDEPENDENCE_PRINCIPLE,
                 ResumeAnalysisPromptFragments.EVALUATION_INSTRUCTION,
                 ResumeAnalysisPromptFragments.IMPROVEMENT_RULES,
@@ -137,9 +122,9 @@ class ResumeAnalysisSystemMessageConsistencyTest {
     @Test
     void 질문_시스템_메시지는_질문가이드와_probe렌즈와_평가결과_근거규칙을_포함한다() {
         assertThat(ResumeAnalysisSystemMessages.questionGeneration()).contains(
-                ResumePromptFragments.PERSONA_INTERVIEWER,
+                ResumeAnalysisPromptFragments.PERSONA_INTERVIEWER,
                 ResumeAnalysisPromptFragments.QUESTION_GENERATION_GUIDE,
-                ResumePromptFragments.QUESTION_PROBE_LENS,
+                ResumeAnalysisPromptFragments.QUESTION_PROBE_LENS,
                 ResumeAnalysisPromptFragments.EVALUATION_GROUNDING_RULE);
     }
 
@@ -148,8 +133,6 @@ class ResumeAnalysisSystemMessageConsistencyTest {
         assertThat(ResumeAnalysisPromptFragments.QUESTION_GENERATION_GUIDE).contains(
                 "8. <evaluation_result>가 제공된 경우 질문 배분의 우선순위 근거로 사용하며, "
                         + "<evaluation_grounding_rule>을 준수한다.");
-        assertThat(ResumeAnalysisPromptFragments.QUESTION_GENERATION_GUIDE)
-                .isNotEqualTo(ResumePromptFragments.QUESTION_GENERATION_GUIDE);
     }
 
     @Test
@@ -159,16 +142,6 @@ class ResumeAnalysisSystemMessageConsistencyTest {
         String second = ResumeAnalysisSystemMessages.questionGeneration();
 
         assertThat(second).isEqualTo(first);
-    }
-
-    @Test
-    void 신규_도구_이름은_기존_도구_이름과_겹치지_않는다() {
-        assertThat(ResumeAnalysisToolNames.EVALUATION)
-                .isEqualTo("submit_resume_analysis_evaluation")
-                .isNotEqualTo(ResumeToolNames.EVALUATION);
-        assertThat(ResumeAnalysisToolNames.QUESTION_GENERATION)
-                .isEqualTo("submit_resume_analysis_questions")
-                .isNotEqualTo(ResumeToolNames.QUESTION_GENERATION);
     }
 
     @Test
