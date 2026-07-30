@@ -11,8 +11,6 @@ import com.samhap.kokomen.interview.external.ResumeBasedQuestionGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.service.question.QuestionGenerationAsyncService;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
-import com.samhap.kokomen.resume.external.ResumeEvaluationBedrockClient;
-import com.samhap.kokomen.resume.external.ResumeEvaluationGptClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.redisson.api.RedissonClient;
@@ -43,13 +41,9 @@ public abstract class BaseTest {
     @MockitoBean
     protected AnswerFeedbackBedrockClient answerFeedbackBedrockClient;
     @MockitoBean
-    protected ResumeEvaluationBedrockClient resumeEvaluationBedrockClient;
-    @MockitoBean
     protected KakaoOAuthClient kakaoOAuthClient;
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
-    @MockitoBean
-    protected ResumeEvaluationGptClient resumeEvaluationGptClient;
     @MockitoBean
     protected ResumeBasedQuestionGptClient resumeBasedQuestionGptClient;
     @MockitoBean
