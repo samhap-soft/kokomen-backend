@@ -16,7 +16,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 신규 이력서 분석 평가 콜의 GPT 폴백 요청. 구 ResumeGptRequest는 0바이트 수정 대상이므로 별 클래스로 둔다.
+ * 신규 이력서 분석 평가 콜의 GPT 폴백 요청. 구 ResumeGptRequest는 이력서 평가 플로우 전삭제(Task 8)로
+ * 이미 삭제됐으므로 이 클래스는 애초부터 독립 구현이며 재사용할 대상 자체가 없다.
  * Bedrock과 같은 dimensions(jdProvided) 루프·같은 required 순서로 렌더한다.
  * 전역 SNAKE_CASE 정책이 toolChoice → tool_choice 변환을 담당하므로 @JsonProperty를 쓰지 않는다.
  */

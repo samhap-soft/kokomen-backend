@@ -22,9 +22,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification;
 
 /**
- * 신규 이력서 분석 Bedrock 요청 팩토리. 구 ResumeBedrockRequestFactory는 0바이트 수정 대상이므로
- * 그 클래스의 private 헬퍼(bulletArraySchema·buildToolConfig)를 재사용하지 않고 같은 형태로 복사했다
- * (가시성 확대는 D2 위반).
+ * 신규 이력서 분석 Bedrock 요청 팩토리. 구 ResumeBedrockRequestFactory는 이력서 평가 플로우 전삭제
+ * (Task 8)로 평가 관련 코드가 모두 제거되고 구 질문생성 플로우 전용으로만 남아 Task 9에서 완전히
+ * 삭제될 예정이므로, 곧 사라질 그 클래스의 private 헬퍼(bulletArraySchema·buildToolConfig)에 의존하지
+ * 않고 같은 형태로 이 클래스에 독립 구현했다.
  */
 public final class ResumeAnalysisBedrockRequestFactory {
 
