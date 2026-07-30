@@ -30,24 +30,24 @@
 -- ---------------------------------------------------------------------------
 -- 1. recruit의 자식 5개. 서로 독립이므로 이 5개 사이의 순서는 무관하다.
 -- ---------------------------------------------------------------------------
-DROP TABLE recruit_education;
-DROP TABLE recruit_employee_type;
-DROP TABLE recruit_employment;
-DROP TABLE recruit_region;
-DROP TABLE ocr_waiting_list;
+DROP TABLE IF EXISTS recruit_education;
+DROP TABLE IF EXISTS recruit_employee_type;
+DROP TABLE IF EXISTS recruit_employment;
+DROP TABLE IF EXISTS recruit_region;
+DROP TABLE IF EXISTS ocr_waiting_list;
 
 -- ---------------------------------------------------------------------------
 -- 2. recruit. 이 시점에 inbound FK가 0이다.
 -- ---------------------------------------------------------------------------
-DROP TABLE recruit;
+DROP TABLE IF EXISTS recruit;
 
 -- ---------------------------------------------------------------------------
 -- 3. recruit의 부모 2개. recruit가 사라졌으므로 inbound FK가 0이다.
 -- ---------------------------------------------------------------------------
-DROP TABLE affiliate;
-DROP TABLE company;
+DROP TABLE IF EXISTS affiliate;
+DROP TABLE IF EXISTS company;
 
 -- ---------------------------------------------------------------------------
 -- 4. crawling_request. FK 없음, 독립.
 -- ---------------------------------------------------------------------------
-DROP TABLE crawling_request;
+DROP TABLE IF EXISTS crawling_request;
