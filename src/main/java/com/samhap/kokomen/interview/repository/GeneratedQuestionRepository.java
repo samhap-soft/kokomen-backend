@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface GeneratedQuestionRepository extends JpaRepository<GeneratedQuestion, Long> {
 
-    List<GeneratedQuestion> findByGenerationIdOrderByQuestionOrder(Long generationId);
-
     List<GeneratedQuestion> findByAnalysisIdOrderByQuestionOrder(Long analysisId);
 
     Optional<GeneratedQuestion> findByIdAndAnalysisId(Long id, Long analysisId);

@@ -20,7 +20,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "generated_question", indexes = {
-        @Index(name = "idx_generated_question_generation_id", columnList = "generation_id"),
         @Index(name = "idx_generated_question_analysis_id", columnList = "analysis_id")
 })
 public class GeneratedQuestion extends BaseEntity {
@@ -35,12 +34,8 @@ public class GeneratedQuestion extends BaseEntity {
     @Column(name = "id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "generation_id")
-    private ResumeQuestionGeneration generation;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "analysis_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "analysis_id", nullable = false)
     private ResumeAnalysis analysis;
 
     @Column(name = "content", nullable = false, length = CONTENT_MAX_LENGTH)
@@ -51,13 +46,6 @@ public class GeneratedQuestion extends BaseEntity {
 
     @Column(name = "question_order", nullable = false)
     private Integer questionOrder;
-
-    public GeneratedQuestion(ResumeQuestionGeneration generation, String content, String reason, Integer questionOrder) {
-        this.generation = generation;
-        this.content = content;
-        this.reason = reason;
-        this.questionOrder = questionOrder;
-    }
 
     private GeneratedQuestion(ResumeAnalysis analysis, String content, String reason, Integer questionOrder) {
         this.analysis = analysis;

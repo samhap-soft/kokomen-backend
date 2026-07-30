@@ -11,30 +11,16 @@ import org.junit.jupiter.api.Test;
 class GeneratedQuestionTest {
 
     @Test
-    void 분석용_질문은_analysis만_채우고_generation은_null이다() {
+    void 분석용_질문은_analysis와_질문_내용을_채운다() {
         ResumeAnalysis analysis = memberAnalysis();
 
         GeneratedQuestion question = GeneratedQuestion.forAnalysis(analysis, "질문 내용", "질문 이유", 1);
 
         assertAll(
                 () -> assertThat(question.getAnalysis()).isSameAs(analysis),
-                () -> assertThat(question.getGeneration()).isNull(),
                 () -> assertThat(question.getContent()).isEqualTo("질문 내용"),
                 () -> assertThat(question.getReason()).isEqualTo("질문 이유"),
                 () -> assertThat(question.getQuestionOrder()).isEqualTo(1)
-        );
-    }
-
-    @Test
-    void 기존_생성_흐름의_질문은_generation만_채우고_analysis는_null이다() {
-        ResumeQuestionGeneration generation = new ResumeQuestionGeneration(
-                MemberFixtureBuilder.builder().id(1L).build(), null, null, "3년");
-
-        GeneratedQuestion question = new GeneratedQuestion(generation, "질문 내용", "질문 이유", 1);
-
-        assertAll(
-                () -> assertThat(question.getGeneration()).isSameAs(generation),
-                () -> assertThat(question.getAnalysis()).isNull()
         );
     }
 

@@ -6,10 +6,7 @@ import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
-import com.samhap.kokomen.interview.external.ResumeBasedQuestionBedrockService;
-import com.samhap.kokomen.interview.external.ResumeBasedQuestionGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
-import com.samhap.kokomen.interview.service.question.QuestionGenerationAsyncService;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,12 +41,6 @@ public abstract class BaseTest {
     protected KakaoOAuthClient kakaoOAuthClient;
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
-    @MockitoBean
-    protected ResumeBasedQuestionGptClient resumeBasedQuestionGptClient;
-    @MockitoBean
-    protected ResumeBasedQuestionBedrockService resumeBasedQuestionBedrockService;
-    @MockitoBean
-    protected QuestionGenerationAsyncService questionGenerationAsyncService;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @MockitoSpyBean

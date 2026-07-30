@@ -388,7 +388,6 @@ class ResumeAnalysisRepositoryTest extends BaseTest {
         assertAll(
                 () -> assertThat(questions).extracting(GeneratedQuestion::getContent)
                         .containsExactly("첫번째 질문", "두번째 질문"),
-                () -> assertThat(questions).allSatisfy(q -> assertThat(q.getGeneration()).isNull()),
                 () -> assertThat(generatedQuestionRepository
                         .findByIdAndAnalysisId(first.getId(), analysis.getId())).isPresent(),
                 () -> assertThat(generatedQuestionRepository
