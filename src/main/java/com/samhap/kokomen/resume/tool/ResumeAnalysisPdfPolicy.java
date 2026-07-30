@@ -12,8 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 신규 이력서 분석 경로 전용 PDF 정책. 파일 크기만으로는 파싱 비용을 제한할 수 없어(수천 페이지 PDF)
- * 페이지 수 상한을 둔다. 기존 PdfValidator에 이 검증을 넣으면 동결된 구 평가 업로드 API에 새 거부 조건이
- * 생기므로(D2) 별 클래스로 분리하고 신규 경로에서만 호출한다.
+ * 페이지 수 상한을 둔다. PdfValidator는 현재 프로덕션 호출자가 없지만, 그 기존 동작을 이 검증 때문에 바꾸지
+ * 않기 위해 별 클래스로 분리했다 — 신규 업로드 경로가 추가되면 PdfValidator와 이 정책 양쪽을 함께 호출하게
+ * 되므로, 두 클래스의 책임을 지금부터 섞지 않는다.
  */
 @Slf4j
 @Component

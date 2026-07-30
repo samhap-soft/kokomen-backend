@@ -92,8 +92,9 @@ public class PdfTextExtractor {
      * 신규 이력서 분석 경로 전용. PDFTextStripper는 링크 annotation을 추출하지 않아 "GitHub" 같은 글자에 URL이
      * annotation으로만 걸린 이력서에서는 교차 검증 링크가 모델에 보이지 않는다(technical_skills 관찰항목이 구조적으로
      * 채점 불가가 된다). 본문 뒤에 &lt;links&gt; 블록을 덧붙여 해소한다.
-     * 기존 extractText 계열과 공유 private extractText(PDDocument)는 절대 수정하지 않는다 — 그 메서드를 고치면
-     * 동결된 구 평가·구 질문생성 API의 LLM 입력이 바뀐다.
+     * 기존 extractText 계열과 공유 private extractText(PDDocument)는 절대 수정하지 않는다 — 존치되는
+     * ResumeContentService(저장-자료 텍스트 추출 경로)가 지금도 이 메서드를 그대로 호출하므로, 그 메서드를 고치면
+     * 하이퍼링크 유무에 따라 신규 플로우와 기존 플로우의 LLM 입력이 서로 달라지게 된다.
      */
     public String extractTextWithLinks(MultipartFile file) {
         if (file == null || file.isEmpty()) {
