@@ -57,6 +57,22 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    @Bean("resumeAnalysisExecutor")
+    public ThreadPoolTaskExecutor resumeAnalysisExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(60);
+        executor.setMaxPoolSize(60);
+        executor.setQueueCapacity(40);
+        executor.setThreadNamePrefix("Async-Resume-Analysis-");
+        // 셧다운 시 큐를 버린다. 큐에 있던 행은 sweep이 종단 처리하며,
+        // 억지로 실행하면 "중간에 죽는 태스크"만 늘어난다.
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        executor.setAwaitTerminationSeconds(60);
+        executor.initialize();
+        executor.getThreadPoolExecutor().prestartAllCoreThreads();
+        return executor;
+    }
+
     @Override
     public Executor getAsyncExecutor() {
         return taskExecutor();
