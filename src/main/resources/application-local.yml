@@ -18,7 +18,6 @@ aws:
   next-question-s3-path: local/next-question-voice/
   resume-s3-path: local/resume/
   portfolio-s3-path: local/portfolio/
-  company-s3-path: recruit/local/company/
 tosspayments:
   widget-secret-key: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
 retry:

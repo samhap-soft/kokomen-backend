@@ -42,7 +42,6 @@ aws:
   next-question-s3-path: mock-path/
   resume-s3-path: mock-path/
   portfolio-s3-path: mock-path/
-  company-s3-path: mock-path/
   bedrock:
     model-id: test-model-id
     proceed-max-tokens: 2048
