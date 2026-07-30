@@ -6,45 +6,44 @@
 --
 -- !! 비가역 !! 역마이그레이션이 없다. 적용 전 논리 백업과 §7 사전 점검 전량 통과가 필수다.
 --
--- !! 재실행 안전성의 범위 (리뷰 라운드 1, Finding 1 반영) !!
+-- !! 재실행 안전성 -- 데이터 "모양"으로 구분한다 (리뷰 라운드 2, Finding 1 재작업) !!
 -- 결정 M4에 따라 신규 이력서 분석 플로우도 Interview(Member, GeneratedQuestion, Integer, InterviewMode)
 -- 생성자를 그대로 써서 interview_type='RESUME_BASED'인 행을 만든다(Interview.java는 이 태스크에서
 -- 바이트 단위로 무수정 -- Interview.java:132-137). 즉 interview_type = 'RESUME_BASED' 만으로는
 -- "구 질문생성 플로우가 만든 행"과 "신규 이력서 분석 플로우가 만든 행"을 구별할 수 없다.
 --
--- 원래 버전(컷오프 없음)은 "이 파일을 언제 다시 돌려도 구 플로우 잔존물만 지운다"고 주장했지만,
--- 그 주장은 신규 플로우가 존재하지 않던 시점에만 성립했다. 신규 플로우가 서비스를 시작한 뒤
--- 이 파일이 재실행되면(예: 운영자가 flyway_schema_history를 손으로 되돌리고 재적용하거나, 복구 절차를
--- 오해해 이 스크립트를 raw SQL로 직접 재실행하는 경우) 컷오프 없는 WHERE절은 신규 플로우가 방금 만든
--- 살아있는 면접·질문까지 조용히 지운다 -- interview_type 값만 보면 구분이 안 되기 때문이다.
+-- 라운드 1은 이것을 고정 캘린더 컷오프(created_at < 리터럴)로 풀었다. 라운드 2는 그 컷오프를 데이터
+-- 모양 판별로 대체한다. V51이 만든 XOR 제약(chk_generated_question_parent, generation_id와
+-- analysis_id 중 정확히 하나만 NOT NULL)이 generated_question 행마다 "구 플로우 부모인가 신규
+-- 플로우 부모인가"를 이미 배타적으로 못박아 뒀으므로, 그 자체가 배포 일정과 무관한 영구적 판별자다.
+-- 캘린더 컷오프는 값을 하나 정해 파일에 박아 넣어야 했고(배포가 늦어지면 갱신이 필요한, 라운드 1이
+-- 인정한 유지보수 부담이었다) generation_id 판별은 그런 값이 필요 없다 -- 재실행이 언제, 몇 번이든
+-- 항상 안전하다.
 --
--- 그래서 모든 DELETE에 고정 컷오프 시점(아래 CUTOFF)을 리터럴로 박아 넣었다. NOW()를 쓰지 않는 이유가
--- 핵심이다: NOW()는 재실행 시점마다 갱신되어 "지금 이전에 생성된 건 전부 구 데이터"라는, 방금 고친
--- 그 잘못된 가정을 매 재실행마다 다시 만들어낸다. 리터럴 상수는 재실행 시점과 무관하게 항상 같은
--- 절대 시점을 가리키므로, 이 시점 이후에 created_at을 가진 행은 이 파일이 몇 번이든, 언제 재실행되든
--- 항상 보존된다 -- "재실행이 신규 플로우 데이터를 파괴할 수 없다"가 이 값의 존재 이유다.
+-- 판별 조건: generated_question.generation_id IS NOT NULL 인 행이 구 플로우가 만든 행이다.
+-- interview는 자신의 generated_question_id가 그런 행을 가리킬 때만(또는 아래 NULL 예외 참고)
+-- 삭제 대상이다.
 --
---   CUTOFF = '2026-08-15 00:00:00' (이 리전 서버 타임존, Asia/Seoul 기준)
+-- !! 이 판별은 V53이 V54보다 먼저 실행된다는 전제에서만 성립한다 (Flyway가 보장, out-of-order: false).
+-- V54:92가 generation_id 컬럼 자체를 DROP COLUMN으로 지운다. V54가 이미 적용된 스키마에서 이 파일을
+-- 재실행하면(예: 운영자가 raw SQL로 직접 재실행) 아래 모든 문장이 "Unknown column 'generation_id'"로
+-- 즉시 죽는다 -- 이것은 의도된 동작이다. 조용히 전체 삭제로 후퇴하는 것보다 시끄럽게 죽는 것이 훨씬
+-- 안전하므로 이 실패를 "고치려" 하지 않는다. V53은 V54 이전에만 의미가 있는 파일이고, 그 경계를
+-- 넘어서면 스스로 실행을 거부해야 맞다.
 --
--- 이 값을 고르는 원칙: 짧을수록 안전하다. 컷오프는 (a) 이 배포가 실제로 각 환경에 반영되는 시점보다는
--- 뒤여야 하고(그래야 구 플로우가 실제로 만들어 둔 마지막 행까지 첫 실행에서 잡힌다) (b) 신규 플로우가
--- 실제 트래픽을 받기 시작하는 시점보다는 한참 앞이어야 한다(그래야 미래의 재실행이 안전하다). (b)의
--- 위반이 (a)의 위반보다 훨씬 위험하다 -- (a)를 놓치면 구 데이터 일부가 안 지워진 채 남을 뿐이지만
--- (b)를 놓치면 신규 데이터가 지워진다. 그래서 짧은 쪽(이 커밋의 리뷰·머지·배포에 필요한 정도의 여유,
--- 약 2주)으로 잡았다. 신규 이력서 분석 질문생성 플로우는 이 태스크 시점에 아직 착수되지 않은 별도
--- 태스크(9개 남음)의 산물이므로 2주 안에 실제 트래픽을 받을 일은 없다고 판단했다. 배포가 이 값보다
--- 늦어지면 그 사이에 생성된 "진짜 구 플로우" 잔존 데이터가 첫 실행에서 빠질 수 있다 -- 파괴적 문제가
--- 아니라 완전성 문제이며, 필요하면 이 리터럴을 배포 시점 이후로 올리고 재적용하면 회복된다.
+-- generated_question_id가 NULL인 RESUME_BASED interview도 삭제 대상에 포함한다 -- 이 태스크의
+-- 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 항상 non-null GeneratedQuestion을
+-- 넘기므로, 신규 플로우는 이 모양을 구조적으로 만들 수 없다. 반면 V33은 generated_question_id
+-- 컬럼이 존재하기도 전에 resume_based_root_question(V33, V36:17에서 DROP)이라는 별도 테이블로
+-- 이력서 기반 질문을 저장하던 시기가 있었다 -- 그 시기의 잔존 행이라면 interview_type='RESUME_BASED'
+-- 이면서 generated_question_id가 NULL일 수 있다. 이런 행을 남겨두면 Interview.getDisplayQuestion()의
+-- 무방비 역참조(generatedQuestion.getContent(), Interview.java:202-207)가 면접 목록 조회에서
+-- NPE를 낸다 -- 그러니 이 모양은 "신규 플로우일 수 없는 구 플로우 잔존물"로 확정하고 삭제 대상에
+-- 포함한다.
 --
 -- 모든 DELETE는 멱등이다(같은 WHERE를 다시 돌리면 0행 삭제). 중간 실패 시
 -- flyway repair 후 이 파일을 재실행하면 수렴한다. 안전성 근거를 트랜잭션에 두지 않는 이유는
 -- MySQL에서 Flyway가 순수 DML 마이그레이션을 단일 트랜잭션으로 감싸는지 미확인이기 때문이다.
---
--- 컷오프를 세션 변수(SET @cutoff = ...)로 한 번만 선언하지 않고 매 문장에 리터럴로 반복해 넣은 것도
--- 의도다 -- 세션 변수는 이 파일의 모든 문장이 "같은 커넥션"에서 실행된다는 전제에 의존한다. Flyway의
--- 정상 실행 경로는 그 전제를 지키지만(파일 하나당 커넥션 하나), 풀링된 JdbcTemplate으로 문장을 하나씩
--- 재생하는 도구(예: 이 파일을 검증하는 테스트)는 문장마다 다른 커넥션을 빌려올 수 있어 세션 변수가
--- 중간에 사라질 수 있다. 리터럴 반복은 그 가정 자체를 없애 재생 방식과 무관하게 항상 같은 값으로 동작한다.
 --
 -- 삭제 순서는 자식부터다. InnoDB의 FK 검사는 문장 단위 즉시 검사이며 지연(deferred)이 없으므로
 -- 순서를 바꾸면 ERROR 1451(Cannot delete or update a parent row)로 죽는다.
@@ -83,8 +82,8 @@ SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
 -- ---------------------------------------------------------------------------
 -- 1. answer_like / answer_memo — 손자 세대. 서로 독립이므로 이 둘의 순서는 무관하다.
---    컷오프는 답변/좋아요/메모 자신의 created_at이 아니라 그 조상 interview의 created_at으로 건다 --
---    "이 면접이 구 플로우 산물인가"가 삭제 여부를 결정하는 유일한 기준이기 때문이다.
+--    구 플로우 판별은 답변/좋아요/메모 자신이 아니라 조상 interview의 모양(generated_question_id가
+--    가리키는 generated_question의 generation_id, 또는 그 컬럼 자체가 NULL)으로 건다.
 -- ---------------------------------------------------------------------------
 DELETE FROM answer_like
 WHERE answer_id IN (SELECT a.id
@@ -92,7 +91,9 @@ WHERE answer_id IN (SELECT a.id
                              JOIN question q ON q.id = a.question_id
                              JOIN interview i ON i.id = q.interview_id
                     WHERE i.interview_type = 'RESUME_BASED'
-                      AND i.created_at < '2026-08-15 00:00:00');
+                      AND (i.generated_question_id IS NULL
+                           OR i.generated_question_id IN
+                              (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL)));
 
 DELETE FROM answer_memo
 WHERE answer_id IN (SELECT a.id
@@ -100,7 +101,9 @@ WHERE answer_id IN (SELECT a.id
                              JOIN question q ON q.id = a.question_id
                              JOIN interview i ON i.id = q.interview_id
                     WHERE i.interview_type = 'RESUME_BASED'
-                      AND i.created_at < '2026-08-15 00:00:00');
+                      AND (i.generated_question_id IS NULL
+                           OR i.generated_question_id IN
+                              (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL)));
 
 -- ---------------------------------------------------------------------------
 -- 2. answer
@@ -110,7 +113,9 @@ WHERE question_id IN (SELECT q.id
                       FROM question q
                                JOIN interview i ON i.id = q.interview_id
                       WHERE i.interview_type = 'RESUME_BASED'
-                        AND i.created_at < '2026-08-15 00:00:00');
+                        AND (i.generated_question_id IS NULL
+                             OR i.generated_question_id IN
+                                (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL)));
 
 -- ---------------------------------------------------------------------------
 -- 3. question
@@ -119,7 +124,9 @@ DELETE FROM question
 WHERE interview_id IN (SELECT i.id
                        FROM interview i
                        WHERE i.interview_type = 'RESUME_BASED'
-                         AND i.created_at < '2026-08-15 00:00:00');
+                         AND (i.generated_question_id IS NULL
+                              OR i.generated_question_id IN
+                                 (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL)));
 
 -- ---------------------------------------------------------------------------
 -- 4. interview_like
@@ -128,43 +135,48 @@ DELETE FROM interview_like
 WHERE interview_id IN (SELECT i.id
                        FROM interview i
                        WHERE i.interview_type = 'RESUME_BASED'
-                         AND i.created_at < '2026-08-15 00:00:00');
+                         AND (i.generated_question_id IS NULL
+                              OR i.generated_question_id IN
+                                 (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL)));
 
 -- ---------------------------------------------------------------------------
--- 5. interview (RESUME_BASED, 컷오프 이전 생성분만). interview_type은 VARCHAR(50)이고
+-- 5. interview (RESUME_BASED, 구 플로우 모양만). interview_type은 VARCHAR(50)이고
 --    idx_interview_interview_type(V33)이 있어 등가 조회가 인덱스를 탄다.
 --
---    WHERE에 `OR generated_question_id IS NOT NULL`을 붙이지 않는다 -- 그것은 M2가 정의한
---    삭제 범위(interview_type='RESUME_BASED'와 그 후손)를 넘어 다른 타입의 면접을 조용히 지운다.
+--    WHERE에 `OR generated_question_id IS NOT NULL`(다른 타입까지 훑는 형태)을 붙이지 않는다 --
+--    그것은 M2가 정의한 삭제 범위(interview_type='RESUME_BASED'와 그 후손)를 넘어 다른 타입의
+--    면접을 조용히 지운다.
 --
---    created_at < '2026-08-15 00:00:00' 컷오프가 신규 플로우 보호의 핵심이다 -- interview_type만으로는
---    신규/구 플로우를 구별할 수 없으므로(파일 선두 주석 참조), 이 컷오프 이후에 생성된 RESUME_BASED
---    행은 이 문장이 몇 번을 재실행되든 항상 살아남는다.
+--    generated_question_id IS NULL 도 삭제 대상이다 -- 파일 선두 주석 참조(V33 시대의
+--    resume_based_root_question 잔존 가능성). generated_question_id가 NOT NULL이면 그 부모의
+--    generation_id로 구/신규를 가른다 -- 신규 플로우 부모(analysis_id)를 가리키는 행은 이 IN에
+--    걸리지 않으므로 몇 번을 재실행해도 항상 보존된다.
 -- ---------------------------------------------------------------------------
 DELETE FROM interview
 WHERE interview_type = 'RESUME_BASED'
-  AND created_at < '2026-08-15 00:00:00';
+  AND (generated_question_id IS NULL
+       OR generated_question_id IN
+          (SELECT gq.id FROM generated_question gq WHERE gq.generation_id IS NOT NULL));
 
 -- ---------------------------------------------------------------------------
--- 6. generated_question. 컷오프 이전 생성분만 -- 전체 삭제(WHERE 없음)였던 원래 버전은 신규
---    플로우(analysis_id 부모)가 만든 행까지 지웠다(Finding 1). interview 경유로 컷오프를 걸 수 없는
---    이유: 이 테이블의 행은 interview 없이도 존재할 수 있다(이력서 분석 1건이 후보 질문 5~7개를
---    만들고 사용자가 그중 1개로만 면접을 시작하면, 나머지는 영원히 interview와 연결되지 않는다).
---    그래서 이 테이블 자신의 created_at으로 직접 판단한다.
+-- 6. generated_question. generation_id가 있는(= 구 플로우 부모) 행만 -- 전체 삭제(WHERE 없음)였던
+--    최초 버전은 신규 플로우(analysis_id 부모) 행까지 지웠다(라운드 1, Finding 1). generation_id는
+--    V51의 chk_generated_question_parent가 "정확히 하나만 NOT NULL"을 강제하므로, 이 조건 하나로
+--    신규 플로우 행(analysis_id NOT NULL, generation_id NULL)은 항상 배제된다. interview 경유로
+--    이 판별을 대신할 수 없는 이유: 이 테이블의 행은 interview 없이도 존재할 수 있다(이력서 분석
+--    1건이 후보 질문 5~7개를 만들고 사용자가 그중 1개로만 면접을 시작하면, 나머지는 영원히
+--    interview와 연결되지 않는다). 그래서 이 테이블 자신의 generation_id로 직접 판단한다.
 --
 --    TRUNCATE를 쓰지 않는다: interview.generated_question_id의 inbound FK 때문에
 --    ERROR 1701로 죽고(실측), TRUNCATE는 DDL이라 암묵 커밋도 일으킨다.
 --
 --    fk_interview_generated_question은 ON DELETE 절이 없어 RESTRICT(delete_rule = NO ACTION,
---    실측)다. 5단계 이후에도 이 컷오프 이전 generated_question을 참조하는 interview 행이 남아 있으면
---    이 문장이 ERROR 1451로 죽는다 -- "컷오프 이전 RESUME_BASED 면접은 5단계에서 전부 지워졌어야
---    한다"에 대한 DB 레벨 자동 검증이며, §7-D 사전 점검과 이중 방어를 이룬다. (컷오프 이후 생성된
---    generated_question은 그 자신이 이 문장의 WHERE를 통과하지 않으므로 이 검증 대상이 아니다.)
+--    실측)다. 5단계 이후에도 구 플로우 모양의 generated_question을 참조하는 interview 행이 남아
+--    있으면 이 문장이 ERROR 1451로 죽는다 -- "구 플로우 모양의 RESUME_BASED 면접은 5단계에서 전부
+--    지워졌어야 한다"에 대한 DB 레벨 자동 검증이며, §7-D 사전 점검과 이중 방어를 이룬다.
 --
---    이 문장이 V54의 MODIFY analysis_id NOT NULL 을 가능하게 만든다 -- 단, 그 전제(0행)의 의미가
---    이제 좁아졌다: "컷오프 이전에 생성된 구 플로우(generation_id 부모) 행이 0개"이지, "테이블 전체가
---    0행"이 아니다. 배포가 컷오프보다 늦어져 구 플로우 행이 created_at >= 컷오프로 남아 있으면 이
---    문장은 그 행을 지우지 못하고, V54의 MODIFY는 그 행에서 ERROR 1138(analysis_id가 NULL)로 죽는다 --
---    이것도 침묵이 아니라 실패이므로 받아들일 수 있는 결과다(파일 선두 주석의 (a) 위반 시나리오).
+--    이 문장이 V54의 MODIFY analysis_id NOT NULL 을 가능하게 만든다 -- 이 문장 이후 analysis_id가
+--    NULL인 행(= generation_id가 NOT NULL이었던 구 플로우 행)은 전부 제거되므로, 남는 행은 전부
+--    analysis_id NOT NULL이다.
 -- ---------------------------------------------------------------------------
-DELETE FROM generated_question WHERE created_at < '2026-08-15 00:00:00';
+DELETE FROM generated_question WHERE generation_id IS NOT NULL;
