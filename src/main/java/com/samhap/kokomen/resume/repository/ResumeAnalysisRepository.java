@@ -97,4 +97,23 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM ResumeAnalysis a WHERE a.id IN :ids")
     int deleteByIds(@Param("ids") List<Long> ids);
+
+    /**
+     * QUESTION_FAILED → EVALUATION_COMPLETED 조건부 전이. 재시도 상한과 상태를 WHERE에 함께 넣어
+     * 동시 재시도 두 건 중 하나만 1행을 갱신하게 만든다(§7-4).
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE ResumeAnalysis a
+               SET a.state = com.samhap.kokomen.resume.domain.ResumeAnalysisState.EVALUATION_COMPLETED,
+                   a.failureReason = null,
+                   a.questionRetryCount = a.questionRetryCount + 1,
+                   a.questionStartedAt = :now
+             WHERE a.id = :id
+               AND a.state = com.samhap.kokomen.resume.domain.ResumeAnalysisState.QUESTION_FAILED
+               AND a.questionRetryCount < :maxRetryCount
+            """)
+    int restoreForQuestionRetry(@Param("id") Long id, @Param("maxRetryCount") int maxRetryCount,
+                                @Param("now") LocalDateTime now);
 }
