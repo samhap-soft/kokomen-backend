@@ -53,6 +53,7 @@ import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -344,6 +345,13 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                 // 지표 5칸과 근거/보완 두 칸은 서로 같은 타입이라 자리가 바뀌어도 컴파일이 통과한다.
                 // 다섯 지표의 점수와 가중치를 모두 단정해 어느 두 칸을 교환해도 깨지게 한다
                 // (technical_skills와 jd_fit은 점수가 같으므로 가중치가 그 둘을 가른다).
+                //
+                // 이 판별은 다섯 지표의 (점수, 가중치) 쌍이 서로 다르다는 것에 전적으로 의존한다.
+                // 두 지표가 점수와 가중치를 모두 공유하게 되면 그 둘 사이의 교환은 여기서 잡히지 않는다
+                // -- 실제로 project_experience를 70/0.25로 맞춰 technical_skills와 완전히 겹치게 하면
+                // 교환 변형이 생존하는 것이 확인됐다. 픽스처 점수나 가중치 표를 바꿀 때는 다섯 쌍이
+                // 여전히 서로 다른지 확인해야 하고, 겹치게 만들 수밖에 없다면 그 두 지표의
+                // reason/improvements 값까지 단정해 판별 근거를 따로 세워야 한다.
                 .andExpect(jsonPath("$.job_position").value("백엔드 개발자"))
                 .andExpect(jsonPath("$.job_description").value("Spring Boot 기반 백엔드 개발"))
                 .andExpect(jsonPath("$.job_career").value("경력 3년"))
@@ -787,8 +795,10 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.data[0].job_position").value("백엔드 개발자"))
                 .andExpect(jsonPath("$.data[0].job_career").value("경력 3년"))
                 .andExpect(jsonPath("$.data[0].jd_provided").value(true))
+                // 초 단위까지 단정한다. DB의 DATETIME(6)이 잘라내는 것보다 아래인 나노초까지 비교하면
+                // 메모리 엔티티와 어긋나 간헐 실패하지만, 초 단위는 양쪽이 항상 일치한다.
                 .andExpect(jsonPath("$.data[0].created_at")
-                        .value(startsWith(completed.getCreatedAt().toLocalDate().toString())))
+                        .value(startsWith(completed.getCreatedAt().truncatedTo(ChronoUnit.SECONDS).toString())))
                 .andExpect(jsonPath("$.total_count").value(1))
                 .andExpect(jsonPath("$.total_pages").value(1))
                 .andExpect(jsonPath("$.has_next").value(false))
