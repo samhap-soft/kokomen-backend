@@ -1,0 +1,256 @@
+package com.samhap.kokomen.resume.service;
+
+import com.samhap.kokomen.interview.external.dto.response.GeneratedQuestionDto;
+import com.samhap.kokomen.resume.domain.ResumeAnalysis;
+import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
+import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
+import com.samhap.kokomen.resume.domain.ResumeAnalysisSourceText;
+import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationGptClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionGptClient;
+import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
+import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
+import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
+import com.samhap.kokomen.resume.tool.ResumeAnalysisEvaluationResultRenderer;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.stereotype.Service;
+
+/**
+ * resumeAnalysisExecutor에 제출되는 단일 태스크. 평가 콜과 질문 콜을 같은 스레드에서 순차 실행하며,
+ * GPT 폴백도 재제출이 아니라 같은 스레드 내 순차 호출이다.
+ * hop마다 태스크를 다시 제출하면 hop 간 예외 전파가 끊기고, 뒤 hop이 rejection되면 행이 영구 PENDING에 남는다.
+ *
+ * <p>두 hop을 public으로 노출하는 이유는 두 가지다. (a) 이 executor를 동기로 바꾸는 장치가 없어
+ * hop을 직접 호출하지 않으면 2콜 순차 종단을 sleep 없이 검증할 수 없고, (b) runQuestionHop은 평가는 성공했지만
+ * 질문만 실패한 행의 재시도 진입점이다.
+ *
+ * <p>어느 지점에서 태스크가 버려져도 행이 워커의 메모리 상태에만 의존해 갇히지 않아야 한다.
+ * 상태 전이는 전부 ResumeAnalysisStateService의 조건부 전이를 거치고, 남은 행은 스케줄러가 종단 처리한다.
+ */
+@Slf4j
+@RequiredArgsConstructor
+@Service
+public class ResumeAnalysisAsyncService {
+
+    private static final String TRUNCATED_RESPONSE_MARKER = "tool_use가 아닙니다";
+
+    /**
+     * 일시적 예외에만 1회 재시도하고, 결정적으로 재실패하는 예외는 즉시 종단한다.
+     */
+    private static final int PERSISTENCE_RETRY_LIMIT = 1;
+
+    /**
+     * 태스크 로컬 플래그. 평가 콜에서 Bedrock이 죽었다면 질문 콜은 소켓 타임아웃을 다시 태우지 않고 GPT로 직행한다.
+     * 서비스는 싱글턴이므로 인스턴스 필드로 두면 동시 실행되는 다른 분석의 판단을 덮어쓴다.
+     */
+    private static final ThreadLocal<Boolean> BEDROCK_UNHEALTHY = new ThreadLocal<>();
+
+    private final ResumeAnalysisService resumeAnalysisService;
+    private final ResumeAnalysisStateService resumeAnalysisStateService;
+    private final ResumeAnalysisEvaluationBedrockClient evaluationBedrockClient;
+    private final ResumeAnalysisEvaluationGptClient evaluationGptClient;
+    private final ResumeAnalysisQuestionBedrockClient questionBedrockClient;
+    private final ResumeAnalysisQuestionGptClient questionGptClient;
+
+    public void run(ResumeAnalysisCommand command) {
+        Map<String, String> callerMdc = MDC.getCopyOfContextMap();
+        try {
+            ResumeAnalysisEvaluation evaluation = runEvaluationHop(command);
+            if (evaluation != null) {
+                runQuestionHop(command, evaluation);
+            }
+        } finally {
+            BEDROCK_UNHEALTHY.remove();
+            restoreMdc(callerMdc);
+        }
+    }
+
+    /**
+     * 진입 시점의 MDC로 되돌린다. resumeAnalysisExecutor에는 MdcDecorator가 없어 태스크가 제출 스레드의
+     * 컨텍스트를 물려받지 않으므로, 워커가 남긴 컨텍스트가 풀 스레드에 남아 다음 태스크의 로그에 섞이면 안 된다.
+     * 진입 시점 상태로 복원하면 태스크가 스레드의 MDC를 바꾸지 않은 것과 같아진다.
+     */
+    private void restoreMdc(Map<String, String> callerMdc) {
+        if (callerMdc == null) {
+            MDC.clear();
+            return;
+        }
+        MDC.setContextMap(callerMdc);
+    }
+
+    /**
+     * 평가 콜 → 평가 커밋 → 과금까지 수행한다. 실패하거나 상태 가드에 걸려 결과를 폐기하면 null을 반환해
+     * 호출자가 질문 콜을 실행하지 않게 한다.
+     *
+     * <p>평가 커밋은 question_started_at도 함께 세팅한다. 이 컬럼 없이 created_at으로 질문 단계를 판정하면
+     * 평가에 오래 걸린 정상 요청이 질문 콜 도중 실패로 찍히고, 한참 뒤의 사용자 재시도도 즉시 스윕 대상이 되어
+     * 정상 생성한 질문이 상태 가드에 폐기되면서 재시도 횟수만 소모된다.
+     */
+    public ResumeAnalysisEvaluation runEvaluationHop(ResumeAnalysisCommand command) {
+        ResumeAnalysisEvaluation evaluation;
+        try {
+            evaluation = evaluationBedrockClient.evaluate(command);
+        } catch (Exception bedrockException) {
+            log.error("Bedrock 이력서 분석 평가 실패, GPT 폴백 - analysisId: {}, exception: {}",
+                    command.analysisId(), bedrockException.getClass().getName(), bedrockException);
+            BEDROCK_UNHEALTHY.set(Boolean.TRUE);
+            ResumeAnalysisFailureReason failureReason = classifyEvaluationFailure(bedrockException);
+            try {
+                evaluation = evaluationGptClient.evaluate(command);
+            } catch (Exception gptException) {
+                log.error("GPT 이력서 분석 평가 폴백 실패 - analysisId: {}, exception: {}",
+                        command.analysisId(), gptException.getClass().getName(), gptException);
+                resumeAnalysisStateService.failEvaluation(command.analysisId(), failureReason);
+                return null;
+            }
+        }
+        try {
+            if (!completeEvaluationWithRetry(command.analysisId(), evaluation)) {
+                return null;
+            }
+        } catch (RuntimeException e) {
+            log.error("이력서 분석 평가 저장 실패 - analysisId: {}, exception: {}",
+                    command.analysisId(), e.getClass().getName(), e);
+            resumeAnalysisStateService.failEvaluation(
+                    command.analysisId(), ResumeAnalysisFailureReason.PERSISTENCE);
+            return null;
+        }
+        resumeAnalysisStateService.chargeTokensIfNeeded(command.analysisId(), command.billingMemberId());
+        return evaluation;
+    }
+
+    /**
+     * 응답이 잘려 tool_use가 아니었던 경우와 그 밖의 호출 실패를 failure_reason으로 사후 분리한다.
+     * 잘림은 프롬프트·maxTokens 조정 대상이고 나머지는 재시도·용량 대상이므로 같은 값으로 묶으면 안 된다.
+     */
+    private ResumeAnalysisFailureReason classifyEvaluationFailure(Exception exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null && cause.getMessage().contains(TRUNCATED_RESPONSE_MARKER)) {
+                return ResumeAnalysisFailureReason.OUTPUT_TRUNCATED;
+            }
+        }
+        return ResumeAnalysisFailureReason.EVALUATION_LLM;
+    }
+
+    private boolean completeEvaluationWithRetry(Long analysisId, ResumeAnalysisEvaluation evaluation) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return resumeAnalysisStateService.completeEvaluation(analysisId, evaluation);
+            } catch (RuntimeException e) {
+                if (attempt >= PERSISTENCE_RETRY_LIMIT || !isTransientPersistenceFailure(e)) {
+                    throw e;
+                }
+                log.warn("이력서 분석 평가 저장 일시 실패, 재시도 - analysisId: {}, attempt: {}, exception: {}",
+                        analysisId, attempt + 1, e.getClass().getName());
+            }
+        }
+    }
+
+    /**
+     * 락 획득 실패·데드락 패배·직렬화 실패는 다시 시도하면 성공할 수 있으므로 재시도 대상이다. 세 경우 모두
+     * PessimisticLockingFailureException의 하위 타입이고, 상태 전이가 PESSIMISTIC_WRITE로 잠그므로
+     * JPA가 이 상위 타입 자체로 번역해 던지는 경우도 함께 걸러야 한다.
+     * 반면 같은 데이터를 다시 넣으면 결정적으로 재실패하는 DataIntegrityViolationException은 NonTransient
+     * 계열이라 이 판정에서 빠진다 — 무제한으로 catch해 종단시키면 락 경합 한 번에 정상 요청이 실패하고,
+     * 반대로 무제한 재시도하면 워커 스레드를 붙잡고 실패 상태 기록마저 늦춘다.
+     * Throwable.getCause()는 cause == this면 null을 반환하므로 이 순회는 자기참조로 무한 루프에 빠지지 않는다.
+     */
+    private boolean isTransientPersistenceFailure(RuntimeException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof PessimisticLockingFailureException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 평가 결과를 메모리로 직접 받아 질문 콜 user 메시지의 evaluation_result로 렌더해 주입한다.
+     * jdProvided는 커맨드 값만 쓴다 — jobDescription 문자열로 재계산하면 4지표로 채점한 응답을 5지표 가중치로
+     * 합산하는 경로가 열린다.
+     *
+     * <p>finally의 회수 과금은 평가가 공개된 뒤의 모든 종단 지점에서 과금을 한 번 더 시도하는 것이다.
+     * chargeTokensIfNeeded는 CAS 멱등이라 중복 차감이 없고, 평가 직후의 과금이 예외로 끊긴 채 질문만 성공한 행이
+     * 무료로 끝나는 경로를 막는다. 재시도 경로는 billingMemberId가 null이므로 무과금 규약이 유지된다.
+     */
+    public void runQuestionHop(ResumeAnalysisCommand command, ResumeAnalysisEvaluation evaluation) {
+        try {
+            proceedQuestionHop(command, evaluation);
+        } finally {
+            resumeAnalysisStateService.chargeTokensIfNeeded(command.analysisId(), command.billingMemberId());
+        }
+    }
+
+    private void proceedQuestionHop(ResumeAnalysisCommand command, ResumeAnalysisEvaluation evaluation) {
+        ResumeAnalysisQuestionCallCommand questionCommand = ResumeAnalysisQuestionCallCommand.of(command,
+                ResumeAnalysisEvaluationResultRenderer.render(evaluation, command.jdProvided()));
+        List<GeneratedQuestionDto> questions;
+        try {
+            questions = generateQuestionsWithFallback(questionCommand).questions();
+        } catch (Exception e) {
+            log.error("이력서 분석 질문 생성 실패 - analysisId: {}, exception: {}",
+                    command.analysisId(), e.getClass().getName(), e);
+            resumeAnalysisStateService.failQuestions(
+                    command.analysisId(), ResumeAnalysisFailureReason.QUESTION_LLM);
+            return;
+        } finally {
+            BEDROCK_UNHEALTHY.remove();
+        }
+        try {
+            if (!completeQuestionsWithRetry(command.analysisId(), questions)) {
+                log.warn("이력서 분석 질문 결과가 상태 가드로 폐기됨 - analysisId: {}", command.analysisId());
+            }
+        } catch (RuntimeException e) {
+            log.error("이력서 분석 질문 저장 실패 - analysisId: {}, exception: {}",
+                    command.analysisId(), e.getClass().getName(), e);
+            resumeAnalysisStateService.failQuestions(
+                    command.analysisId(), ResumeAnalysisFailureReason.PERSISTENCE);
+        }
+    }
+
+    private ResumeAnalysisQuestionResult generateQuestionsWithFallback(
+            ResumeAnalysisQuestionCallCommand command) {
+        if (Boolean.TRUE.equals(BEDROCK_UNHEALTHY.get())) {
+            return questionGptClient.generateQuestions(command);
+        }
+        try {
+            return questionBedrockClient.generateQuestions(command);
+        } catch (Exception e) {
+            log.error("Bedrock 이력서 분석 질문 생성 실패, GPT 폴백 - analysisId: {}, exception: {}",
+                    command.analysisId(), e.getClass().getName(), e);
+            return questionGptClient.generateQuestions(command);
+        }
+    }
+
+    private boolean completeQuestionsWithRetry(Long analysisId, List<GeneratedQuestionDto> questions) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return resumeAnalysisStateService.completeQuestions(analysisId, questions);
+            } catch (RuntimeException e) {
+                if (attempt >= PERSISTENCE_RETRY_LIMIT || !isTransientPersistenceFailure(e)) {
+                    throw e;
+                }
+                log.warn("이력서 분석 질문 저장 일시 실패, 재시도 - analysisId: {}, attempt: {}, exception: {}",
+                        analysisId, attempt + 1, e.getClass().getName());
+            }
+        }
+    }
+
+    /**
+     * 원문 사이드 테이블과 부모 행에서 커맨드를 복원한다. 재추출·S3 재다운로드가 없다.
+     * billingMemberId는 항상 null이다 — 질문 재시도는 무과금이고 이미 차감된 토큰은 그대로 유지된다.
+     */
+    public ResumeAnalysisCommand readCommand(Long analysisId) {
+        ResumeAnalysis analysis = resumeAnalysisService.readById(analysisId);
+        ResumeAnalysisSourceText sourceText = resumeAnalysisService.readSourceText(analysisId);
+        return new ResumeAnalysisCommand(analysis.getId(), null, analysis.isJdProvided(),
+                sourceText.getResumeContent(), sourceText.getPortfolioContent(),
+                analysis.getJobPosition(), analysis.getJobDescription(), analysis.getJobCareer());
+    }
+}
