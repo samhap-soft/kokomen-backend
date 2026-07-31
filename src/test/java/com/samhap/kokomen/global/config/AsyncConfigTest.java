@@ -3,7 +3,9 @@ package com.samhap.kokomen.global.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 class AsyncConfigTest {
@@ -53,5 +55,21 @@ class AsyncConfigTest {
         } finally {
             executor.shutdown();
         }
+    }
+
+    @Test
+    void 이력서_분석_executor는_제출_스레드의_MDC를_워커_스레드로_넘긴다() throws Exception {
+        ThreadPoolTaskExecutor executor = new AsyncConfig().resumeAnalysisExecutor();
+        AtomicReference<String> workerRequestId = new AtomicReference<>();
+
+        try {
+            MDC.put("requestId", "req-1");
+            executor.submit(() -> workerRequestId.set(MDC.get("requestId"))).get();
+        } finally {
+            MDC.remove("requestId");
+            executor.shutdown();
+        }
+
+        assertThat(workerRequestId.get()).isEqualTo("req-1");
     }
 }

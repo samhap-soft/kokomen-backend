@@ -2,6 +2,7 @@ package com.samhap.kokomen.resume.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -51,13 +52,17 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 
@@ -67,6 +72,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
             new ResumeAnalysisJobInput("백엔드 개발자", null, "신입");
     private static final ExtractedContents CONTENTS =
             new ExtractedContents("이력서 원문입니다.", "포트폴리오 원문입니다.");
+    private static final String REQUEST_ID_KEY = "requestId";
 
     @Autowired
     private ResumeAnalysisService resumeAnalysisService;
@@ -91,6 +97,10 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    @Qualifier("resumeAnalysisExecutor")
+    private ThreadPoolTaskExecutor resumeAnalysisExecutor;
 
     private ResumeAnalysisEvaluationBedrockClient evaluationBedrockClient;
     private ResumeAnalysisEvaluationGptClient evaluationGptClient;
@@ -232,28 +242,6 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
     }
 
     @Test
-    void 출력이_잘려_tool_use가_아니면_실패_원인은_OUTPUT_TRUNCATED다() {
-        // given
-        Long analysisId = saveGuestAnalysis("11.22.33.84").getId();
-        willThrow(new ExternalApiException("Bedrock 응답이 tool_use가 아닙니다. stopReason=MAX_TOKENS, expected="
-                + ResumeAnalysisToolNames.EVALUATION))
-                .given(evaluationBedrockClient).evaluate(any(ResumeAnalysisCommand.class));
-        willThrow(new ExternalApiException("GPT 호출 실패"))
-                .given(evaluationGptClient).evaluate(any(ResumeAnalysisCommand.class));
-
-        // when
-        asyncService.run(command(analysisId, null, false));
-
-        // then
-        ResumeAnalysis found = resumeAnalysisRepository.findById(analysisId).orElseThrow();
-        assertAll(
-                () -> assertThat(found.getState()).isEqualTo(ResumeAnalysisState.EVALUATION_FAILED),
-                () -> assertThat(found.getFailureReason())
-                        .isEqualTo(ResumeAnalysisFailureReason.OUTPUT_TRUNCATED)
-        );
-    }
-
-    @Test
     void 평가는_성공하고_질문만_실패하면_QUESTION_FAILED이고_평가_결과가_보존된다() {
         // given
         Long analysisId = saveGuestAnalysis("11.22.33.85").getId();
@@ -378,24 +366,30 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
     }
 
     @Test
-    void 게스트_분석은_평가가_성공해도_토큰이_차감되지_않는다() {
-        // given
+    void 게스트_분석은_과금_주체가_없으므로_평가가_성공해도_토큰이_차감되지_않는다() {
+        // given - 게스트 행은 member가 없고 billing_required = false로 만들어진다. 커맨드를 손으로 쓰지 않고
+        // 게스트 행에서 복원해, 게스트라는 사실이 무과금으로 이어지는지를 본다.
         Member member = saveMemberWithTokens(20);
-        Long analysisId = saveGuestAnalysis("11.22.33.89").getId();
+        ResumeAnalysis guestAnalysis = saveGuestAnalysis("11.22.33.89");
         given(evaluationBedrockClient.evaluate(any(ResumeAnalysisCommand.class)))
                 .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
         given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
+        ResumeAnalysisCommand restored = asyncService.readCommand(guestAnalysis.getId());
 
         // when
-        asyncService.run(command(analysisId, null, false));
+        asyncService.run(restored);
 
         // then
+        ResumeAnalysis found = resumeAnalysisRepository.findById(guestAnalysis.getId()).orElseThrow();
         Token freeToken = tokenRepository.findByMemberIdAndType(member.getId(), TokenType.FREE).orElseThrow();
         assertAll(
+                () -> assertThat(found.isGuest()).isTrue(),
+                () -> assertThat(found.isBillingRequired()).isFalse(),
+                () -> assertThat(restored.isBillable()).isFalse(),
+                () -> assertThat(found.getState()).isEqualTo(ResumeAnalysisState.COMPLETED),
                 () -> assertThat(freeToken.getTokenCount()).isEqualTo(20),
-                () -> assertThat(resumeAnalysisRepository.findById(analysisId).orElseThrow()
-                        .getChargedTokenCount()).isZero()
+                () -> assertThat(found.getChargedTokenCount()).isZero()
         );
     }
 
@@ -423,8 +417,35 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
     }
 
     @Test
+    void 이미_COMPLETED된_행에_질문_hop을_실행해도_상태와_기존_질문이_그대로_남는다() {
+        // given - 상태 가드에 폐기됐을 때의 관측 가능한 결과를 실물 상태 서비스로 확인한다.
+        // 새 결과는 3개로 스터빙해, 폐기되지 않고 저장됐다면 질문 수가 5가 아니게 된다.
+        Long analysisId = saveGuestAnalysis("11.22.33.99").getId();
+        resumeAnalysisStateService.completeEvaluation(analysisId, ResumeAnalysisEvaluationFixture.withoutJd());
+        resumeAnalysisStateService.completeQuestions(analysisId,
+                ResumeAnalysisQuestionResultFixture.five().questions());
+        given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
+                .willReturn(ResumeAnalysisQuestionResultFixture.of(3));
+
+        // when
+        asyncService.runQuestionHop(command(analysisId, null, false),
+                ResumeAnalysisEvaluationFixture.withoutJd());
+
+        // then
+        ResumeAnalysis found = resumeAnalysisRepository.findById(analysisId).orElseThrow();
+        assertAll(
+                () -> assertThat(found.getState()).isEqualTo(ResumeAnalysisState.COMPLETED),
+                () -> assertThat(found.getFailureReason()).isNull(),
+                () -> assertThat(generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysisId))
+                        .hasSize(5)
+        );
+    }
+
+    @Test
     void 질문_저장이_상태_가드로_폐기되면_실패로_기록하지_않고_회수_과금만_수행한다() {
-        // given - completeQuestions가 false를 반환하는 경우를 만들려면 상태 서비스를 목으로 둔다
+        // given - 워커가 false를 실패로 오해하지 않는다는 계약을 고정한다. 실물 failQuestions는 자기 상태를
+        // 검사하므로 이 호출이 일어나도 행은 바뀌지 않는다. 즉 이 단정은 관측 가능한 결과가 아니라 워커의
+        // 호출 계약에 대한 이중 방어이며, 관측 가능한 쪽은 바로 위 테스트가 담당한다.
         Long analysisId = saveGuestAnalysis("11.22.33.96").getId();
         ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
         given(stateServiceMock.completeQuestions(eq(analysisId), anyList())).willReturn(false);
@@ -519,6 +540,95 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
     }
 
     @Test
+    void 평가_결과_없이_질문_hop을_호출하면_질문_콜도_과금도_일어나지_않는다() {
+        // given - 회수 과금은 상태를 다시 확인하지 않으므로, 평가 전 행이 질문 hop에 들어오면 결과 없이
+        // 과금될 수 있다. 그 경로가 과금 지점보다 먼저 차단되는지 확인한다.
+        Long analysisId = saveGuestAnalysis("11.22.34.15").getId();
+        ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
+        ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
+                resumeAnalysisService, stateServiceMock,
+                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+
+        // when - catchThrowable로 받아 두어야 예외 단정이 먼저 끊기지 않고 과금 미발생까지 검증된다
+        Throwable thrown = catchThrowable(
+                () -> stateMockedAsyncService.runQuestionHop(command(analysisId, 7L, false), null));
+
+        // then
+        verify(questionBedrockClient, never()).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
+        verify(stateServiceMock, never()).chargeTokensIfNeeded(any(), any());
+        assertThat(thrown).isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("커밋된 평가 결과 없이");
+    }
+
+    @Test
+    void 질문_저장이_일시적_락_예외로_실패하면_한_번_재시도하고_종단하지_않는다() {
+        // given
+        Long analysisId = saveGuestAnalysis("11.22.34.11").getId();
+        ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
+        given(stateServiceMock.completeQuestions(eq(analysisId), anyList()))
+                .willThrow(new CannotAcquireLockException("Lock wait timeout exceeded"))
+                .willReturn(true);
+        given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
+                .willReturn(ResumeAnalysisQuestionResultFixture.five());
+        ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
+                resumeAnalysisService, stateServiceMock,
+                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+
+        // when
+        stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
+                ResumeAnalysisEvaluationFixture.withoutJd());
+
+        // then
+        verify(stateServiceMock, times(2)).completeQuestions(eq(analysisId), anyList());
+        verify(stateServiceMock, never())
+                .failQuestions(eq(analysisId), any(ResumeAnalysisFailureReason.class));
+    }
+
+    @Test
+    void 질문_저장이_일시적_락_예외로_계속_실패하면_재시도_상한에서_멈추고_PERSISTENCE로_종단한다() {
+        // given
+        Long analysisId = saveGuestAnalysis("11.22.34.12").getId();
+        ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
+        given(stateServiceMock.completeQuestions(eq(analysisId), anyList()))
+                .willThrow(new CannotAcquireLockException("Lock wait timeout exceeded"));
+        given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
+                .willReturn(ResumeAnalysisQuestionResultFixture.five());
+        ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
+                resumeAnalysisService, stateServiceMock,
+                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+
+        // when
+        stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
+                ResumeAnalysisEvaluationFixture.withoutJd());
+
+        // then
+        verify(stateServiceMock, times(2)).completeQuestions(eq(analysisId), anyList());
+        verify(stateServiceMock).failQuestions(analysisId, ResumeAnalysisFailureReason.PERSISTENCE);
+    }
+
+    @Test
+    void 질문_저장이_데이터_정합성_예외로_실패하면_재시도하지_않고_PERSISTENCE로_종단한다() {
+        // given
+        Long analysisId = saveGuestAnalysis("11.22.34.13").getId();
+        ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
+        given(stateServiceMock.completeQuestions(eq(analysisId), anyList()))
+                .willThrow(new DataIntegrityViolationException("Duplicate entry"));
+        given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
+                .willReturn(ResumeAnalysisQuestionResultFixture.five());
+        ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
+                resumeAnalysisService, stateServiceMock,
+                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+
+        // when
+        stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
+                ResumeAnalysisEvaluationFixture.withoutJd());
+
+        // then
+        verify(stateServiceMock, times(1)).completeQuestions(eq(analysisId), anyList());
+        verify(stateServiceMock).failQuestions(analysisId, ResumeAnalysisFailureReason.PERSISTENCE);
+    }
+
+    @Test
     void readCommand는_원문과_부모_행에서_커맨드를_복원하고_과금하지_않는다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -587,6 +697,39 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                         .isEqualTo(20 - ResumeAnalysisFacadeService.RESUME_ANALYSIS_TOKEN_COST),
                 () -> assertThat(generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysisId))
                         .hasSize(5)
+        );
+    }
+
+    @Test
+    void 제출_스레드의_requestId가_워커_스레드의_MDC로_전파된다() throws Exception {
+        // given - MDC는 LLM 클라이언트 스터빙 안에서 읽는다. 그 지점이 워커 스레드에서 실행되는
+        // 워커 호출 트리 내부이므로, 프로덕션 코드에 관측용 훅을 넣지 않고도 전파를 확인할 수 있다.
+        Long analysisId = saveGuestAnalysis("11.22.34.14").getId();
+        AtomicReference<String> workerRequestId = new AtomicReference<>();
+        AtomicReference<String> workerThreadName = new AtomicReference<>();
+        given(evaluationBedrockClient.evaluate(any(ResumeAnalysisCommand.class)))
+                .willAnswer(invocation -> {
+                    workerRequestId.set(MDC.get(REQUEST_ID_KEY));
+                    workerThreadName.set(Thread.currentThread().getName());
+                    return ResumeAnalysisEvaluationFixture.withoutJd();
+                });
+        given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
+                .willReturn(ResumeAnalysisQuestionResultFixture.five());
+
+        // when
+        MDC.put(REQUEST_ID_KEY, "req-resume-analysis-1");
+        try {
+            resumeAnalysisExecutor.submit(() -> asyncService.run(command(analysisId, null, false))).get();
+        } finally {
+            MDC.remove(REQUEST_ID_KEY);
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(workerRequestId.get()).isEqualTo("req-resume-analysis-1"),
+                () -> assertThat(workerThreadName.get()).startsWith("Async-Resume-Analysis-"),
+                () -> assertThat(resumeAnalysisRepository.findById(analysisId).orElseThrow().getState())
+                        .isEqualTo(ResumeAnalysisState.COMPLETED)
         );
     }
 

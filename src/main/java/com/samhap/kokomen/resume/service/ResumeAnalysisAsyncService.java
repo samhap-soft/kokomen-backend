@@ -14,10 +14,9 @@ import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisEvaluationResultRenderer;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -26,9 +25,10 @@ import org.springframework.stereotype.Service;
  * GPT 폴백도 재제출이 아니라 같은 스레드 내 순차 호출이다.
  * hop마다 태스크를 다시 제출하면 hop 간 예외 전파가 끊기고, 뒤 hop이 rejection되면 행이 영구 PENDING에 남는다.
  *
- * <p>두 hop을 public으로 노출하는 이유는 두 가지다. (a) 이 executor를 동기로 바꾸는 장치가 없어
- * hop을 직접 호출하지 않으면 2콜 순차 종단을 sleep 없이 검증할 수 없고, (b) runQuestionHop은 평가는 성공했지만
- * 질문만 실패한 행의 재시도 진입점이다.
+ * <p>두 hop을 private가 아니라 패키지 가시성으로 두는 이유는 두 가지다. (a) 이 executor를 동기로 바꾸는 장치가
+ * 없어 hop을 직접 호출하지 않으면 2콜 순차 종단을 sleep 없이 검증할 수 없고, (b) runQuestionHop은 평가는
+ * 성공했지만 질문만 실패한 행의 재시도 진입점이다. 두 호출자(같은 패키지의 파사드와 테스트)만 필요하므로
+ * public까지 열지 않는다.
  *
  * <p>어느 지점에서 태스크가 버려져도 행이 워커의 메모리 상태에만 의존해 갇히지 않아야 한다.
  * 상태 전이는 전부 ResumeAnalysisStateService의 조건부 전이를 거치고, 남은 행은 스케줄러가 종단 처리한다.
@@ -59,7 +59,6 @@ public class ResumeAnalysisAsyncService {
     private final ResumeAnalysisQuestionGptClient questionGptClient;
 
     public void run(ResumeAnalysisCommand command) {
-        Map<String, String> callerMdc = MDC.getCopyOfContextMap();
         try {
             ResumeAnalysisEvaluation evaluation = runEvaluationHop(command);
             if (evaluation != null) {
@@ -67,21 +66,7 @@ public class ResumeAnalysisAsyncService {
             }
         } finally {
             BEDROCK_UNHEALTHY.remove();
-            restoreMdc(callerMdc);
         }
-    }
-
-    /**
-     * 진입 시점의 MDC로 되돌린다. resumeAnalysisExecutor에는 MdcDecorator가 없어 태스크가 제출 스레드의
-     * 컨텍스트를 물려받지 않으므로, 워커가 남긴 컨텍스트가 풀 스레드에 남아 다음 태스크의 로그에 섞이면 안 된다.
-     * 진입 시점 상태로 복원하면 태스크가 스레드의 MDC를 바꾸지 않은 것과 같아진다.
-     */
-    private void restoreMdc(Map<String, String> callerMdc) {
-        if (callerMdc == null) {
-            MDC.clear();
-            return;
-        }
-        MDC.setContextMap(callerMdc);
     }
 
     /**
@@ -92,7 +77,7 @@ public class ResumeAnalysisAsyncService {
      * 평가에 오래 걸린 정상 요청이 질문 콜 도중 실패로 찍히고, 한참 뒤의 사용자 재시도도 즉시 스윕 대상이 되어
      * 정상 생성한 질문이 상태 가드에 폐기되면서 재시도 횟수만 소모된다.
      */
-    public ResumeAnalysisEvaluation runEvaluationHop(ResumeAnalysisCommand command) {
+    ResumeAnalysisEvaluation runEvaluationHop(ResumeAnalysisCommand command) {
         ResumeAnalysisEvaluation evaluation;
         try {
             evaluation = evaluationBedrockClient.evaluate(command);
@@ -178,8 +163,15 @@ public class ResumeAnalysisAsyncService {
      * <p>finally의 회수 과금은 평가가 공개된 뒤의 모든 종단 지점에서 과금을 한 번 더 시도하는 것이다.
      * chargeTokensIfNeeded는 CAS 멱등이라 중복 차감이 없고, 평가 직후의 과금이 예외로 끊긴 채 질문만 성공한 행이
      * 무료로 끝나는 경로를 막는다. 재시도 경로는 billingMemberId가 null이므로 무과금 규약이 유지된다.
+     *
+     * <p>그 회수 과금은 상태를 다시 확인하지 않고 실행되므로, 평가가 공개되지 않은 행으로 이 메서드에 들어오면
+     * 사용자가 결과 없이 과금될 수 있다. 그래서 (a) 가시성을 패키지로 좁혀 이 패키지 밖에서는 호출할 수 없게 하고,
+     * (b) 평가 결과를 필수 인자로 요구한다. non-null 평가를 얻는 경로는 커밋에 성공한 runEvaluationHop의 반환값과
+     * 평가 공개 여부를 스스로 검사하는 ResumeAnalysisService.readEvaluation뿐이므로, 정상 경로로는
+     * 평가 이전 상태의 행을 여기까지 가져올 수 없다.
      */
-    public void runQuestionHop(ResumeAnalysisCommand command, ResumeAnalysisEvaluation evaluation) {
+    void runQuestionHop(ResumeAnalysisCommand command, ResumeAnalysisEvaluation evaluation) {
+        Objects.requireNonNull(evaluation, "질문 hop은 커밋된 평가 결과 없이 실행할 수 없습니다.");
         try {
             proceedQuestionHop(command, evaluation);
         } finally {
