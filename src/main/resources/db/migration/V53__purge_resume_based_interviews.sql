@@ -32,14 +32,16 @@
 -- 넘어서면 스스로 실행을 거부해야 맞다.
 --
 -- generated_question_id가 NULL인 RESUME_BASED interview도 삭제 대상에 포함한다 -- 이 태스크의
--- 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 항상 non-null GeneratedQuestion을
--- 넘기므로, 신규 플로우는 이 모양을 구조적으로 만들 수 없다. 반면 V33은 generated_question_id
--- 컬럼이 존재하기도 전에 resume_based_root_question(V33, V36:17에서 DROP)이라는 별도 테이블로
--- 이력서 기반 질문을 저장하던 시기가 있었다 -- 그 시기의 잔존 행이라면 interview_type='RESUME_BASED'
--- 이면서 generated_question_id가 NULL일 수 있다. 이런 행을 남겨두면 Interview.getDisplayQuestion()의
+-- 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든 호출부에서 지금
+-- 항상 non-null GeneratedQuestion을 넘긴다(호출부 전수 확인). 이 생성자 자체에는 null을 막는
+-- 가드가 없으므로 "구조적으로 불가능"은 과장이다 -- 정확한 사실은 "오늘 기준 이 모양을 만드는
+-- 호출부가 없다"는 것뿐이다. 반면 V33은 generated_question_id 컬럼이 존재하기도 전에
+-- resume_based_root_question(V33, V36:17에서 DROP)이라는 별도 테이블로 이력서 기반 질문을
+-- 저장하던 시기가 있었다 -- 그 시기의 잔존 행이라면 interview_type='RESUME_BASED'이면서
+-- generated_question_id가 NULL일 수 있다. 이런 행을 남겨두면 Interview.getDisplayQuestion()의
 -- 무방비 역참조(generatedQuestion.getContent(), Interview.java:202-207)가 면접 목록 조회에서
--- NPE를 낸다 -- 그러니 이 모양은 "신규 플로우일 수 없는 구 플로우 잔존물"로 확정하고 삭제 대상에
--- 포함한다.
+-- NPE를 낸다 -- 그러니 이 모양은 "지금 이 코드로는 신규 플로우가 만들 수 없는, 구 플로우 잔존물로
+-- 봐야 하는" 행으로 판단하고 삭제 대상에 포함한다.
 --
 -- 모든 DELETE는 멱등이다(같은 WHERE를 다시 돌리면 0행 삭제). 중간 실패 시
 -- flyway repair 후 이 파일을 재실행하면 수렴한다. 안전성 근거를 트랜잭션에 두지 않는 이유는
@@ -65,9 +67,13 @@
 --    걸어 두지 않으면 락 대기가 사실상 무한이 되어 뒤따르는 모든 쿼리가 큐에 쌓인다.
 --
 --    아래 DELETE들은 서브쿼리 소스 테이블(interview / question / answer)의 인덱스 구간에
---    공유 넥스트키 락을 건다(performance_schema.data_locks 실측: 소스 테이블에 S 락 3건,
---    대상 테이블에 X,GAP 2건). READ COMMITTED로 내리면 갭 락이 사라진다
---    (X,GAP -> X,REC_NOT_GAP, S -> S,REC_NOT_GAP).
+--    공유 넥스트키 락을 건다. 괄호 안 수치(performance_schema.data_locks 실측: 소스 테이블에
+--    S 락 3건, 대상 테이블에 X,GAP 2건)는 라운드 1의 서술어 모양(generated_question을 거치지
+--    않는 단순 JOIN)을 대상으로 측정했다 -- 라운드 2에서 모든 서술어에 generated_question을
+--    향한 중첩 IN 서브쿼리가 추가되면서 그 테이블에 대한 락 획득이 하나 더 늘었을 가능성이 있고,
+--    이 수치는 그 변경 이후 재측정되지 않았다. READ COMMITTED가 갭 락을 없애는 방향
+--    (X,GAP -> X,REC_NOT_GAP, S -> S,REC_NOT_GAP)은 서술어 모양이 바뀌어도 성립하는 일반
+--    원칙이지만, 정확한 락 개수를 다시 인용하려면 현재 서술어로 재실측해야 한다.
 --
 --    !! 확인 필요 !! MySQL 문서에 따르면 SET SESSION TRANSACTION ISOLATION LEVEL은
 --    트랜잭션 내에서 허용되지만 "현재 진행 중인 트랜잭션에는 영향을 주지 않는다".

@@ -10,14 +10,15 @@
 --      ERROR 1060(Duplicate column) / 1061(Duplicate key) / 1826(Duplicate foreign key)로 죽는다(실측).
 --   => 남은 일은 (a) 구 부모 제거 (b) XOR CHECK 제거 (c) analysis_id NOT NULL 승격뿐이다.
 --
--- 전제 2: V53이 컷오프('2026-08-15 00:00:00') 이전에 생성된 generated_question(구 플로우,
--- generation_id 부모)을 0행으로 만들었다. V53이 리뷰 라운드 1(Finding 1)에서 컷오프를 갖게 되면서
--- 이 전제의 의미가 "테이블 전체가 0행"에서 좁아졌다 -- 신규 플로우(analysis_id 부모)가 만든 행이나,
--- 배포가 컷오프보다 늦어져 컷오프 이후 생성된 구 플로우 잔존 행은 이 시점에 남아 있을 수 있다.
---   => MODIFY ... NOT NULL 이 이 전제에 대한 비침습적 assert 역할을 한다. analysis_id가 NULL인 행
---      (= 컷오프를 놓친 구 플로우 잔존 행)이 남아 있으면 ERROR 1138 (22004) Invalid use of NULL value
---      로 즉시 죽는다(실측). 신규 플로우 행은 애초에 analysis_id NOT NULL이므로 이 단언과 무관하게
---      항상 통과한다.
+-- 전제 2: V53이 generated_question에서 generation_id IS NOT NULL인 행(구 플로우 부모) 전체를
+-- 무조건 삭제한다 -- 캘린더 컷오프가 아니라 데이터 모양으로 판별한다(리뷰 라운드 2, 자세한 배경은
+-- V53 파일 선두 주석 참고). V51의 chk_generated_question_parent XOR 제약이 "generation_id와
+-- analysis_id 중 정확히 하나만 NOT NULL"을 강제하므로, V53이 성공적으로 완주했다면 남는 행은
+-- 조건부가 아니라 구조적으로 전부 analysis_id NOT NULL이다.
+--   => MODIFY ... NOT NULL 은 "V53이 실제로 완주했는가"에 대한 비침습적 assert다. V53이 중간에
+--      실패해 generation_id 잔존 행이 남았다면(예: V53의 앞선 문장이 FK 위반으로 죽어 미완주한
+--      경우) 그 행은 analysis_id가 NULL이므로 ERROR 1138 (22004) Invalid use of NULL value 로
+--      즉시 죽는다(실측). V53이 완주한 정상 경로에서는 이 문장이 실패할 조건 자체가 없다.
 --
 -- !! 비가역 !! resume_evaluation / resume_question_generation DROP에 역마이그레이션이 없다.
 -- ============================================================================
@@ -92,7 +93,7 @@ DROP INDEX idx_generated_question_generation_id ON generated_question;
 ALTER TABLE generated_question DROP COLUMN generation_id;
 
 -- ---------------------------------------------------------------------------
--- 5. analysis_id를 NOT NULL로 승격. V53이 컷오프 이전 구 플로우 행을 0개로 만들었으므로(전제 2)
+-- 5. analysis_id를 NOT NULL로 승격. V53이 generation_id 부모 행을 전량 삭제했으므로(전제 2)
 --    깨끗하게 통과한다(실측).
 --    ADD COLUMN ... NOT NULL 을 쓰지 않는 이유는 여기서 컬럼을 새로 만들지 않기 때문이며,
 --    설령 새로 만든다 해도 비어 있지 않은 테이블에서는 경고도 에러도 없이 모든 행을 0으로

@@ -60,7 +60,11 @@ class ResumeBasedPurgeScriptTest {
 
     @AfterAll
     static void closeScratchSchema() throws SQLException {
-        dataSource.destroy();
+        // dataSource는 @BeforeAll이 스크래치 스키마 생성/마이그레이션 도중에 실패하면 끝내 할당되지
+        // 않는다 -- 그 경우 이 메서드가 원래 실패 원인을 가리는 NPE로 덮어써서는 안 되므로 널 가드한다.
+        if (dataSource != null) {
+            dataSource.destroy();
+        }
         try (Connection adminConnection = DriverManager.getConnection(ADMIN_JDBC_URL, "root", "root");
              Statement statement = adminConnection.createStatement()) {
             statement.execute("DROP DATABASE IF EXISTS " + SCRATCH_SCHEMA);
