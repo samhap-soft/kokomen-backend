@@ -496,7 +496,7 @@ public class ResumeAnalysisFacadeService {
         List<Long> analysisIds = page.getContent().stream()
                 .map(ResumeAnalysisSummaryProjection::getId)
                 .toList();
-        Map<Long, Integer> questionCounts = readQuestionCounts(analysisIds);
+        Map<Long, Integer> questionCounts = findQuestionCounts(analysisIds);
         List<ResumeAnalysisSummaryResponse> data = page.getContent().stream()
                 .map(projection -> ResumeAnalysisSummaryResponse.of(projection,
                         questionCounts.getOrDefault(projection.getId(), 0)))
@@ -523,8 +523,9 @@ public class ResumeAnalysisFacadeService {
         return resumeAnalysisRepository.findSummariesByMemberIdAndState(memberId, state, pageable);
     }
 
-    // 빈 목록에 countByAnalysisIdIn을 부르지 않는다. 빈 IN 절 쿼리를 DB로 보내지 않기 위한 가드다.
-    private Map<Long, Integer> readQuestionCounts(List<Long> analysisIds) {
+    // 질문이 하나도 없는 분석은 결과 맵에서 빠지므로 호출자가 0을 채워 넣는다.
+    // 빈 목록에서 조기 반환하는 것은 동작이 아니라 왕복 1회를 줄이는 단축이다 -- 쿼리를 보내도 결과는 빈 맵이다.
+    private Map<Long, Integer> findQuestionCounts(List<Long> analysisIds) {
         if (analysisIds.isEmpty()) {
             return Map.of();
         }

@@ -65,6 +65,8 @@ public class ResumeAnalysisController {
                 .body(resumeAnalysisFacadeService.submitGuestAnalysis(request, clientIp));
     }
 
+    // 제출 폼의 잘못된 값은 400으로 답하고 문제된 값을 메시지에 되싣는다. 클라이언트가 어느 값을 고쳐야
+    // 하는지 알아야 하기 때문이다. 아래 parseAnalysisId와 응답이 다른 것은 의도한 차이다.
     private Long parseIdOrNull(String idStr) {
         if (idStr == null || idStr.isBlank()) {
             return null;
@@ -93,6 +95,8 @@ public class ResumeAnalysisController {
                 parseAnalysisId(analysisId), memberAuth, guestToken));
     }
 
+    // 자원을 지목하지 못하는 경로 변수는 잘못된 입력(400)이 아니라 미존재(404)로 답하고 값을 되싣지 않는다.
+    // 위 parseIdOrNull과 다른 것은 위치가 달라서다 -- 제출 폼 필드 값과 경로 변수는 같은 자리가 아니다.
     private Long parseAnalysisId(String analysisId) {
         try {
             return Long.parseLong(analysisId.trim());

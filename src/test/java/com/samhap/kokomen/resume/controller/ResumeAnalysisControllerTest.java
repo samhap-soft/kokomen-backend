@@ -52,6 +52,7 @@ import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -135,9 +136,12 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                                 fieldWithPath("analysis_id").description("생성된 이력서 분석 ID")
                         )
                 ));
-        // 멀티파트 String 파트가 UTF-8로 디코딩되는지 함께 고정한다. 컨버터 기본 charset이 ISO-8859-1로
+        // 파트가 어느 필드로 실렸는지와 UTF-8 디코딩을 함께 고정한다. 컨버터 기본 charset이 ISO-8859-1로
         // 바뀌면 한글 지원 직무가 조용히 깨진 값으로 저장되고 다른 단정은 전부 통과한다.
-        assertThat(resumeAnalysisRepository.findAll().get(0).getJobPosition()).isEqualTo("백엔드 개발자");
+        ResumeAnalysis saved = resumeAnalysisRepository.findAll().get(0);
+        assertThat(saved.getJobPosition()).isEqualTo("백엔드 개발자");
+        assertThat(saved.getJobCareer()).isEqualTo("경력 3년");
+        assertThat(saved.isJdProvided()).isTrue();
     }
 
     @Test
@@ -203,6 +207,7 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                                 fieldWithPath("analysis_id").description("생성된 이력서 분석 ID")
                         )
                 ));
+        assertThat(resumeAnalysisRepository.findAll().get(0).isJdProvided()).isFalse();
     }
 
     @Test
@@ -931,12 +936,44 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                         pathParameters(
                                 parameterWithName("analysisId").description("이력서 분석 ID")
                         ),
+                        queryParameters(
+                                parameterWithName("guest_token").description("비회원 소유 증명 토큰 (비회원만 사용)")
+                                        .optional()
+                        ),
                         responseFields(
                                 fieldWithPath("analysis_id").description("이력서 분석 ID"),
                                 fieldWithPath("state").description("복원된 상태 (EVALUATION_COMPLETED)"),
                                 fieldWithPath("question_retry_count").description("누적 재시도 횟수 (최대 2)")
                         )
                 ));
+    }
+
+    // 컨트롤러가 받은 guest_token을 파사드로 넘기는지 고정한다. null을 넘기면 게스트 재생성이 403이 된다.
+    @Test
+    void 게스트는_guest_token으로_질문_재생성을_요청할_수_있다() throws Exception {
+        // given
+        String guestToken = UUID.randomUUID().toString();
+        ResumeAnalysis analysis = resumeAnalysisRepository.save(ResumeAnalysisFixtureBuilder.builder()
+                .guest(guestToken, "11.22.33.58")
+                .jobDescription("Spring Boot 기반 백엔드 개발")
+                .state(ResumeAnalysisState.QUESTION_FAILED)
+                .build());
+        resumeAnalysisSourceTextRepository.save(ResumeAnalysisSourceTextFixtureBuilder.builder()
+                .analysis(analysis)
+                .resumeContent("Java, Spring Boot 경험 3년.")
+                .build());
+        given(resumeAnalysisAsyncService.readCommand(anyLong())).willReturn(new ResumeAnalysisCommand(
+                analysis.getId(), null, true, "Java, Spring Boot 경험 3년.", null,
+                "백엔드 개발자", "Spring Boot 기반 백엔드 개발", "신입"));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/resume-analyses/{analysisId}/questions/retry", analysis.getId())
+                        .param("guest_token", guestToken)
+                )
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.analysis_id").value(analysis.getId()))
+                .andExpect(jsonPath("$.state").value("EVALUATION_COMPLETED"))
+                .andExpect(jsonPath("$.question_retry_count").value(1));
     }
 
     @Test
@@ -962,6 +999,77 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                                 fieldWithPath("token_cost").description("분석 1회 토큰 비용 (항상 5)")
                         )
                 ));
+    }
+
+    // 컨트롤러가 인증 주체의 memberId를 그대로 넘기는지, 그리고 유료 전환(false)이 실제로 관측되는지
+    // 함께 고정한다. 응답을 true로 굳혀도, 다른 회원의 이력을 봐도 이 테스트가 깨진다.
+    @Test
+    void 이용_상태는_인증_주체의_이력을_본다() throws Exception {
+        // given
+        Member freeMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member paidMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        resumeAnalysisRepository.save(ResumeAnalysisFixtureBuilder.builder()
+                .member(paidMember)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build());
+        MockHttpSession freeSession = loginSession(freeMember);
+        MockHttpSession paidSession = loginSession(paidMember);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/resume-analyses/usage-status")
+                        .header("Cookie", "JSESSIONID=" + freeSession.getId())
+                        .session(freeSession)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.first_use_free").value(true))
+                .andExpect(jsonPath("$.token_cost").value(5));
+        mockMvc.perform(get("/api/v1/resume-analyses/usage-status")
+                        .header("Cookie", "JSESSIONID=" + paidSession.getId())
+                        .session(paidSession)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.first_use_free").value(false))
+                .andExpect(jsonPath("$.token_cost").value(5));
+    }
+
+    // 기본 페이지 크기 20과 기본 정렬 방향(createdAt DESC)을 함께 고정한다. 21건을 넣어야 크기 상한과
+    // has_next의 true 경로가 동시에 관측된다.
+    @Test
+    void 기본_페이지_크기는_20이고_최신순으로_정렬된다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        List<Long> savedIds = new ArrayList<>();
+        for (int count = 0; count < 21; count++) {
+            savedIds.add(resumeAnalysisRepository.save(ResumeAnalysisFixtureBuilder.builder()
+                    .member(member)
+                    .state(ResumeAnalysisState.PENDING)
+                    .build()).getId());
+        }
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/resume-analyses")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(20))
+                .andExpect(jsonPath("$.data[0].analysis_id").value(savedIds.get(20)))
+                .andExpect(jsonPath("$.data[19].analysis_id").value(savedIds.get(1)))
+                .andExpect(jsonPath("$.current_page").value(0))
+                .andExpect(jsonPath("$.total_count").value(21))
+                .andExpect(jsonPath("$.total_pages").value(2))
+                .andExpect(jsonPath("$.has_next").value(true));
+        mockMvc.perform(get("/api/v1/resume-analyses")
+                        .param("page", "1")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].analysis_id").value(savedIds.get(0)))
+                .andExpect(jsonPath("$.current_page").value(1))
+                .andExpect(jsonPath("$.has_next").value(false));
     }
 
     @Test
