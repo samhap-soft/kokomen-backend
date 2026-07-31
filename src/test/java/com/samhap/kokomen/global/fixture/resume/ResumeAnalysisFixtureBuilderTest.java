@@ -327,4 +327,16 @@ class ResumeAnalysisFixtureBuilderTest {
         // then
         assertThat(analysis.getTotalFeedback()).isEqualTo("커스텀 총평");
     }
+
+    @Test
+    void 기본_직무와_기본_경력은_지정하지_않으면_고정된_값으로_채워진다() {
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .build();
+
+        // then — 기대값을 상수가 아니라 리터럴로 적는다. 상수를 되읽으면 그 상수를 어떻게 바꿔도
+        // 통과해 고정하려던 값을 전혀 고정하지 못한다.
+        assertThat(analysis.getJobPosition()).isEqualTo("백엔드 개발자");
+        assertThat(analysis.getJobCareer()).isEqualTo("신입");
+    }
 }
