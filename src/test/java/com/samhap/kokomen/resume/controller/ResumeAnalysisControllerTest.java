@@ -1,6 +1,7 @@
 package com.samhap.kokomen.resume.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.doNothing;
@@ -340,12 +341,27 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.state").value("EVALUATION_COMPLETED"))
                 .andExpect(jsonPath("$.interview_available").value(false))
+                // 지표 5칸과 근거/보완 두 칸은 서로 같은 타입이라 자리가 바뀌어도 컴파일이 통과한다.
+                // 다섯 지표의 점수와 가중치를 모두 단정해 어느 두 칸을 교환해도 깨지게 한다
+                // (technical_skills와 jd_fit은 점수가 같으므로 가중치가 그 둘을 가른다).
+                .andExpect(jsonPath("$.job_position").value("백엔드 개발자"))
+                .andExpect(jsonPath("$.job_description").value("Spring Boot 기반 백엔드 개발"))
+                .andExpect(jsonPath("$.job_career").value("경력 3년"))
                 .andExpect(jsonPath("$.evaluation.problem_solving.score").value(90))
                 .andExpect(jsonPath("$.evaluation.problem_solving.weight").value(0.25))
                 .andExpect(jsonPath("$.evaluation.problem_solving.reason").isArray())
+                .andExpect(jsonPath("$.evaluation.problem_solving.reason[0]").value("근거1"))
+                .andExpect(jsonPath("$.evaluation.problem_solving.improvements[0]").value("보완1"))
+                .andExpect(jsonPath("$.evaluation.project_experience.score").value(80))
+                .andExpect(jsonPath("$.evaluation.project_experience.weight").value(0.25))
+                .andExpect(jsonPath("$.evaluation.technical_skills.score").value(70))
+                .andExpect(jsonPath("$.evaluation.technical_skills.weight").value(0.25))
+                .andExpect(jsonPath("$.evaluation.soft_skills.score").value(60))
+                .andExpect(jsonPath("$.evaluation.soft_skills.weight").value(0.10))
                 .andExpect(jsonPath("$.evaluation.jd_fit.score").value(70))
                 .andExpect(jsonPath("$.evaluation.jd_fit.weight").value(0.15))
                 .andExpect(jsonPath("$.evaluation.total_score").value(77))
+                .andExpect(jsonPath("$.evaluation.total_feedback").value("전반적으로 우수합니다."))
                 .andExpect(jsonPath("$.questions").doesNotExist())
                 .andExpect(jsonPath("$.question_retryable").doesNotExist())
                 .andExpect(jsonPath("$.resume").doesNotExist())
@@ -478,6 +494,10 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.questions.length()").value(5))
                 .andExpect(jsonPath("$.questions[0].question_order").value(0))
                 .andExpect(jsonPath("$.questions[0].generated_question_id").exists())
+                // question과 reason도 같은 타입 이웃이다. 값을 봐야 교환을 잡는다.
+                .andExpect(jsonPath("$.questions[0].question").value("이력서 기반 질문 0"))
+                .andExpect(jsonPath("$.questions[0].reason").value("질문 선정 이유 0"))
+                .andExpect(jsonPath("$.questions[4].question_order").value(4))
                 .andExpect(jsonPath("$.question_retryable").doesNotExist())
                 .andDo(document("resume-analysis-get-completed",
                         requestHeaders(
@@ -761,6 +781,14 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.data[0].analysis_id").value(completed.getId()))
                 .andExpect(jsonPath("$.data[0].total_score").value(77))
                 .andExpect(jsonPath("$.data[0].question_count").value(5))
+                // 같은 타입이 이웃한 자리는 컴파일러가 봐 주지 않는다. 존재 여부가 아니라 값을 단정해야
+                // job_position과 job_career가 뒤바뀐 채로 응답되는 것을 잡을 수 있다.
+                .andExpect(jsonPath("$.data[0].state").value("COMPLETED"))
+                .andExpect(jsonPath("$.data[0].job_position").value("백엔드 개발자"))
+                .andExpect(jsonPath("$.data[0].job_career").value("경력 3년"))
+                .andExpect(jsonPath("$.data[0].jd_provided").value(true))
+                .andExpect(jsonPath("$.data[0].created_at")
+                        .value(startsWith(completed.getCreatedAt().toLocalDate().toString())))
                 .andExpect(jsonPath("$.total_count").value(1))
                 .andExpect(jsonPath("$.total_pages").value(1))
                 .andExpect(jsonPath("$.has_next").value(false))
