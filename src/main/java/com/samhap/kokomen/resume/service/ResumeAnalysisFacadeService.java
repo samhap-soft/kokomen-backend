@@ -9,6 +9,9 @@ import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
+import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
+import com.samhap.kokomen.interview.repository.dto.QuestionCountProjection;
 import com.samhap.kokomen.interview.service.resume.ResumeContentService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
@@ -22,14 +25,18 @@ import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisRepository;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisSourceTextRepository;
+import com.samhap.kokomen.resume.repository.dto.ResumeAnalysisSummaryProjection;
 import com.samhap.kokomen.resume.service.dto.ExtractedContents;
 import com.samhap.kokomen.resume.service.dto.GuestInfo;
 import com.samhap.kokomen.resume.service.dto.MaterialRefs;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisClaimResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
+import com.samhap.kokomen.resume.service.dto.ResumeAnalysisPageResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionRetryResponse;
+import com.samhap.kokomen.resume.service.dto.ResumeAnalysisResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitResponse;
+import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSummaryResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisUsageStatusResponse;
 import com.samhap.kokomen.resume.tool.PdfTextExtractor;
 import com.samhap.kokomen.resume.tool.PdfValidator;
@@ -39,12 +46,17 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskRejectedException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,6 +117,7 @@ public class ResumeAnalysisFacadeService {
     private final PdfUploadService pdfUploadService;
     private final ResumeContentService resumeContentService;
     private final ThreadPoolTaskExecutor resumeAnalysisExecutor;
+    private final GeneratedQuestionRepository generatedQuestionRepository;
 
     /**
      * {@code @RequiredArgsConstructor}를 쓰지 않는 이유는 executor 주입에 파라미터 {@code @Qualifier}가
@@ -127,7 +140,8 @@ public class ResumeAnalysisFacadeService {
             PdfUploadService pdfUploadService,
             ResumeContentService resumeContentService,
             @Qualifier("resumeAnalysisExecutor")
-            ThreadPoolTaskExecutor resumeAnalysisExecutor
+            ThreadPoolTaskExecutor resumeAnalysisExecutor,
+            GeneratedQuestionRepository generatedQuestionRepository
     ) {
         this.resumeAnalysisService = resumeAnalysisService;
         this.resumeAnalysisStateService = resumeAnalysisStateService;
@@ -145,6 +159,7 @@ public class ResumeAnalysisFacadeService {
         this.pdfUploadService = pdfUploadService;
         this.resumeContentService = resumeContentService;
         this.resumeAnalysisExecutor = resumeAnalysisExecutor;
+        this.generatedQuestionRepository = generatedQuestionRepository;
     }
 
     public static String createGuestLockKey(ClientIp clientIp) {
@@ -461,6 +476,61 @@ public class ResumeAnalysisFacadeService {
         if (!memberAuth.isAuthenticated() || !analysis.isOwner(memberAuth.memberId())) {
             throw new ForbiddenException(FORBIDDEN_MESSAGE);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ResumeAnalysisResponse findAnalysis(Long analysisId, MemberAuth memberAuth, String guestToken) {
+        ResumeAnalysis analysis = resumeAnalysisService.readById(analysisId);
+        validateAccessible(analysis, memberAuth, guestToken);
+        List<GeneratedQuestion> questions = analysis.getState().isQuestionReady()
+                ? generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysisId)
+                : List.of();
+        boolean questionRetryable = analysis.getState() == ResumeAnalysisState.QUESTION_FAILED
+                && analysis.isQuestionRetryable(resumeAnalysisSourceTextRepository.existsByAnalysisId(analysisId));
+        return ResumeAnalysisResponse.of(analysis, questions, questionRetryable);
+    }
+
+    @Transactional(readOnly = true)
+    public ResumeAnalysisPageResponse findMyAnalyses(Long memberId, String state, Pageable pageable) {
+        Page<ResumeAnalysisSummaryProjection> page = findSummaryPage(memberId, parseStateOrNull(state), pageable);
+        List<Long> analysisIds = page.getContent().stream()
+                .map(ResumeAnalysisSummaryProjection::getId)
+                .toList();
+        Map<Long, Integer> questionCounts = readQuestionCounts(analysisIds);
+        List<ResumeAnalysisSummaryResponse> data = page.getContent().stream()
+                .map(projection -> ResumeAnalysisSummaryResponse.of(projection,
+                        questionCounts.getOrDefault(projection.getId(), 0)))
+                .toList();
+        return ResumeAnalysisPageResponse.of(data, page);
+    }
+
+    private ResumeAnalysisState parseStateOrNull(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
+        try {
+            return ResumeAnalysisState.valueOf(state.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("잘못된 상태 값입니다: " + state);
+        }
+    }
+
+    private Page<ResumeAnalysisSummaryProjection> findSummaryPage(Long memberId, ResumeAnalysisState state,
+                                                                 Pageable pageable) {
+        if (state == null) {
+            return resumeAnalysisRepository.findSummariesByMemberId(memberId, pageable);
+        }
+        return resumeAnalysisRepository.findSummariesByMemberIdAndState(memberId, state, pageable);
+    }
+
+    // 빈 목록에 countByAnalysisIdIn을 부르지 않는다. 빈 IN 절 쿼리를 DB로 보내지 않기 위한 가드다.
+    private Map<Long, Integer> readQuestionCounts(List<Long> analysisIds) {
+        if (analysisIds.isEmpty()) {
+            return Map.of();
+        }
+        return generatedQuestionRepository.countByAnalysisIdIn(analysisIds).stream()
+                .collect(Collectors.toMap(QuestionCountProjection::getAnalysisId,
+                        projection -> Math.toIntExact(projection.getQuestionCount())));
     }
 
     @Transactional(readOnly = true)

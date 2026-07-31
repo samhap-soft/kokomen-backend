@@ -26,6 +26,9 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
 
     Page<ResumeAnalysisSummaryProjection> findSummariesByMemberId(Long memberId, Pageable pageable);
 
+    Page<ResumeAnalysisSummaryProjection> findSummariesByMemberIdAndState(
+            Long memberId, ResumeAnalysisState state, Pageable pageable);
+
     boolean existsByMemberIdAndStateInAndCreatedAtAfter(
             Long memberId, Collection<ResumeAnalysisState> states, LocalDateTime since);
 
