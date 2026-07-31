@@ -8,6 +8,7 @@ import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
+import com.samhap.kokomen.resume.service.ResumeAnalysisAsyncService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.redisson.api.RedissonClient;
@@ -41,6 +42,8 @@ public abstract class BaseTest {
     protected KakaoOAuthClient kakaoOAuthClient;
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
+    @MockitoBean
+    protected ResumeAnalysisAsyncService resumeAnalysisAsyncService;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @MockitoSpyBean
