@@ -5,9 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.resume.domain.DimensionScore;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
+import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeAnalysis;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisState;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -158,5 +162,169 @@ class ResumeAnalysisFixtureBuilderTest {
                 .build())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("회원과 게스트를 동시에 지정할 수 없습니다.");
+    }
+
+    @Test
+    void guest_두_인자_버전을_지정하면_전달한_토큰과_IP가_그대로_반영된다() {
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .guest("guest-token-fixed", "1.2.3.4")
+                .build();
+
+        // then
+        assertThat(analysis.getGuestToken()).isEqualTo("guest-token-fixed");
+        assertThat(analysis.getGuestIp()).isEqualTo("1.2.3.4");
+    }
+
+    @Test
+    void problemSolving을_지정하면_문제해결력_점수와_근거와_보완사항이_반영된다() {
+        // given
+        DimensionScore custom = new DimensionScore(15, List.of("커스텀근거"), List.of("커스텀보완"));
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .problemSolving(custom)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then
+        assertThat(analysis.getProblemSolvingScore()).isEqualTo(15);
+        assertThat(analysis.getProblemSolvingReason()).containsExactly("커스텀근거");
+        assertThat(analysis.getProblemSolvingImprovements()).containsExactly("커스텀보완");
+    }
+
+    @Test
+    void projectExperience를_지정하면_프로젝트경험_점수와_근거와_보완사항이_반영된다() {
+        // given
+        DimensionScore custom = new DimensionScore(25, List.of("커스텀근거"), List.of("커스텀보완"));
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .projectExperience(custom)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then
+        assertThat(analysis.getProjectExperienceScore()).isEqualTo(25);
+        assertThat(analysis.getProjectExperienceReason()).containsExactly("커스텀근거");
+        assertThat(analysis.getProjectExperienceImprovements()).containsExactly("커스텀보완");
+    }
+
+    @Test
+    void technicalSkills를_지정하면_기술력_점수와_근거와_보완사항이_반영된다() {
+        // given
+        DimensionScore custom = new DimensionScore(35, List.of("커스텀근거"), List.of("커스텀보완"));
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .technicalSkills(custom)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then
+        assertThat(analysis.getTechnicalSkillsScore()).isEqualTo(35);
+        assertThat(analysis.getTechnicalSkillsReason()).containsExactly("커스텀근거");
+        assertThat(analysis.getTechnicalSkillsImprovements()).containsExactly("커스텀보완");
+    }
+
+    @Test
+    void softSkills를_지정하면_소프트스킬_점수와_근거와_보완사항이_반영된다() {
+        // given
+        DimensionScore custom = new DimensionScore(45, List.of("커스텀근거"), List.of("커스텀보완"));
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .softSkills(custom)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then
+        assertThat(analysis.getSoftSkillsScore()).isEqualTo(45);
+        assertThat(analysis.getSoftSkillsReason()).containsExactly("커스텀근거");
+        assertThat(analysis.getSoftSkillsImprovements()).containsExactly("커스텀보완");
+    }
+
+    @Test
+    void jdFit을_지정하면_jobDescription이_있을_때_JD적합도_점수가_기본값_대신_반영된다() {
+        // given
+        DimensionScore custom = new DimensionScore(55, List.of("커스텀근거"), List.of("커스텀보완"));
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .jobDescription("Spring Boot 기반 백엔드 개발")
+                .jdFit(custom)
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then — 기본 jd_fit은 70점이므로 55는 jdFit()이 실제로 적용됐을 때만 나온다
+        assertThat(analysis.getJdFitScore()).isEqualTo(55);
+        assertThat(analysis.getJdFitReason()).containsExactly("커스텀근거");
+        assertThat(analysis.getJdFitImprovements()).containsExactly("커스텀보완");
+    }
+
+    @Test
+    void resume를_지정하면_회원_행에_전달한_이력서가_그대로_연관된다() {
+        // given
+        Member member = MemberFixtureBuilder.builder().id(1L).build();
+        MemberResume resume = MemberResumeFixtureBuilder.builder().member(member).build();
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .member(member)
+                .resume(resume)
+                .build();
+
+        // then
+        assertThat(analysis.getMemberResume()).isSameAs(resume);
+    }
+
+    @Test
+    void portfolio를_지정하면_회원_행에_전달한_포트폴리오가_그대로_연관된다() {
+        // given
+        Member member = MemberFixtureBuilder.builder().id(1L).build();
+        MemberPortfolio portfolio = MemberPortfolioFixtureBuilder.builder().member(member).build();
+
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .member(member)
+                .portfolio(portfolio)
+                .build();
+
+        // then
+        assertThat(analysis.getMemberPortfolio()).isSameAs(portfolio);
+    }
+
+    @Test
+    void jobPosition을_지정하면_기본_직무_대신_전달한_값이_저장된다() {
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .jobPosition("데이터 엔지니어")
+                .build();
+
+        // then
+        assertThat(analysis.getJobPosition()).isEqualTo("데이터 엔지니어");
+    }
+
+    @Test
+    void jobCareer를_지정하면_기본_경력_대신_전달한_값이_저장된다() {
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .jobCareer("3년차")
+                .build();
+
+        // then
+        assertThat(analysis.getJobCareer()).isEqualTo("3년차");
+    }
+
+    @Test
+    void totalFeedback을_지정하면_기본_총평_대신_전달한_값이_저장된다() {
+        // when
+        ResumeAnalysis analysis = ResumeAnalysisFixtureBuilder.builder()
+                .totalFeedback("커스텀 총평")
+                .state(ResumeAnalysisState.COMPLETED)
+                .build();
+
+        // then
+        assertThat(analysis.getTotalFeedback()).isEqualTo("커스텀 총평");
     }
 }
