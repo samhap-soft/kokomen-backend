@@ -3,7 +3,6 @@ package com.samhap.kokomen.global.fixture.resume;
 import com.samhap.kokomen.resume.domain.DimensionScore;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisWeights;
-import java.util.List;
 
 public final class ResumeAnalysisEvaluationFixture {
 
@@ -30,7 +29,21 @@ public final class ResumeAnalysisEvaluationFixture {
         return evaluation.withTotalScore(ResumeAnalysisWeights.of(jdProvided).calculateTotalScore(evaluation));
     }
 
+    /**
+     * 전 차원을 같은 점수로 채운다. 지표별 값이 아니라 단일 점수로 총점을 예측해야 하는 테스트가 대상이다.
+     */
+    public static ResumeAnalysisEvaluation of(boolean jdProvided, int score) {
+        ResumeAnalysisEvaluation evaluation = new ResumeAnalysisEvaluation(
+                dimension(score), dimension(score), dimension(score), dimension(score),
+                jdProvided ? dimension(score) : null, null, "종합 총평");
+        return evaluation.withTotalScore(ResumeAnalysisWeights.of(jdProvided).calculateTotalScore(evaluation));
+    }
+
+    /**
+     * DimensionScoreFixture.of(int)에 위임한다 — 두 픽스처가 각자 "근거1/근거2, 보완1/보완2" 리터럴을
+     * 따로 들고 있으면 한쪽만 바뀌는 표류가 생긴다.
+     */
     public static DimensionScore dimension(int score) {
-        return new DimensionScore(score, List.of("근거1", "근거2"), List.of("보완1", "보완2"));
+        return DimensionScoreFixture.of(score);
     }
 }
