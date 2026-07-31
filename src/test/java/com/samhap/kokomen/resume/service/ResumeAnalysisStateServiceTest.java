@@ -34,8 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * 게스트 락 키·TTL·토큰 비용은 리터럴로 복제하지 않고 §0-6 정본인
- * ResumeAnalysisFacadeService의 상수를 참조한다(같은 패키지이므로 import가 필요 없다).
+ * 게스트 락 키·TTL·토큰 비용은 리터럴로 복제하지 않고 ResumeAnalysisFacadeService의 상수와
+ * createGuestLockKey를 쓴다(같은 패키지이므로 import가 필요 없다).
  */
 class ResumeAnalysisStateServiceTest extends BaseTest {
 
@@ -237,7 +237,7 @@ class ResumeAnalysisStateServiceTest extends BaseTest {
         // given
         String guestIp = "11.22.33.74";
         String lockValue = UUID.randomUUID().toString();
-        String lockKey = ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + guestIp;
+        String lockKey = ResumeAnalysisFacadeService.createGuestLockKey(guestIp);
         redisService.acquireLockWithValue(lockKey, lockValue,
                 ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_TTL);
         Long analysisId = saveGuestAnalysis(guestIp, lockValue).getId();
@@ -259,7 +259,7 @@ class ResumeAnalysisStateServiceTest extends BaseTest {
         // given
         String guestIp = "11.22.33.75";
         String lockValue = UUID.randomUUID().toString();
-        String lockKey = ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + guestIp;
+        String lockKey = ResumeAnalysisFacadeService.createGuestLockKey(guestIp);
         redisService.acquireLockWithValue(lockKey, lockValue,
                 ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_TTL);
         Long analysisId = saveGuestAnalysis(guestIp, lockValue).getId();

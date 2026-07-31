@@ -148,7 +148,16 @@ public class ResumeAnalysisFacadeService {
     }
 
     public static String createGuestLockKey(ClientIp clientIp) {
-        return GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + clientIp.address();
+        return createGuestLockKey(clientIp.address());
+    }
+
+    /**
+     * 락을 거는 쪽은 {@code ClientIp}를, 해제하는 쪽은 저장된 {@code guest_ip} 문자열을 들고 있다.
+     * 두 경로가 각자 접두사를 붙여 키를 조립하면 한쪽만 바뀌었을 때 서로 다른 키를 걸고 해제하게 되므로,
+     * 문자열을 받는 이 메서드를 유일한 조립 지점으로 두고 위 오버로드도 여기로 위임한다.
+     */
+    public static String createGuestLockKey(String guestIp) {
+        return GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + guestIp;
     }
 
     /**
@@ -227,12 +236,18 @@ public class ResumeAnalysisFacadeService {
         }
     }
 
-    // 락은 1회 '성공' 제한, 카운터는 '시도' 제한이다. 실패하는 PDF를 반복 제출해
-    // Tomcat 스레드를 PDFBox에 묶는 경로를 막는다.
+    /**
+     * 락은 1회 '성공' 제한, 카운터는 '시도' 제한이다. 실패하는 PDF를 반복 제출해 Tomcat 스레드를 PDFBox에
+     * 묶는 경로를 막는다.
+     *
+     * <p>고정 시간창이다 — 만료 시각은 첫 시도에만 정해지고 이후 시도는 그것을 밀지 않는다. 매 시도마다
+     * TTL을 새로 걸면 상한을 넘긴 IP가 마지막 시도로부터 한 시간을 기다려야 하는 슬라이딩 창이 되어
+     * {@code GUEST_MAX_ATTEMPTS_PER_HOUR}가 말하는 '시간당 몫'과 어긋난다.
+     */
     private void validateGuestAttemptQuota(ClientIp clientIp) {
         String attemptKey = GUEST_RESUME_ANALYSIS_ATTEMPT_KEY_PREFIX + clientIp.address();
         Long attempts = redisService.incrementKey(attemptKey);
-        redisService.expireKey(attemptKey, GUEST_ATTEMPT_WINDOW);
+        redisService.expireKeyIfNotSet(attemptKey, GUEST_ATTEMPT_WINDOW);
         if (attempts > GUEST_MAX_ATTEMPTS_PER_HOUR) {
             log.warn("게스트 이력서 분석 시도 한도 초과 - ip: {}, attempts: {}", clientIp.address(), attempts);
             throw new BadRequestException("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
@@ -410,7 +425,9 @@ public class ResumeAnalysisFacadeService {
                     resumeAnalysisAsyncService.runQuestionHop(withoutBilling(command), evaluation));
         } catch (TaskRejectedException e) {
             log.error("이력서 분석 질문 재생성 executor 포화 - analysisId: {}", analysisId, e);
-            resumeAnalysisStateService.failQuestions(analysisId, ResumeAnalysisFailureReason.CAPACITY);
+            // failQuestions로 종단하면 restoreForQuestionRetry가 이미 올려 둔 재시도 횟수가 그대로 남아
+            // 한 번도 실행되지 않은 시도가 사용자의 재생성 기회를 하나 잡아먹는다. 복원 자체를 되돌린다.
+            resumeAnalysisStateService.revertQuestionRetry(analysisId, ResumeAnalysisFailureReason.CAPACITY);
             throw new ServiceUnavailableException(CAPACITY_MESSAGE);
         }
         return new ResumeAnalysisQuestionRetryResponse(analysisId, ResumeAnalysisState.EVALUATION_COMPLETED,

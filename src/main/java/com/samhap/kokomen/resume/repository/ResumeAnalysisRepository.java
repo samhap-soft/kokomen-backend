@@ -2,6 +2,7 @@ package com.samhap.kokomen.resume.repository;
 
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.resume.domain.ResumeAnalysis;
+import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisState;
 import com.samhap.kokomen.resume.repository.dto.ResumeAnalysisSummaryProjection;
 import jakarta.persistence.LockModeType;
@@ -100,7 +101,7 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
 
     /**
      * QUESTION_FAILED → EVALUATION_COMPLETED 조건부 전이. 재시도 상한과 상태를 WHERE에 함께 넣어
-     * 동시 재시도 두 건 중 하나만 1행을 갱신하게 만든다(§7-4).
+     * 동시 재시도 두 건 중 하나만 1행을 갱신하게 만든다.
      */
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -116,4 +117,22 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
             """)
     int restoreForQuestionRetry(@Param("id") Long id, @Param("maxRetryCount") int maxRetryCount,
                                 @Param("now") LocalDateTime now);
+
+    /**
+     * restoreForQuestionRetry를 되돌린다. 복원은 성공했지만 뒤이어 질문 hop을 실제로 시작하지 못한 경우에만
+     * 쓴다 — 그대로 두면 실행된 적 없는 시도가 재생성 횟수를 하나 소모한다.
+     * 조건부 전이이므로 그 사이 다른 주체가 행을 진전시켰다면 0행이 갱신되고 되돌리기는 일어나지 않는다.
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE ResumeAnalysis a
+               SET a.state = com.samhap.kokomen.resume.domain.ResumeAnalysisState.QUESTION_FAILED,
+                   a.failureReason = :reason,
+                   a.questionRetryCount = a.questionRetryCount - 1
+             WHERE a.id = :id
+               AND a.state = com.samhap.kokomen.resume.domain.ResumeAnalysisState.EVALUATION_COMPLETED
+               AND a.questionRetryCount > 0
+            """)
+    int revertQuestionRetry(@Param("id") Long id, @Param("reason") ResumeAnalysisFailureReason reason);
 }

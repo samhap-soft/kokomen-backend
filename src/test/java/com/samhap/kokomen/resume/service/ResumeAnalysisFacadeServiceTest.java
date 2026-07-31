@@ -16,6 +16,7 @@ import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.NotFoundException;
+import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
@@ -44,13 +45,20 @@ import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -62,6 +70,9 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
     private static final String JOB_CAREER = "신입";
     private static final String EXTRACTION_FAILED_MESSAGE = "이력서 PDF에서 텍스트를 추출할 수 없습니다.";
     private static final int INITIAL_FREE_TOKEN_COUNT = 20;
+    private static final String OTHER_GUEST_TOKEN = "00000000-0000-0000-0000-000000000000";
+    private static final Duration SHORTENED_ATTEMPT_TTL = Duration.ofSeconds(30);
+    private static final Duration EXECUTOR_DRAIN_TIMEOUT = Duration.ofSeconds(10);
 
     @Autowired
     private ResumeAnalysisFacadeService resumeAnalysisFacadeService;
@@ -81,6 +92,9 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
     private RedisService redisService;
     @Autowired
     private RedisCleaner redisCleaner;
+    @Autowired
+    @Qualifier("resumeAnalysisExecutor")
+    private ThreadPoolTaskExecutor resumeAnalysisExecutor;
 
     // BaseTest가 제공하는 resumeAnalysisAsyncService 목은 재선언하지 않는다. 같은 타입을 BaseTest와
     // 서브클래스에 동시 선언하면 Spring이 중복 오버라이드를 거부해 컨텍스트 기동 자체가 실패한다.
@@ -337,7 +351,7 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
         // then
         verify(resumeAnalysisAsyncService, timeout(2_000)).run(any(ResumeAnalysisCommand.class));
         ResumeAnalysis saved = resumeAnalysisRepository.findById(response.analysisId()).orElseThrow();
-        String lockKey = ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + clientIp.address();
+        String lockKey = ResumeAnalysisFacadeService.createGuestLockKey(clientIp);
         assertAll(
                 () -> assertThat(response.guestToken()).isNotNull(),
                 () -> assertThat(saved.isGuest()).isTrue(),
@@ -361,7 +375,7 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
         // when & then
         assertAll(
                 () -> assertThat(redisTemplate.hasKey(
-                        ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + clientIp.address()))
+                        ResumeAnalysisFacadeService.createGuestLockKey(clientIp)))
                         .isTrue(),
                 () -> assertThatThrownBy(() -> resumeAnalysisFacadeService.submitGuestAnalysis(
                         fileRequestWithoutJd(), clientIp))
@@ -384,7 +398,7 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage(EXTRACTION_FAILED_MESSAGE),
                 () -> assertThat(redisTemplate.hasKey(
-                        ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + clientIp.address()))
+                        ResumeAnalysisFacadeService.createGuestLockKey(clientIp)))
                         .isFalse(),
                 () -> assertThat(resumeAnalysisRepository.count()).isZero()
         );
@@ -427,7 +441,7 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("비회원은 저장된 이력서를 사용할 수 없습니다."),
                 () -> assertThat(redisTemplate.hasKey(
-                        ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_LOCK_KEY_PREFIX + clientIp.address()))
+                        ResumeAnalysisFacadeService.createGuestLockKey(clientIp)))
                         .isFalse(),
                 () -> assertThat(resumeAnalysisRepository.count()).isZero()
         );
@@ -619,6 +633,178 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
                 analysisId, new MemberAuth(other.getId()), null))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("본인의 이력서 분석만 조회할 수 있습니다.");
+    }
+
+    /**
+     * 미claim 게스트 행의 유일한 인증 수단은 guest_token이다. 이 검사가 없으면 analysisId를 아는 누구나
+     * 남의 비회원 분석을 재생성시킬 수 있다.
+     */
+    @Test
+    void 게스트_분석은_guest_token이_일치하지_않으면_재시도할_수_없다() {
+        // given
+        ResumeAnalysisSubmitResponse guest = submitGuest("11.22.33.84");
+        failQuestions(guest.analysisId());
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> resumeAnalysisFacadeService.retryQuestionGeneration(
+                        guest.analysisId(), MemberAuth.notAuthenticated(), OTHER_GUEST_TOKEN))
+                        .isInstanceOf(ForbiddenException.class)
+                        .hasMessage("본인의 이력서 분석만 조회할 수 있습니다."),
+                () -> assertThatThrownBy(() -> resumeAnalysisFacadeService.retryQuestionGeneration(
+                        guest.analysisId(), MemberAuth.notAuthenticated(), null))
+                        .isInstanceOf(ForbiddenException.class)
+                        .hasMessage("본인의 이력서 분석만 조회할 수 있습니다."),
+                () -> verify(resumeAnalysisAsyncService, never())
+                        .runQuestionHop(any(ResumeAnalysisCommand.class), any(ResumeAnalysisEvaluation.class)),
+                () -> assertThat(resumeAnalysisRepository.findById(guest.analysisId()).orElseThrow().getState())
+                        .isEqualTo(ResumeAnalysisState.QUESTION_FAILED),
+                () -> assertThat(resumeAnalysisRepository.findById(guest.analysisId()).orElseThrow()
+                        .getQuestionRetryCount()).isZero()
+        );
+    }
+
+    @Test
+    void 게스트_분석은_올바른_guest_token으로_재시도할_수_있다() {
+        // given
+        ResumeAnalysisSubmitResponse guest = submitGuest("11.22.33.85");
+        failQuestions(guest.analysisId());
+        given(resumeAnalysisAsyncService.readCommand(guest.analysisId()))
+                .willReturn(command(guest.analysisId(), null));
+
+        // when
+        ResumeAnalysisQuestionRetryResponse response = resumeAnalysisFacadeService.retryQuestionGeneration(
+                guest.analysisId(), MemberAuth.notAuthenticated(), guest.guestToken());
+
+        // then
+        verify(resumeAnalysisAsyncService, timeout(2_000))
+                .runQuestionHop(any(ResumeAnalysisCommand.class), any(ResumeAnalysisEvaluation.class));
+        ResumeAnalysis reloaded = resumeAnalysisRepository.findById(guest.analysisId()).orElseThrow();
+        assertAll(
+                () -> assertThat(response.state()).isEqualTo(ResumeAnalysisState.EVALUATION_COMPLETED),
+                () -> assertThat(response.questionRetryCount()).isEqualTo(1),
+                () -> assertThat(reloaded.getState()).isEqualTo(ResumeAnalysisState.EVALUATION_COMPLETED),
+                () -> assertThat(reloaded.getQuestionRetryCount()).isEqualTo(1)
+        );
+    }
+
+    /**
+     * 고정 시간창 단정. 남은 시간을 짧게 덮어써 두고 상한까지 시도를 더 쌓았을 때 그 값이 밀리지 않아야 한다.
+     * 매 시도마다 TTL을 새로 걸면(슬라이딩 창) 이 단정이 만료 시간 전체 길이를 보게 되어 깨진다.
+     */
+    @Test
+    void 게스트_시도_카운터는_고정_시간창이라_후속_시도가_TTL을_연장하지_않는다() {
+        // given — 추출 실패로 끝나는 시도도 카운터에는 잡힌다.
+        ClientIp clientIp = new ClientIp("11.22.33.86");
+        given(pdfTextExtractor.extractTextWithLinks(any(MultipartFile.class))).willReturn(null);
+        String attemptKey =
+                ResumeAnalysisFacadeService.GUEST_RESUME_ANALYSIS_ATTEMPT_KEY_PREFIX + clientIp.address();
+        assertThatThrownBy(() -> resumeAnalysisFacadeService.submitGuestAnalysis(fileRequestWithoutJd(), clientIp))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage(EXTRACTION_FAILED_MESSAGE);
+        redisTemplate.expire(attemptKey, SHORTENED_ATTEMPT_TTL);
+
+        // when — 상한까지 시도를 더 쌓는다.
+        for (int attempt = 2; attempt <= ResumeAnalysisFacadeService.GUEST_MAX_ATTEMPTS_PER_HOUR; attempt++) {
+            assertThatThrownBy(() -> resumeAnalysisFacadeService.submitGuestAnalysis(
+                    fileRequestWithoutJd(), clientIp))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage(EXTRACTION_FAILED_MESSAGE);
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(redisTemplate.getExpire(attemptKey, TimeUnit.MILLISECONDS))
+                        .isPositive()
+                        .isLessThanOrEqualTo(SHORTENED_ATTEMPT_TTL.toMillis()),
+                () -> assertThatThrownBy(() -> resumeAnalysisFacadeService.submitGuestAnalysis(
+                        fileRequestWithoutJd(), clientIp))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
+        );
+    }
+
+    /**
+     * executor가 태스크를 거절하면 질문 hop은 한 번도 실행되지 않는다. 그런데 상태 복원은 이미 끝나 있어
+     * 되돌리지 않으면 실행된 적 없는 시도가 재생성 횟수를 하나 소모한다.
+     *
+     * <p>목을 쓰지 않고 실제 executor를 정원(최대 스레드 + 큐)까지 블로킹 태스크로 채워 거절을 만든다.
+     * executor에 스파이를 걸면 컨텍스트가 하나 더 뜬다.
+     */
+    @Test
+    void executor가_포화되어_재시도가_거절되면_재생성_횟수를_소모하지_않는다() {
+        // given
+        Member member = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        Long analysisId = resumeAnalysisFacadeService.submitMemberAnalysis(
+                member.getId(), fileRequestWithoutJd()).analysisId();
+        failQuestions(analysisId);
+        given(resumeAnalysisAsyncService.readCommand(analysisId)).willReturn(command(analysisId, null));
+        CountDownLatch blocker = new CountDownLatch(1);
+
+        // when & then
+        try {
+            saturateResumeAnalysisExecutor(blocker);
+            assertThatThrownBy(() -> resumeAnalysisFacadeService.retryQuestionGeneration(
+                    analysisId, new MemberAuth(member.getId()), null))
+                    .isInstanceOf(ServiceUnavailableException.class)
+                    .hasMessage("이력서 분석 요청이 많아 잠시 후 다시 시도해주세요.");
+        } finally {
+            blocker.countDown();
+            awaitResumeAnalysisExecutorDrain();
+        }
+        ResumeAnalysis reloaded = resumeAnalysisRepository.findById(analysisId).orElseThrow();
+        assertAll(
+                () -> assertThat(reloaded.getQuestionRetryCount()).isZero(),
+                () -> assertThat(reloaded.getState()).isEqualTo(ResumeAnalysisState.QUESTION_FAILED),
+                () -> assertThat(reloaded.getFailureReason()).isEqualTo(ResumeAnalysisFailureReason.CAPACITY),
+                () -> verify(resumeAnalysisAsyncService, never())
+                        .runQuestionHop(any(ResumeAnalysisCommand.class), any(ResumeAnalysisEvaluation.class))
+        );
+    }
+
+    /**
+     * 앞선 테스트가 남긴 태스크를 먼저 흘려보낸 뒤, 모든 스레드가 태스크를 붙들고 큐도 꽉 찰 때까지 블로킹
+     * 태스크를 채운다. 채운 태스크는 전부 latch를 기다리므로 어떤 슬롯도 스스로 비지 않고, 포화가 latch를
+     * 풀 때까지 유지된다.
+     *
+     * <p>첫 거절을 포화의 증거로 삼으면 안 된다. 미리 띄워 둔 코어 스레드가 아직 태스크를 집어 들지 않은
+     * 순간에는 큐가 잠깐 가득 차 거절이 나고, 곧 스레드가 하나를 집어 가 큐에 자리가 생긴다. 그래서 거절이
+     * 나도 물러서지 않고 포화 조건 자체를 확인할 때까지 계속 채운다.
+     */
+    private void saturateResumeAnalysisExecutor(CountDownLatch blocker) {
+        awaitResumeAnalysisExecutorDrain();
+        ThreadPoolExecutor pool = resumeAnalysisExecutor.getThreadPoolExecutor();
+        long deadline = System.nanoTime() + EXECUTOR_DRAIN_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline && !isSaturated(pool)) {
+            try {
+                resumeAnalysisExecutor.execute(() -> awaitQuietly(blocker));
+            } catch (TaskRejectedException e) {
+                Thread.onSpinWait();
+            }
+        }
+        if (!isSaturated(pool)) {
+            throw new IllegalStateException("이력서 분석 executor를 포화시키지 못했다.");
+        }
+    }
+
+    private boolean isSaturated(ThreadPoolExecutor pool) {
+        return pool.getActiveCount() >= pool.getMaximumPoolSize() && pool.getQueue().remainingCapacity() == 0;
+    }
+
+    private void awaitQuietly(CountDownLatch blocker) {
+        try {
+            blocker.await(EXECUTOR_DRAIN_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void awaitResumeAnalysisExecutorDrain() {
+        ThreadPoolExecutor pool = resumeAnalysisExecutor.getThreadPoolExecutor();
+        long deadline = System.nanoTime() + EXECUTOR_DRAIN_TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline && (pool.getActiveCount() > 0 || !pool.getQueue().isEmpty())) {
+            Thread.onSpinWait();
+        }
     }
 
     private Member saveMemberWithTokens(int freeTokenCount) {
