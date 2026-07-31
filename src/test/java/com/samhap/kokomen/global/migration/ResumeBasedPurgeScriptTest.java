@@ -154,11 +154,13 @@ class ResumeBasedPurgeScriptTest {
         );
     }
 
-    // 이 태스크의 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 항상 non-null
-    // GeneratedQuestion을 넘기므로 신규 플로우는 이 모양(generated_question_id NULL)을 구조적으로
-    // 만들 수 없다 -- V33 시대(resume_based_root_question, generated_question_id 컬럼 자체가
-    // 없던 시절)의 잔존물만이 이 모양일 수 있다. V53의 5단계 WHERE에 `OR generated_question_id
-    // IS NULL`을 넣은 결정이 실제로 이 행을 지우는지 검증한다.
+    // 이 태스크의 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든
+    // 호출부에서 지금 항상 non-null GeneratedQuestion을 넘긴다 -- 다만 생성자 자체에 null을 막는
+    // 가드가 없으므로 "구조적으로 불가능"은 과장이고, 정확한 사실은 "오늘 기준 이 모양을 만드는
+    // 호출부가 없다"는 것까지다(V53:34-44와 같은 표현을 쓴다). 그러니 이 모양은 V33 시대
+    // (resume_based_root_question, generated_question_id 컬럼 자체가 없던 시절)의 잔존물로 봐야
+    // 한다. V53의 5단계 WHERE에 `OR generated_question_id IS NULL`을 넣은 결정이 실제로 이 행을
+    // 지우는지 검증한다.
     @Test
     void 퍼지_스크립트는_generated_question_id가_NULL인_RESUME_BASED_행도_지운다() throws Exception {
         // given
