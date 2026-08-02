@@ -566,6 +566,7 @@ include::{snippetsDir}/resume-analysis-submit-guest-duplicate-ip/curl-request.ad
 === 이력서 분석 조회 (대기중)
 
 include::{snippetsDir}/resume-analysis-get-pending/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-pending/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-pending/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-pending/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-pending/response-body.adoc[]
@@ -575,6 +576,7 @@ include::{snippetsDir}/resume-analysis-get-pending/curl-request.adoc[]
 === 이력서 분석 조회 (평가 완료, 채용공고 포함)
 
 include::{snippetsDir}/resume-analysis-get-evaluation-completed/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-evaluation-completed/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed/response-body.adoc[]
@@ -584,6 +586,7 @@ include::{snippetsDir}/resume-analysis-get-evaluation-completed/curl-request.ado
 === 이력서 분석 조회 (평가 완료, 채용공고 미제공)
 
 include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/response-body.adoc[]
@@ -593,6 +596,7 @@ include::{snippetsDir}/resume-analysis-get-evaluation-completed-without-jd/curl-
 === 이력서 분석 조회 (완료)
 
 include::{snippetsDir}/resume-analysis-get-completed/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-completed/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-completed/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-completed/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-completed/response-body.adoc[]
@@ -602,6 +606,7 @@ include::{snippetsDir}/resume-analysis-get-completed/curl-request.adoc[]
 === 이력서 분석 조회 (평가 실패)
 
 include::{snippetsDir}/resume-analysis-get-evaluation-failed/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-evaluation-failed/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-failed/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-failed/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-evaluation-failed/response-body.adoc[]
@@ -611,6 +616,7 @@ include::{snippetsDir}/resume-analysis-get-evaluation-failed/curl-request.adoc[]
 === 이력서 분석 조회 (질문 생성 실패)
 
 include::{snippetsDir}/resume-analysis-get-question-failed/http-request.adoc[]
+include::{snippetsDir}/resume-analysis-get-question-failed/request-headers.adoc[]
 include::{snippetsDir}/resume-analysis-get-question-failed/path-parameters.adoc[]
 include::{snippetsDir}/resume-analysis-get-question-failed/http-response.adoc[]
 include::{snippetsDir}/resume-analysis-get-question-failed/response-body.adoc[]

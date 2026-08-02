@@ -32,6 +32,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
 public abstract class BaseTest {
 
+    // 여기 있는 타입을 하위 클래스에서 다시 @MockitoBean으로 선언하지 않는다.
+    // 같은 이름으로 선언하면 Duplicate BeanOverrideHandler로 컨텍스트 기동이 즉시 실패하므로 바로 드러나지만,
+    // 다른 이름으로 선언하면 기동은 성공하고 한 빈에 타입 기준 오버라이드가 둘 붙는다. 이때 상속 필드와 로컬 필드가
+    // 같은 목 인스턴스를 본다는 보장이 없어, 스텁을 건 쪽과 실제로 호출되는 쪽이 어긋나도 조용히 통과한다.
+    // 목이 더 필요하면 이 클래스에 추가하고, 특정 테스트에만 필요한 목은 그 클래스에만 있는 타입으로 한정한다.
     @MockitoBean
     protected SupertoneClient supertoneClient;
     @MockitoBean
