@@ -328,6 +328,63 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("질문 ID는 필수입니다."));
     }
 
+    /**
+     * 세 필드의 @NotNull을 각각 검증한다. 하나만 검증하면 나머지 두 제약을 지워도 테스트가 통과하고,
+     * 프로덕션은 400 대신 역참조 시점의 NPE가 전역 핸들러에 걸려 500으로 퇴화한다 -- 사용자에게는
+     * 어떤 필드가 빠졌는지 알 수 없는 응답이 된다.
+     */
+    @Test
+    void 최대_질문_개수가_누락되면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(20);
+        ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        MockHttpSession session = loginSession(member);
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "mode": "TEXT"
+                }
+                """.formatted(question.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-analyses/{analysisId}", analysis.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("최대 질문 개수는 필수입니다."));
+    }
+
+    @Test
+    void 면접_모드가_누락되면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(20);
+        ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        MockHttpSession session = loginSession(member);
+
+        String requestJson = """
+                {
+                    "generated_question_id": %d,
+                    "max_question_count": 5
+                }
+                """.formatted(question.getId());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-analyses/{analysisId}", analysis.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("면접 모드는 필수입니다."));
+    }
+
     @Test
     void 다른_회원의_분석으로_면접을_시작하면_403() throws Exception {
         // given
