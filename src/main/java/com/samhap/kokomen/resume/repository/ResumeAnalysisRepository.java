@@ -84,6 +84,20 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
     List<ResumeAnalysis> findByStateAndQuestionStartedAtBefore(
             ResumeAnalysisState state, LocalDateTime threshold, Pageable pageable);
 
+    /**
+     * 스윕이 회수 과금할 주체를 정하는 유일한 판정이다. chargeTokensIfNeeded는 넘겨받은 member_id를 행의
+     * 소유자와 대조하지 않으므로, 게스트 행(member_id IS NULL)과 이미 과금된 행을 이 WHERE가 걸러 낸다.
+     * 엔티티의 LAZY member 프록시를 트랜잭션 밖에서 역참조하지 않기 위해 member_id만 뽑는다.
+     */
+    @Query("""
+            SELECT a.member.id FROM ResumeAnalysis a
+             WHERE a.id = :id
+               AND a.billingRequired = true
+               AND a.chargedTokenCount = 0
+               AND a.member IS NOT NULL
+            """)
+    Optional<Long> findRecoveryBillingMemberId(@Param("id") Long id);
+
     @Query("""
             SELECT a.id FROM ResumeAnalysis a
              WHERE a.member IS NULL AND a.guestToken IS NOT NULL AND a.createdAt < :threshold
