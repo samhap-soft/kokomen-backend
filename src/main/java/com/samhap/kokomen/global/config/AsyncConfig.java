@@ -57,15 +57,21 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
-    @Bean("resumeEvaluationExecutor")
-    public ThreadPoolTaskExecutor resumeEvaluationExecutor() {
+    @Bean("resumeAnalysisExecutor")
+    public ThreadPoolTaskExecutor resumeAnalysisExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(100);
-        executor.setMaxPoolSize(100);
-        executor.setQueueCapacity(1000);
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(30);
-        executor.setThreadNamePrefix("Async-Resume-Eval-");
+        executor.setCorePoolSize(60);
+        executor.setMaxPoolSize(60);
+        executor.setQueueCapacity(40);
+        executor.setThreadNamePrefix("Async-Resume-Analysis-");
+        // 제출 스레드에서 MDC를 캡처해 워커 스레드로 넘긴다. 이 데코레이터 없이는 이력서 분석 워커의 모든 로그가
+        // requestId 없이 찍혀 202를 응답한 요청과 상관관계를 잡을 수 없다. 워커 안에서는 제출 스레드의 MDC를
+        // 알 수 없으므로(decorate가 제출 시점에 실행되어야 한다) 캡처는 반드시 여기서 일어나야 한다.
+        executor.setTaskDecorator(new MdcDecorator());
+        // 셧다운 시 큐를 버린다. 큐에 있던 행은 sweep이 종단 처리하며,
+        // 억지로 실행하면 "중간에 죽는 태스크"만 늘어난다.
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         executor.getThreadPoolExecutor().prestartAllCoreThreads();
         return executor;

@@ -32,6 +32,21 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(e.getMessage()));
     }
 
+    /**
+     * 용량 포화(503)는 즉시 알람 대상이라 handleKokomenException의 log.warn에 묻히지 않게 전용 핸들러로 분리한다.
+     * ServiceUnavailableException은 KokomenException의 하위 타입이므로 Spring이 더 구체적인 이 핸들러를 선택하고,
+     * 기존 예외들의 처리 경로는 그대로 유지된다.
+     * 카운터는 actuator가 이미 내보내는 http_server_requests_seconds_count{status="503"}로 관측한다
+     * (MeterRegistry를 주입해 이 클래스에 의존성을 추가하지 않는다).
+     */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailableException(ServiceUnavailableException e) {
+        log.error("ServiceUnavailableException :: status: {}, message: {}, stackTrace: ", e.getHttpStatusCode(),
+                e.getMessage(), e);
+        return ResponseEntity.status(e.getHttpStatusCode())
+                .body(new ErrorResponse(e.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String defaultErrorMessageForUser = "잘못된 요청입니다.";

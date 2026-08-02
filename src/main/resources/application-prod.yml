@@ -19,7 +19,6 @@ aws:
   next-question-s3-path: prod/next-question-voice/
   resume-s3-path: prod/resume/
   portfolio-s3-path: prod/portfolio/
-  company-s3-path: recruit/prod/company/
 tosspayments:
   widget-secret-key: ${WIDGET_SECRET_KEY_PROD}
 retry:
