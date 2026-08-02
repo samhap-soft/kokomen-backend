@@ -20,14 +20,11 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
-import com.samhap.kokomen.resume.tool.PdfTextExtractor;
-import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 class CareerMaterialsControllerTest extends BaseControllerTest {
 
@@ -39,10 +36,6 @@ class CareerMaterialsControllerTest extends BaseControllerTest {
     private MemberPortfolioRepository memberPortfolioRepository;
     @Autowired
     private MemberResumeRepository memberResumeRepository;
-    @MockitoBean
-    private PdfValidator pdfValidator;
-    @MockitoBean
-    private PdfTextExtractor pdfTextExtractor;
 
     @Test
     void 멤버_이력서_반환() throws Exception {

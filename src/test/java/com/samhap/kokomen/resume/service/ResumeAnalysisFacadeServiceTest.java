@@ -39,8 +39,6 @@ import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionRetryResponse
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisUsageStatusResponse;
-import com.samhap.kokomen.resume.tool.PdfTextExtractor;
-import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
@@ -96,13 +94,10 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
     @Qualifier("resumeAnalysisExecutor")
     private ThreadPoolTaskExecutor resumeAnalysisExecutor;
 
-    // BaseTest가 제공하는 resumeAnalysisAsyncService 목은 재선언하지 않는다. 같은 타입을 BaseTest와
-    // 서브클래스에 동시 선언하면 Spring이 중복 오버라이드를 거부해 컨텍스트 기동 자체가 실패한다.
-    // 로컬 목은 PDF 3종뿐이며, 이력서 분석 컨트롤러 테스트도 같은 3개를 선언해 컨텍스트 캐시 키를 공유한다.
-    @MockitoBean
-    private PdfValidator pdfValidator;
-    @MockitoBean
-    private PdfTextExtractor pdfTextExtractor;
+    // BaseTest가 제공하는 resumeAnalysisAsyncService·pdfValidator·pdfTextExtractor 목은 재선언하지 않는다.
+    // 같은 타입을 BaseTest와 서브클래스에 동시 선언하면 Spring이 중복 오버라이드를 거부해 컨텍스트 기동 자체가 실패한다.
+    // 로컬 목은 ResumeAnalysisPdfPolicy 하나뿐이며, 이력서 분석 컨트롤러 테스트도 같은 1개를 선언해
+    // 컨텍스트 캐시 키를 공유한다.
     @MockitoBean
     private ResumeAnalysisPdfPolicy resumeAnalysisPdfPolicy;
 

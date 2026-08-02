@@ -8,7 +8,13 @@ import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationGptClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
+import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionGptClient;
 import com.samhap.kokomen.resume.service.ResumeAnalysisAsyncService;
+import com.samhap.kokomen.resume.tool.PdfTextExtractor;
+import com.samhap.kokomen.resume.tool.PdfValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.redisson.api.RedissonClient;
@@ -43,7 +49,19 @@ public abstract class BaseTest {
     @MockitoBean
     protected GoogleOAuthClient googleOAuthClient;
     @MockitoBean
+    protected ResumeAnalysisEvaluationBedrockClient resumeAnalysisEvaluationBedrockClient;
+    @MockitoBean
+    protected ResumeAnalysisEvaluationGptClient resumeAnalysisEvaluationGptClient;
+    @MockitoBean
+    protected ResumeAnalysisQuestionBedrockClient resumeAnalysisQuestionBedrockClient;
+    @MockitoBean
+    protected ResumeAnalysisQuestionGptClient resumeAnalysisQuestionGptClient;
+    @MockitoBean
     protected ResumeAnalysisAsyncService resumeAnalysisAsyncService;
+    @MockitoBean
+    protected PdfValidator pdfValidator;
+    @MockitoBean
+    protected PdfTextExtractor pdfTextExtractor;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @MockitoSpyBean

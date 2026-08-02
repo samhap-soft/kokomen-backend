@@ -48,8 +48,6 @@ import com.samhap.kokomen.resume.repository.ResumeAnalysisRepository;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisSourceTextRepository;
 import com.samhap.kokomen.resume.service.ResumeAnalysisFacadeService;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
-import com.samhap.kokomen.resume.tool.PdfTextExtractor;
-import com.samhap.kokomen.resume.tool.PdfValidator;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
@@ -91,15 +89,10 @@ class ResumeAnalysisControllerTest extends BaseControllerTest {
     @Autowired
     private RedisService redisService;
 
-    @MockitoBean
-    private PdfValidator pdfValidator;
-
-    @MockitoBean
-    private PdfTextExtractor pdfTextExtractor;
-
     // ResumeAnalysisPdfPolicy는 Loader.loadPDF로 실제 PDF를 파싱하므로 반드시 목으로 잡는다.
     // 목이 없으면 모든 제출 테스트가 "PDF 파일을 읽을 수 없습니다." 400으로 떨어진다.
-    // resumeAnalysisAsyncService는 BaseTest의 상속 필드를 쓴다(로컬 재선언 금지).
+    // pdfValidator/pdfTextExtractor/resumeAnalysisAsyncService는 BaseTest의 상속 필드를 쓴다(로컬 재선언 금지 —
+    // 같은 타입을 BaseTest와 서브클래스에 동시 선언하면 Spring이 중복 오버라이드를 거부해 컨텍스트 기동이 실패한다).
     @MockitoBean
     private ResumeAnalysisPdfPolicy resumeAnalysisPdfPolicy;
 
