@@ -3,16 +3,21 @@ package com.samhap.kokomen.interview.service;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
+import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.tool.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.service.core.InterviewService;
 import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import com.samhap.kokomen.interview.service.dto.RootQuestionCustomInterviewRequest;
+import com.samhap.kokomen.interview.service.dto.resumeanalysis.ResumeAnalysisInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartTextModeResponse;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartVoiceModeResponse;
@@ -20,6 +25,8 @@ import com.samhap.kokomen.interview.service.question.QuestionService;
 import com.samhap.kokomen.interview.service.question.RootQuestionService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
+import com.samhap.kokomen.resume.domain.ResumeAnalysis;
+import com.samhap.kokomen.resume.service.ResumeAnalysisService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.Duration;
 import java.util.UUID;
@@ -47,6 +54,8 @@ public class InterviewStartFacadeService {
     private final RootQuestionService rootQuestionService;
     private final QuestionService questionService;
     private final RedisService redisService;
+    private final ResumeAnalysisService resumeAnalysisService;
+    private final GeneratedQuestionRepository generatedQuestionRepository;
 
     @Transactional
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
@@ -116,6 +125,58 @@ public class InterviewStartFacadeService {
                     questionVoicePathResolver.resolveRootQuestionCdnPath(rootQuestion.getId()));
         }
         return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    @Transactional
+    public InterviewStartResponse startResumeAnalysisInterview(
+            Long analysisId,
+            ResumeAnalysisInterviewStartRequest request,
+            MemberAuth memberAuth
+    ) {
+        Member member = memberService.readById(memberAuth.memberId());
+        ResumeAnalysis analysis = resumeAnalysisService.readById(analysisId);
+        validateAnalysisOwnership(analysis, memberAuth.memberId());
+        validateAnalysisQuestionReady(analysis);
+        GeneratedQuestion generatedQuestion = readAnalysisGeneratedQuestion(request.generatedQuestionId(), analysisId);
+
+        InterviewMode interviewMode = request.mode();
+        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
+
+        Interview interview = interviewService.saveInterview(
+                new Interview(member, generatedQuestion, request.maxQuestionCount(), interviewMode));
+        Question question = questionService.saveQuestion(new Question(interview, generatedQuestion.getContent()));
+
+        if (interviewMode == InterviewMode.VOICE) {
+            String voiceUrl = questionService.createAndUploadQuestionVoice(question);
+            return new InterviewStartVoiceModeResponse(interview, question, voiceUrl);
+        }
+        return new InterviewStartTextModeResponse(interview, question);
+    }
+
+    // 게스트 분석은 아직 주인이 없으므로 소유자 불일치(403)가 아니라 연결 안내(400)로 답한다.
+    private void validateAnalysisOwnership(ResumeAnalysis analysis, Long memberId) {
+        if (analysis.isGuest()) {
+            throw new BadRequestException("먼저 이력서 분석을 내 계정에 연결해야 합니다.");
+        }
+        if (!analysis.isOwner(memberId)) {
+            throw new ForbiddenException("본인의 이력서 분석만 조회할 수 있습니다.");
+        }
+    }
+
+    private void validateAnalysisQuestionReady(ResumeAnalysis analysis) {
+        if (!analysis.getState().isQuestionReady()) {
+            throw new BadRequestException("질문 생성이 완료되지 않았습니다.");
+        }
+    }
+
+    // 아예 없는 질문(404)과 다른 분석에 속한 질문(400)을 구분하기 위해 두 단계로 조회한다.
+    private GeneratedQuestion readAnalysisGeneratedQuestion(Long questionId, Long analysisId) {
+        if (!generatedQuestionRepository.existsById(questionId)) {
+            throw new NotFoundException("존재하지 않는 질문입니다.");
+        }
+        return generatedQuestionRepository.findByIdAndAnalysisId(questionId, analysisId)
+                .orElseThrow(() -> new BadRequestException("해당 이력서 분석에 속하지 않는 질문입니다."));
     }
 
     private InterviewType resolveInterviewType(RootQuestion rootQuestion) {
