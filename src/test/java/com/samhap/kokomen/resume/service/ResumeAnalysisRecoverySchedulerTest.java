@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -396,19 +398,43 @@ class ResumeAnalysisRecoverySchedulerTest extends BaseTest {
     }
 
     @Test
-    void 종단_상한_건수를_초과하지_않는다() {
-        // given — 백그라운드 스케줄 발화가 남겼을 수 있는 호출 기록을 지우고 이번 호출만 센다
-        clearInvocations(resumeAnalysisRepository);
+    void 자기_락이_만료된_뒤_다른_인스턴스가_새로_건_락은_지우지_않는다() {
+        // given — 스윕이 도는 사이 자기 락이 TTL로 만료되고 다른 인스턴스가 같은 키를 새로 잡은 상황
+        String otherInstanceLockValue = UUID.randomUUID().toString();
+        doAnswer(invocation -> {
+            redisService.releaseLock(ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_KEY);
+            redisService.acquireLockWithValue(ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_KEY,
+                    otherInstanceLockValue, ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_TTL);
+            return List.<ResumeAnalysis>of();
+        }).when(resumeAnalysisRepository).findByStateAndQuestionStartedAtBefore(
+                eq(ResumeAnalysisState.EVALUATION_COMPLETED), any(LocalDateTime.class), any(Pageable.class));
 
         // when
         resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
 
-        // then
-        verify(resumeAnalysisRepository).findByStateAndCreatedAtBefore(
-                eq(ResumeAnalysisState.PENDING), any(LocalDateTime.class), eq(PageRequest.of(0, 200)));
-        verify(resumeAnalysisRepository).findByStateAndQuestionStartedAtBefore(
+        // then — 무조건 삭제였다면 남의 락이 사라진다
+        assertThat(redisService.get(ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_KEY, String.class))
+                .contains(otherInstanceLockValue);
+    }
+
+    @Test
+    void 종단_상한_건수를_초과하지_않는다() {
+        // when
+        resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
+
+        // then — 호출 횟수가 아니라 모든 호출의 Pageable을 검사한다. 백그라운드 스케줄 발화가 같은 인자로
+        // 한 번 더 호출해도 결과가 바뀌지 않으므로 어느 방향으로도 흔들리지 않는다.
+        ArgumentCaptor<Pageable> pendingPageables = ArgumentCaptor.forClass(Pageable.class);
+        verify(resumeAnalysisRepository, atLeastOnce()).findByStateAndCreatedAtBefore(
+                eq(ResumeAnalysisState.PENDING), any(LocalDateTime.class), pendingPageables.capture());
+        ArgumentCaptor<Pageable> questionStagePageables = ArgumentCaptor.forClass(Pageable.class);
+        verify(resumeAnalysisRepository, atLeastOnce()).findByStateAndQuestionStartedAtBefore(
                 eq(ResumeAnalysisState.EVALUATION_COMPLETED), any(LocalDateTime.class),
-                eq(PageRequest.of(0, 200)));
+                questionStagePageables.capture());
+        assertAll(
+                () -> assertThat(pendingPageables.getAllValues()).containsOnly(PageRequest.of(0, 200)),
+                () -> assertThat(questionStagePageables.getAllValues()).containsOnly(PageRequest.of(0, 200))
+        );
     }
 
     @Test

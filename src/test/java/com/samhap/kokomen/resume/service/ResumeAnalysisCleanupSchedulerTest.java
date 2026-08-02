@@ -1,9 +1,13 @@
 package com.samhap.kokomen.resume.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.global.BaseTest;
@@ -41,7 +45,7 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
     private ResumeAnalysisCleanupScheduler resumeAnalysisCleanupScheduler;
     @MockitoSpyBean
     private ResumeAnalysisRepository resumeAnalysisRepository;
-    @Autowired
+    @MockitoSpyBean
     private ResumeAnalysisSourceTextRepository resumeAnalysisSourceTextRepository;
     @Autowired
     private GeneratedQuestionRepository generatedQuestionRepository;
@@ -237,6 +241,44 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
     }
 
     @Test
+    void 세_벌크_삭제_중_하나가_실패하면_앞선_삭제도_함께_되돌아간다() {
+        // given — 원문 삭제 시점에 새 질문이 도착해, 이어지는 부모 삭제가 FK 위반으로 실패한다
+        ResumeAnalysis analysis = saveCompletedGuestAnalysis("11.22.33.89");
+        backdateCreatedAtDays(analysis.getId(), 31);
+        insertRacingQuestionWhileDeletingSourceText(analysis.getId());
+
+        // when
+        catchThrowable(() -> resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses());
+
+        // then — 세 삭제가 한 트랜잭션이 아니면 질문과 원문만 사라지고 분석 행이 남는다
+        assertAll(
+                () -> assertThat(resumeAnalysisRepository.findById(analysis.getId())).isPresent(),
+                () -> assertThat(generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysis.getId()))
+                        .hasSize(5),
+                () -> assertThat(resumeAnalysisSourceTextRepository.findByAnalysisId(analysis.getId())).isPresent()
+        );
+    }
+
+    @Test
+    void 자기_락이_만료된_뒤_다른_인스턴스가_새로_건_락은_지우지_않는다() {
+        // given — 정리가 도는 사이 자기 락이 TTL로 만료되고 다른 인스턴스가 같은 키를 새로 잡은 상황
+        String otherInstanceLockValue = UUID.randomUUID().toString();
+        doAnswer(invocation -> {
+            redisService.releaseLock(ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_KEY);
+            redisService.acquireLockWithValue(ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_KEY,
+                    otherInstanceLockValue, ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_TTL);
+            return List.<Long>of();
+        }).when(resumeAnalysisRepository).findUnclaimedGuestAnalysisIds(any(LocalDateTime.class), anyInt());
+
+        // when
+        resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
+
+        // then — 무조건 삭제였다면 남의 락이 사라진다
+        assertThat(redisService.get(ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_KEY, String.class))
+                .contains(otherInstanceLockValue);
+    }
+
+    @Test
     void 정리는_회차가_끝나면_락을_해제한다() {
         // when
         resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
@@ -263,6 +305,21 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
                 () -> assertThat(ResumeAnalysisCleanupScheduler.SOURCE_TEXT_RETENTION_DAYS).isEqualTo(30),
                 () -> assertThat(ResumeAnalysisCleanupScheduler.MAX_CLEANUP_COUNT).isEqualTo(500)
         );
+    }
+
+    /**
+     * 원문 삭제가 실행되는 순간에 새 질문 한 건을 끼워 넣는다. 부모 삭제는 그 질문의 FK 때문에 실제로
+     * 실패하므로, 세 삭제가 한 트랜잭션인지 여부가 남은 데이터로 드러난다.
+     */
+    private void insertRacingQuestionWhileDeletingSourceText(Long analysisId) {
+        doAnswer(invocation -> {
+            int deleted = jdbcTemplate.update(
+                    "DELETE FROM resume_analysis_source_text WHERE analysis_id = ?", analysisId);
+            jdbcTemplate.update("INSERT INTO generated_question"
+                            + " (analysis_id, content, question_order, created_at) VALUES (?, ?, ?, ?)",
+                    analysisId, "늦게 도착한 질문", 9, LocalDateTime.now());
+            return deleted;
+        }).when(resumeAnalysisSourceTextRepository).deleteByAnalysisIdIn(anyList());
     }
 
     private ResumeAnalysis saveCompletedGuestAnalysis(String guestIp) {
