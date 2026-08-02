@@ -65,6 +65,15 @@ public class RedisService {
         return redissonClient.getBucket(key).expire(ttl);
     }
 
+    /**
+     * TTL이 아직 없을 때만 만료 시각을 설정한다(Redis EXPIRE ... NX). 매 호출마다 불러도 기존 만료 시각을
+     * 밀지 않으므로 고정 시간창 카운터를 만들 수 있고, INCR 직후 프로세스가 죽어 TTL 없이 남은 키도
+     * 다음 호출에서 스스로 회복한다.
+     */
+    public boolean expireKeyIfNotSet(String key, Duration ttl) {
+        return redissonClient.getBucket(key).expireIfNotSet(ttl);
+    }
+
     public Iterable<String> scanKeys(String pattern, int scanCount) {
         return redissonClient.getKeys().getKeys(KeysScanOptions.defaults().pattern(pattern).chunkSize(scanCount));
     }
