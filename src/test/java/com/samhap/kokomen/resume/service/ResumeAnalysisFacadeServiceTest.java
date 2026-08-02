@@ -19,6 +19,7 @@ import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.PdfFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
@@ -26,12 +27,14 @@ import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.domain.DimensionScore;
+import com.samhap.kokomen.resume.domain.MemberPortfolio;
 import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.domain.ResumeAnalysis;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisState;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisWeights;
+import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisRepository;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisSourceTextRepository;
@@ -100,6 +103,8 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private MemberResumeRepository memberResumeRepository;
+    @Autowired
+    private MemberPortfolioRepository memberPortfolioRepository;
     @Autowired
     private TokenRepository tokenRepository;
     @Autowired
@@ -238,6 +243,44 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
         // then
         String uploadedText = readSourceResumeContent(uploadedId);
         String reusedText = readSourceResumeContent(reusedId);
+        assertAll(
+                () -> assertThat(uploadedText).isEqualTo(LINKED_RESUME_TEXT),
+                () -> assertThat(reusedText).isEqualTo(LINKED_RESUME_TEXT),
+                () -> assertThat(reusedText).isEqualTo(uploadedText)
+        );
+    }
+
+    // 포트폴리오 경로도 같은 보장을 받아야 한다. 이력서 쪽만 고정해 두면 포트폴리오 추출을 링크 없는 형태로
+    // 되돌려도 전 스위트가 통과한다 -- 실제로 그 변형이 717개 전부를 통과하는 것이 확인됐다.
+    @Test
+    void 같은_PDF는_파일로_내든_저장된_포트폴리오_ID로_내든_링크까지_같은_원문으로_추출된다() {
+        // given: 두 제출 모두 이력서는 파일로 내고 포트폴리오만 제출 방식을 달리해, 차이가 포트폴리오
+        //        경로에서만 오게 한다(resume_content는 NOT NULL이라 이력서를 생략할 수 없다).
+        byte[] pdf = linkedResumePdf();
+        delegateExtractionToRealExtractor();
+        stubS3Download(pdf);
+        Member uploader = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        Member reuser = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        MemberPortfolio savedPortfolio = memberPortfolioRepository.save(MemberPortfolioFixtureBuilder.builder()
+                .member(reuser)
+                .portfolioUrl(AwsConstant.CLOUD_FRONT_DOMAIN_URL + "portfolio/reuse.pdf")
+                .content(null)
+                .build());
+
+        // when
+        Long uploadedId = resumeAnalysisFacadeService.submitMemberAnalysis(uploader.getId(),
+                new ResumeAnalysisSubmitRequest(
+                        new MockMultipartFile("resume", "resume.pdf", "application/pdf", pdf),
+                        new MockMultipartFile("portfolio", "portfolio.pdf", "application/pdf", pdf),
+                        null, null, JOB_POSITION, null, JOB_CAREER)).analysisId();
+        Long reusedId = resumeAnalysisFacadeService.submitMemberAnalysis(reuser.getId(),
+                new ResumeAnalysisSubmitRequest(
+                        new MockMultipartFile("resume", "resume.pdf", "application/pdf", pdf), null,
+                        null, savedPortfolio.getId(), JOB_POSITION, null, JOB_CAREER)).analysisId();
+
+        // then
+        String uploadedText = readSourcePortfolioContent(uploadedId);
+        String reusedText = readSourcePortfolioContent(reusedId);
         assertAll(
                 () -> assertThat(uploadedText).isEqualTo(LINKED_RESUME_TEXT),
                 () -> assertThat(reusedText).isEqualTo(LINKED_RESUME_TEXT),
@@ -913,6 +956,10 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
 
     private String readSourceResumeContent(Long analysisId) {
         return resumeAnalysisSourceTextRepository.findByAnalysisId(analysisId).orElseThrow().getResumeContent();
+    }
+
+    private String readSourcePortfolioContent(Long analysisId) {
+        return resumeAnalysisSourceTextRepository.findByAnalysisId(analysisId).orElseThrow().getPortfolioContent();
     }
 
     private ResumeAnalysisCommand command(Long analysisId, Long billingMemberId) {
