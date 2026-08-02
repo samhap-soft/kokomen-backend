@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.global.BaseTest;
@@ -167,8 +166,7 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
         resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
 
         // then
-        verify(resumeAnalysisRepository, atLeastOnce())
-                .findUnclaimedGuestAnalysisIds(any(LocalDateTime.class), eq(500));
+        verify(resumeAnalysisRepository).findUnclaimedGuestAnalysisIds(any(LocalDateTime.class), eq(500));
     }
 
     @Test
@@ -186,6 +184,20 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
                 () -> assertThat(resumeAnalysisRepository.findById(saved.getId())).isPresent(),
                 () -> assertThat(resumeAnalysisSourceTextRepository.findByAnalysisId(saved.getId())).isEmpty()
         );
+    }
+
+    @Test
+    void 보존기간_이내의_종단_상태_원문은_삭제되지_않는다() {
+        // given — 29일은 만료 경계 안쪽이다. 31일 삭제 케이스와 함께 원문 보존기간을 리터럴로 고정한다
+        ResumeAnalysis saved = resumeAnalysisRepository.save(completedMemberAnalysis());
+        resumeAnalysisSourceTextRepository.save(new ResumeAnalysisSourceText(saved, "이력서 원문", null));
+        backdateCreatedAtDays(saved.getId(), 29);
+
+        // when
+        resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
+
+        // then
+        assertThat(resumeAnalysisSourceTextRepository.findByAnalysisId(saved.getId())).isPresent();
     }
 
     @Test
@@ -216,11 +228,21 @@ class ResumeAnalysisCleanupSchedulerTest extends BaseTest {
         // when
         resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
 
-        // then
+        // then — 남의 락을 해제하지도 않는다
         assertAll(
                 () -> assertThat(resumeAnalysisRepository.findById(analysis.getId())).isPresent(),
-                () -> assertThat(resumeAnalysisSourceTextRepository.findByAnalysisId(analysis.getId())).isPresent()
+                () -> assertThat(resumeAnalysisSourceTextRepository.findByAnalysisId(analysis.getId())).isPresent(),
+                () -> assertThat(redisTemplate.hasKey(ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_KEY)).isTrue()
         );
+    }
+
+    @Test
+    void 정리는_회차가_끝나면_락을_해제한다() {
+        // when
+        resumeAnalysisCleanupScheduler.deleteUnclaimedGuestAnalyses();
+
+        // then
+        assertThat(redisTemplate.hasKey(ResumeAnalysisCleanupScheduler.CLEANUP_LOCK_KEY)).isFalse();
     }
 
     @Test

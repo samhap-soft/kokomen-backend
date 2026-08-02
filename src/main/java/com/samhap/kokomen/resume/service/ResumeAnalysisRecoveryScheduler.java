@@ -8,6 +8,7 @@ import com.samhap.kokomen.resume.repository.ResumeAnalysisRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,11 +36,14 @@ import org.springframework.stereotype.Component;
  * <p>결제 복구 스케줄러와 달리 행별 락을 쓰지 않고 인스턴스 전역 락 하나만 쓴다. 결제 복구는 외부 결제 API를
  * 다시 부르므로 중복 실행 자체가 부작용이지만, 여기서 하는 일은 조건부 상태 전이({@code PESSIMISTIC_WRITE} +
  * 상태 가드)와 CAS 멱등인 회수 과금뿐이다. 두 인스턴스가 같은 행을 동시에 집어도 한쪽은 상태 가드에서 멈추고
- * 과금은 한 번만 성사되므로 결과가 같다. 전역 락은 정확성 장치가 아니라 같은 구간을 두 번 훑는 낭비를 줄이는
- * 장치이며, 그래서 실행 주기보다 짧은 TTL로 걸고 성공 시 해제하지 않는다(다음 회차 전에 스스로 만료된다).
+ * 과금은 한 번만 성사되므로 결과가 같다. 전역 락은 정확성 장치가 아니라 같은 구간을 두 인스턴스가 동시에
+ * 훑는 낭비를 줄이는 장치다. 그래서 회차가 끝나면 성공이든 실패든 곧바로 해제하고, TTL은 실행 중 프로세스가
+ * 죽었을 때 락이 영구히 남지 않게 하는 상한으로만 둔다. 해제는 Lua CAS인 {@code releaseLockSafely}로 해서,
+ * 자기 락이 TTL로 이미 만료된 뒤라면 다른 인스턴스가 새로 건 락을 지우지 않는다.
  *
- * <p>{@code STALE_THRESHOLD}는 파사드가 회원의 중복 제출을 막는 진행 중 판정 창보다 짧아야 한다.
- * 그렇지 않으면 고착된 행 하나가 그 회원의 다음 제출을 영구히 막는다.
+ * <p>{@code STALE_THRESHOLD}는 파사드가 회원의 중복 제출을 막는 진행 중 판정 창보다 짧게 둔다. 그 창은
+ * 스스로 시간 제한이 있어 고착된 행이 회원을 영구히 차단하지는 않는다 — 짧게 두는 이유는 그 창이 조용히
+ * 만료되기 전에 행이 종단 상태를 얻어, 사용자가 진행 중이 아니라 확정된 실패를 보게 하는 것이다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -57,7 +61,8 @@ public class ResumeAnalysisRecoveryScheduler {
 
     @Scheduled(fixedDelay = 5, timeUnit = TimeUnit.MINUTES)
     public void sweepStaleAnalyses() {
-        if (!redisService.acquireLock(SWEEP_LOCK_KEY, SWEEP_LOCK_TTL)) {
+        String lockValue = UUID.randomUUID().toString();
+        if (!redisService.acquireLockWithValue(SWEEP_LOCK_KEY, lockValue, SWEEP_LOCK_TTL)) {
             log.debug("이력서 분석 잔류 정리 스킵 - 다른 인스턴스가 실행 중");
             return;
         }
@@ -71,7 +76,8 @@ public class ResumeAnalysisRecoveryScheduler {
             }
         } catch (Exception e) {
             log.error("이력서 분석 잔류 행 정리 실패", e);
-            redisService.releaseLock(SWEEP_LOCK_KEY);
+        } finally {
+            redisService.releaseLockSafely(SWEEP_LOCK_KEY, lockValue);
         }
     }
 

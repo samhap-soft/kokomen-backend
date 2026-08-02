@@ -86,8 +86,14 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
 
     /**
      * 스윕이 회수 과금할 주체를 정하는 유일한 판정이다. chargeTokensIfNeeded는 넘겨받은 member_id를 행의
-     * 소유자와 대조하지 않으므로, 게스트 행(member_id IS NULL)과 이미 과금된 행을 이 WHERE가 걸러 낸다.
-     * 엔티티의 LAZY member 프록시를 트랜잭션 밖에서 역참조하지 않기 위해 member_id만 뽑는다.
+     * 소유자와 대조하지 않으므로 주체를 여기서 확정한다. 엔티티의 LAZY member 프록시를 트랜잭션 밖에서
+     * 역참조하지 않기 위해 member_id만 뽑는다.
+     *
+     * <p>세 조건의 무게가 다르다. 행동을 실제로 가르는 것은 billingRequired 하나이고, 나머지 둘은 보장의
+     * 소재지가 다른 곳이라 의도 표기에 가깝다. 게스트가 과금되지 않는 근거는 member_id IS NULL인 행에서는
+     * 애초에 뽑을 id가 없다는 것이다 — 값이 없으면 Optional.empty가 되어 chargeTokensIfNeeded의 null 조기
+     * 반환에 걸린다. 중복 차감이 없는 근거는 markTokenCharged의 WHERE charged_token_count = 0 조건부
+     * UPDATE이며, 그 조건을 없애면 여기의 chargedTokenCount 조건만으로는 중복 차감을 막지 못한다.
      */
     @Query("""
             SELECT a.member.id FROM ResumeAnalysis a

@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.global.BaseTest;
@@ -26,12 +27,14 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -323,6 +326,47 @@ class ResumeAnalysisRecoverySchedulerTest extends BaseTest {
     }
 
     @Test
+    void 정리_배치가_지운_잔류_PENDING_행을_만나도_나머지_행은_계속_종단된다() {
+        // given — 스윕의 SELECT와 readForUpdate 사이에 정리 배치가 같은 행을 지우는 인터리빙을 재현한다.
+        // 사라진 행을 결과의 첫 번째로 두어, 그 행의 예외가 루프를 끊으면 뒤의 행이 손도 못 댄 채 남게 한다.
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        List<ResumeAnalysis> selected = selectionStartingWithDeletedRow(
+                saveStalePendingAnalyses(member, 3));
+        doReturn(selected).when(resumeAnalysisRepository).findByStateAndCreatedAtBefore(
+                eq(ResumeAnalysisState.PENDING), any(LocalDateTime.class), any(Pageable.class));
+
+        // when
+        resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
+
+        // then
+        List<String> remainingStates = readAllStates();
+        assertAll(
+                () -> assertThat(remainingStates).hasSize(2),
+                () -> assertThat(remainingStates).containsOnly(ResumeAnalysisState.EVALUATION_FAILED.name())
+        );
+    }
+
+    @Test
+    void 정리_배치가_지운_잔류_질문단계_행을_만나도_나머지_행은_계속_종단된다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        List<ResumeAnalysis> selected = selectionStartingWithDeletedRow(
+                saveStaleQuestionStageAnalyses(member, 3));
+        doReturn(selected).when(resumeAnalysisRepository).findByStateAndQuestionStartedAtBefore(
+                eq(ResumeAnalysisState.EVALUATION_COMPLETED), any(LocalDateTime.class), any(Pageable.class));
+
+        // when
+        resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
+
+        // then
+        List<String> remainingStates = readAllStates();
+        assertAll(
+                () -> assertThat(remainingStates).hasSize(2),
+                () -> assertThat(remainingStates).containsOnly(ResumeAnalysisState.QUESTION_FAILED.name())
+        );
+    }
+
+    @Test
     void 다른_인스턴스가_스윕_락을_잡고_있으면_스윕하지_않는다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
@@ -334,20 +378,35 @@ class ResumeAnalysisRecoverySchedulerTest extends BaseTest {
         // when
         resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
 
-        // then
-        assertThat(resumeAnalysisRepository.findById(analysis.getId()).orElseThrow().getState())
-                .isEqualTo(ResumeAnalysisState.PENDING);
+        // then — 남의 락을 해제하지도 않는다
+        assertAll(
+                () -> assertThat(resumeAnalysisRepository.findById(analysis.getId()).orElseThrow().getState())
+                        .isEqualTo(ResumeAnalysisState.PENDING),
+                () -> assertThat(redisTemplate.hasKey(ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_KEY)).isTrue()
+        );
     }
 
     @Test
-    void 종단_상한_건수를_초과하지_않는다() {
+    void 스윕은_회차가_끝나면_락을_해제한다() {
         // when
         resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
 
         // then
-        verify(resumeAnalysisRepository, atLeastOnce()).findByStateAndCreatedAtBefore(
+        assertThat(redisTemplate.hasKey(ResumeAnalysisRecoveryScheduler.SWEEP_LOCK_KEY)).isFalse();
+    }
+
+    @Test
+    void 종단_상한_건수를_초과하지_않는다() {
+        // given — 백그라운드 스케줄 발화가 남겼을 수 있는 호출 기록을 지우고 이번 호출만 센다
+        clearInvocations(resumeAnalysisRepository);
+
+        // when
+        resumeAnalysisRecoveryScheduler.sweepStaleAnalyses();
+
+        // then
+        verify(resumeAnalysisRepository).findByStateAndCreatedAtBefore(
                 eq(ResumeAnalysisState.PENDING), any(LocalDateTime.class), eq(PageRequest.of(0, 200)));
-        verify(resumeAnalysisRepository, atLeastOnce()).findByStateAndQuestionStartedAtBefore(
+        verify(resumeAnalysisRepository).findByStateAndQuestionStartedAtBefore(
                 eq(ResumeAnalysisState.EVALUATION_COMPLETED), any(LocalDateTime.class),
                 eq(PageRequest.of(0, 200)));
     }
@@ -358,7 +417,7 @@ class ResumeAnalysisRecoverySchedulerTest extends BaseTest {
         Scheduled scheduled = ResumeAnalysisRecoveryScheduler.class.getDeclaredMethod("sweepStaleAnalyses")
                 .getAnnotation(Scheduled.class);
 
-        // when & then — 락 TTL이 실행 주기보다 짧아야 성공 시 해제 없이도 다음 회차가 막히지 않는다
+        // when & then — TTL은 실행 중 급사에 대비한 상한이다(정상 종료 시에는 곧바로 해제한다)
         assertAll(
                 () -> assertThat(scheduled.fixedDelay()).isEqualTo(5L),
                 () -> assertThat(scheduled.timeUnit()).isEqualTo(TimeUnit.MINUTES),
@@ -368,6 +427,39 @@ class ResumeAnalysisRecoverySchedulerTest extends BaseTest {
                 () -> assertThat(ResumeAnalysisRecoveryScheduler.STALE_THRESHOLD).isEqualTo(Duration.ofMinutes(10)),
                 () -> assertThat(ResumeAnalysisRecoveryScheduler.MAX_SWEEP_COUNT).isEqualTo(200)
         );
+    }
+
+    private List<ResumeAnalysis> saveStalePendingAnalyses(Member member, int count) {
+        List<ResumeAnalysis> saved = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            ResumeAnalysis stale = resumeAnalysisRepository.save(pendingMemberAnalysis(member, false));
+            backdateCreatedAtMinutes(stale.getId(), 11);
+            saved.add(stale);
+        }
+        return saved;
+    }
+
+    private List<ResumeAnalysis> saveStaleQuestionStageAnalyses(Member member, int count) {
+        List<ResumeAnalysis> saved = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            ResumeAnalysis stale = resumeAnalysisRepository.save(evaluationCompletedMemberAnalysis(member, false));
+            backdateQuestionStartedAtMinutes(stale.getId(), 11);
+            saved.add(stale);
+        }
+        return saved;
+    }
+
+    /**
+     * 첫 행만 DB에서 지운 뒤 원래 목록을 그대로 돌려준다. 스윕이 그 행을 잠그려는 순간 프로덕션 코드가
+     * NotFoundException을 던지는 상태가 되고, 나머지 행은 여전히 존재한다.
+     */
+    private List<ResumeAnalysis> selectionStartingWithDeletedRow(List<ResumeAnalysis> saved) {
+        jdbcTemplate.update("DELETE FROM resume_analysis WHERE id = ?", saved.get(0).getId());
+        return saved;
+    }
+
+    private List<String> readAllStates() {
+        return jdbcTemplate.queryForList("SELECT state FROM resume_analysis ORDER BY id", String.class);
     }
 
     private ResumeAnalysis pendingMemberAnalysis(Member member, boolean billingRequired) {

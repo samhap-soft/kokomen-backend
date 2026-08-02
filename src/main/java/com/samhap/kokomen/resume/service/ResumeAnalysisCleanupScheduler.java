@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>전역 락은 여기서는 정확성 장치다. 두 인스턴스가 같은 id 집합을 동시에 지우면 한쪽이 자식을 지우는 사이
  * 다른 쪽이 부모를 지워 FK 위반으로 배치 전체가 롤백될 수 있다. 락을 잡지 못한 인스턴스는 대기하지 않고
  * 이번 회차를 건너뛴다 — 하루 한 번 도는 배치라 다음 회차로 미뤄도 잃는 것이 없다.
- * 성공 시 해제하지 않는 것은 TTL이 실행 주기보다 훨씬 짧아 스스로 만료되기 때문이다.
+ * 회차가 끝나면 곧바로 해제하고 TTL은 실행 중 급사에 대비한 상한으로만 둔다. 해제가 커밋보다 앞서므로,
+ * 커밋 시점에 예외가 나도 락이 남아 다음 회차를 막지 않는다. 남의 락을 지우지 않도록 해제는 Lua CAS인
+ * {@code releaseLockSafely}로 한다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -55,7 +58,8 @@ public class ResumeAnalysisCleanupScheduler {
     @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Seoul")
     @Transactional
     public void deleteUnclaimedGuestAnalyses() {
-        if (!redisService.acquireLock(CLEANUP_LOCK_KEY, CLEANUP_LOCK_TTL)) {
+        String lockValue = UUID.randomUUID().toString();
+        if (!redisService.acquireLockWithValue(CLEANUP_LOCK_KEY, lockValue, CLEANUP_LOCK_TTL)) {
             log.debug("미claim 게스트 분석 정리 스킵 - 다른 인스턴스가 실행 중");
             return;
         }
@@ -76,7 +80,8 @@ public class ResumeAnalysisCleanupScheduler {
             }
         } catch (Exception e) {
             log.error("게스트 분석 정리 실패", e);
-            redisService.releaseLock(CLEANUP_LOCK_KEY);
+        } finally {
+            redisService.releaseLockSafely(CLEANUP_LOCK_KEY, lockValue);
         }
     }
 
