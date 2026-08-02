@@ -30,7 +30,7 @@ public class ResumeAnalysisService {
 
     /**
      * REQUIRES_NEW로 커밋을 강제한다. 반환 시점에 행이 반드시 조회 가능해야 executor에 제출한 워커가
-     * findById에 실패하지 않는다(§6-1 S9). 파사드에 @Transactional이 붙어도 이 규약은 유지된다.
+     * findById에 실패하지 않는다. 파사드에 @Transactional이 붙어도 이 규약은 유지된다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ResumeAnalysis saveAnalysis(Long memberId, GuestInfo guestInfo, MaterialRefs materialRefs,
@@ -55,7 +55,7 @@ public class ResumeAnalysisService {
 
     /**
      * 15개 지표 컬럼에서 값객체를 복원한다. jd_fit은 jd_provided 컬럼만 보고 판단하며
-     * jobDescription 문자열을 다시 검사하지 않는다(§2-1).
+     * jobDescription 문자열을 다시 검사하지 않는다.
      */
     @Transactional(readOnly = true)
     public ResumeAnalysisEvaluation readEvaluation(Long analysisId) {
@@ -83,11 +83,6 @@ public class ResumeAnalysisService {
     public ResumeAnalysisSourceText readSourceText(Long analysisId) {
         return resumeAnalysisSourceTextRepository.findByAnalysisId(analysisId)
                 .orElseThrow(() -> new BadRequestException("이력서 원문이 만료되어 질문을 재생성할 수 없습니다."));
-    }
-
-    @Transactional(readOnly = true)
-    public boolean existsSourceText(Long analysisId) {
-        return resumeAnalysisSourceTextRepository.existsByAnalysisId(analysisId);
     }
 
     /**

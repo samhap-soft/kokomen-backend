@@ -34,6 +34,11 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
 
     boolean existsByMemberIdAndGuestTokenIsNotNull(Long memberId);
 
+    /**
+     * 회원이 무료 첫 사용을 이미 소진했는지 판정한다. 서버 귀책 실패(용량 거절·잔류 스윕·저장 실패)는 사용자가
+     * 결과를 받지 못했으므로 첫 사용을 소진시키지 않는다. guest_token IS NULL 조건은 게스트로 시작해 나중에
+     * claim된 행을 제외한다 — claim은 member_id만 채우고 guest_token은 남겨 두므로 이 조건으로 구분된다.
+     */
     @Query("""
             SELECT COUNT(a) > 0 FROM ResumeAnalysis a
              WHERE a.member.id = :memberId
@@ -42,8 +47,7 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysis, 
                     OR a.failureReason NOT IN (
                         com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason.CAPACITY,
                         com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason.STALE_SWEEP,
-                        com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason.PERSISTENCE,
-                        com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason.GUEST_LIMIT))
+                        com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason.PERSISTENCE))
             """)
     boolean existsChargeableByMemberId(@Param("memberId") Long memberId);
 

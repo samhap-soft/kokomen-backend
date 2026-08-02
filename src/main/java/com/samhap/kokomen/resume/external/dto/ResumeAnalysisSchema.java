@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * 이력서 분석 tool 스키마의 provider 공용 사양. JD 제공 여부에 따라 차원 목록이 두 가지로 갈리며,
- * 런타임 재정규화 대신 두 목록을 명시적으로 선언한다(D5·D6).
+ * 런타임 재정규화 대신 두 목록을 명시적으로 선언한다.
  * 지표 키는 ResumeAnalysisDimension.toolKey()가 단일 소스다.
  */
 public final class ResumeAnalysisSchema {

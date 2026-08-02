@@ -1,6 +1,5 @@
 -- ============================================================================
--- M3: generated_question을 단일 부모(resume_analysis) 구조로 전환.
--- M1(teardown side): 구 테이블 2개 DROP.
+-- generated_question을 단일 부모(resume_analysis) 구조로 전환하고, 구 이력서 테이블 2개를 DROP한다.
 --
 -- 전제 (반드시 확인): V51이 이미 아래를 만들어 두었다.
 --     analysis_id BIGINT NULL / idx_generated_question_analysis_id
@@ -11,8 +10,8 @@
 --   => 남은 일은 (a) 구 부모 제거 (b) XOR CHECK 제거 (c) analysis_id NOT NULL 승격뿐이다.
 --
 -- 전제 2: V53이 generated_question에서 generation_id IS NOT NULL인 행(구 플로우 부모) 전체를
--- 무조건 삭제한다 -- 캘린더 컷오프가 아니라 데이터 모양으로 판별한다(리뷰 라운드 2, 자세한 배경은
--- V53 파일 선두 주석 참고). V51의 chk_generated_question_parent XOR 제약이 "generation_id와
+-- 무조건 삭제한다 -- 캘린더 컷오프가 아니라 데이터 모양으로 판별한다(배경은 V53 선두 주석 참고).
+-- V51의 chk_generated_question_parent XOR 제약이 "generation_id와
 -- analysis_id 중 정확히 하나만 NOT NULL"을 강제하므로, V53이 성공적으로 완주했다면 남는 행은
 -- 조건부가 아니라 구조적으로 전부 analysis_id NOT NULL이다.
 --   => MODIFY ... NOT NULL 은 "V53이 실제로 완주했는가"에 대한 비침습적 assert다. V53이 중간에
@@ -29,7 +28,7 @@
 --    -- 매달리면 MySQL의 MDL 큐가 FIFO이므로 generated_question에 대한 후속 SELECT/INSERT
 --    전량이 그 뒤에 쌓여 면접 진행 API가 통째로 멈춘다.
 --
---    !! 실패 시 "flyway repair 후 재시도"로는 복구되지 않는다 (리뷰 라운드 1, Finding 2) !!
+--    !! 실패 시 "flyway repair 후 재시도"로는 복구되지 않는다 !!
 --    아래 1~4번은 전부 비멱등 DDL이다. MySQL의 DROP CHECK/DROP FOREIGN KEY/DROP INDEX/DROP COLUMN은
 --    IF EXISTS를 지원하지 않고, 각 문장은 개별 자동 커밋된다. 즉 예를 들어 2번(DROP FOREIGN KEY)에서
 --    ERROR 1205로 실패하면 1번은 이미 커밋된 채로 남고, 그 상태에서 파일을 처음부터 다시 실행하면
@@ -54,8 +53,9 @@
 --    (2) 남은 문장만, 이 파일에 쓰인 순서 그대로, 하나씩 손으로 실행해 스키마를 최종 상태로 맞춘다.
 --        5번(MODIFY NOT NULL)은 이미 NOT NULL이면 재실행해도 무해하므로 이 순서를 정확히 지켰는지
 --        불확실하면 5번부터는 그냥 다시 실행해도 안전하다.
---    (3) 6번(DROP TABLE)은 Finding 3 반영으로 IF EXISTS가 붙어 몇 번을 재실행해도 안전하다.
---    (4) 스키마가 최종 상태(§ 파일 하단 검증 쿼리)와 일치함을 확인한 뒤 `flyway repair`로 실패
+--    (3) 6번(DROP TABLE)은 IF EXISTS가 붙어 몇 번을 재실행해도 안전하다.
+--    (4) 스키마가 최종 상태(XOR CHECK·fk_gq_generation·idx_gq_generation_id·generation_id 컬럼이
+--        없고 analysis_id가 NOT NULL이며 구 테이블 2개가 없는 상태)와 일치함을 확인한 뒤 `flyway repair`로 실패
 --        기록을 제거하고, Flyway가 이 파일을 처음부터 다시 실행하지 않도록 `flyway_schema_history`에
 --        V54 성공 행을 운영 표준 절차에 따라 수동으로 기입하거나(체크섬은 이 파일의 현재 체크섬과
 --        일치시킨다) `flyway baseline -baselineVersion=54`로 기준선을 이 버전 이상으로 올린다 --
@@ -68,7 +68,7 @@ SET SESSION innodb_lock_wait_timeout = 10;
 -- 1. XOR CHECK를 가장 먼저 지운다. 이 문장 없이 4번을 시도하면 죽는다(실측 8.4.5):
 --      ERROR 3959 (HY000): Check constraint 'chk_generated_question_parent' uses column
 --                          'generation_id', hence column cannot be dropped or renamed.
---    M3의 "XOR CHECK 불필요"가 최종 스키마에서 실현되는 지점이다.
+--    단일 부모 구조에서는 XOR CHECK 자체가 불필요해지므로, 되살리지 않는다.
 -- ---------------------------------------------------------------------------
 ALTER TABLE generated_question DROP CHECK chk_generated_question_parent;
 
@@ -109,11 +109,9 @@ ALTER TABLE generated_question MODIFY COLUMN analysis_id BIGINT NOT NULL;
 --    resume_question_generation: inbound FK는 fk_gq_generation 1개뿐이었고 2단계에서 제거됐다.
 --    resume_evaluation: inbound FK 0건(information_schema 실측). 바로 DROP된다.
 --
---    IF EXISTS를 붙인다 (리뷰 라운드 1, Finding 3). 최초 작성 시에는 "테이블이 없으면 그것 자체가
---    조사할 이상 상태"라는 근거로 뺐지만, 이 플랜의 바로 앞 teardown 마이그레이션인 V52는 DROP TABLE
---    9번 전부에 IF EXISTS를 썼고(V36:17도 마찬가지) 이 두 줄만 어겼다 -- 같은 플랜의 같은 종류
---    마이그레이션 사이에 근거 없이 관례가 갈린 것이다. 두 teardown이 불일치할 때는 이미 확립된
---    쪽(IF EXISTS)을 따른다. 부작용도 이득이다: 이 파일이 (2)의 수동 복구 절차를 거쳐 재실행되거나,
+--    IF EXISTS를 붙인다. 바로 앞 teardown 마이그레이션인 V52가 DROP TABLE 9번 전부에 IF EXISTS를
+--    썼고(V36:17도 마찬가지) 이 저장소의 확립된 관례이기 때문이다. 부작용도 이득이다:
+--    이 파일이 (2)의 수동 복구 절차를 거쳐 재실행되거나,
 --    두 테이블이 이미 손으로 제거된 환경에 적용되는 경우 모두 실패가 아니라 무해한 no-op이 된다.
 -- ---------------------------------------------------------------------------
 DROP TABLE IF EXISTS resume_question_generation;

@@ -63,19 +63,25 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 이력서 분석의 제출·귀속(claim)·질문 재생성·사용 현황 조회를 오케스트레이션한다.
- * 다른 도메인은 이 파사드만 의존하고 내부 서비스를 직접 부르지 않는다.
+ * 이력서 분석의 제출·귀속(claim)·질문 재생성·조회를 오케스트레이션한다.
+ * 다른 도메인은 원칙적으로 이 파사드만 의존한다. 예외는 하나다 — {@code InterviewStartFacadeService}가
+ * {@code ResumeAnalysisService.readById}를 직접 부른다. 면접 시작은 {@code ResumeAnalysis} 엔티티의 상태와
+ * 소유자를 봐야 하는데 이 파사드는 DTO만 노출하기 때문이다. 파사드에 엔티티 반환 메서드를 추가하는 정리는
+ * {@code resume ↔ interview} 순환 의존을 만들 위험이 있어 별도 작업으로 분리했다.
  *
  * <p>제출은 요청 스레드에서 검증·텍스트 추출·저장까지 끝내고 LLM 2콜만 {@code resumeAnalysisExecutor}로 넘긴다.
  * 제출 메서드에는 {@code @Transactional}을 붙이지 않는다 — 행 저장은 {@code ResumeAnalysisService.saveAnalysis}의
  * {@code REQUIRES_NEW} 안에서만 일어나 반환 시점에 이미 커밋되어 있으므로, executor에 제출한 워커가 행을 못
- * 보는 창이 열리지 않는다. 읽기 전용인 {@code findUsageStatus}와 조건부 UPDATE 후 재조회가 필요한
- * {@code claimGuestAnalysis}만 트랜잭션 경계를 갖는다.
+ * 보는 창이 열리지 않는다. 트랜잭션 경계를 갖는 것은 읽기 전용인 {@code findUsageStatus}·{@code findAnalysis}·
+ * {@code findMyAnalyses}와, 조건부 UPDATE 후 재조회가 필요한 {@code claimGuestAnalysis}다.
  *
- * <p>과금 주체를 정하는 유일한 지점이다. {@code ResumeAnalysisStateService.chargeTokensIfNeeded}는 넘겨받은
- * {@code billingMemberId}를 행의 소유자와 대조하지 않고 그대로 신뢰하고, 워커도 커맨드의 값을 그대로 흘려보내기만
- * 한다. 그래서 게스트 경로는 항상 null을, 회원 경로는 유료 판정일 때만 인증받은 {@code memberId}를,
- * 재시도 경로는 {@code withoutBilling}으로 null을 싣는다.
+ * <p>요청 경로에서 과금 주체를 정하는 유일한 지점이다. {@code ResumeAnalysisStateService.chargeTokensIfNeeded}는
+ * 넘겨받은 {@code billingMemberId}를 행의 소유자와 대조하지 않고 그대로 신뢰하고, 워커도 커맨드의 값을 그대로
+ * 흘려보내기만 한다. 그래서 게스트 경로는 항상 null을, 회원 경로는 유료 판정일 때만 인증받은
+ * {@code memberId}를, 재시도 경로는 {@code withoutBilling}으로 null을 싣는다.
+ * 요청 밖에는 네 번째 경로가 있다 — {@code ResumeAnalysisRecoveryScheduler.failQuestionsQuietly}가
+ * {@code ResumeAnalysisRepository.findRecoveryBillingMemberId}로 주체를 독자적으로 확정한다. 그 쿼리가
+ * 게스트 행과 이미 과금된 행을 스스로 걸러 내므로 안전하지만, 과금 주체 판정의 소재지는 두 곳이다.
  *
  * <p>게스트 락 키·TTL·시도 한도·토큰 비용 상수의 선언 위치이기도 하다. {@code ResumeAnalysisStateService}와
  * 테스트는 이 상수를 참조만 한다. 값을 두 곳에 복제하면 한 경로가 걸어 둔 락을 다른 경로가 다른 키로 해제하는

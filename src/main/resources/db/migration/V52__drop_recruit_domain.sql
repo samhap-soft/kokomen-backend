@@ -1,11 +1,11 @@
 -- ============================================================================
--- M5: recruit 도메인 완전 제거. 크롤링 서비스가 중단되어 코드 참조 0건이 되었다.
+-- recruit 도메인 완전 제거. 크롤링 서비스가 중단되어 코드 참조 0건이 되었다.
 --
 -- 패키지 밖 참조 0건 검증됨(AwsConfig의 Region은 software.amazon.awssdk.regions.Region으로 무관).
 --
 -- !! 비가역 !! 역마이그레이션이 없다. 재크롤링도 RecruitmentScheduler가 삭제되어 불가하다.
 --
--- DROP 순서는 자식부터다. recruit를 참조하는 inbound FK는 M5가 센 4개가 아니라 5개다
+-- DROP 순서는 자식부터다. recruit를 참조하는 inbound FK는 5개다
 -- (information_schema.key_column_usage 실측):
 --   recruit_region.recruit_id        [fk_recruit_region_recruit]
 --   recruit_employee_type.recruit_id [fk_recruit_employee_type_recruit]
@@ -16,7 +16,6 @@
 -- ocr_waiting_list를 함께 지운다: Java 엔티티·리포지토리·픽스처가 0건인 고아 테이블이고
 -- recruit 기업 이미지 OCR 대기열이라는 유일한 용도가 recruit와 함께 사라진다.
 -- 남기면 DROP TABLE recruit이 ERROR 3730으로 죽는다.
--- (M5 목록의 집계 누락이며 M5의 결정이 아니다. 변형 B는 이 파일 하단 주석 참조.)
 --
 -- crawling_request는 FK가 전혀 없는 독립 테이블이지만 recruit 크롤링 전용이므로 같이 지운다.
 -- 역시 Java 엔티티 0건(실측).

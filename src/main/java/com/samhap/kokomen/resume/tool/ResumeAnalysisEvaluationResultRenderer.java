@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 질문 콜 user 메시지의 {@code <evaluation_result>} 본문을 렌더한다(D8).
+ * 질문 콜 user 메시지의 {@code <evaluation_result>} 본문을 렌더한다.
  * 주입 대상은 차원별 score 전량 + improvements 전량 + reason 앞 2개 + total_score + jd_provided이며,
  * {@code {dim}_reasoning}과 {@code total_feedback}은 순증 정보가 없어 주입하지 않는다.
  * 차원 순서는 {@code ResumeAnalysisWeights.dimensions()}(= 지표 enum 선언 순서)를 따른다.
@@ -76,8 +76,8 @@ public final class ResumeAnalysisEvaluationResultRenderer {
 
     /**
      * 구분자 {@code |}는 {@code /}로, 태그 괄호 {@code <}·{@code >}는 각각 {@code (}·{@code )}로 치환해
-     * 렌더 결과의 파싱 혼동을 막는다. §4-8 렌더 규칙은 {@code |}와 {@code <}만 명시했으나, 여는 괄호만
-     * 치환하면 {@code (job_requirements>}처럼 짝이 맞지 않는 문자열이 남아 모델이 태그 경계로 오독한다.
+     * 렌더 결과의 파싱 혼동을 막는다. 여는 괄호만 치환하면 {@code (job_requirements>}처럼 짝이 맞지 않는
+     * 문자열이 남아 모델이 태그 경계로 오독하므로 닫는 괄호도 함께 치환한다.
      */
     private static String sanitize(String bullet) {
         return bullet.replace("|", "/").replace("<", "(").replace(">", ")");

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 
 /**
- * 신규 이력서 분석 tool 스키마가 JD 유무에 따라 두 가지 필드 집합으로 갈리고(D6), 중첩 object 없이 flat으로 구성되며,
+ * 이력서 분석 tool 스키마가 JD 유무에 따라 두 가지 필드 집합으로 갈리고, 중첩 object 없이 flat으로 구성되며,
  * Bedrock과 GPT가 완전히 같은 사양을 렌더하는지 검증한다.
  * ResumeAnalysisQuestionResult / ResumeAnalysisQuestionsFlatResponse는 이 테스트와 같은 패키지라 import하지 않는다.
  */

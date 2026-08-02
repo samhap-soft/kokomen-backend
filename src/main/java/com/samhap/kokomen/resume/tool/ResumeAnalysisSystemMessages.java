@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 /**
  * 이력서 분석(5지표) 시스템 메시지의 GPT·Bedrock 공용 단일 소스.
  * {@code questionGeneration()}은 의도적으로 무인자다: 평가 결과는 user 메시지에만 주입하며,
- * system을 요청별로 바꾸면 Bedrock 캐시 프리픽스가 요청마다 갈려 캐시가 전면 무효화된다(D8).
+ * system을 요청별로 바꾸면 Bedrock 캐시 프리픽스가 요청마다 갈려 캐시가 전면 무효화된다.
  */
 public final class ResumeAnalysisSystemMessages {
 
@@ -109,9 +109,9 @@ public final class ResumeAnalysisSystemMessages {
 
     /**
      * 지표 키의 단일 소스는 {@code ResumeAnalysisDimension.toolKey()}이고, 차원 목록의 단일 소스는
-     * {@code ResumeAnalysisWeights}다. Task 5의 {@code ResumeAnalysisSchema.dimensionKeys(boolean)}도 같은 두
-     * 소스에서 파생되므로 스키마 필드 집합과 이 프롬프트 문구가 어긋날 수 없다. 이 클래스는
-     * {@code ResumeAnalysisSchema}를 참조하지 않는다(4단계에는 그 클래스가 아직 없다).
+     * {@code ResumeAnalysisWeights}다. {@code ResumeAnalysisSchema.dimensionKeys(boolean)}도 같은 두 소스에서
+     * 파생되므로, 이 클래스가 {@code ResumeAnalysisSchema}를 참조하지 않아도 스키마 필드 집합과 이 프롬프트
+     * 문구가 어긋날 수 없다. 그 일치는 {@code ResumeAnalysisSystemMessageConsistencyTest}가 고정한다.
      */
     private static List<String> dimensionKeys(boolean jdProvided) {
         return ResumeAnalysisWeights.of(jdProvided).dimensions().stream()

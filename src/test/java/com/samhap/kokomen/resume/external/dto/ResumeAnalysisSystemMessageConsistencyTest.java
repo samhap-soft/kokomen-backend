@@ -83,7 +83,7 @@ class ResumeAnalysisSystemMessageConsistencyTest {
 
     @Test
     void 소프트스킬은_근거가_있을_때만_채점하는_항목을_명시한다() {
-        // D7은 멘토링·조직 개편 관찰항목의 삭제가 아니라 조건부 채점을 요구했다.
+        // 멘토링·조직 개편 관찰항목은 삭제하지 않고, 관찰 근거가 있을 때만 채점하도록 남겨 둔다.
         assertThat(ResumeAnalysisSystemMessages.evaluation(false)).contains(
                 "STAR",
                 "본인이 담당한 역할",
@@ -137,7 +137,7 @@ class ResumeAnalysisSystemMessageConsistencyTest {
 
     @Test
     void 질문_시스템_메시지는_평가결과와_무관하게_항상_동일하다() {
-        // questionGeneration()이 무인자인 것이 캐시 프리픽스 불변의 컴파일 타임 보장이다(D8).
+        // questionGeneration()이 무인자인 것이 캐시 프리픽스 불변의 컴파일 타임 보장이다.
         String first = ResumeAnalysisSystemMessages.questionGeneration();
         String second = ResumeAnalysisSystemMessages.questionGeneration();
 
@@ -179,7 +179,7 @@ class ResumeAnalysisSystemMessageConsistencyTest {
 
     @Test
     void 평가결과_렌더러는_근거가_없으면_없음으로_표기한다() {
-        // DimensionScore의 reason은 빈 리스트를 허용한다(Task 2 계약). improvements는 non-empty여야 한다.
+        // DimensionScore의 reason은 빈 리스트를 허용하고 improvements는 non-empty여야 한다.
         ResumeAnalysisEvaluation evaluation = new ResumeAnalysisEvaluation(
                 new DimensionScore(62, List.of(), List.of("측정 방법을 덧붙여라")),
                 new DimensionScore(78, List.of("역할이 구분됨"), List.of("사후 관리 경험을 덧붙여라")),

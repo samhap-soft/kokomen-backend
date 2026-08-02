@@ -20,82 +20,27 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 이력서 분석이 LLM에 넣을 PDF 텍스트를 만드는 유일한 지점이다.
+ * PDFTextStripper는 링크 annotation을 추출하지 않아 "GitHub" 같은 글자에 URL이 annotation으로만 걸린
+ * 이력서에서는 교차 검증 링크가 모델에 보이지 않는다(technical_skills 관찰항목이 구조적으로 채점 불가가 된다).
+ * 그래서 본문 뒤에 &lt;links&gt; 블록을 덧붙인다.
+ *
+ * <p>링크를 붙이지 않는 공개 추출 메서드를 두지 않는다. 제출 경로가 두 개(파일 업로드 →
+ * {@code extractTextWithLinks(MultipartFile)}, 저장 자료 재사용 → {@code ResumeContentService} →
+ * {@code extractTextWithLinks(byte[])})인데 한쪽만 링크를 보면 같은 이력서가 어느 버튼으로 냈는지에 따라
+ * 다른 점수를 받는다. 두 오버로드가 같은 문서에 같은 문자열을 반환한다는 것이 이 클래스의 불변식이며,
+ * 링크 없는 오버로드를 되살리면 그 불변식을 코드로 깰 수 있게 된다.
+ *
+ * <p>두 오버로드의 유일한 차이는 적재 방식이다. {@code MultipartFile}은 5MB를 넘으면 임시 파일로 흘려
+ * 힙에 전량을 올리지 않지만, {@code byte[]}는 호출자가 이미 전량을 메모리에 들고 있으므로 분기가 필요 없다.
+ */
 @Slf4j
 @Component
 public class PdfTextExtractor {
 
     private static final long MEMORY_THRESHOLD = 5L * 1024 * 1024;
 
-    public String extractText(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
-
-        try {
-            if (file.getSize() <= MEMORY_THRESHOLD) {
-                return extractTextFromMemory(file);
-            }
-            return extractTextFromStream(file);
-        } catch (IOException e) {
-            log.error("PDF 텍스트 추출 중 오류 발생", e);
-            throw new BadRequestException("PDF 파일에서 텍스트를 추출하는 데 실패했습니다.");
-        }
-    }
-
-    private String extractTextFromMemory(MultipartFile file) throws IOException {
-        try (PDDocument document = Loader.loadPDF(file.getBytes())) {
-            return extractText(document);
-        }
-    }
-
-    private String extractTextFromStream(MultipartFile file) throws IOException {
-        Path tempFile = null;
-        try {
-            tempFile = Files.createTempFile("pdf-", ".pdf");
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            try (
-                    RandomAccessReadBufferedFile readBuffer = new RandomAccessReadBufferedFile(tempFile);
-                    PDDocument document = Loader.loadPDF(readBuffer)
-            ) {
-                return extractText(document);
-            }
-        } finally {
-            if (tempFile != null) {
-                Files.deleteIfExists(tempFile);
-            }
-        }
-    }
-
-    private String extractText(PDDocument document) throws IOException {
-        PDFTextStripper stripper = new PDFTextStripper();
-        stripper.setSortByPosition(true);
-        return stripper.getText(document).trim();
-    }
-
-    public String extractText(byte[] pdfData) {
-        if (pdfData == null || pdfData.length == 0) {
-            return null;
-        }
-
-        try (PDDocument document = Loader.loadPDF(pdfData)) {
-            return extractText(document);
-        } catch (IOException e) {
-            log.error("PDF 텍스트 추출 중 오류 발생", e);
-            throw new BadRequestException("PDF 파일에서 텍스트를 추출하는 데 실패했습니다.");
-        }
-    }
-
-    /**
-     * 신규 이력서 분석 경로 전용. PDFTextStripper는 링크 annotation을 추출하지 않아 "GitHub" 같은 글자에 URL이
-     * annotation으로만 걸린 이력서에서는 교차 검증 링크가 모델에 보이지 않는다(technical_skills 관찰항목이 구조적으로
-     * 채점 불가가 된다). 본문 뒤에 &lt;links&gt; 블록을 덧붙여 해소한다.
-     * 기존 extractText 계열과 공유 private extractText(PDDocument)는 절대 수정하지 않는다 — 존치되는
-     * ResumeContentService(저장-자료 텍스트 추출 경로)가 지금도 이 메서드를 그대로 호출하므로, 그 메서드를 고치면
-     * 하이퍼링크 유무에 따라 신규 플로우와 기존 플로우의 LLM 입력이 서로 달라지게 된다.
-     */
     public String extractTextWithLinks(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return null;

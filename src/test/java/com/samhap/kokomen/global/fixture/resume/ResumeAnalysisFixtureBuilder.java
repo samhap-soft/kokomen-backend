@@ -14,7 +14,8 @@ import com.samhap.kokomen.resume.domain.ResumeAnalysisWeights;
 import java.util.UUID;
 
 /**
- * 기본값은 "JD 없음 + PENDING + 게스트"다. D4의 까다로운 경로가 zero-config 기본이 되도록 의도했다.
+ * 기본값은 "JD 없음 + PENDING + 게스트"다. 검증이 가장 까다로운 조합(차원 4개·미완료·소유자 없음)을
+ * zero-config 기본으로 두어, 아무것도 지정하지 않은 픽스처가 가장 약한 전제에서 출발하게 한다.
  * 상태는 전부 엔티티 전이 API를 통과하므로 불가능한 상태의 픽스처를 만들 수 없다.
  */
 public class ResumeAnalysisFixtureBuilder {

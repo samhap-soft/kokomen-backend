@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-// 구 평가 플로우(Task 8)·구 질문생성 플로우(Task 9)의 목 선언이 되살아나지 않는지의 회귀 가드다.
+// 삭제된 구 평가 플로우·구 질문생성 플로우의 목 선언이 되살아나지 않는지의 회귀 가드다.
 // 리팩터링 중 실수로 되돌리면(예: git revert 일부 적용) 여기서 즉시 잡힌다.
 class BaseTestMockAbsenceTest {
 

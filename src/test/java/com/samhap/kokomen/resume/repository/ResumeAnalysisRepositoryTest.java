@@ -215,28 +215,58 @@ class ResumeAnalysisRepositoryTest extends BaseTest {
         );
     }
 
+    // 실패 원인 6개를 전수로 덮는다. 제외되는 3개만 확인하면 이름이 주장하는 "서버 귀책만" 중 "만"이
+    // 검증되지 않아, 제외 목록에 원인이 하나 더 끼어들어도 초록으로 통과한다.
     @Test
-    void 첫_사용_판정은_서버_귀책_실패와_claim된_게스트_행을_제외한다() {
+    void 첫_사용_판정은_서버_귀책_실패와_claim된_게스트_행만_제외하고_LLM_실패는_소진으로_센다() {
+        // given
         Member normalMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         resumeAnalysisRepository.save(memberAnalysisWithoutJd(normalMember));
-
-        Member capacityMember = memberRepository.save(MemberFixtureBuilder.builder().build());
-        ResumeAnalysis capacityFailed = memberAnalysisWithoutJd(capacityMember);
-        capacityFailed.failEvaluation(ResumeAnalysisFailureReason.CAPACITY);
-        resumeAnalysisRepository.save(capacityFailed);
 
         Member claimedMember = memberRepository.save(MemberFixtureBuilder.builder().build());
         resumeAnalysisRepository.save(guestAnalysis("guest-token-1"));
         resumeAnalysisRepository.claimByGuestToken(claimedMember, "guest-token-1");
 
+        // when
+        boolean successChargeable = resumeAnalysisRepository.existsChargeableByMemberId(normalMember.getId());
+        boolean claimedChargeable = resumeAnalysisRepository.existsChargeableByMemberId(claimedMember.getId());
+        boolean capacityChargeable = chargeableAfterFailure(ResumeAnalysisFailureReason.CAPACITY);
+        boolean staleSweepChargeable = chargeableAfterFailure(ResumeAnalysisFailureReason.STALE_SWEEP);
+        boolean persistenceChargeable = chargeableAfterFailure(ResumeAnalysisFailureReason.PERSISTENCE);
+        boolean evaluationLlmChargeable = chargeableAfterFailure(ResumeAnalysisFailureReason.EVALUATION_LLM);
+        boolean truncatedChargeable = chargeableAfterFailure(ResumeAnalysisFailureReason.OUTPUT_TRUNCATED);
+        boolean questionLlmChargeable = chargeableAfterQuestionFailure(ResumeAnalysisFailureReason.QUESTION_LLM);
+
+        // then
         assertAll(
-                () -> assertThat(resumeAnalysisRepository
-                        .existsChargeableByMemberId(normalMember.getId())).isTrue(),
-                () -> assertThat(resumeAnalysisRepository
-                        .existsChargeableByMemberId(capacityMember.getId())).isFalse(),
-                () -> assertThat(resumeAnalysisRepository
-                        .existsChargeableByMemberId(claimedMember.getId())).isFalse()
+                () -> assertThat(successChargeable).isTrue(),
+                () -> assertThat(claimedChargeable).isFalse(),
+                () -> assertThat(capacityChargeable).isFalse(),
+                () -> assertThat(staleSweepChargeable).isFalse(),
+                () -> assertThat(persistenceChargeable).isFalse(),
+                () -> assertThat(evaluationLlmChargeable).isTrue(),
+                () -> assertThat(truncatedChargeable).isTrue(),
+                () -> assertThat(questionLlmChargeable).isTrue()
         );
+    }
+
+    private boolean chargeableAfterFailure(ResumeAnalysisFailureReason failureReason) {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        ResumeAnalysis failed = memberAnalysisWithoutJd(member);
+        failed.failEvaluation(failureReason);
+        resumeAnalysisRepository.save(failed);
+        return resumeAnalysisRepository.existsChargeableByMemberId(member.getId());
+    }
+
+    // QUESTION_LLM은 평가 단계에서는 기록될 수 없다. 프로덕션이 만들 수 없는 상태·원인 조합을 픽스처가
+    // 만들지 않도록 질문 단계 실패로 만든다.
+    private boolean chargeableAfterQuestionFailure(ResumeAnalysisFailureReason failureReason) {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        ResumeAnalysis failed = memberAnalysisWithoutJd(member);
+        failed.completeEvaluation(evaluationWithoutJdFit());
+        failed.failQuestions(failureReason);
+        resumeAnalysisRepository.save(failed);
+        return resumeAnalysisRepository.existsChargeableByMemberId(member.getId());
     }
 
     @Test
@@ -251,7 +281,7 @@ class ResumeAnalysisRepositoryTest extends BaseTest {
                 ResumeAnalysisState.PENDING, threshold, PageRequest.of(0, 200));
         List<ResumeAnalysis> staleQuestion = resumeAnalysisRepository.findByStateAndQuestionStartedAtBefore(
                 ResumeAnalysisState.EVALUATION_COMPLETED, threshold, PageRequest.of(0, 200));
-        // findByIdForUpdate는 MANDATORY라 앰비언트 트랜잭션 없이는 호출할 수 없다(Task 8 실사용과 동일한 경계).
+        // findByIdForUpdate는 MANDATORY라 앰비언트 트랜잭션 없이는 호출할 수 없다(프로덕션과 동일한 경계).
         Long lockedId = transactionTemplate.execute(status ->
                 resumeAnalysisRepository.findByIdForUpdate(pendingId).orElseThrow().getId());
 

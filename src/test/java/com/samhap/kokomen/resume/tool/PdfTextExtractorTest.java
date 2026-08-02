@@ -2,33 +2,26 @@ package com.samhap.kokomen.resume.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.ByteArrayOutputStream;
+import com.samhap.kokomen.global.fixture.resume.PdfFixtureBuilder;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName;
-import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 신규 extractTextWithLinks가 링크 annotation의 URL을 본문에 노출하는지, 그리고 동결된 extractText의 출력이
- * 전혀 바뀌지 않는지(D2) 검증한다. 픽스처 PDF는 고정 파일이 아니라 PDFBox로 테스트 안에서 생성한다.
+ * extractTextWithLinks가 링크 annotation의 URL을 본문 뒤에 노출하는지, 그리고 두 오버로드가 같은 PDF에
+ * 같은 문자열을 반환하는지 검증한다. 픽스처 PDF는 고정 파일이 아니라 PDFBox로 테스트 안에서 생성한다.
  */
 class PdfTextExtractorTest {
 
     private final PdfTextExtractor pdfTextExtractor = new PdfTextExtractor();
 
     @Test
-    void 링크_annotation의_URL을_links_블록으로_추출한다() throws IOException {
+    void 링크_annotation의_URL을_links_블록으로_추출한다() {
         byte[] pdf = pdfWithLinks("GitHub", List.of("https://github.com/example"));
 
         String extracted = pdfTextExtractor.extractTextWithLinks(pdf);
@@ -42,7 +35,7 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void 같은_URL이_여러_번_걸려_있어도_한_번만_출력한다() throws IOException {
+    void 같은_URL이_여러_번_걸려_있어도_한_번만_출력한다() {
         byte[] pdf = pdfWithLinks("GitHub", List.of(
                 "https://github.com/example", "https://github.com/example"));
 
@@ -52,7 +45,7 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void 여러_URL은_삽입_순서를_유지한다() throws IOException {
+    void 여러_URL은_삽입_순서를_유지한다() {
         byte[] pdf = pdfWithLinks("Links", List.of(
                 "https://github.com/example", "https://example.tistory.com", "https://example.com/paper"));
 
@@ -67,41 +60,24 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void 링크가_없으면_links_블록을_붙이지_않는다() throws IOException {
+    void 링크가_없으면_links_블록을_붙이지_않고_본문만_반환한다() {
         byte[] pdf = pdfWithLinks("body only document", List.of());
 
         String extracted = pdfTextExtractor.extractTextWithLinks(pdf);
 
-        assertThat(extracted).doesNotContain("<links>");
+        assertThat(extracted).isEqualTo("body only document");
     }
 
     @Test
-    void 링크가_없으면_신규_메서드도_기존_메서드와_완전히_같은_문자열을_반환한다() throws IOException {
-        byte[] pdf = pdfWithLinks("Kokomen resume body", List.of());
-
-        assertThat(pdfTextExtractor.extractTextWithLinks(pdf))
-                .isEqualTo(pdfTextExtractor.extractText(pdf));
-    }
-
-    @Test
-    void 기존_extractText는_links_블록도_URL도_출력하지_않는다() throws IOException {
+    void PDFTextStripper만으로는_링크_URL이_보이지_않고_links_블록은_그_본문_뒤에만_덧붙는다() throws IOException {
         byte[] pdf = pdfWithLinks("GitHub", List.of("https://github.com/example"));
 
-        String legacy = pdfTextExtractor.extractText(pdf);
-
-        assertThat(legacy).isEqualTo("GitHub");
-        assertThat(legacy).doesNotContain("<links>").doesNotContain("https://github.com/example");
-    }
-
-    @Test
-    void 기존_extractText의_출력은_신규_메서드_본문_구간과_동일하다() throws IOException {
-        byte[] pdf = pdfWithLinks("GitHub", List.of("https://github.com/example"));
-
-        String legacy = pdfTextExtractor.extractText(pdf);
+        String stripperOnly = stripperText(pdf);
         String withLinks = pdfTextExtractor.extractTextWithLinks(pdf);
 
-        assertThat(withLinks).startsWith(legacy);
-        assertThat(withLinks.substring(legacy.length())).isEqualTo("""
+        assertThat(stripperOnly).isEqualTo("GitHub");
+        assertThat(withLinks).startsWith(stripperOnly);
+        assertThat(withLinks.substring(stripperOnly.length())).isEqualTo("""
 
 
                 <links>
@@ -110,12 +86,16 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void MultipartFile로_받아도_같은_결과를_반환한다() throws IOException {
+    void MultipartFile로_받아도_같은_결과를_반환한다() {
         byte[] pdf = pdfWithLinks("GitHub", List.of("https://github.com/example"));
         MultipartFile file = new MockMultipartFile("resume", "resume.pdf", "application/pdf", pdf);
 
-        assertThat(pdfTextExtractor.extractTextWithLinks(file))
-                .isEqualTo(pdfTextExtractor.extractTextWithLinks(pdf));
+        assertThat(pdfTextExtractor.extractTextWithLinks(file)).isEqualTo("""
+                GitHub
+
+                <links>
+                https://github.com/example
+                </links>""");
     }
 
     @Test
@@ -129,9 +109,11 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void 여러_페이지의_링크를_모두_모은다() throws IOException {
-        byte[] pdf = twoPagePdfWithLinks(
-                List.of("https://github.com/first"), List.of("https://github.com/second"));
+    void 여러_페이지의_링크를_모두_모은다() {
+        byte[] pdf = PdfFixtureBuilder.builder()
+                .page("first page", List.of("https://github.com/first"))
+                .page("second page", List.of("https://github.com/second"))
+                .build();
 
         String extracted = pdfTextExtractor.extractTextWithLinks(pdf);
 
@@ -140,45 +122,18 @@ class PdfTextExtractorTest {
                 .contains("https://github.com/second");
     }
 
-    private byte[] pdfWithLinks(String bodyText, List<String> uris) throws IOException {
-        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            document.addPage(page(document, bodyText, uris));
-            document.save(out);
-            return out.toByteArray();
-        }
+    private byte[] pdfWithLinks(String bodyText, List<String> uris) {
+        return PdfFixtureBuilder.builder()
+                .page(bodyText, uris)
+                .build();
     }
 
-    private byte[] twoPagePdfWithLinks(List<String> firstPageUris, List<String> secondPageUris) throws IOException {
-        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            document.addPage(page(document, "first page", firstPageUris));
-            document.addPage(page(document, "second page", secondPageUris));
-            document.save(out);
-            return out.toByteArray();
+    // 프로덕션이 링크 블록을 덧붙이는 이유가 라이브러리의 한계라는 것을 픽스처로 직접 확인한다.
+    private String stripperText(byte[] pdf) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            return stripper.getText(document).trim();
         }
-    }
-
-    // bodyText는 반드시 ASCII여야 한다. Standard14 Helvetica는 WinAnsi 인코딩이라
-    // 한글을 showText에 넘기면 IllegalArgumentException(U+XXXX is not available in this font's encoding)이 난다.
-    private PDPage page(PDDocument document, String bodyText, List<String> uris) throws IOException {
-        PDPage page = new PDPage(PDRectangle.A4);
-        try (PDPageContentStream content = new PDPageContentStream(document, page)) {
-            content.beginText();
-            content.setFont(new PDType1Font(FontName.HELVETICA), 12);
-            content.newLineAtOffset(72, 700);
-            content.showText(bodyText);
-            content.endText();
-        }
-
-        List<PDAnnotation> annotations = new ArrayList<>();
-        for (int i = 0; i < uris.size(); i++) {
-            PDActionURI action = new PDActionURI();
-            action.setURI(uris.get(i));
-            PDAnnotationLink link = new PDAnnotationLink();
-            link.setAction(action);
-            link.setRectangle(new PDRectangle(72, 650 - (i * 20), 200, 16));
-            annotations.add(link);
-        }
-        page.setAnnotations(annotations);
-        return page;
     }
 }

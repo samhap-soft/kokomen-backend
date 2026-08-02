@@ -20,17 +20,17 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
-// ResumeBasedPurgeScriptTest — V53(퍼지 DML)의 실행 검증(G5).
+// V53(퍼지 DML)을 실제로 실행해 검증한다.
 //
-// !! BaseTest(앱의 Spring 컨텍스트)를 쓰지 않는다 (리뷰 라운드 2 반영) !!
+// !! BaseTest(앱의 Spring 컨텍스트)를 쓰지 않는다 !!
 // BaseTest는 컨텍스트 기동 시 Flyway를 항상 최신 버전(V54)까지 완주시킨다 -- 실측: 이 스위트의 다른
 // 어떤 테스트든 한 번이라도 컨텍스트를 띄우고 나면 information_schema상 generated_question에
-// generation_id 컬럼이 이미 없다(V54:92의 DROP COLUMN 때문이다). 그런데 V53(라운드 2)의 재실행
+// generation_id 컬럼이 이미 없다(V54:92의 DROP COLUMN 때문이다). 그런데 V53의 재실행
 // 안전성 로직은 정확히 그 컬럼이 아직 존재하는 스키마 상태를 전제한다 -- generation_id로 구/신규
 // 플로우를 가르는 판별 자체가 그 컬럼이 있어야만 가능하다. 그래서 이 테스트는 앱의 스키마를 건드리지
 // 않고, 별도의 스크래치 스키마를 만들어 Flyway로 V53까지만(target=53) 적용한 뒤 그 위에서
 // 시드 + V53 재생 + 단정을 수행한다. V53 파일 자체는 여전히 클래스패스에서 그대로 읽어 재생한다
-// (드리프트 방지, 라운드 1에서 확립된 설계를 유지 -- SCRIPT 상수와 executeScript()는 무수정).
+// (드리프트 방지 -- 스크립트 본문을 테스트에 복사해 두면 마이그레이션이 바뀔 때 조용히 갈린다).
 class ResumeBasedPurgeScriptTest {
 
     private static final String SCRIPT = "db/migration/V53__purge_resume_based_interviews.sql";
@@ -125,8 +125,8 @@ class ResumeBasedPurgeScriptTest {
         assertThat(count("interview WHERE interview_type = 'RESUME_BASED'")).isZero();
     }
 
-    // 리뷰 라운드 2, Finding 1 회귀 가드: interview_type='RESUME_BASED'인 행은 신규 이력서 분석
-    // 플로우도 그대로 만든다(Interview.java는 무수정, 결정 M4) -- 그래서 이 스크립트가 구 플로우와
+    // interview_type='RESUME_BASED'인 행은 신규 이력서 분석 플로우도 그대로 만든다
+    // (Interview.java:132-137은 무수정이다) -- 그래서 이 스크립트가 구 플로우와
     // 신규 플로우를 실제로 구별하는지가 이 수정의 핵심이다. 구 플로우 모양(generation_id 부모)과
     // 신규 플로우 모양(analysis_id 부모, generation_id NULL)을 나란히 심어 전자만 지워지고 후자는
     // 통째로 보존되는지 확인한다 -- 구조가 거의 동일하고 부모 축만 다르다는 것 자체가 이 판별이
@@ -154,7 +154,7 @@ class ResumeBasedPurgeScriptTest {
         );
     }
 
-    // 이 태스크의 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든
+    // 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든
     // 호출부에서 지금 항상 non-null GeneratedQuestion을 넘긴다 -- 다만 생성자 자체에 null을 막는
     // 가드가 없으므로 "구조적으로 불가능"은 과장이고, 정확한 사실은 "오늘 기준 이 모양을 만드는
     // 호출부가 없다"는 것까지다(V53:34-44와 같은 표현을 쓴다). 그러니 이 모양은 V33 시대

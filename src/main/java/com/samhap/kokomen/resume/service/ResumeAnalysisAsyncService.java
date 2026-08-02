@@ -27,8 +27,9 @@ import org.springframework.stereotype.Service;
  *
  * <p>두 hop을 private가 아니라 패키지 가시성으로 두는 근거는 runQuestionHop이 평가는 성공했지만 질문만 실패한
  * 행의 재시도 진입점이라는 것이다 — 재시도는 평가 콜을 다시 태우지 않아야 하므로 run()을 거치지 않고
- * 들어와야 한다. 지금 이 두 메서드를 호출하는 것은 같은 패키지의 테스트뿐이며, 재시도 진입점이
- * 필요해지는 호출자도 같은 패키지에 놓는다 — 그래서 public까지 열지 않는다.
+ * 들어와야 한다. 그 진입점인 ResumeAnalysisFacadeService.retryQuestionGeneration이 같은 패키지에 있으므로
+ * 패키지 가시성으로 충분하고 public까지 열지 않는다. runEvaluationHop을 부르는 프로덕션 코드는 run()뿐이며,
+ * 이쪽 가시성은 테스트가 평가 hop만 떼어 검증할 수 있게 하려는 것이다.
  *
  * <p>테스트가 hop을 직접 호출하는 것은 2콜 순차 종단을 폴링 없이 결정적으로 확인하려는 선택이지,
  * 다른 방법이 없어서가 아니다. awaitility가 테스트 클래스패스에 있으므로 run()으로 제출하고 종단 상태를

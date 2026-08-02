@@ -10,6 +10,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 저장 자료 재사용 제출 경로의 텍스트 공급자다. content 컬럼이 비어 있을 때만 S3에서 PDF를 내려 추출하고
+ * 결과를 캐시한다.
+ *
+ * <p>추출은 반드시 {@code extractTextWithLinks}로 한다. 파일 업로드 경로
+ * ({@code ResumeAnalysisFacadeService})가 같은 메서드를 쓰므로, 여기서 링크를 뺀 추출을 쓰면 같은 이력서가
+ * {@code resume_id}로 제출됐는지 파일로 제출됐는지에 따라 LLM 입력이 달라지고 technical_skills 점수가
+ * 갈린다. 두 경로의 출력 일치는 {@code ResumeAnalysisFacadeServiceTest}가 같은 PDF를 두 방식으로 제출해
+ * 고정한다.
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Service
@@ -25,7 +35,7 @@ public class ResumeContentService {
         }
         try {
             byte[] pdfBytes = s3Service.downloadFileFromUrl(resume.getResumeUrl());
-            String extractedText = pdfTextExtractor.extractText(pdfBytes);
+            String extractedText = pdfTextExtractor.extractTextWithLinks(pdfBytes);
             resume.updateContent(extractedText);
             return extractedText;
         } catch (Exception e) {
@@ -42,7 +52,7 @@ public class ResumeContentService {
         }
         try {
             byte[] pdfBytes = s3Service.downloadFileFromUrl(portfolio.getPortfolioUrl());
-            String extractedText = pdfTextExtractor.extractText(pdfBytes);
+            String extractedText = pdfTextExtractor.extractTextWithLinks(pdfBytes);
             portfolio.updateContent(extractedText);
             return extractedText;
         } catch (Exception e) {

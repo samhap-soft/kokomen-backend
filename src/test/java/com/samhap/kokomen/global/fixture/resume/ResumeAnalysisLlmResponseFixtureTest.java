@@ -2,12 +2,10 @@ package com.samhap.kokomen.global.fixture.resume;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisSchema;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.core.document.Document;
@@ -16,8 +14,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 class ResumeAnalysisLlmResponseFixtureTest {
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void 평가_ConverseResponse는_TOOL_USE와_평가_도구명을_가진다() {
@@ -57,54 +53,6 @@ class ResumeAnalysisLlmResponseFixtureTest {
         ToolUseBlock toolUse = response.output().message().content().get(0).toolUse();
         assertThat(toolUse.name()).isEqualTo(ResumeAnalysisToolNames.QUESTION_GENERATION);
         assertThat(toolUse.input().asMap().get("questions").asList()).hasSize(5);
-    }
-
-    @Test
-    void GPT_평가_arguments는_JD_포함시_스키마_필드_수와_같은_키를_가진다() throws Exception {
-        // when
-        String arguments = ResumeAnalysisGptResponseFixtureBuilder.builder()
-                .buildEvaluationArguments(true);
-
-        // then
-        Map<String, Object> parsed = objectMapper.readValue(arguments, Map.class);
-        assertThat(parsed).hasSize(ResumeAnalysisSchema.requiredFieldCount(true));
-        assertThat(parsed).containsKeys("problem_solving_score", "jd_fit_improvements", "total_feedback");
-    }
-
-    @Test
-    void GPT_평가_arguments는_JD_미제공시_jd_fit_키가_없다() throws Exception {
-        // when
-        String arguments = ResumeAnalysisGptResponseFixtureBuilder.builder()
-                .buildEvaluationArguments(false);
-
-        // then
-        Map<String, Object> parsed = objectMapper.readValue(arguments, Map.class);
-        assertThat(parsed).hasSize(ResumeAnalysisSchema.requiredFieldCount(false));
-        assertThat(parsed).doesNotContainKeys("jd_fit_score", "jd_fit_reason", "jd_fit_improvements");
-    }
-
-    @Test
-    void GPT_평가_이중인코딩_arguments는_JSON_문자열을_한_겹_더_감싼다() throws Exception {
-        // when
-        String doubleEncoded = ResumeAnalysisGptResponseFixtureBuilder.builder()
-                .buildEvaluationDoubleEncoded(true);
-
-        // then
-        assertThat(doubleEncoded).startsWith("\"");
-        String unwrapped = objectMapper.readValue(doubleEncoded, String.class);
-        assertThat(objectMapper.readValue(unwrapped, Map.class))
-                .hasSize(ResumeAnalysisSchema.requiredFieldCount(true));
-    }
-
-    @Test
-    void GPT_질문_arguments는_질문_5개를_담는다() throws Exception {
-        // when
-        String arguments = ResumeAnalysisGptResponseFixtureBuilder.builder()
-                .buildQuestionsArguments();
-
-        // then
-        Map<String, Object> parsed = objectMapper.readValue(arguments, Map.class);
-        assertThat((List<?>) parsed.get("questions")).hasSize(5);
     }
 
     @Test

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.RedisCleaner;
+import com.samhap.kokomen.global.constant.AwsConstant;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -19,6 +20,7 @@ import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
+import com.samhap.kokomen.global.fixture.resume.PdfFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.member.domain.Member;
@@ -39,6 +41,7 @@ import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionRetryResponse
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitRequest;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisSubmitResponse;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisUsageStatusResponse;
+import com.samhap.kokomen.resume.tool.PdfTextExtractor;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisPdfPolicy;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
@@ -59,10 +62,23 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 class ResumeAnalysisFacadeServiceTest extends BaseTest {
 
     private static final String RESUME_TEXT = "이력서 원문입니다. Java, Spring Boot 경험이 있습니다.";
+    private static final String LINKED_RESUME_BODY = "Portfolio GitHub";
+    private static final String LINKED_RESUME_URI = "https://github.com/parity-example";
+    // 픽스처 입력(본문·URI)과 별개로 기대 출력을 전부 리터럴로 적는다. 프로덕션이 조립하는 <links> 마크업을
+    // 테스트가 같은 방식으로 조립하면 마크업이 바뀌어도 테스트가 따라 바뀌어 아무것도 고정하지 못한다.
+    private static final String LINKED_RESUME_TEXT = """
+            Portfolio GitHub
+
+            <links>
+            https://github.com/parity-example
+            </links>""";
     private static final String JOB_POSITION = "백엔드 개발자";
     private static final String JOB_DESCRIPTION = "Java/Spring 기반 서버 개발자를 모집합니다.";
     private static final String JOB_CAREER = "신입";
@@ -190,6 +206,42 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
                 () -> assertThat(commandCaptor.getValue().resumeText()).isEqualTo("저장된 이력서 원문"),
                 () -> assertThat(saved.getMemberResume()).isNotNull(),
                 () -> assertThat(resumeAnalysisSourceTextRepository.existsByAnalysisId(saved.getId())).isTrue()
+        );
+    }
+
+    // 제출 방식이 점수를 바꾸면 안 된다. 링크가 annotation으로만 걸린 이력서를 파일로 내면 <links>가 보이고
+    // resume_id로 내면 안 보이던 결함의 회귀 가드다. 두 원문을 서로 비교하는 것만으로는 둘 다 null인 경우도
+    // 통과하므로 각각을 리터럴과 대조한다.
+    @Test
+    void 같은_PDF는_파일로_내든_저장된_이력서_ID로_내든_링크까지_같은_원문으로_추출된다() {
+        // given
+        byte[] pdf = linkedResumePdf();
+        delegateExtractionToRealExtractor();
+        stubS3Download(pdf);
+        Member uploader = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        Member reuser = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        MemberResume savedResume = memberResumeRepository.save(MemberResumeFixtureBuilder.builder()
+                .member(reuser)
+                .resumeUrl(AwsConstant.CLOUD_FRONT_DOMAIN_URL + "resume/reuse.pdf")
+                .content(null)
+                .build());
+
+        // when
+        Long uploadedId = resumeAnalysisFacadeService.submitMemberAnalysis(uploader.getId(),
+                new ResumeAnalysisSubmitRequest(
+                        new MockMultipartFile("resume", "resume.pdf", "application/pdf", pdf), null, null, null,
+                        JOB_POSITION, null, JOB_CAREER)).analysisId();
+        Long reusedId = resumeAnalysisFacadeService.submitMemberAnalysis(reuser.getId(),
+                new ResumeAnalysisSubmitRequest(null, null, savedResume.getId(), null,
+                        JOB_POSITION, null, JOB_CAREER)).analysisId();
+
+        // then
+        String uploadedText = readSourceResumeContent(uploadedId);
+        String reusedText = readSourceResumeContent(reusedId);
+        assertAll(
+                () -> assertThat(uploadedText).isEqualTo(LINKED_RESUME_TEXT),
+                () -> assertThat(reusedText).isEqualTo(LINKED_RESUME_TEXT),
+                () -> assertThat(reusedText).isEqualTo(uploadedText)
         );
     }
 
@@ -834,6 +886,33 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
     private MockMultipartFile pdfFile() {
         return new MockMultipartFile("resume", "resume.pdf", "application/pdf",
                 "pdf-bytes".getBytes(StandardCharsets.UTF_8));
+    }
+
+    private byte[] linkedResumePdf() {
+        return PdfFixtureBuilder.builder()
+                .page(LINKED_RESUME_BODY, List.of(LINKED_RESUME_URI))
+                .build();
+    }
+
+    // BaseTest의 pdfTextExtractor는 목이라 스텁하지 않으면 무엇을 넣어도 null이다. 추출 결과 자체를 보는
+    // 테스트만 실 구현으로 위임한다 — 두 오버로드를 모두 위임해야 어느 제출 경로가 어느 메서드를 부르는지가
+    // 결과에 드러난다.
+    private void delegateExtractionToRealExtractor() {
+        PdfTextExtractor realExtractor = new PdfTextExtractor();
+        given(pdfTextExtractor.extractTextWithLinks(any(MultipartFile.class)))
+                .willAnswer(invocation ->
+                        realExtractor.extractTextWithLinks((MultipartFile) invocation.getArgument(0)));
+        given(pdfTextExtractor.extractTextWithLinks(any(byte[].class)))
+                .willAnswer(invocation -> realExtractor.extractTextWithLinks((byte[]) invocation.getArgument(0)));
+    }
+
+    private void stubS3Download(byte[] pdf) {
+        given(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+                .willReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), pdf));
+    }
+
+    private String readSourceResumeContent(Long analysisId) {
+        return resumeAnalysisSourceTextRepository.findByAnalysisId(analysisId).orElseThrow().getResumeContent();
     }
 
     private ResumeAnalysisCommand command(Long analysisId, Long billingMemberId) {

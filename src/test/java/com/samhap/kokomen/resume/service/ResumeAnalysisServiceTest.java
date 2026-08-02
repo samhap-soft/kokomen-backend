@@ -154,12 +154,9 @@ class ResumeAnalysisServiceTest extends BaseTest {
                 JOB_INPUT_WITHOUT_JD));
 
         // when & then
-        assertAll(
-                () -> assertThat(resumeAnalysisService.existsSourceText(analysis.getId())).isFalse(),
-                () -> assertThatThrownBy(() -> resumeAnalysisService.readSourceText(analysis.getId()))
-                        .isInstanceOf(BadRequestException.class)
-                        .hasMessageContaining("이력서 원문이 만료되어")
-        );
+        assertThatThrownBy(() -> resumeAnalysisService.readSourceText(analysis.getId()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("이력서 원문이 만료되어");
     }
 
     @Test

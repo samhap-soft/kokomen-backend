@@ -1,24 +1,23 @@
 -- ============================================================================
--- M2: 과거 이력서 기반 면접 기록 전량 삭제.
+-- 과거 이력서 기반 면접 기록 전량 삭제.
 --
 -- 이 파일은 순수 DML이다. DDL을 한 문장도 섞지 않는다 -- MySQL은 DDL에서 암묵 커밋하므로
 -- DDL이 섞이면 이 블록의 원자성이 첫 DDL 지점에서 끊긴다. DDL은 V52·V54가 담당한다.
 --
--- !! 비가역 !! 역마이그레이션이 없다. 적용 전 논리 백업과 §7 사전 점검 전량 통과가 필수다.
+-- !! 비가역 !! 역마이그레이션이 없다. 적용 전 논리 백업이 필수다.
 --
--- !! 재실행 안전성 -- 데이터 "모양"으로 구분한다 (리뷰 라운드 2, Finding 1 재작업) !!
--- 결정 M4에 따라 신규 이력서 분석 플로우도 Interview(Member, GeneratedQuestion, Integer, InterviewMode)
--- 생성자를 그대로 써서 interview_type='RESUME_BASED'인 행을 만든다(Interview.java는 이 태스크에서
--- 바이트 단위로 무수정 -- Interview.java:132-137). 즉 interview_type = 'RESUME_BASED' 만으로는
+-- !! 재실행 안전성 -- 삭제 대상을 배포 시각이 아니라 데이터 "모양"으로 구분한다 !!
+-- 신규 이력서 분석 플로우도 Interview(Member, GeneratedQuestion, Integer, InterviewMode)
+-- 생성자를 그대로 써서 interview_type='RESUME_BASED'인 행을 만든다(Interview.java:132-137은 무수정이다).
+-- 즉 interview_type = 'RESUME_BASED' 만으로는
 -- "구 질문생성 플로우가 만든 행"과 "신규 이력서 분석 플로우가 만든 행"을 구별할 수 없다.
 --
--- 라운드 1은 이것을 고정 캘린더 컷오프(created_at < 리터럴)로 풀었다. 라운드 2는 그 컷오프를 데이터
--- 모양 판별로 대체한다. V51이 만든 XOR 제약(chk_generated_question_parent, generation_id와
--- analysis_id 중 정확히 하나만 NOT NULL)이 generated_question 행마다 "구 플로우 부모인가 신규
+-- 그래서 캘린더 컷오프(created_at < 리터럴)를 쓰지 않고 데이터 모양으로 판별한다.
+-- V51이 만든 XOR 제약(chk_generated_question_parent, generation_id와 analysis_id 중 정확히 하나만
+-- NOT NULL)이 generated_question 행마다 "구 플로우 부모인가 신규
 -- 플로우 부모인가"를 이미 배타적으로 못박아 뒀으므로, 그 자체가 배포 일정과 무관한 영구적 판별자다.
--- 캘린더 컷오프는 값을 하나 정해 파일에 박아 넣어야 했고(배포가 늦어지면 갱신이 필요한, 라운드 1이
--- 인정한 유지보수 부담이었다) generation_id 판별은 그런 값이 필요 없다 -- 재실행이 언제, 몇 번이든
--- 항상 안전하다.
+-- 캘린더 컷오프는 값을 하나 정해 파일에 박아 넣어야 하고 배포가 늦어지면 갱신해야 하지만,
+-- generation_id 판별은 그런 값이 필요 없다 -- 재실행이 언제, 몇 번이든 항상 안전하다.
 --
 -- 판별 조건: generated_question.generation_id IS NOT NULL 인 행이 구 플로우가 만든 행이다.
 -- interview는 자신의 generated_question_id가 그런 행을 가리킬 때만(또는 아래 NULL 예외 참고)
@@ -31,8 +30,8 @@
 -- 안전하므로 이 실패를 "고치려" 하지 않는다. V53은 V54 이전에만 의미가 있는 파일이고, 그 경계를
 -- 넘어서면 스스로 실행을 거부해야 맞다.
 --
--- generated_question_id가 NULL인 RESUME_BASED interview도 삭제 대상에 포함한다 -- 이 태스크의
--- 유일한 RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든 호출부에서 지금
+-- generated_question_id가 NULL인 RESUME_BASED interview도 삭제 대상에 포함한다 -- 유일한
+-- RESUME_BASED 생성 경로(Interview.java:132-137)는 이 코드베이스의 모든 호출부에서 지금
 -- 항상 non-null GeneratedQuestion을 넘긴다(호출부 전수 확인). 이 생성자 자체에는 null을 막는
 -- 가드가 없으므로 "구조적으로 불가능"은 과장이다 -- 정확한 사실은 "오늘 기준 이 모양을 만드는
 -- 호출부가 없다"는 것뿐이다. 반면 V33은 generated_question_id 컬럼이 존재하기도 전에
@@ -68,10 +67,10 @@
 --
 --    아래 DELETE들은 서브쿼리 소스 테이블(interview / question / answer)의 인덱스 구간에
 --    공유 넥스트키 락을 건다. 괄호 안 수치(performance_schema.data_locks 실측: 소스 테이블에
---    S 락 3건, 대상 테이블에 X,GAP 2건)는 라운드 1의 서술어 모양(generated_question을 거치지
---    않는 단순 JOIN)을 대상으로 측정했다 -- 라운드 2에서 모든 서술어에 generated_question을
---    향한 중첩 IN 서브쿼리가 추가되면서 그 테이블에 대한 락 획득이 하나 더 늘었을 가능성이 있고,
---    이 수치는 그 변경 이후 재측정되지 않았다. READ COMMITTED가 갭 락을 없애는 방향
+--    S 락 3건, 대상 테이블에 X,GAP 2건)는 generated_question을 거치지 않는 단순 JOIN 서술어로
+--    측정한 값이다 -- 아래 서술어에는 generated_question을 향한 중첩 IN 서브쿼리가 들어 있어
+--    그 테이블에 대한 락 획득이 하나 더 늘었을 수 있고, 이 수치는 재측정되지 않았다.
+--    READ COMMITTED가 갭 락을 없애는 방향
 --    (X,GAP -> X,REC_NOT_GAP, S -> S,REC_NOT_GAP)은 서술어 모양이 바뀌어도 성립하는 일반
 --    원칙이지만, 정확한 락 개수를 다시 인용하려면 현재 서술어로 재실측해야 한다.
 --
@@ -150,7 +149,7 @@ WHERE interview_id IN (SELECT i.id
 --    idx_interview_interview_type(V33)이 있어 등가 조회가 인덱스를 탄다.
 --
 --    WHERE에 `OR generated_question_id IS NOT NULL`(다른 타입까지 훑는 형태)을 붙이지 않는다 --
---    그것은 M2가 정의한 삭제 범위(interview_type='RESUME_BASED'와 그 후손)를 넘어 다른 타입의
+--    그것은 이 파일이 정의한 삭제 범위(interview_type='RESUME_BASED'와 그 후손)를 넘어 다른 타입의
 --    면접을 조용히 지운다.
 --
 --    generated_question_id IS NULL 도 삭제 대상이다 -- 파일 선두 주석 참조(V33 시대의
@@ -166,7 +165,7 @@ WHERE interview_type = 'RESUME_BASED'
 
 -- ---------------------------------------------------------------------------
 -- 6. generated_question. generation_id가 있는(= 구 플로우 부모) 행만 -- 전체 삭제(WHERE 없음)였던
---    최초 버전은 신규 플로우(analysis_id 부모) 행까지 지웠다(라운드 1, Finding 1). generation_id는
+--    최초 버전은 신규 플로우(analysis_id 부모) 행까지 지웠다. generation_id는
 --    V51의 chk_generated_question_parent가 "정확히 하나만 NOT NULL"을 강제하므로, 이 조건 하나로
 --    신규 플로우 행(analysis_id NOT NULL, generation_id NULL)은 항상 배제된다. interview 경유로
 --    이 판별을 대신할 수 없는 이유: 이 테이블의 행은 interview 없이도 존재할 수 있다(이력서 분석
@@ -179,7 +178,7 @@ WHERE interview_type = 'RESUME_BASED'
 --    fk_interview_generated_question은 ON DELETE 절이 없어 RESTRICT(delete_rule = NO ACTION,
 --    실측)다. 5단계 이후에도 구 플로우 모양의 generated_question을 참조하는 interview 행이 남아
 --    있으면 이 문장이 ERROR 1451로 죽는다 -- "구 플로우 모양의 RESUME_BASED 면접은 5단계에서 전부
---    지워졌어야 한다"에 대한 DB 레벨 자동 검증이며, §7-D 사전 점검과 이중 방어를 이룬다.
+--    지워졌어야 한다"에 대한 DB 레벨 자동 검증이다.
 --
 --    이 문장이 V54의 MODIFY analysis_id NOT NULL 을 가능하게 만든다 -- 이 문장 이후 analysis_id가
 --    NULL인 행(= generation_id가 NOT NULL이었던 구 플로우 행)은 전부 제거되므로, 남는 행은 전부

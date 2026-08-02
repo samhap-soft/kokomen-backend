@@ -44,7 +44,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 /**
  * 신규 이력서 분석 LLM 콜의 배선(모델 파라미터·toolChoice·캐시포인트·system/user 메시지 구성)을 Spring 기동 없이 검증한다.
  * BedrockConverseClient는 실물로 생성하고 AWS SDK 레벨(BedrockRuntimeClient)만 목으로 잡는다.
- * §8-4의 system 메시지 단일 소스 단정 2개도 이 파일이 담당한다(Task 4가 이 태스크로 넘긴 항목).
+ * system 메시지가 GPT·Bedrock 양쪽에서 같은 단일 소스에서 나오는지도 이 파일이 단정한다.
  */
 class ResumeAnalysisWiringTest {
 

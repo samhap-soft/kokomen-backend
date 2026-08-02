@@ -56,12 +56,11 @@ class ResumeAnalysisStateTest {
     }
 
     @Test
-    void 실패_원인은_설계에_확정된_7개다() {
+    void 실패_원인은_행에_기록되는_6개다() {
         assertThat(ResumeAnalysisFailureReason.values()).containsExactly(
                 ResumeAnalysisFailureReason.EVALUATION_LLM, ResumeAnalysisFailureReason.OUTPUT_TRUNCATED,
                 ResumeAnalysisFailureReason.QUESTION_LLM, ResumeAnalysisFailureReason.PERSISTENCE,
-                ResumeAnalysisFailureReason.CAPACITY, ResumeAnalysisFailureReason.STALE_SWEEP,
-                ResumeAnalysisFailureReason.GUEST_LIMIT);
+                ResumeAnalysisFailureReason.CAPACITY, ResumeAnalysisFailureReason.STALE_SWEEP);
     }
 
     @Test

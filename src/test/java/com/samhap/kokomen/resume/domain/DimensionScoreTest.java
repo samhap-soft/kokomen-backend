@@ -30,8 +30,8 @@ class DimensionScoreTest {
 
     @Test
     void 평가_이유는_빈_리스트여도_생성된다() {
-        // Task 4의 평가결과 렌더러가 근거 없는 차원을 "(없음)"으로 렌더하는 분기를 직접 테스트하므로
-        // reason에 non-empty 검증을 걸지 않는다. minItems 강제는 툴 스키마(Task 5)와 improvements가 담당한다.
+        // 평가결과 렌더러가 근거 없는 차원을 "(없음)"으로 렌더하는 분기를 실제로 타야 하므로
+        // reason에 non-empty 검증을 걸지 않는다. minItems 강제는 tool 스키마와 improvements가 담당한다.
         assertThat(new DimensionScore(80, List.of(), List.of("보완")).reason()).isEmpty();
     }
 
