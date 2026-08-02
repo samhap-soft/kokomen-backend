@@ -21,8 +21,13 @@ import com.samhap.kokomen.global.fixture.resume.GeneratedQuestionForAnalysisFixt
 import com.samhap.kokomen.global.fixture.resume.ResumeAnalysisFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.GeneratedQuestion;
+import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
+import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.resume.domain.ResumeAnalysis;
@@ -51,12 +56,19 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
     @Autowired
     private GeneratedQuestionRepository generatedQuestionRepository;
 
+    @Autowired
+    private InterviewRepository interviewRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
+
     @Test
     void 이력서_분석_기반_면접_시작_텍스트모드_성공() throws Exception {
         // given
         Member member = saveMemberWithTokens(20);
         ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
         GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        desyncIdSequences(member, question);
         MockHttpSession session = loginSession(member);
 
         String requestJson = """
@@ -75,8 +87,8 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.interview_id").exists())
-                .andExpect(jsonPath("$.question_id").exists())
+                .andExpect(jsonPath("$.interview_id").value(2))
+                .andExpect(jsonPath("$.question_id").value(3))
                 .andExpect(jsonPath("$.root_question").value(question.getContent()))
                 .andDo(document("resume-analysis-interview-start-text-mode",
                         requestHeaders(
@@ -105,6 +117,7 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
         Member member = saveMemberWithTokens(20);
         ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
         GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        desyncIdSequences(member, question);
         MockHttpSession session = loginSession(member);
 
         String requestJson = """
@@ -123,10 +136,10 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.interview_id").exists())
-                .andExpect(jsonPath("$.question_id").exists())
+                .andExpect(jsonPath("$.interview_id").value(2))
+                .andExpect(jsonPath("$.question_id").value(3))
                 .andExpect(jsonPath("$.root_question_voice_url")
-                        .value("https://dhtg8wzvkbfxr.cloudfront.net/mock-path/1.wav"))
+                        .value("https://dhtg8wzvkbfxr.cloudfront.net/mock-path/3.wav"))
                 .andDo(document("resume-analysis-interview-start-voice-mode",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -248,7 +261,7 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void max_question_count가_범위를_벗어나면_400() throws Exception {
+    void max_question_count가_하한_미만이면_400() throws Exception {
         // given
         Member member = saveMemberWithTokens(20);
         ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
@@ -259,6 +272,29 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
         mockMvc.perform(post("/api/v1/interviews/resume-analyses/{analysisId}", analysis.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(startRequestJson(question.getId(), 1, "TEXT"))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("최대 질문 개수는 3 이상 20 이하이어야 합니다."));
+    }
+
+    /**
+     * 토큰 검증이 개수 검증보다 먼저 실행되므로, 토큰을 넉넉히 줘야 거절 이유가 상한 자체가 된다.
+     * 21문항 텍스트 모드는 21개를 요구하므로 25개를 준다.
+     */
+    @Test
+    void max_question_count가_상한_초과면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(25);
+        ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-analyses/{analysisId}", analysis.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(startRequestJson(question.getId(), 21, "TEXT"))
                         .header("Cookie", "JSESSIONID=" + session.getId())
                         .session(session)
                 )
@@ -310,6 +346,31 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
                 )
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("본인의 이력서 분석만 조회할 수 있습니다."));
+    }
+
+    /**
+     * 숫자이지만 없는 분석 ID는 조회 단계에서 걸리며, 파싱 실패와 달리 문제된 값을 메시지에 되싣는다.
+     * 두 404의 본문이 다른 것은 의도한 차이다.
+     */
+    @Test
+    void 존재하지_않는_분석_ID로_면접을_시작하면_404() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(20);
+        ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        MockHttpSession session = loginSession(member);
+        long missingAnalysisId = analysis.getId() + 999L;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/interviews/resume-analyses/{analysisId}", missingAnalysisId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(startRequestJson(question.getId(), 5, "TEXT"))
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("존재하지 않는 이력서 분석입니다. analysisId: " + missingAnalysisId));
     }
 
     @Test
@@ -380,5 +441,16 @@ class ResumeAnalysisInterviewControllerTest extends BaseControllerTest {
 
     private List<GeneratedQuestion> saveFiveQuestions(ResumeAnalysis analysis) {
         return generatedQuestionRepository.saveAll(GeneratedQuestionForAnalysisFixtureBuilder.five(analysis));
+    }
+
+    /**
+     * interview_id와 question_id가 둘 다 1로 맞물리면 두 값이 뒤바뀌어도 단정이 통과한다.
+     * 면접 1건과 질문 2건을 미리 저장해 시퀀스를 어긋내므로, 다음 면접은 2번 질문은 3번이 된다.
+     */
+    private void desyncIdSequences(Member member, GeneratedQuestion generatedQuestion) {
+        Interview seed = interviewRepository.save(
+                new Interview(member, generatedQuestion, 3, InterviewMode.TEXT));
+        questionRepository.save(new Question(seed, "시퀀스 어긋내기용 질문 1"));
+        questionRepository.save(new Question(seed, "시퀀스 어긋내기용 질문 2"));
     }
 }

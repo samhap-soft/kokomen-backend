@@ -19,9 +19,11 @@ import com.samhap.kokomen.interview.domain.GeneratedQuestion;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewType;
+import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
 import com.samhap.kokomen.interview.repository.GeneratedQuestionRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.resumeanalysis.ResumeAnalysisInterviewStartRequest;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
@@ -63,12 +65,16 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
     @Autowired
     private InterviewRepository interviewRepository;
 
+    @Autowired
+    private QuestionRepository questionRepository;
+
     @Test
     void COMPLETED_분석의_질문으로_텍스트모드_면접을_시작한다() {
         // given
         Member member = saveMemberWithTokens(20);
         ResumeAnalysis analysis = saveAnalysis(member, ResumeAnalysisState.COMPLETED);
         GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+        desyncIdSequences(member, question);
 
         // when
         InterviewStartResponse response = interviewStartFacadeService.startResumeAnalysisInterview(
@@ -78,6 +84,8 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
 
         // then
         assertThat(response).isInstanceOf(InterviewStartTextModeResponse.class);
+        assertThat(response.interviewId()).isEqualTo(2L);
+        assertThat(response.questionId()).isEqualTo(3L);
         assertThat(interviewRepository.findById(response.interviewId())).isPresent()
                 .get()
                 .satisfies(interview -> {
@@ -96,6 +104,7 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
         ResumeAnalysis notEnoughAnalysis = saveAnalysis(notEnough, ResumeAnalysisState.COMPLETED);
         GeneratedQuestion enoughQuestion = saveFiveQuestions(enoughAnalysis).get(0);
         GeneratedQuestion notEnoughQuestion = saveFiveQuestions(notEnoughAnalysis).get(0);
+        desyncIdSequences(enough, enoughQuestion);
 
         // when
         InterviewStartResponse response = interviewStartFacadeService.startResumeAnalysisInterview(
@@ -105,8 +114,10 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
 
         // then
         assertThat(response).isInstanceOf(InterviewStartVoiceModeResponse.class);
+        assertThat(response.interviewId()).isEqualTo(2L);
+        assertThat(response.questionId()).isEqualTo(3L);
         assertThat(((InterviewStartVoiceModeResponse) response).rootQuestionVoiceUrl())
-                .isEqualTo("https://dhtg8wzvkbfxr.cloudfront.net/mock-path/" + response.questionId() + ".wav");
+                .isEqualTo("https://dhtg8wzvkbfxr.cloudfront.net/mock-path/3.wav");
         assertThat(interviewRepository.findById(response.interviewId())).isPresent()
                 .get()
                 .satisfies(interview -> assertThat(interview.getInterviewMode()).isEqualTo(InterviewMode.VOICE));
@@ -159,6 +170,27 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
         Member owner = saveMemberWithTokens(20);
         Member other = saveMemberWithTokens(20);
         ResumeAnalysis analysis = saveAnalysis(owner, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
+
+        // when & then
+        assertThatThrownBy(() -> interviewStartFacadeService.startResumeAnalysisInterview(
+                analysis.getId(),
+                new ResumeAnalysisInterviewStartRequest(question.getId(), 5, InterviewMode.TEXT),
+                new MemberAuth(other.getId())))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("본인의 이력서 분석만 조회할 수 있습니다.");
+    }
+
+    /**
+     * 소유권 검증이 상태 검증보다 먼저 와야 한다. 순서가 뒤바뀌면 남의 분석에 대해서도
+     * "질문 생성이 완료되지 않았습니다."가 나가면서 소유하지 않은 분석의 진행 상태가 드러난다.
+     */
+    @Test
+    void 남의_질문미완료_분석은_상태가_아니라_소유권으로_먼저_거절된다() {
+        // given
+        Member owner = saveMemberWithTokens(20);
+        Member other = saveMemberWithTokens(20);
+        ResumeAnalysis analysis = saveAnalysis(owner, ResumeAnalysisState.EVALUATION_COMPLETED);
         GeneratedQuestion question = saveFiveQuestions(analysis).get(0);
 
         // when & then
@@ -317,5 +349,16 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
 
     private List<GeneratedQuestion> saveFiveQuestions(ResumeAnalysis analysis) {
         return generatedQuestionRepository.saveAll(GeneratedQuestionForAnalysisFixtureBuilder.five(analysis));
+    }
+
+    /**
+     * interview_id와 question_id가 둘 다 1로 맞물리면 두 값이 뒤바뀌어도 단정이 통과한다.
+     * 면접 1건과 질문 2건을 미리 저장해 시퀀스를 어긋내므로, 다음 면접은 2번 질문은 3번이 된다.
+     */
+    private void desyncIdSequences(Member member, GeneratedQuestion generatedQuestion) {
+        Interview seed = interviewRepository.save(
+                new Interview(member, generatedQuestion, 3, InterviewMode.TEXT));
+        questionRepository.save(new Question(seed, "시퀀스 어긋내기용 질문 1"));
+        questionRepository.save(new Question(seed, "시퀀스 어긋내기용 질문 2"));
     }
 }
