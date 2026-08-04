@@ -47,7 +47,7 @@ open-ai:
   feedback-temperature: 0.5
 aws:
   bedrock:
-    model-id: apac.anthropic.claude-sonnet-4-20250514-v1:0
+    model-id: us.anthropic.claude-sonnet-4-6
     proceed-max-tokens: 2048
     end-max-tokens: 4096
     answer-feedback-max-tokens: 1024
