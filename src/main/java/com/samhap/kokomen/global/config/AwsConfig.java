@@ -26,7 +26,6 @@ public class AwsConfig {
                         .socketTimeout(java.time.Duration.ofSeconds(60))
                 )
                 .region(Region.US_EAST_1)
-                .region(Region.AP_NORTHEAST_2)
                 .build();
     }
 
