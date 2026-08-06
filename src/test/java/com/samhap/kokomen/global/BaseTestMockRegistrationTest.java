@@ -14,11 +14,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 class BaseTestMockRegistrationTest extends BaseTest {
 
     @Test
-    void 이력서_분석_LLM_클라이언트_4개가_목으로_등록된다() {
+    void 이력서_분석_LLM_클라이언트_2개가_목으로_등록된다() {
         assertThat(Mockito.mockingDetails(resumeAnalysisEvaluationBedrockClient).isMock()).isTrue();
-        assertThat(Mockito.mockingDetails(resumeAnalysisEvaluationGptClient).isMock()).isTrue();
         assertThat(Mockito.mockingDetails(resumeAnalysisQuestionBedrockClient).isMock()).isTrue();
-        assertThat(Mockito.mockingDetails(resumeAnalysisQuestionGptClient).isMock()).isTrue();
     }
 
     // 비동기 워커 목은 BaseTest에 단일 선언되어 있어야 한다. 하위 클래스가 같은 타입을 다시 선언하면
@@ -64,7 +62,7 @@ class BaseTestMockRegistrationTest extends BaseTest {
                 .count();
 
         assertAll(
-                () -> assertThat(mocks).isEqualTo(15),
+                () -> assertThat(mocks).isEqualTo(13),
                 () -> assertThat(spies).isEqualTo(2)
         );
     }
