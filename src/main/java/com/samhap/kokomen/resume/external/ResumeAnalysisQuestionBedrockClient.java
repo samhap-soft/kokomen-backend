@@ -9,6 +9,7 @@ import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionsFlatRespons
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
@@ -22,7 +23,7 @@ public class ResumeAnalysisQuestionBedrockClient {
     private final BedrockConverseProperties properties;
 
     public ResumeAnalysisQuestionBedrockClient(
-            BedrockConverseClient converseClient,
+            @Qualifier("resumeAnalysisBedrockConverseClient") BedrockConverseClient converseClient,
             BedrockConverseProperties properties
     ) {
         this.converseClient = converseClient;

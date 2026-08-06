@@ -5,6 +5,7 @@ import com.samhap.kokomen.global.exception.ExternalApiException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock;
@@ -20,6 +21,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 @Slf4j
+@Primary
 @Component
 public class BedrockConverseClient {
 
