@@ -60,11 +60,11 @@ public class AwsConfig {
 
     @Bean
     public BedrockConverseClient resumeAnalysisBedrockConverseClient(
-            @Qualifier("resumeAnalysisBedrockRuntimeClient") BedrockRuntimeClient bedrockRuntimeClient,
+            @Qualifier("resumeAnalysisBedrockRuntimeClient") BedrockRuntimeClient resumeAnalysisBedrockRuntimeClient,
             BedrockConverseProperties properties,
             ObjectMapper objectMapper
     ) {
-        return new BedrockConverseClient(bedrockRuntimeClient, properties, objectMapper);
+        return new BedrockConverseClient(resumeAnalysisBedrockRuntimeClient, properties, objectMapper);
     }
 
     @Bean

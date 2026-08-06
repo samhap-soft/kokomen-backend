@@ -69,6 +69,14 @@ JD 제공 시 5차원 × 4필드(`_reasoning` 산문 + `_reason`/`_improvements`
 안전하게 들어가므로, 아직 실행 중인 행이 스윕에 `STALE_SWEEP`으로 종단되는 경로가
 열리지 않는다.
 
+이 210초 여유는 풀이 포화되지 않은 경우에만 성립한다. `resumeAnalysisExecutor`는
+`queueCapacity` 40 / `corePoolSize`·`maxPoolSize` 60이고, `sweepStalePending`은
+큐 대기 시간이 아니라 `created_at`(제출 이전, 행 저장 시점에 찍힌다) 기준으로 판정하므로
+큐 대기 + 390초가 600초를 넘을 수 있다. 이 경우도 정합성은 깨지지 않는다 — 스위퍼가 먼저
+`EVALUATION_FAILED`/`STALE_SWEEP`으로 종단시키면, 늦게 완주한 워커의 `completeEvaluation`이
+`state != PENDING` 가드에 걸려 `false`를 반환해 질문 단계로 넘어가지 않고 과금도 되지 않는다.
+비용은 낭비된 Bedrock 호출 비용과, 실제로는 성공한 호출이 실패로 표시되는 것뿐이다.
+
 `maxConnections`는 전용 빈에도 60을 준다. `resumeAnalysisExecutor`가
 core=max=60이므로 커넥션 풀이 워커 수와 일치해야 하고, 인터뷰 풀과 분리되어야
 서로 고갈시키지 않는다.

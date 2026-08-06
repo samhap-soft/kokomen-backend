@@ -222,9 +222,9 @@ class ResumeAnalysisFlatSchemaTest {
     }
 
     /**
-     * 두 provider가 동일하게 행동하는 근거: Bedrock 클라이언트는 parseToolInput 후, GPT 클라이언트는
-     * readValue 후 각각 같은 toEvaluation을 호출한다. 응답 변형 방어가 그 메서드 한 곳에 있으므로
-     * provider별로 갈리지 않는다. GPT 경로는 ExternalApiException을 재던져 이 구체적 메시지를 보존한다.
+     * jdProvided=true인데 jdFitScore가 누락되면 DimensionScore.score(primitive int)의 언박싱에서
+     * NPE가 발생하는 경로다. toEvaluation의 catch(Exception)이 그 NPE를 잡아 ExternalApiException으로
+     * 통일하는지, 즉 catch(ExternalApiException) 재던짐 이전에 이 구체적 실패가 먼저 걸리는지를 검증한다.
      */
     @Test
     void JD가_제공됐는데_JD적합성_점수가_누락되면_ExternalApiException이_발생한다() throws Exception {

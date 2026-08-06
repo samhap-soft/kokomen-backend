@@ -41,7 +41,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 /**
  * 신규 이력서 분석 LLM 콜의 배선(모델 파라미터·toolChoice·캐시포인트·system/user 메시지 구성)을 Spring 기동 없이 검증한다.
  * BedrockConverseClient는 실물로 생성하고 AWS SDK 레벨(BedrockRuntimeClient)만 목으로 잡는다.
- * system 메시지가 ResumeAnalysisSystemMessages 단일 소스에서 나오는지도 이 파일이 단정한다.
+ * ResumeAnalysisBedrockRequestFactory의 createEvaluationSystem/createQuestionGenerationSystem은
+ * ResumeAnalysisSystemMessages를 그대로 감싸는 3줄짜리 래퍼라, 아래 두 "단일_소스" 테스트는 독립된
+ * 두 렌더러를 비교하는 게 아니라 누군가 그 래퍼 안에 문자열을 인라인해 넣는 실수만 잡아낸다.
  */
 class ResumeAnalysisWiringTest {
 

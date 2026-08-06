@@ -84,6 +84,19 @@ class ResumeAnalysisBedrockWiringTest {
     }
 
     /**
+     * 위 인스턴스 비교만으로는 부족하다: resumeAnalysisBedrockConverseClient의 @Qualifier가 지워져도
+     * 두 BedrockConverseClient 객체 자체는 여전히 서로 다른 인스턴스이므로 그 검증은 통과해버린다.
+     * 실제로 60초 공용 런타임 클라이언트로 되돌아갔는지는 converse 클라이언트가 내부에 들고 있는
+     * bedrockRuntimeClient 필드가 전용 런타임 빈을 가리키는지를 직접 봐야 드러난다.
+     */
+    @Test
+    void 이력서_전용_converse_클라이언트는_전용_런타임_클라이언트를_내부에_들고있다() {
+        contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(
+                context.getBean("resumeAnalysisBedrockConverseClient"), "bedrockRuntimeClient"))
+                .isSameAs(context.getBean("resumeAnalysisBedrockRuntimeClient")));
+    }
+
+    /**
      * BedrockConverseClient는 @Component라 컴포넌트 스캔 없이는 등록되지 않으므로 여기서 직접 빈으로
      * 올린다. @Primary를 붙여 프로덕션의 컴포넌트와 같은 조건을 만든다 — 그래야 이력서 클라이언트가
      * @Qualifier 없이도 통과해버리는 위양성이 생기지 않는다.

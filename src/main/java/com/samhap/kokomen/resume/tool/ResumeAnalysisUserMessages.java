@@ -1,7 +1,7 @@
 package com.samhap.kokomen.resume.tool;
 
 /**
- * 신규 이력서 분석 콜의 user 메시지 단일 소스. Bedrock과 GPT가 같은 문자열을 쓰도록 여기서만 조립한다.
+ * 이력서 분석 Bedrock 콜의 user 메시지 단일 소스. 평가·질문 두 콜이 모두 여기서만 조립한다.
  * JD 미제공 시 <job_requirements> 블록 자체를 넣지 않는다(JD_POLICY_ABSENT가 "제공되지 않았다"고 선언하므로
  * 빈 태그를 보내면 프롬프트와 입력이 어긋난다).
  */

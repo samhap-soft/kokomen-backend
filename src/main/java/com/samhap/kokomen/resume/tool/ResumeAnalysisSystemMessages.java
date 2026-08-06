@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 이력서 분석(5지표) 시스템 메시지의 GPT·Bedrock 공용 단일 소스.
+ * 이력서 분석(5지표) Bedrock 시스템 메시지의 단일 소스.
  * {@code questionGeneration()}은 의도적으로 무인자다: 평가 결과는 user 메시지에만 주입하며,
  * system을 요청별로 바꾸면 Bedrock 캐시 프리픽스가 요청마다 갈려 캐시가 전면 무효화된다.
  */

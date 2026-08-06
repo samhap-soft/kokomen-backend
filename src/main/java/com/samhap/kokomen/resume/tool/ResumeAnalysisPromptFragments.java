@@ -2,8 +2,7 @@ package com.samhap.kokomen.resume.tool;
 
 /**
  * 이력서 분석(5지표) 프롬프트 조각의 정본이자 유일본. 평가·질문 두 시스템 메시지가 모두 이 클래스에서
- * 조립되며, GPT와 Bedrock이 같은 문자열을 쓴다(ResumeAnalysisWiringTest가 강제).
- * 조각을 고치면 두 프로바이더의 프롬프트가 함께 바뀐다.
+ * 조립된다. 조각을 고치면 평가·질문 두 시스템 메시지의 프롬프트가 함께 바뀐다.
  */
 public final class ResumeAnalysisPromptFragments {
 
