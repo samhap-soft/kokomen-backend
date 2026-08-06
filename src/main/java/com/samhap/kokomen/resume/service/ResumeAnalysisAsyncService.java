@@ -6,10 +6,7 @@ import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisSourceText;
 import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
-import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationGptClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
-import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionGptClient;
-import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisEvaluationResultRenderer;
@@ -21,8 +18,7 @@ import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 /**
- * resumeAnalysisExecutor에 제출되는 단일 태스크. 평가 콜과 질문 콜을 같은 스레드에서 순차 실행하며,
- * GPT 폴백도 재제출이 아니라 같은 스레드 내 순차 호출이다.
+ * resumeAnalysisExecutor에 제출되는 단일 태스크. 평가 콜과 질문 콜을 같은 스레드에서 순차 실행한다.
  * hop마다 태스크를 다시 제출하면 hop 간 예외 전파가 끊기고, 뒤 hop이 rejection되면 행이 영구 PENDING에 남는다.
  *
  * <p>두 hop을 private가 아니라 패키지 가시성으로 두는 근거는 runQuestionHop이 평가는 성공했지만 질문만 실패한
@@ -50,27 +46,15 @@ public class ResumeAnalysisAsyncService {
      */
     private static final int PERSISTENCE_RETRY_LIMIT = 1;
 
-    /**
-     * 태스크 로컬 플래그. 평가 콜에서 Bedrock이 죽었다면 질문 콜은 소켓 타임아웃을 다시 태우지 않고 GPT로 직행한다.
-     * 서비스는 싱글턴이므로 인스턴스 필드로 두면 동시 실행되는 다른 분석의 판단을 덮어쓴다.
-     */
-    private static final ThreadLocal<Boolean> BEDROCK_UNHEALTHY = new ThreadLocal<>();
-
     private final ResumeAnalysisService resumeAnalysisService;
     private final ResumeAnalysisStateService resumeAnalysisStateService;
     private final ResumeAnalysisEvaluationBedrockClient evaluationBedrockClient;
-    private final ResumeAnalysisEvaluationGptClient evaluationGptClient;
     private final ResumeAnalysisQuestionBedrockClient questionBedrockClient;
-    private final ResumeAnalysisQuestionGptClient questionGptClient;
 
     public void run(ResumeAnalysisCommand command) {
-        try {
-            ResumeAnalysisEvaluation evaluation = runEvaluationHop(command);
-            if (evaluation != null) {
-                runQuestionHop(command, evaluation);
-            }
-        } finally {
-            BEDROCK_UNHEALTHY.remove();
+        ResumeAnalysisEvaluation evaluation = runEvaluationHop(command);
+        if (evaluation != null) {
+            runQuestionHop(command, evaluation);
         }
     }
 
@@ -87,18 +71,11 @@ public class ResumeAnalysisAsyncService {
         try {
             evaluation = evaluationBedrockClient.evaluate(command);
         } catch (Exception bedrockException) {
-            log.error("Bedrock 이력서 분석 평가 실패, GPT 폴백 - analysisId: {}, exception: {}",
+            log.error("Bedrock 이력서 분석 평가 실패 - analysisId: {}, exception: {}",
                     command.analysisId(), bedrockException.getClass().getName(), bedrockException);
-            BEDROCK_UNHEALTHY.set(Boolean.TRUE);
-            ResumeAnalysisFailureReason failureReason = classifyEvaluationFailure(bedrockException);
-            try {
-                evaluation = evaluationGptClient.evaluate(command);
-            } catch (Exception gptException) {
-                log.error("GPT 이력서 분석 평가 폴백 실패 - analysisId: {}, exception: {}",
-                        command.analysisId(), gptException.getClass().getName(), gptException);
-                resumeAnalysisStateService.failEvaluation(command.analysisId(), failureReason);
-                return null;
-            }
+            resumeAnalysisStateService.failEvaluation(
+                    command.analysisId(), classifyEvaluationFailure(bedrockException));
+            return null;
         }
         try {
             if (!completeEvaluationWithRetry(command.analysisId(), evaluation)) {
@@ -189,15 +166,13 @@ public class ResumeAnalysisAsyncService {
                 ResumeAnalysisEvaluationResultRenderer.render(evaluation, command.jdProvided()));
         List<GeneratedQuestionDto> questions;
         try {
-            questions = generateQuestionsWithFallback(questionCommand).questions();
+            questions = questionBedrockClient.generateQuestions(questionCommand).questions();
         } catch (Exception e) {
             log.error("이력서 분석 질문 생성 실패 - analysisId: {}, exception: {}",
                     command.analysisId(), e.getClass().getName(), e);
             resumeAnalysisStateService.failQuestions(
                     command.analysisId(), ResumeAnalysisFailureReason.QUESTION_LLM);
             return;
-        } finally {
-            BEDROCK_UNHEALTHY.remove();
         }
         try {
             if (!completeQuestionsWithRetry(command.analysisId(), questions)) {
@@ -208,20 +183,6 @@ public class ResumeAnalysisAsyncService {
                     command.analysisId(), e.getClass().getName(), e);
             resumeAnalysisStateService.failQuestions(
                     command.analysisId(), ResumeAnalysisFailureReason.PERSISTENCE);
-        }
-    }
-
-    private ResumeAnalysisQuestionResult generateQuestionsWithFallback(
-            ResumeAnalysisQuestionCallCommand command) {
-        if (Boolean.TRUE.equals(BEDROCK_UNHEALTHY.get())) {
-            return questionGptClient.generateQuestions(command);
-        }
-        try {
-            return questionBedrockClient.generateQuestions(command);
-        } catch (Exception e) {
-            log.error("Bedrock 이력서 분석 질문 생성 실패, GPT 폴백 - analysisId: {}, exception: {}",
-                    command.analysisId(), e.getClass().getName(), e);
-            return questionGptClient.generateQuestions(command);
         }
     }
 

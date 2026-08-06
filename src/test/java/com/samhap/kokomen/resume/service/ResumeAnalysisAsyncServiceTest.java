@@ -37,9 +37,7 @@ import com.samhap.kokomen.resume.domain.ResumeAnalysisFailureReason;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisJobInput;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisState;
 import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
-import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationGptClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
-import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionGptClient;
 import com.samhap.kokomen.resume.repository.ResumeAnalysisRepository;
 import com.samhap.kokomen.resume.service.dto.ExtractedContents;
 import com.samhap.kokomen.resume.service.dto.GuestInfo;
@@ -103,25 +101,21 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
     private ThreadPoolTaskExecutor resumeAnalysisExecutor;
 
     private ResumeAnalysisEvaluationBedrockClient evaluationBedrockClient;
-    private ResumeAnalysisEvaluationGptClient evaluationGptClient;
     private ResumeAnalysisQuestionBedrockClient questionBedrockClient;
-    private ResumeAnalysisQuestionGptClient questionGptClient;
     private ResumeAnalysisAsyncService asyncService;
 
     /**
-     * 4개 LLM 클라이언트만 평범한 Mockito 목으로 두고 서비스를 수동 조립한다. BaseTest에 목 빈을 추가하지 않으므로
+     * 2개 Bedrock 클라이언트만 평범한 Mockito 목으로 두고 서비스를 수동 조립한다. BaseTest에 목 빈을 추가하지 않으므로
      * 컨텍스트 fork가 늘지 않고, InOrder 검증도 가능하다. 필드명을 asyncService로 둔 것은 BaseTest에 같은 타입의
      * 목 필드가 생겨도 이 수동 조립 인스턴스가 가려지지 않게 하기 위해서다.
      */
     @BeforeEach
     void setUpAsyncService() {
         evaluationBedrockClient = mock(ResumeAnalysisEvaluationBedrockClient.class);
-        evaluationGptClient = mock(ResumeAnalysisEvaluationGptClient.class);
         questionBedrockClient = mock(ResumeAnalysisQuestionBedrockClient.class);
-        questionGptClient = mock(ResumeAnalysisQuestionGptClient.class);
         asyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, resumeAnalysisStateService,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
     }
 
     @Test
@@ -188,12 +182,10 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
 
     @Test
     void 평가가_실패하면_EVALUATION_FAILED이고_질문_콜은_호출되지_않는다() {
-        // given
+        // given - 폴백이 없으므로 Bedrock 실패 하나가 곧 종단이다
         Long analysisId = saveGuestAnalysis("11.22.33.83").getId();
         willThrow(new ExternalApiException("Bedrock 호출 실패"))
                 .given(evaluationBedrockClient).evaluate(any(ResumeAnalysisCommand.class));
-        willThrow(new ExternalApiException("GPT 호출 실패"))
-                .given(evaluationGptClient).evaluate(any(ResumeAnalysisCommand.class));
 
         // when
         asyncService.run(command(analysisId, null, false));
@@ -207,7 +199,6 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 () -> assertThat(found.getTotalScore()).isNull()
         );
         verify(questionBedrockClient, never()).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
-        verify(questionGptClient, never()).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
     }
 
     @Test
@@ -220,14 +211,10 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 new BedrockConverseClient(bedrockRuntimeClient, bedrockConverseProperties, objectMapper);
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
                 .willReturn(ResumeAnalysisConverseResponseFixtureBuilder.builder().buildTruncated());
-        willThrow(new ExternalApiException("GPT 호출 실패"))
-                .given(evaluationGptClient).evaluate(any(ResumeAnalysisCommand.class));
         ResumeAnalysisAsyncService bedrockWiredAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, resumeAnalysisStateService,
                 new ResumeAnalysisEvaluationBedrockClient(converseClient, bedrockConverseProperties),
-                evaluationGptClient,
-                new ResumeAnalysisQuestionBedrockClient(converseClient, bedrockConverseProperties),
-                questionGptClient);
+                new ResumeAnalysisQuestionBedrockClient(converseClient, bedrockConverseProperties));
 
         // when
         bedrockWiredAsyncService.run(command(analysisId, null, false));
@@ -249,8 +236,6 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
         willThrow(new ExternalApiException("Bedrock 질문 생성 실패"))
                 .given(questionBedrockClient).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
-        willThrow(new ExternalApiException("GPT 질문 생성 실패"))
-                .given(questionGptClient).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
 
         // when
         asyncService.run(command(analysisId, null, false));
@@ -265,53 +250,6 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 () -> assertThat(found.getSoftSkillsReason()).containsExactly("근거1", "근거2"),
                 () -> assertThat(generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysisId))
                         .isEmpty()
-        );
-    }
-
-    @Test
-    void Bedrock_평가가_실패하면_GPT_폴백으로_완료되고_질문_콜은_Bedrock을_건너뛴다() {
-        // given
-        Long analysisId = saveGuestAnalysis("11.22.33.86").getId();
-        willThrow(new ExternalApiException("Bedrock 호출 실패"))
-                .given(evaluationBedrockClient).evaluate(any(ResumeAnalysisCommand.class));
-        given(evaluationGptClient.evaluate(any(ResumeAnalysisCommand.class)))
-                .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
-        given(questionGptClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
-                .willReturn(ResumeAnalysisQuestionResultFixture.five());
-
-        // when
-        asyncService.run(command(analysisId, null, false));
-
-        // then
-        ResumeAnalysis found = resumeAnalysisRepository.findById(analysisId).orElseThrow();
-        assertAll(
-                () -> assertThat(found.getState()).isEqualTo(ResumeAnalysisState.COMPLETED),
-                () -> assertThat(found.getTotalScore()).isEqualTo(78)
-        );
-        verify(questionBedrockClient, never()).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
-        verify(questionGptClient).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
-    }
-
-    @Test
-    void Bedrock_질문생성이_실패하면_GPT_폴백으로_질문이_완료된다() {
-        // given
-        Long analysisId = saveGuestAnalysis("11.22.33.87").getId();
-        given(evaluationBedrockClient.evaluate(any(ResumeAnalysisCommand.class)))
-                .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
-        willThrow(new ExternalApiException("Bedrock 질문 생성 실패"))
-                .given(questionBedrockClient).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
-        given(questionGptClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
-                .willReturn(ResumeAnalysisQuestionResultFixture.five());
-
-        // when
-        asyncService.run(command(analysisId, null, false));
-
-        // then
-        assertAll(
-                () -> assertThat(resumeAnalysisRepository.findById(analysisId).orElseThrow().getState())
-                        .isEqualTo(ResumeAnalysisState.COMPLETED),
-                () -> assertThat(generatedQuestionRepository.findByAnalysisIdOrderByQuestionOrder(analysisId))
-                        .hasSize(5)
         );
     }
 
@@ -407,7 +345,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         stateMockedAsyncService.run(command(analysisId, 7L, false));
@@ -453,7 +391,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         stateMockedAsyncService.runQuestionHop(command(analysisId, 7L, false),
@@ -477,7 +415,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         ResumeAnalysisEvaluation returned =
@@ -502,7 +440,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         ResumeAnalysisEvaluation returned =
@@ -526,7 +464,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisEvaluationFixture.withoutJd());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         ResumeAnalysisEvaluation returned =
@@ -547,7 +485,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
         ResumeAnalysisStateService stateServiceMock = mock(ResumeAnalysisStateService.class);
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when - catchThrowable로 받아 두어야 예외 단정이 먼저 끊기지 않고 과금 미발생까지 검증된다
         Throwable thrown = catchThrowable(
@@ -572,7 +510,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
@@ -595,7 +533,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
@@ -617,7 +555,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
         ResumeAnalysisAsyncService stateMockedAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, stateServiceMock,
-                evaluationBedrockClient, evaluationGptClient, questionBedrockClient, questionGptClient);
+                evaluationBedrockClient, questionBedrockClient);
 
         // when
         stateMockedAsyncService.runQuestionHop(command(analysisId, null, false),
@@ -667,7 +605,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
 
     @Test
     void 질문_재시도는_readCommand로_복원한_커맨드를_쓰므로_토큰이_다시_차감되지_않는다() {
-        // given - 첫 실행은 평가 성공 + 질문 2콜 모두 실패로 QUESTION_FAILED를 만든다
+        // given - 첫 실행은 평가 성공 + 질문 콜 실패로 QUESTION_FAILED를 만든다
         Member member = saveMemberWithTokens(20);
         Long analysisId = resumeAnalysisService.saveAnalysis(member.getId(), GuestInfo.none(),
                 MaterialRefs.empty(), CONTENTS, JOB_INPUT, true).getId();
@@ -676,8 +614,6 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
         given(questionBedrockClient.generateQuestions(any(ResumeAnalysisQuestionCallCommand.class)))
                 .willThrow(new ExternalApiException("Bedrock 질문 생성 실패"))
                 .willReturn(ResumeAnalysisQuestionResultFixture.five());
-        willThrow(new ExternalApiException("GPT 질문 생성 실패"))
-                .given(questionGptClient).generateQuestions(any(ResumeAnalysisQuestionCallCommand.class));
         asyncService.run(command(analysisId, member.getId(), false));
         resumeAnalysisStateService.restoreForQuestionRetry(analysisId);
 
@@ -748,9 +684,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
         ResumeAnalysisAsyncService bedrockWiredAsyncService = new ResumeAnalysisAsyncService(
                 resumeAnalysisService, resumeAnalysisStateService,
                 new ResumeAnalysisEvaluationBedrockClient(converseClient, bedrockConverseProperties),
-                evaluationGptClient,
-                new ResumeAnalysisQuestionBedrockClient(converseClient, bedrockConverseProperties),
-                questionGptClient);
+                new ResumeAnalysisQuestionBedrockClient(converseClient, bedrockConverseProperties));
 
         // when
         bedrockWiredAsyncService.run(command(analysisId, null, false));
