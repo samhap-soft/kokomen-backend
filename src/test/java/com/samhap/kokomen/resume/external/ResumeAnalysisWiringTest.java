@@ -48,7 +48,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
  */
 class ResumeAnalysisWiringTest {
 
-    private static final int EVALUATION_MAX_TOKENS = 10000;
+    private static final int EVALUATION_MAX_TOKENS = 16000;
     private static final int QUESTION_MAX_TOKENS = 2048;
 
     private BedrockRuntimeClient bedrockRuntimeClient;
@@ -67,7 +67,7 @@ class ResumeAnalysisWiringTest {
     }
 
     @Test
-    void 평가_콜은_temperature_0점2와_maxTokens_10000으로_호출된다() {
+    void 평가_콜은_temperature_0점2와_maxTokens_16000으로_호출된다() {
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(evaluationResponse(true));
 
         ResumeAnalysisEvaluation evaluation = evaluationBedrockClient.evaluate(command(true));
