@@ -95,8 +95,7 @@ core=max=60이므로 커넥션 풀이 워커 수와 일치해야 하고, 인터�
 
 ## 3. 재시도 전략 — 스로틀링/5xx만 1회
 
-`RetryStrategy.Builder.retryOnException`은 기존 조건에 **추가**되는 성질이라,
-기본 전략을 손봐서는 소켓 타임아웃을 재시도 대상에서 뺄 수 없다. 그래서
+`RetryStrategy.Builder.retryOnException`은 기존 조건에 **추가**되는 성질이므로,
 `StandardRetryStrategy.builder()`로 **빈 전략에서 시작**해 필요한 예외만 명시한다.
 
 ```java
@@ -111,9 +110,15 @@ StandardRetryStrategy.builder()
         .build()
 ```
 
-`SocketTimeoutException`/`SdkClientException`은 어떤 조건에도 걸리지 않으므로
-재시도 없이 즉시 종단한다. 258초 생산을 통째로 다시 하는 것은 순수 낭비이고,
-지금 발생 중인 4배 과금의 진범이다.
+소켓 타임아웃 배제는 위 세 줄의 명시적 허용 목록만으로 성립한다 — 이 목록에
+`SocketTimeoutException`/`SdkClientException`을 매칭하는 조건이 없으므로 재시도
+없이 즉시 종단한다. `ResumeAnalysisBedrockTimeoutsTest`가 이 배제를 원본
+`SocketTimeoutException`과 이를 감싼 `SdkClientException` 양쪽 경로로
+검증했다(SDK 2.31.69 기준). `useClientDefaults(false)`는 이중 안전장치로 남긴다 —
+전략 객체를 직접 두드리는 단위 테스트로는 관측되지 않는 영역, 즉 이 전략이 실제
+클라이언트 실행 파이프라인에 연결됐을 때의 동작까지는 이 테스트가 보증하지
+않는다. 258초 생산을 통째로 다시 하는 것은 순수 낭비이고, 지금 발생 중인 4배
+과금의 진범이다.
 
 위 세 예외는 생산 없이 즉시 오는 실패라 재시도가 싸고 효과가 크다. GPT 안전망이
 사라지는 만큼 이 한 겹은 남긴다.

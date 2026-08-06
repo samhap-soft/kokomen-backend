@@ -19,8 +19,12 @@ import software.amazon.awssdk.services.bedrockruntime.model.ThrottlingException;
 
 /**
  * 이력서 분석 전용 Bedrock 클라이언트의 타임아웃 상수와 재시도 전략을 검증한다.
- * 재시도 전략 검증이 이 설계의 핵심이다 — useClientDefaults(false)가 SDK 기본 재시도 조건을
- * 실제로 차단해야만 소켓 타임아웃이 재시도 대상에서 빠진다.
+ * 재시도 전략 검증이 이 설계의 핵심이다 — retryOnExceptionOrCauseInstanceOf로 명시한 세 예외
+ * (ThrottlingException, InternalServerException, ModelTimeoutException)만 재시도 대상으로
+ * 허용되고, 소켓 타임아웃은 원본이든 SdkClientException으로 감싼 경우든 이 허용 목록에 없어
+ * 재시도되지 않음을 검증한다. useClientDefaults()가 false로 설정됐는지는 접근자 값으로만
+ * 확인한다 — 이 값이 재시도 판정에 실제로 영향을 미치는지는 전략 객체 단위 테스트로는 관측할
+ * 수 없다.
  */
 class ResumeAnalysisBedrockTimeoutsTest {
 
