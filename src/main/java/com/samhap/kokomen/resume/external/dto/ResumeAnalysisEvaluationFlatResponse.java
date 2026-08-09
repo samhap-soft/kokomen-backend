@@ -35,8 +35,8 @@ public record ResumeAnalysisEvaluationFlatResponse(
      * 구분할 수 없으므로 요청 측 사실을 전달해야 한다.
      * 도구 스키마의 required는 모델에 대한 지시일 뿐 서버가 강제하는 계약이 아니므로, 구조적으로 유효한 JSON이
      * 여전히 _score 필드를 누락할 수 있다. DimensionScore.score는 primitive int라 그 경우 언박싱 NPE가
-     * 발생하므로 여기서 잡아 ExternalApiException으로 통일한다 — Bedrock·GPT 두 provider 모두 이 메서드를
-     * 통해서만 응답을 해석하므로, 한 곳에서 잡으면 두 provider가 동일하게 행동한다.
+     * 발생하므로 여기서 잡아 ExternalApiException으로 통일한다. ResumeAnalysisEvaluationBedrockClient가
+     * parseToolInput 이후 이 메서드를 통해서만 Bedrock 응답을 해석하므로, 응답 변형 방어가 이 한 곳에 있다.
      */
     public ResumeAnalysisEvaluation toEvaluation(boolean jdProvided) {
         try {

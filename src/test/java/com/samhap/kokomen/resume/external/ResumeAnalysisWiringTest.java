@@ -15,20 +15,17 @@ import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisBedrockRequestFactory;
-import com.samhap.kokomen.resume.external.dto.ResumeAnalysisEvaluationGptRequest;
-import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionGptRequest;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisCommand;
 import com.samhap.kokomen.resume.service.dto.ResumeAnalysisQuestionCallCommand;
+import com.samhap.kokomen.resume.tool.ResumeAnalysisSystemMessages;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.web.client.RestClient;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
@@ -44,11 +41,13 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 /**
  * 신규 이력서 분석 LLM 콜의 배선(모델 파라미터·toolChoice·캐시포인트·system/user 메시지 구성)을 Spring 기동 없이 검증한다.
  * BedrockConverseClient는 실물로 생성하고 AWS SDK 레벨(BedrockRuntimeClient)만 목으로 잡는다.
- * system 메시지가 GPT·Bedrock 양쪽에서 같은 단일 소스에서 나오는지도 이 파일이 단정한다.
+ * ResumeAnalysisBedrockRequestFactory의 createEvaluationSystem/createQuestionGenerationSystem은
+ * ResumeAnalysisSystemMessages를 그대로 감싸는 3줄짜리 래퍼라, 아래 두 "단일_소스" 테스트는 독립된
+ * 두 렌더러를 비교하는 게 아니라 누군가 그 래퍼 안에 문자열을 인라인해 넣는 실수만 잡아낸다.
  */
 class ResumeAnalysisWiringTest {
 
-    private static final int EVALUATION_MAX_TOKENS = 10000;
+    private static final int EVALUATION_MAX_TOKENS = 16000;
     private static final int QUESTION_MAX_TOKENS = 2048;
 
     private BedrockRuntimeClient bedrockRuntimeClient;
@@ -67,7 +66,7 @@ class ResumeAnalysisWiringTest {
     }
 
     @Test
-    void 평가_콜은_temperature_0점2와_maxTokens_10000으로_호출된다() {
+    void 평가_콜은_temperature_0점2와_maxTokens_16000으로_호출된다() {
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(evaluationResponse(true));
 
         ResumeAnalysisEvaluation evaluation = evaluationBedrockClient.evaluate(command(true));
@@ -201,83 +200,22 @@ class ResumeAnalysisWiringTest {
     }
 
     @Test
-    void 평가_user_메시지는_Bedrock과_GPT가_단일_소스에서_나온다() {
-        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(evaluationResponse(true));
-
-        evaluationBedrockClient.evaluate(command(true));
-
-        String gptUserPrompt = ResumeAnalysisEvaluationGptRequest.create(command(true), 0.2)
-                .messages().get(1).content();
-        assertThat(userText(captureRequests(1).get(0))).isEqualTo(gptUserPrompt);
-    }
-
-    @Test
-    void 질문_user_메시지는_Bedrock과_GPT가_단일_소스에서_나온다() {
-        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(questionsResponse());
-
-        questionBedrockClient.generateQuestions(questionCommand());
-
-        String gptUserPrompt = ResumeAnalysisQuestionGptRequest.create(questionCommand(), 0.7)
-                .messages().get(1).content();
-        assertThat(userText(captureRequests(1).get(0))).isEqualTo(gptUserPrompt);
-    }
-
-    @Test
-    void 평가_시스템_메시지는_GPT와_Bedrock이_단일_소스에서_나온다() {
+    void 평가_시스템_메시지는_단일_소스에서_나온다() {
         for (boolean jdProvided : List.of(true, false)) {
             String bedrockSystem = ResumeAnalysisBedrockRequestFactory.createEvaluationSystem(jdProvided)
                     .get(0).text();
-            String gptSystem = ResumeAnalysisEvaluationGptRequest.create(command(jdProvided), 0.2)
-                    .messages().get(0).content();
 
-            assertThat(bedrockSystem).as("jdProvided=%s의 system 메시지", jdProvided).isEqualTo(gptSystem);
+            assertThat(bedrockSystem).as("jdProvided=%s의 system 메시지", jdProvided)
+                    .isEqualTo(ResumeAnalysisSystemMessages.evaluation(jdProvided));
         }
     }
 
     @Test
-    void 질문_시스템_메시지는_GPT와_Bedrock이_단일_소스에서_나온다() {
-        String bedrockSystem = ResumeAnalysisBedrockRequestFactory.createQuestionGenerationSystem().get(0).text();
-        String gptSystem = ResumeAnalysisQuestionGptRequest.create(questionCommand(), 0.7)
-                .messages().get(0).content();
+    void 질문_시스템_메시지는_단일_소스에서_나온다() {
+        String bedrockSystem = ResumeAnalysisBedrockRequestFactory.createQuestionGenerationSystem()
+                .get(0).text();
 
-        assertThat(bedrockSystem).isEqualTo(gptSystem);
-    }
-
-    @Test
-    void GPT_평가_요청은_평가_도구를_강제하고_temperature를_전달한다() {
-        ResumeAnalysisEvaluationGptRequest request = ResumeAnalysisEvaluationGptRequest.create(command(true), 0.2);
-
-        assertThat(request.toolChoice().function().name()).isEqualTo(ResumeAnalysisToolNames.EVALUATION);
-        assertThat(request.tools().get(0).function().name()).isEqualTo(ResumeAnalysisToolNames.EVALUATION);
-        assertThat(request.temperature()).isEqualTo(0.2);
-        assertThat(request.messages().get(0).role()).isEqualTo("system");
-        assertThat(request.messages().get(1).role()).isEqualTo("user");
-    }
-
-    @Test
-    void GPT_질문_요청은_질문_도구를_강제한다() {
-        ResumeAnalysisQuestionGptRequest request = ResumeAnalysisQuestionGptRequest.create(questionCommand(), 0.7);
-
-        assertThat(request.toolChoice().function().name())
-                .isEqualTo(ResumeAnalysisToolNames.QUESTION_GENERATION);
-        assertThat(request.tools().get(0).function().name())
-                .isEqualTo(ResumeAnalysisToolNames.QUESTION_GENERATION);
-        assertThat(request.temperature()).isEqualTo(0.7);
-    }
-
-    @Test
-    void GPT_클라이언트는_커넥트_3초_리드_90초_타임아웃을_명시한다() {
-        assertThat(ResumeAnalysisGptTimeouts.CONNECT_TIMEOUT).isEqualTo(Duration.ofSeconds(3));
-        assertThat(ResumeAnalysisGptTimeouts.READ_TIMEOUT).isEqualTo(Duration.ofSeconds(90));
-    }
-
-    @Test
-    void GPT_타임아웃_적용은_주입받은_빌더를_변형하지_않는다() {
-        RestClient.Builder builder = RestClient.builder();
-
-        RestClient.Builder applied = ResumeAnalysisGptTimeouts.apply(builder);
-
-        assertThat(applied).isNotNull().isNotSameAs(builder);
+        assertThat(bedrockSystem).isEqualTo(ResumeAnalysisSystemMessages.questionGeneration());
     }
 
     private ResumeAnalysisCommand command(boolean jdProvided) {
