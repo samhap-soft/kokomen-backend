@@ -702,7 +702,7 @@ class ResumeAnalysisAsyncServiceTest extends BaseTest {
                         .isEqualTo(ResumeAnalysisToolNames.QUESTION_GENERATION),
                 () -> assertThat(evaluationRequest.inferenceConfig().maxTokens()).isEqualTo(16_000),
                 () -> assertThat(evaluationRequest.inferenceConfig().temperature()).isEqualTo(0.2f),
-                () -> assertThat(questionRequest.inferenceConfig().maxTokens()).isEqualTo(2_048),
+                () -> assertThat(questionRequest.inferenceConfig().maxTokens()).isEqualTo(10_000),
                 () -> assertThat(questionRequest.inferenceConfig().temperature()).isEqualTo(0.7f),
                 () -> assertThat(userTextOf(evaluationRequest)).doesNotContain("<evaluation_result>"),
                 () -> assertThat(userTextOf(questionRequest)).contains("<evaluation_result>"),
