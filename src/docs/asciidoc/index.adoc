@@ -12,10 +12,23 @@
 
 === 카테고리 목록 조회
 
+로그인하지 않았거나 온보딩 설문을 작성하지 않은 경우의 기본 순서다.
+
 include::{snippetsDir}/category-findCategories/http-request.adoc[]
 include::{snippetsDir}/category-findCategories/http-response.adoc[]
 include::{snippetsDir}/category-findCategories/response-fields.adoc[]
 include::{snippetsDir}/category-findCategories/curl-request.adoc[]
+
+=== 카테고리 목록 조회 - 온보딩 설문 기반 개인화 정렬
+
+온보딩 설문을 작성한 회원은 career_goal과 tech_topics를 반영한 선호 순으로 받는다.
+응답 형태는 기본 조회와 동일하며 순서만 달라진다. 개인화를 적용하려면 세션 쿠키를 함께 보내야 한다.
+
+include::{snippetsDir}/category-findCategories-personalized/http-request.adoc[]
+include::{snippetsDir}/category-findCategories-personalized/request-headers.adoc[]
+include::{snippetsDir}/category-findCategories-personalized/http-response.adoc[]
+include::{snippetsDir}/category-findCategories-personalized/response-fields.adoc[]
+include::{snippetsDir}/category-findCategories-personalized/curl-request.adoc[]
 
 == 인증/인가
 
