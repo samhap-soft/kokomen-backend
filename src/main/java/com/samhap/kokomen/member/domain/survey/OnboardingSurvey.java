@@ -89,6 +89,10 @@ public class OnboardingSurvey extends BaseEntity {
                 goalDescription);
     }
 
+    public CategoryPreference toCategoryPreference() {
+        return new CategoryPreference(careerGoal, techTopics);
+    }
+
     private void applyAnswers(CareerGoal careerGoal, List<PrepStage> prepStages, List<Category> techTopics,
                               TargetCompanyType targetCompanyType, InterviewExperience interviewExperience,
                               List<WeakPoint> weakPoints, String goalDescription) {
