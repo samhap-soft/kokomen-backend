@@ -3,8 +3,10 @@ package com.samhap.kokomen.member.controller;
 import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.member.service.MemberService;
+import com.samhap.kokomen.member.service.OnboardingSurveyService;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
+import com.samhap.kokomen.member.service.dto.OnboardingSurveySubmitRequest;
 import com.samhap.kokomen.member.service.dto.ProfileUpdateRequest;
 import com.samhap.kokomen.member.service.dto.RankingPageResponse;
 import com.samhap.kokomen.member.service.dto.RankingResponse;
@@ -18,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+    private final OnboardingSurveyService onboardingSurveyService;
 
     @GetMapping("/me/profile")
     public ResponseEntity<MyProfileResponse> findMyProfile(
@@ -43,6 +47,15 @@ public class MemberController {
             @Authentication MemberAuth memberAuth
     ) {
         memberService.updateProfile(memberAuth, profileUpdateRequest);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/me/onboarding-survey")
+    public ResponseEntity<Void> submitOnboardingSurvey(
+            @RequestBody @Valid OnboardingSurveySubmitRequest onboardingSurveySubmitRequest,
+            @Authentication MemberAuth memberAuth
+    ) {
+        onboardingSurveyService.submitOnboardingSurvey(memberAuth, onboardingSurveySubmitRequest);
         return ResponseEntity.ok().build();
     }
 

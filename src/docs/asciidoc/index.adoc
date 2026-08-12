@@ -102,6 +102,22 @@ include::{snippetsDir}/member-updateProfile-error/request-fields.adoc[]
 include::{snippetsDir}/member-updateProfile-error/http-response.adoc[]
 include::{snippetsDir}/member-updateProfile-error/curl-request.adoc[]
 
+=== 온보딩 설문 제출
+
+include::{snippetsDir}/member-submitOnboardingSurvey/http-request.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey/request-headers.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey/request-fields.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey/http-response.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey/curl-request.adoc[]
+
+=== 온보딩 설문 제출 예외
+
+include::{snippetsDir}/member-submitOnboardingSurvey-error/http-request.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey-error/request-headers.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey-error/http-response.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey-error/response-fields.adoc[]
+include::{snippetsDir}/member-submitOnboardingSurvey-error/curl-request.adoc[]
+
 === 멤버 스트릭 조회
 
 include::{snippetsDir}/member-findMemberStreaks/http-request.adoc[]
