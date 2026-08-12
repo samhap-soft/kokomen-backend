@@ -8,7 +8,7 @@ class CategoryTest {
 
     @Test
     void 기술_카테고리만_조회하면_인성_면접이_제외된다() {
-        assertThat(Category.findStackCategories())
+        assertThat(Category.readStackCategories())
                 .doesNotContain(Category.PERSONALITY)
                 .hasSize(Category.getCategories().size() - 1);
     }

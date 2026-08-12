@@ -92,6 +92,9 @@ public class OnboardingSurvey extends BaseEntity {
     private void applyAnswers(CareerGoal careerGoal, List<PrepStage> prepStages, List<Category> techTopics,
                               TargetCompanyType targetCompanyType, InterviewExperience interviewExperience,
                               List<WeakPoint> weakPoints, String goalDescription) {
+        validateRequired(careerGoal, "career_goal은 null일 수 없습니다.");
+        validateRequired(targetCompanyType, "target_company_type은 null일 수 없습니다.");
+        validateRequired(interviewExperience, "interview_experience는 null일 수 없습니다.");
         validateChoices(prepStages, "prep_stages");
         validateChoices(techTopics, "tech_topics");
         validateChoices(weakPoints, "weak_points");
@@ -107,7 +110,18 @@ public class OnboardingSurvey extends BaseEntity {
         this.goalDescription = goalDescription;
     }
 
+    private void validateRequired(Object value, String message) {
+        if (value == null) {
+            throw new BadRequestException(message);
+        }
+    }
+
     private void validateChoices(List<? extends Enum<?>> choices, String fieldName) {
+        // API 경로는 DTO의 @NotEmpty가 먼저 막지만, 엔티티도 같은 규칙을 스스로 지켜야 한다.
+        // 빈 목록은 NOT NULL JSON 컬럼을 통과해 []로 저장되므로 여기서 막지 않으면 조용히 새어 들어간다.
+        if (choices == null || choices.isEmpty()) {
+            throw new BadRequestException("%s는 최소 1개를 선택해야 합니다.".formatted(fieldName));
+        }
         // List.of()로 만든 불변 리스트는 contains(null)에서 NPE를 던지므로 stream으로 검사한다.
         if (choices.stream().anyMatch(Objects::isNull)) {
             throw new BadRequestException("%s에는 null이 포함될 수 없습니다.".formatted(fieldName));

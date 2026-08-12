@@ -20,12 +20,15 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class OnboardingSurveyServiceConcurrencyTest extends BaseTest {
+
+    private static final long AWAIT_TIMEOUT_SECONDS = 10L;
 
     @Autowired
     private OnboardingSurveyService onboardingSurveyService;
@@ -50,7 +53,9 @@ class OnboardingSurveyServiceConcurrencyTest extends BaseTest {
 
         int threadCount = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
+        // 스레드 풀이 작업을 순차 실행해버리면 락 없이도 통과하므로, 모든 스레드가 준비된 뒤 동시에 출발시킨다.
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
 
@@ -58,20 +63,23 @@ class OnboardingSurveyServiceConcurrencyTest extends BaseTest {
         for (int i = 0; i < threadCount; i++) {
             executorService.execute(() -> {
                 try {
+                    startLatch.await();
                     onboardingSurveyService.submitOnboardingSurvey(new MemberAuth(member.getId()), request);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
                 } finally {
-                    latch.countDown();
+                    doneLatch.countDown();
                 }
             });
         }
+        startLatch.countDown();
 
-        latch.await();
+        boolean finished = doneLatch.await(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         executorService.shutdown();
 
         // then
+        assertThat(finished).isTrue();
         assertThat(successCount.get()).isEqualTo(threadCount);
         assertThat(failCount.get()).isZero();
         assertThat(onboardingSurveyRepository.count()).isEqualTo(1);
@@ -95,7 +103,8 @@ class OnboardingSurveyServiceConcurrencyTest extends BaseTest {
         );
 
         ExecutorService executorService = Executors.newFixedThreadPool(memberCount);
-        CountDownLatch latch = new CountDownLatch(memberCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(memberCount);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
 
@@ -103,20 +112,23 @@ class OnboardingSurveyServiceConcurrencyTest extends BaseTest {
         for (Member member : members) {
             executorService.execute(() -> {
                 try {
+                    startLatch.await();
                     onboardingSurveyService.submitOnboardingSurvey(new MemberAuth(member.getId()), request);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
                 } finally {
-                    latch.countDown();
+                    doneLatch.countDown();
                 }
             });
         }
+        startLatch.countDown();
 
-        latch.await();
+        boolean finished = doneLatch.await(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         executorService.shutdown();
 
         // then
+        assertThat(finished).isTrue();
         assertThat(successCount.get()).isEqualTo(memberCount);
         assertThat(failCount.get()).isZero();
         assertThat(onboardingSurveyRepository.count()).isEqualTo(memberCount);

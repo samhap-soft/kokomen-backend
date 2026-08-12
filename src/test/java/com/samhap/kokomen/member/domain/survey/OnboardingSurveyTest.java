@@ -17,11 +17,19 @@ class OnboardingSurveyTest {
 
     private final Member member = MemberFixtureBuilder.builder().build();
 
+    // 픽스처 빌더는 null을 기본값으로 덮어쓰므로, null 검증 테스트는 생성자를 직접 호출한다.
+    private OnboardingSurvey createSurvey(CareerGoal careerGoal, List<PrepStage> prepStages,
+                                          List<Category> techTopics, TargetCompanyType targetCompanyType,
+                                          InterviewExperience interviewExperience, List<WeakPoint> weakPoints) {
+        return new OnboardingSurvey(member, careerGoal, prepStages, techTopics, targetCompanyType,
+                interviewExperience, weakPoints, null);
+    }
+
     @Test
     void 기술_카테고리만_관심_분야로_선택하면_생성에_성공한다() {
         assertThatCode(() -> OnboardingSurveyFixtureBuilder.builder()
                 .member(member)
-                .techTopics(Category.findStackCategories())
+                .techTopics(Category.readStackCategories())
                 .build())
                 .doesNotThrowAnyException();
     }
@@ -64,6 +72,65 @@ class OnboardingSurveyTest {
                 .build())
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("weak_points에 중복된 값이 있습니다.");
+    }
+
+    @Test
+    void career_goal이_null이면_생성에_실패한다() {
+        assertThatThrownBy(() -> createSurvey(null, List.of(PrepStage.JOB_SEEKING), List.of(Category.JAVA_SPRING),
+                TargetCompanyType.BIG_TECH, InterviewExperience.NONE, List.of(WeakPoint.CS)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("career_goal은 null일 수 없습니다.");
+    }
+
+    @Test
+    void target_company_type이_null이면_생성에_실패한다() {
+        assertThatThrownBy(() -> createSurvey(CareerGoal.BACKEND, List.of(PrepStage.JOB_SEEKING),
+                List.of(Category.JAVA_SPRING), null, InterviewExperience.NONE, List.of(WeakPoint.CS)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("target_company_type은 null일 수 없습니다.");
+    }
+
+    @Test
+    void interview_experience가_null이면_생성에_실패한다() {
+        assertThatThrownBy(() -> createSurvey(CareerGoal.BACKEND, List.of(PrepStage.JOB_SEEKING),
+                List.of(Category.JAVA_SPRING), TargetCompanyType.BIG_TECH, null, List.of(WeakPoint.CS)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("interview_experience는 null일 수 없습니다.");
+    }
+
+    @Test
+    void 복수_선택_항목이_null이면_생성에_실패한다() {
+        assertThatThrownBy(() -> createSurvey(CareerGoal.BACKEND, null, List.of(Category.JAVA_SPRING),
+                TargetCompanyType.BIG_TECH, InterviewExperience.NONE, List.of(WeakPoint.CS)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("prep_stages는 최소 1개를 선택해야 합니다.");
+    }
+
+    @Test
+    void 복수_선택_항목이_빈_목록이면_생성에_실패한다() {
+        assertThatThrownBy(() -> createSurvey(CareerGoal.BACKEND, List.of(PrepStage.JOB_SEEKING),
+                List.of(Category.JAVA_SPRING), TargetCompanyType.BIG_TECH, InterviewExperience.NONE, List.of()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("weak_points는 최소 1개를 선택해야 합니다.");
+    }
+
+    @Test
+    void 수정할_때도_필수값_검증을_수행한다() {
+        OnboardingSurvey onboardingSurvey = OnboardingSurveyFixtureBuilder.builder()
+                .member(member)
+                .build();
+
+        assertThatThrownBy(() -> onboardingSurvey.update(
+                null,
+                List.of(PrepStage.JOB_SEEKING),
+                List.of(Category.JAVA_SPRING),
+                TargetCompanyType.ANY,
+                InterviewExperience.NONE,
+                List.of(WeakPoint.CS),
+                null
+        ))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("career_goal은 null일 수 없습니다.");
     }
 
     @Test

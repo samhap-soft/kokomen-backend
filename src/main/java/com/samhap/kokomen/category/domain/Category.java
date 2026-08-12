@@ -103,7 +103,7 @@ public enum Category {
         return CATEGORIES;
     }
 
-    public static List<Category> findStackCategories() {
+    public static List<Category> readStackCategories() {
         return STACK_CATEGORIES;
     }
 
