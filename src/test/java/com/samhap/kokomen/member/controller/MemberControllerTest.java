@@ -11,23 +11,34 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.member.OnboardingSurveyFixtureBuilder;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.member.domain.Admin;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.domain.survey.CareerGoal;
+import com.samhap.kokomen.member.domain.survey.InterviewExperience;
+import com.samhap.kokomen.member.domain.survey.OnboardingSurvey;
+import com.samhap.kokomen.member.domain.survey.PrepStage;
+import com.samhap.kokomen.member.domain.survey.TargetCompanyType;
+import com.samhap.kokomen.member.domain.survey.WeakPoint;
 import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.member.repository.OnboardingSurveyRepository;
 import com.samhap.kokomen.token.service.TokenService;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -45,6 +56,8 @@ class MemberControllerTest extends BaseControllerTest {
     private TokenService tokenService;
     @Autowired
     private AdminRepository adminRepository;
+    @Autowired
+    private OnboardingSurveyRepository onboardingSurveyRepository;
 
     @Test
     void 멤버_프로필_조회() throws Exception {
@@ -157,6 +170,320 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("nickname").description("변경할 닉네임")
                         )
                 ));
+    }
+
+    @Test
+    void 온보딩_설문을_제출한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "BACKEND",
+                  "prep_stages": ["JOB_SEEKING", "GRADUATING"],
+                  "tech_topics": ["JAVA_SPRING", "DATABASE"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "ONE_TO_THREE",
+                  "weak_points": ["CS", "MENTAL"],
+                  "goal_description": "6개월 안에 백엔드 신입으로 취업하고 싶습니다."
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("member-submitOnboardingSurvey",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        requestFields(
+                                fieldWithPath("career_goal").description(
+                                        "커리어 목표 - BACKEND, FRONTEND, AI_DATA, MOBILE, CAREER_SWITCH, EXPLORING"),
+                                fieldWithPath("prep_stages").description(
+                                        "취업 준비 단계(복수) - BEGINNER, JOB_SEEKING, GRADUATING, SWITCHING. 최소 1개"),
+                                fieldWithPath("tech_topics").description(
+                                        "관심 기술 분야(복수) - Category 이름 중 인성 면접(PERSONALITY)을 제외한 값. 최소 1개"),
+                                fieldWithPath("target_company_type").description(
+                                        "지원 희망 기업 형태 - BIG_TECH, SME, STARTUP, ANY"),
+                                fieldWithPath("interview_experience").description(
+                                        "기술 면접 경험 - NONE, ONE_TO_THREE, FOUR_PLUS"),
+                                fieldWithPath("weak_points").description(
+                                        "면접에서 어려운 부분(복수) - CS, PROJECT_QA, COMMUNICATION, MENTAL. 최소 1개"),
+                                fieldWithPath("goal_description").description(
+                                        "꼬꼬면을 통해 이루고 싶은 목표 - 선택 항목, 최대 1000자").optional()
+                        )
+                ));
+
+        OnboardingSurvey onboardingSurvey = onboardingSurveyRepository.findByMemberId(member.getId()).orElseThrow();
+        assertThat(onboardingSurvey.getCareerGoal()).isEqualTo(CareerGoal.BACKEND);
+        assertThat(onboardingSurvey.getPrepStages()).containsExactly(PrepStage.JOB_SEEKING, PrepStage.GRADUATING);
+        assertThat(onboardingSurvey.getTechTopics()).containsExactly(Category.JAVA_SPRING, Category.DATABASE);
+        assertThat(onboardingSurvey.getTargetCompanyType()).isEqualTo(TargetCompanyType.BIG_TECH);
+        assertThat(onboardingSurvey.getInterviewExperience()).isEqualTo(InterviewExperience.ONE_TO_THREE);
+        assertThat(onboardingSurvey.getWeakPoints()).containsExactly(WeakPoint.CS, WeakPoint.MENTAL);
+        assertThat(onboardingSurvey.getGoalDescription()).isEqualTo("6개월 안에 백엔드 신입으로 취업하고 싶습니다.");
+    }
+
+    @Test
+    void 이미_제출한_회원이_다시_제출하면_기존_응답을_덮어쓴다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        OnboardingSurvey savedOnboardingSurvey = onboardingSurveyRepository.save(
+                OnboardingSurveyFixtureBuilder.builder()
+                        .member(member)
+                        .careerGoal(CareerGoal.BACKEND)
+                        .prepStages(List.of(PrepStage.BEGINNER))
+                        .techTopics(List.of(Category.JAVA_SPRING))
+                        .weakPoints(List.of(WeakPoint.CS))
+                        .goalDescription("이전 목표")
+                        .build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "FRONTEND",
+                  "prep_stages": ["SWITCHING"],
+                  "tech_topics": ["REACT"],
+                  "target_company_type": "STARTUP",
+                  "interview_experience": "FOUR_PLUS",
+                  "weak_points": ["MENTAL"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk());
+
+        assertThat(onboardingSurveyRepository.count()).isEqualTo(1);
+        OnboardingSurvey updatedOnboardingSurvey = onboardingSurveyRepository.findByMemberId(member.getId())
+                .orElseThrow();
+        assertThat(updatedOnboardingSurvey.getId()).isEqualTo(savedOnboardingSurvey.getId());
+        assertThat(updatedOnboardingSurvey.getCareerGoal()).isEqualTo(CareerGoal.FRONTEND);
+        assertThat(updatedOnboardingSurvey.getPrepStages()).containsExactly(PrepStage.SWITCHING);
+        assertThat(updatedOnboardingSurvey.getTechTopics()).containsExactly(Category.REACT);
+        assertThat(updatedOnboardingSurvey.getTargetCompanyType()).isEqualTo(TargetCompanyType.STARTUP);
+        assertThat(updatedOnboardingSurvey.getInterviewExperience()).isEqualTo(InterviewExperience.FOUR_PLUS);
+        assertThat(updatedOnboardingSurvey.getWeakPoints()).containsExactly(WeakPoint.MENTAL);
+        assertThat(updatedOnboardingSurvey.getGoalDescription()).isNull();
+    }
+
+    @Test
+    void 로그인하지_않으면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        String requestJson = """
+                {
+                  "career_goal": "BACKEND",
+                  "prep_stages": ["JOB_SEEKING"],
+                  "tech_topics": ["JAVA_SPRING"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                )
+                .andExpect(status().isUnauthorized());
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
+    }
+
+    @Test
+    void 필수_항목이_누락되면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "prep_stages": ["JOB_SEEKING"],
+                  "tech_topics": ["JAVA_SPRING"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                          "message": "career_goal은 null일 수 없습니다."
+                        }
+                        """))
+                .andDo(document("member-submitOnboardingSurvey-error",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        responseFields(
+                                fieldWithPath("message").description("에러 메시지")
+                        )
+                ));
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
+    }
+
+    @Test
+    void 복수_선택_항목이_빈_배열이면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "BACKEND",
+                  "prep_stages": [],
+                  "tech_topics": ["JAVA_SPRING"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                          "message": "prep_stages는 최소 1개를 선택해야 합니다."
+                        }
+                        """));
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
+    }
+
+    @Test
+    void 정의되지_않은_enum_값이면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "DEVOPS",
+                  "prep_stages": ["JOB_SEEKING"],
+                  "tech_topics": ["JAVA_SPRING"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                          "message": "JSON 파싱 오류: 'career_goal' 필드에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'DEVOPS')"
+                        }
+                        """));
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
+    }
+
+    @Test
+    void 복수_선택_항목에_정의되지_않은_enum_값이_있으면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "BACKEND",
+                  "prep_stages": ["JOB_SEEKING"],
+                  "tech_topics": ["JAVA_SPRING", "GOLANG"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                          "message": "JSON 파싱 오류: 'tech_topics' 필드에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'GOLANG')"
+                        }
+                        """));
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
+    }
+
+    @Test
+    void 인성_면접을_관심_기술_분야로_보내면_온보딩_설문_제출에_실패한다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String requestJson = """
+                {
+                  "career_goal": "BACKEND",
+                  "prep_stages": ["JOB_SEEKING"],
+                  "tech_topics": ["JAVA_SPRING", "PERSONALITY"],
+                  "target_company_type": "BIG_TECH",
+                  "interview_experience": "NONE",
+                  "weak_points": ["CS"]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/v1/members/me/onboarding-survey")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                          "message": "tech_topics에는 기술 카테고리만 선택할 수 있습니다."
+                        }
+                        """));
+
+        assertThat(onboardingSurveyRepository.count()).isZero();
     }
 
     @Test
