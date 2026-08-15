@@ -77,7 +77,8 @@ class MemberControllerTest extends BaseControllerTest {
                     "rank": 1,
                     "token_count": 20,
                     "profile_completed": %s,
-                    "is_admin": true
+                    "is_admin": true,
+                    "onboarding_form_filled": false
                 }
                 """.formatted(member.getId(), member.getNickname(), member.getScore(), member.getProfileCompleted());
 
@@ -100,9 +101,36 @@ class MemberControllerTest extends BaseControllerTest {
                                 fieldWithPath("rank").description("회원 등수"),
                                 fieldWithPath("token_count").description("현재 회원 토큰 개수"),
                                 fieldWithPath("profile_completed").description("프로필 완성 여부"),
-                                fieldWithPath("is_admin").description("어드민 유저 여부")
+                                fieldWithPath("is_admin").description("어드민 유저 여부"),
+                                fieldWithPath("onboarding_form_filled").description("온보딩 설문 제출 여부")
                         )
                 ));
+    }
+
+    @Test
+    void 온보딩_설문을_제출한_회원은_프로필_조회_시_온보딩_설문_제출_여부가_true다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenService.createTokensForNewMember(member.getId());
+        onboardingSurveyRepository.save(OnboardingSurveyFixtureBuilder.builder()
+                .member(member)
+                .build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        String responseJson = """
+                {
+                    "onboarding_form_filled": true
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get("/api/v1/members/me/profile")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(responseJson));
     }
 
     @Test

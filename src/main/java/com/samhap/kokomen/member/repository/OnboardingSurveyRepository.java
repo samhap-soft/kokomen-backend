@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface OnboardingSurveyRepository extends JpaRepository<OnboardingSurvey, Long> {
 
     Optional<OnboardingSurvey> findByMemberId(Long memberId);
+
+    boolean existsByMemberId(Long memberId);
 }

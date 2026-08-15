@@ -10,6 +10,7 @@ import com.samhap.kokomen.member.domain.SocialProvider;
 import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.repository.MemberSocialLoginRepository;
+import com.samhap.kokomen.member.repository.OnboardingSurveyRepository;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponse;
 import com.samhap.kokomen.member.service.dto.MyProfileResponseV2;
@@ -41,6 +42,7 @@ public class MemberService {
     private final TokenFacadeService tokenFacadeService;
     private final InterviewRepository interviewRepository;
     private final AdminRepository adminRepository;
+    private final OnboardingSurveyRepository onboardingSurveyRepository;
 
     @Value("${spring.profiles.active:local}")
     private String activeProfile;
@@ -76,8 +78,9 @@ public class MemberService {
         Token freeToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.FREE);
         Token paidToken = tokenFacadeService.readTokenByMemberIdAndType(memberAuth.memberId(), TokenType.PAID);
         boolean isAdmin = isAdmin(memberAuth.memberId());
+        boolean onboardingFormFilled = onboardingSurveyRepository.existsByMemberId(memberAuth.memberId());
         return new MyProfileResponse(member, totalMemberCount, rank,
-                freeToken.getTokenCount() + paidToken.getTokenCount(), isAdmin);
+                freeToken.getTokenCount() + paidToken.getTokenCount(), isAdmin, onboardingFormFilled);
     }
 
     public MyProfileResponseV2 findMemberV2(MemberAuth memberAuth) {

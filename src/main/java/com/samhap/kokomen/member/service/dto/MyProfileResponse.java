@@ -10,11 +10,12 @@ public record MyProfileResponse(
         Long rank,
         Integer tokenCount,
         Boolean profileCompleted,
-        Boolean isAdmin
+        Boolean isAdmin,
+        Boolean onboardingFormFilled
 ) {
     public MyProfileResponse(Member member, Long totalMemberCount, Long rank, Integer totalTokenCount,
-                             Boolean isAdmin) {
+                             Boolean isAdmin, Boolean onboardingFormFilled) {
         this(member.getId(), member.getNickname(), member.getScore(), totalMemberCount, rank, totalTokenCount,
-                member.getProfileCompleted(), isAdmin);
+                member.getProfileCompleted(), isAdmin, onboardingFormFilled);
     }
 }
