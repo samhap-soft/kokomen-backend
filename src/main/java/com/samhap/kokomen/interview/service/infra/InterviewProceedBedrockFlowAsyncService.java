@@ -5,9 +5,7 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
-import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.dto.response.BedrockConverseResponse;
-import com.samhap.kokomen.interview.external.dto.response.GptResponse;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.service.core.InterviewProceedService;
 import com.samhap.kokomen.interview.service.question.QuestionService;
@@ -34,8 +32,6 @@ public class InterviewProceedBedrockFlowAsyncService {
     private final AnswerFeedbackBedrockClient answerFeedbackBedrockClient;
     private final RedisService redisService;
     private final ThreadPoolTaskExecutor executor;
-    private final ThreadPoolTaskExecutor gptCallbackExecutor;
-    private final InterviewProceedGptClient interviewProceedGptClient;
 
     public InterviewProceedBedrockFlowAsyncService(
             InterviewProceedService interviewProceedService,
@@ -45,10 +41,7 @@ public class InterviewProceedBedrockFlowAsyncService {
             AnswerFeedbackBedrockClient answerFeedbackBedrockClient,
             RedisService redisService,
             @Qualifier("bedrockFlowCallbackExecutor")
-            ThreadPoolTaskExecutor bedrockFlowCallbackExecutor,
-            @Qualifier("gptCallbackExecutor")
-            ThreadPoolTaskExecutor gptCallbackExecutor,
-            InterviewProceedGptClient interviewProceedGptClient) {
+            ThreadPoolTaskExecutor bedrockFlowCallbackExecutor) {
         this.interviewProceedService = interviewProceedService;
         this.questionService = questionService;
         this.tokenFacadeService = tokenFacadeService;
@@ -56,8 +49,6 @@ public class InterviewProceedBedrockFlowAsyncService {
         this.answerFeedbackBedrockClient = answerFeedbackBedrockClient;
         this.redisService = redisService;
         this.executor = bedrockFlowCallbackExecutor;
-        this.gptCallbackExecutor = gptCallbackExecutor;
-        this.interviewProceedGptClient = interviewProceedGptClient;
     }
 
     public void proceedInterviewByBedrockFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
@@ -76,25 +67,6 @@ public class InterviewProceedBedrockFlowAsyncService {
             log.error("Bedrock 비동기 작업 제출 실패 - {}", interviewProceedStateKey, e);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
                     Duration.ofSeconds(300));
-            redisService.releaseLockSafely(lockKey, lockValue);
-            throw e;
-        }
-    }
-
-    public void proceedInterviewByGptFlowAsync(Long memberId, QuestionAndAnswers questionAndAnswers,
-                                               Long interviewId, String lockKey, String lockValue) {
-        Map<String, String> mdcContext = MDC.getCopyOfContextMap();
-        String interviewProceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,
-                questionAndAnswers.readCurQuestion().getId());
-
-        try {
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_PENDING.name(),
-                    Duration.ofSeconds(300));
-
-            gptCallbackExecutor.execute(() ->
-                    callbackGptFlow(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
-                            interviewProceedStateKey, mdcContext));
-        } catch (Exception e) {
             redisService.releaseLockSafely(lockKey, lockValue);
             throw e;
         }
@@ -134,33 +106,6 @@ public class InterviewProceedBedrockFlowAsyncService {
                     Duration.ofSeconds(300));
         } finally {
             // 성공/실패 양쪽에서 정확히 한 번만 해제한다.
-            // 이전에는 성공 경로에서 직접 해제하고 실패 경로는 GPT 폴백에 위임했는데,
-            // 폴백을 제거하면서 해제 지점이 사라지므로 finally로 옮겼다.
-            // (같은 클래스의 callbackGptFlow도 동일한 방식이다)
-            redisService.releaseLockSafely(lockKey, lockValue);
-            MDC.clear();
-        }
-    }
-
-    private void callbackGptFlow(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId,
-                                 String lockKey, String lockValue, String interviewProceedStateKey,
-                                 Map<String, String> mdcContext) {
-        try {
-            setMdcContext(mdcContext);
-
-            GptResponse response = interviewProceedGptClient.requestToGpt(questionAndAnswers);
-            log.info("GPT 응답 받음: {}", response);
-
-            interviewProceedService.proceedOrEndInterview(
-                    memberId, questionAndAnswers, response, interviewId);
-
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
-                    Duration.ofSeconds(300));
-        } catch (Exception e) {
-            log.error("GPT 실패 - {}", interviewProceedStateKey, e);
-            redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
-                    Duration.ofSeconds(300));
-        } finally {
             redisService.releaseLockSafely(lockKey, lockValue);
             MDC.clear();
         }

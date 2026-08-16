@@ -55,38 +55,6 @@ class InterviewToolSchemaRenderingTest {
         assertThat(fieldNames(InterviewToolSchemas.answerFeedback())).containsExactly("feedback");
     }
 
-    // ---------- GPT 렌더러 ----------
-
-    @Test
-    void GPT_진행_도구는_함수명과_필수필드와_rank_enum을_그대로_싣는다() {
-        List<Tool> tools = GptToolRenderer.renderTools(InterviewToolSchemas.proceed(true));
-        GptFunction function = tools.get(0).function();
-
-        assertThat(function.name()).isEqualTo("submit_interview_proceed");
-        assertThat(function.parameters().required())
-                .containsExactly("reasoning", "rank", "feedback", "next_question");
-
-        FunctionParamProperty rank = (FunctionParamProperty) function.parameters().properties().get("rank");
-        assertThat(rank.enumValues()).containsExactly("A", "B", "C", "D", "F");
-        FunctionParamProperty reasoning = (FunctionParamProperty) function.parameters().properties().get("reasoning");
-        assertThat(reasoning.description()).isNotBlank();
-    }
-
-    @Test
-    void GPT_진행_도구는_feedbackInline이_아니면_feedback_프로퍼티가_없다() {
-        List<Tool> tools = GptToolRenderer.renderTools(InterviewToolSchemas.proceed(false));
-        GptFunction function = tools.get(0).function();
-
-        assertThat(function.parameters().required()).doesNotContain("feedback");
-        assertThat(function.parameters().properties()).doesNotContainKey("feedback");
-    }
-
-    @Test
-    void GPT_도구_선택은_도구명과_일치한다() {
-        assertThat(GptToolRenderer.renderToolChoice(InterviewToolSchemas.end()).function().name())
-                .isEqualTo("submit_interview_end");
-    }
-
     // ---------- Bedrock 렌더러 ----------
 
     @Test

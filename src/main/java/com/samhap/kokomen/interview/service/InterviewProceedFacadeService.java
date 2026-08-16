@@ -65,16 +65,14 @@ public class InterviewProceedFacadeService {
             interviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(memberAuth.memberId(),
                     questionAndAnswers, interviewId, lockKey, lockValue);
         } catch (Exception e) {
-            try {
-                log.info("Gpt API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
-                        interviewId, curQuestionId, memberAuth.memberId());
-                log.error("Bedrock API 호출 실패, GPT 폴백에시 기록 - {}", e);
-                interviewProceedBedrockFlowAsyncService.proceedInterviewByGptFlowAsync(memberAuth.memberId(),
-                        questionAndAnswers, interviewId, lockKey, lockValue);
-            } catch (Exception ex) {
-                log.error("Gpt API 호출 실패 - {}", ex);
-                redisService.releaseLockSafely(lockKey, lockValue);
-            }
+            // 여기로 오는 것은 비동기 작업 "제출"이 실패한 경우다(executor 큐 포화 등).
+            // Bedrock API 자체의 실패는 비동기 태스크 안에서 처리된다.
+            //
+            // 락 해제와 LLM_FAILED 상태 기록은 proceedInterviewByBedrockFlowAsync가
+            // 예외를 던지기 전에 이미 수행한다. 여기서 다시 해제하면 이중 해제가 되고,
+            // 그 사이 다른 요청이 같은 키의 락을 획득했다면 남의 락을 지운다.
+            log.error("Bedrock 비동기 작업 제출 실패 - interviewId: {}, curQuestionId: {}, memberId: {}",
+                    interviewId, curQuestionId, memberAuth.memberId(), e);
         }
     }
 

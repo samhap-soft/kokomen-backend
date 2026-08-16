@@ -43,20 +43,6 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
-    @Bean("gptCallbackExecutor")
-    public ThreadPoolTaskExecutor gptCallbackExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(100);
-        executor.setMaxPoolSize(100);
-        executor.setQueueCapacity(1000);
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(10);
-        executor.setThreadNamePrefix("Async-Nonblock-GPT-");
-        executor.initialize();
-        executor.getThreadPoolExecutor().prestartAllCoreThreads();
-        return executor;
-    }
-
     @Bean("resumeAnalysisExecutor")
     public ThreadPoolTaskExecutor resumeAnalysisExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

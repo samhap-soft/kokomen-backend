@@ -26,14 +26,13 @@ class BaseTestMockRegistrationTest extends BaseTest {
         assertThat(Mockito.mockingDetails(resumeAnalysisAsyncService).isMock()).isTrue();
     }
 
-    // 외부 연동 목 8개가 그대로 유지되고 있는지의 게이트다. 목을 정리하면서 존치 대상까지 함께 지우면 여기서 잡힌다.
+    // 외부 연동 목 7개가 그대로 유지되고 있는지의 게이트다. 목을 정리하면서 존치 대상까지 함께 지우면 여기서 잡힌다.
     @Test
     void 존치_목_선언은_그대로_유지된다() {
         assertAll(
                 () -> assertThat(Mockito.mockingDetails(supertoneClient).isMock()).isTrue(),
                 () -> assertThat(Mockito.mockingDetails(s3Client).isMock()).isTrue(),
                 () -> assertThat(Mockito.mockingDetails(tosspaymentsClient).isMock()).isTrue(),
-                () -> assertThat(Mockito.mockingDetails(interviewProceedGptClient).isMock()).isTrue(),
                 () -> assertThat(Mockito.mockingDetails(interviewProceedBedrockClient).isMock()).isTrue(),
                 () -> assertThat(Mockito.mockingDetails(answerFeedbackBedrockClient).isMock()).isTrue(),
                 () -> assertThat(Mockito.mockingDetails(kakaoOAuthClient).isMock()).isTrue(),
@@ -62,7 +61,7 @@ class BaseTestMockRegistrationTest extends BaseTest {
                 .count();
 
         assertAll(
-                () -> assertThat(mocks).isEqualTo(13),
+                () -> assertThat(mocks).isEqualTo(12),
                 () -> assertThat(spies).isEqualTo(2)
         );
     }

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.GptResponseFixtureBuilder;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -73,51 +72,5 @@ class LlmResponseParsingTest {
         assertThat(totalFeedbackResponse.learningDirection()).isEqualTo("동시성 기초를 더 학습하세요.");
         assertThat(totalFeedbackResponse.composeTotalFeedback())
                 .isEqualTo("개념 이해가 명확합니다. 실무 사례가 부족합니다. 동시성 기초를 더 학습하세요.");
-    }
-
-    @Test
-    void GPT_진행_응답에서_랭크와_피드백을_한_번에_추출한다() {
-        GptResponse response = GptResponseFixtureBuilder.builder()
-                .answerRank(AnswerRank.C)
-                .feedback("부분적으로 이해하고 있습니다.")
-                .buildProceed();
-
-        AnswerFeedbackResponse feedbackResponse = response.extractAnswerFeedbackResponse(objectMapper);
-
-        assertThat(feedbackResponse.rank()).isEqualTo("C");
-        assertThat(feedbackResponse.feedback()).isEqualTo("부분적으로 이해하고 있습니다.");
-    }
-
-    @Test
-    void GPT_진행_응답에서_다음_질문을_추출한다() {
-        GptResponse response = GptResponseFixtureBuilder.builder()
-                .nextQuestion("뮤텍스와 세마포어의 차이는 무엇인가요?")
-                .buildProceed();
-
-        NextQuestionResponse nextQuestionResponse = response.extractNextQuestionResponse(objectMapper);
-
-        assertThat(nextQuestionResponse.nextQuestion()).isEqualTo("뮤텍스와 세마포어의 차이는 무엇인가요?");
-    }
-
-    @Test
-    void GPT_종료_응답에서_종합_피드백을_추출한다() {
-        GptResponse response = GptResponseFixtureBuilder.builder()
-                .strengths("논리 전개가 좋습니다.")
-                .improvements("용어 사용을 다듬으세요.")
-                .learningDirection("네트워크 기초를 학습하세요.")
-                .buildEnd();
-
-        TotalFeedbackResponse totalFeedbackResponse = response.extractTotalFeedbackResponse(objectMapper);
-
-        assertThat(totalFeedbackResponse.composeTotalFeedback())
-                .isEqualTo("논리 전개가 좋습니다. 용어 사용을 다듬으세요. 네트워크 기초를 학습하세요.");
-    }
-
-    @Test
-    void 랭크만_추출하는_기능은_GPT에서_지원하지_않는다() {
-        GptResponse response = GptResponseFixtureBuilder.builder().buildProceed();
-
-        assertThatThrownBy(() -> response.extractAnswerRankResponse(objectMapper))
-                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

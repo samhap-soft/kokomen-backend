@@ -117,7 +117,7 @@ class InterviewControllerV2Test extends BaseControllerTest {
 
     @Test
     void 인성_면접도_V2_진행_파이프라인을_예외_없이_통과한다() throws Exception {
-        // 프롬프트 문자열 선택 자체는 팩토리 단위 테스트(InterviewBedrockRequestFactoryTest, InterviewMessagesFactoryTest)에서
+        // 프롬프트 문자열 선택 자체는 팩토리 단위 테스트(InterviewBedrockRequestFactoryTest)에서
         // 검증한다(여기서는 LLM 클라이언트가 mock 이므로 프롬프트가 호출되지 않는다).
         // 이 테스트는 PERSONALITY 인터뷰가 V2 진행 파이프라인(검증/토큰/답변 저장/비동기 디스패치)을 통과하는지 확인한다.
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
