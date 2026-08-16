@@ -111,6 +111,10 @@ jobs:
           SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
           GRAFANA_ADMIN_PASSWORD_DEV: ${{ secrets.GRAFANA_ADMIN_PASSWORD_DEV }}
         run: |
-          export HOSTNAME=$(hostname)
+          # promtail이 Loki에 붙이는 host 라벨로만 쓰인다(앱 코드는 이 값을 읽지 않는다).
+          # $(hostname)을 쓰면 배포 호스트의 머신 이름이 그대로 라벨이 되어,
+          # 호스트를 옮길 때마다 라벨이 바뀌고 이 레포와 무관한 이름이 대시보드에 노출된다.
+          # dev는 호스트가 한 대뿐이므로 환경 이름으로 고정한다.
+          export HOSTNAME=kokomen-dev
           cd kokomen-backend/docker/dev
           sudo -E docker compose -f docker-compose-dev.yml up -d
