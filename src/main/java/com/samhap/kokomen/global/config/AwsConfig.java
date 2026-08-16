@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
@@ -20,11 +19,19 @@ import software.amazon.awssdk.services.s3.S3Client;
 @EnableConfigurationProperties(BedrockConverseProperties.class)
 public class AwsConfig {
 
+    /**
+     * 자격증명은 DefaultCredentialsProvider로 받는다.
+     * InstanceProfileCredentialsProvider는 EC2 IMDS만 조회하므로, IMDS가 없는 환경(EC2 밖)에서는
+     * 환경변수로 키를 넣어도 무시되고 무조건 실패한다. 기본 체인은
+     * 시스템 프로퍼티 -> 환경변수 -> 프로파일 -> 컨테이너 -> IMDS 순으로 찾으므로
+     * EC2에서는 종전과 동일하게 IAM 역할로 동작하고, 그 밖에서는 환경변수를 쓸 수 있다.
+     * S3 클라이언트가 이미 쓰던 방식과 같다.
+     */
     @Primary
     @Bean
     public BedrockRuntimeClient bedrockRuntimeClient() {
         return BedrockRuntimeClient.builder()
-                .credentialsProvider(InstanceProfileCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .httpClientBuilder(ApacheHttpClient.builder()
                         .maxConnections(60)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(5))
@@ -44,7 +51,7 @@ public class AwsConfig {
     @Bean
     public BedrockRuntimeClient resumeAnalysisBedrockRuntimeClient() {
         return BedrockRuntimeClient.builder()
-                .credentialsProvider(InstanceProfileCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .httpClientBuilder(ApacheHttpClient.builder()
                         .maxConnections(ResumeAnalysisBedrockTimeouts.MAX_CONNECTIONS)
                         .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(5))
