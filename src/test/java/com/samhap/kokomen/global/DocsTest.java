@@ -6,7 +6,6 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.mo
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
-import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +27,6 @@ import org.springframework.web.context.WebApplicationContext;
 public abstract class DocsTest {
 
     protected MockMvc mockMvc;
-    @MockitoBean
-    protected InterviewProceedGptClient interviewProceedGptClient;
     @Autowired
     private H2AutoIncrementCleaner h2AutoIncrementCleaner;
 

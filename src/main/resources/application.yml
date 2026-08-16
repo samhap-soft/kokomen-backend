@@ -40,11 +40,6 @@ server:
     max-connections: 1024
     mbeanregistry:
       enabled: true
-open-ai:
-  api-key: ${OPEN_AI_API_KEY}
-  evaluation-temperature: 0.2
-  generation-temperature: 0.7
-  feedback-temperature: 0.5
 aws:
   bedrock:
     model-id: us.anthropic.claude-sonnet-4-6

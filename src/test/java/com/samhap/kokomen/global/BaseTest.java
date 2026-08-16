@@ -5,7 +5,6 @@ import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
-import com.samhap.kokomen.interview.external.InterviewProceedGptClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
@@ -41,8 +40,6 @@ public abstract class BaseTest {
     protected S3Client s3Client;
     @MockitoBean
     protected TosspaymentsClient tosspaymentsClient;
-    @MockitoBean
-    protected InterviewProceedGptClient interviewProceedGptClient;
     @MockitoBean
     protected InterviewProceedBedrockClient interviewProceedBedrockClient;
     @MockitoBean
