@@ -110,6 +110,10 @@ jobs:
           WIDGET_SECRET_KEY_DEV: ${{ secrets.WIDGET_SECRET_KEY_DEV }}
           SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
           GRAFANA_ADMIN_PASSWORD_DEV: ${{ secrets.GRAFANA_ADMIN_PASSWORD_DEV }}
+          # EC2 밖(OCI)에서는 IAM 인스턴스 프로파일이 없으므로 액세스 키로 인증한다.
+          # AwsConfig가 DefaultCredentialsProvider를 쓰기 때문에 환경변수가 그대로 먹는다.
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           # promtail이 Loki에 붙이는 host 라벨로만 쓰인다(앱 코드는 이 값을 읽지 않는다).
           # $(hostname)을 쓰면 배포 호스트의 머신 이름이 그대로 라벨이 되어,

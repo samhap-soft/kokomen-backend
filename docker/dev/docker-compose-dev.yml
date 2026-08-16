@@ -25,6 +25,10 @@ services:
       GOOGLE_CLIENT_SECRET_DEV: ${GOOGLE_CLIENT_SECRET_DEV}
       WIDGET_SECRET_KEY_DEV: ${WIDGET_SECRET_KEY_DEV}
       SLACK_WEBHOOK_URL_DEV: ${SLACK_WEBHOOK_URL_DEV}
+      # EC2 밖에서는 IAM 인스턴스 프로파일(IMDS)이 없어 액세스 키로 인증해야 한다.
+      # Bedrock(us-east-1)과 S3(ap-northeast-2) 모두 이 자격증명을 쓴다.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
       kokomen-mysql-dev:
         condition: service_healthy
