@@ -39,11 +39,21 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build the Docker image
-        run: docker build -f ./Dockerfile --platform linux/amd64 --no-cache -t samhap/kokomen-interview-api:dev .
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Push the Docker Image to Dockerhub
-        run: docker push samhap/kokomen-interview-api:dev
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          no-cache: true
+          tags: samhap/kokomen-interview-api:dev
 
   deploy:
     needs: build
@@ -99,6 +109,7 @@ jobs:
           GOOGLE_CLIENT_SECRET_DEV: ${{ secrets.GOOGLE_CLIENT_SECRET_DEV }}
           WIDGET_SECRET_KEY_DEV: ${{ secrets.WIDGET_SECRET_KEY_DEV }}
           SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
+          GRAFANA_ADMIN_PASSWORD_DEV: ${{ secrets.GRAFANA_ADMIN_PASSWORD_DEV }}
         run: |
           export HOSTNAME=$(hostname)
           cd kokomen-backend/docker/dev
