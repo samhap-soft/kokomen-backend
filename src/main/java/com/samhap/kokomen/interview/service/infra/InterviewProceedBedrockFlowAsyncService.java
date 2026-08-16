@@ -128,14 +128,16 @@ public class InterviewProceedBedrockFlowAsyncService {
                 redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
                         Duration.ofSeconds(300));
             }
-            redisService.releaseLockSafely(lockKey, lockValue);
         } catch (Exception ex) {
-            log.error("Bedrock API 호출 실패, GPT 폴백 시도 - {}", interviewProceedStateKey, ex);
+            log.error("Bedrock API 호출 실패 - {}", interviewProceedStateKey, ex);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
                     Duration.ofSeconds(300));
-            fallbackToGptForInterview(memberId, questionAndAnswers, interviewId, lockKey, lockValue,
-                    interviewProceedStateKey, mdcContext);
         } finally {
+            // 성공/실패 양쪽에서 정확히 한 번만 해제한다.
+            // 이전에는 성공 경로에서 직접 해제하고 실패 경로는 GPT 폴백에 위임했는데,
+            // 폴백을 제거하면서 해제 지점이 사라지므로 finally로 옮겼다.
+            // (같은 클래스의 callbackGptFlow도 동일한 방식이다)
+            redisService.releaseLockSafely(lockKey, lockValue);
             MDC.clear();
         }
     }
@@ -162,34 +164,6 @@ public class InterviewProceedBedrockFlowAsyncService {
             redisService.releaseLockSafely(lockKey, lockValue);
             MDC.clear();
         }
-    }
-
-    private void fallbackToGptForInterview(Long memberId, QuestionAndAnswers questionAndAnswers,
-                                           Long interviewId, String lockKey, String lockValue,
-                                           String interviewProceedStateKey,
-                                           Map<String, String> mdcContext) {
-        gptCallbackExecutor.execute(() -> {
-            try {
-                setMdcContext(mdcContext);
-                log.info("GPT 폴백 시작 - {}", interviewProceedStateKey);
-
-                GptResponse response = interviewProceedGptClient.requestToGpt(questionAndAnswers);
-                log.info("GPT 폴백 응답 받음 - {}: {}", interviewProceedStateKey, response);
-
-                interviewProceedService.proceedOrEndInterview(
-                        memberId, questionAndAnswers, response, interviewId);
-
-                redisService.setValue(interviewProceedStateKey, InterviewProceedState.COMPLETED.name(),
-                        Duration.ofSeconds(300));
-            } catch (Exception e) {
-                log.error("GPT 폴백 실패 - {}", interviewProceedStateKey, e);
-                redisService.setValue(interviewProceedStateKey, InterviewProceedState.LLM_FAILED.name(),
-                        Duration.ofSeconds(300));
-            } finally {
-                redisService.releaseLockSafely(lockKey, lockValue);
-                MDC.clear();
-            }
-        });
     }
 
     private void createNextQuestionTtsAndUploadToS3(Long memberId, String interviewProceedStateKey,
