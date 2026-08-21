@@ -1,18 +1,11 @@
-services:
-  traefik:
-    image: traefik:v3.0
-    container_name: traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - api-net
+# prod API 스택.
+#
+# 리버스 프록시(traefik)는 이 파일에 없다. client 레포의 kokomen-traefik-prod가
+# 한 호스트의 유일한 내부 라우터로서 클라이언트와 API를 모두 라우팅한다.
+# API는 아래 컨테이너 라벨로 선언되고, traefik의 docker provider가 그것을 읽는다.
+# blue-green은 "어느 색 컨테이너가 떠 있는지"로 결정된다.
 
+services:
   kokomen-api-blue:
     image: samhap/kokomen-interview-api:prod
     container_name: kokomen-api-blue
@@ -39,15 +32,23 @@ services:
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
       WIDGET_SECRET_KEY_PROD: ${WIDGET_SECRET_KEY_PROD}
       SLACK_WEBHOOK_URL_PROD: ${SLACK_WEBHOOK_URL_PROD}
+      # EC2 밖에서는 IAM 인스턴스 프로파일(IMDS)이 없어 액세스 키로 인증해야 한다.
+      # Bedrock(us-east-1)과 S3(ap-northeast-2) 모두 이 자격증명을 쓴다.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 40s
+    depends_on:
+      kokomen-mysql-prod:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
+      # 통합 traefik에서는 클라이언트 트래픽까지 삼키므로 Host로 한정해야 한다.
+      - "traefik.http.routers.api.rule=Host(`api.kokomen.kr`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
       - "traefik.http.services.api.loadbalancer.healthcheck.path=/actuator/health"
@@ -55,7 +56,7 @@ services:
       - "traefik.http.services.api.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.api.loadbalancer.healthcheck.timeout=3s"
     networks:
-      - api-net
+      - prod-kokomen-net
     profiles:
       - blue
 
@@ -85,15 +86,23 @@ services:
       GOOGLE_CLIENT_SECRET_PROD: ${GOOGLE_CLIENT_SECRET_PROD}
       WIDGET_SECRET_KEY_PROD: ${WIDGET_SECRET_KEY_PROD}
       SLACK_WEBHOOK_URL_PROD: ${SLACK_WEBHOOK_URL_PROD}
+      # EC2 밖에서는 IAM 인스턴스 프로파일(IMDS)이 없어 액세스 키로 인증해야 한다.
+      # Bedrock(us-east-1)과 S3(ap-northeast-2) 모두 이 자격증명을 쓴다.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 40s
+    depends_on:
+      kokomen-mysql-prod:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
+      # 통합 traefik에서는 클라이언트 트래픽까지 삼키므로 Host로 한정해야 한다.
+      - "traefik.http.routers.api.rule=Host(`api.kokomen.kr`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
       - "traefik.http.services.api.loadbalancer.healthcheck.path=/actuator/health"
@@ -101,17 +110,15 @@ services:
       - "traefik.http.services.api.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.api.loadbalancer.healthcheck.timeout=3s"
     networks:
-      - api-net
+      - prod-kokomen-net
     profiles:
       - green
 
   node:
     image: prom/node-exporter
-    container_name: node
+    container_name: kokomen-node-prod
     restart: unless-stopped
     pid: host
-    ports:
-      - 9100:9100
     command:
       - '--path.rootfs=/host'
     volumes:
@@ -119,11 +126,11 @@ services:
     environment:
       TZ: Asia/Seoul
     networks:
-      - api-net
+      - prod-kokomen-net
 
   promtail:
     image: grafana/promtail
-    container_name: promtail
+    container_name: kokomen-promtail-prod
     volumes:
       - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml
       - ./app/logs:/logs/app
@@ -136,11 +143,58 @@ services:
       TZ: Asia/Seoul
       HOSTNAME: ${HOSTNAME}
     networks:
-      - api-net
+      - prod-kokomen-net
+
+  kokomen-mysql-prod:
+    image: mysql:8.4
+    container_name: kokomen-mysql-prod
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci",
+        "--innodb-buffer-pool-size=1G"
+      ]
+    volumes:
+      - mysql-prod-data:/var/lib/mysql
+    restart: always
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME_PROD}
+      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD_PROD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_PROD}
+      MYSQL_DATABASE: kokomen
+      LANG: C.UTF-8
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    networks:
+      - prod-kokomen-net
+
+  kokomen-redis-prod:
+    image: valkey/valkey:8.0.1
+    container_name: kokomen-redis-prod
+    restart: unless-stopped
+    volumes:
+      - redis-prod-data:/data
+    environment:
+      TZ: Asia/Seoul
+    networks:
+      - prod-kokomen-net
 
 volumes:
   promtail-tmp:
+  mysql-prod-data:
+  redis-prod-data:
 
 networks:
-  api-net:
+  prod-kokomen-net:
+    external: true
     driver: bridge

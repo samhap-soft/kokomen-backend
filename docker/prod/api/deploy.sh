@@ -64,11 +64,20 @@ main() {
 
     log_info "타겟 환경: $TARGET"
 
-    # Step 1: Traefik이 실행 중인지 확인
-    if ! docker ps -q -f name=traefik | grep -q .; then
-        log_info "Step 0: Traefik 시작"
-        sudo -E docker compose -f $COMPOSE_FILE up -d traefik
-        sleep 3
+    # Step 1: 라우팅 전제 확인
+    #
+    # traefik은 이 compose에 없다. client 레포의 kokomen-traefik-prod가 한 호스트의
+    # 유일한 내부 라우터이고, docker provider로 아래 컨테이너 라벨을 읽어 라우팅한다.
+    # 여기서는 그것이 떠 있는지만 확인한다. 없으면 API를 올려도 외부에서 도달하지 못한다.
+    #
+    # -f name= 은 부분 일치이므로 정확히 비교한다. 예전 코드는 name=traefik 으로
+    # 검사해 dev의 kokomen-traefik 에도 매칭됐다.
+    if ! docker ps --format '{{.Names}}' | grep -qx 'kokomen-traefik-prod'; then
+        log_error "kokomen-traefik-prod 가 실행 중이 아닙니다."
+        log_error "  이 컨테이너는 client 레포(docker/client/compose.yaml)가 소유합니다."
+        log_error "  client 배포를 먼저 실행하거나 아래로 직접 기동하세요:"
+        log_error "    cd <client 워크스페이스> && docker compose -f docker/client/compose.yaml up -d traefik"
+        exit 1
     fi
 
     # Step 2: 새 컨테이너 시작

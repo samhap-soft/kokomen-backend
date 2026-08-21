@@ -5,7 +5,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: http://10.0.1.196:3100/loki/api/v1/push
+  - url: http://kokomen-loki:3100/loki/api/v1/push
 
 scrape_configs:
   - job_name: kokomen-app-prod
@@ -13,6 +13,7 @@ scrape_configs:
       - labels:
           job: kokomen-app
           app: kokomen
+          env: prod
           host: ${HOSTNAME}
           __path__: /logs/app/app.log
     pipeline_stages:
