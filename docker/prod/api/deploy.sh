@@ -80,6 +80,15 @@ main() {
         exit 1
     fi
 
+    # 인프라 서비스는 API의 depends_on에 걸려 있지 않다(mysql만 있다). 그래서 이 스크립트가
+    # kokomen-api-$TARGET만 띄우면 redis/node/promtail은 아무도 시작하지 않는다.
+    # 새 호스트에서 redis가 없으면 /actuator/health의 redis 컴포넌트가 DOWN이 되어
+    # 헬스체크가 실패하고, promtail이 없으면 prod 로그가 Loki에 들어오지 않는다.
+    # 이미 떠 있으면 no-op이라 매 배포에 안전하다.
+    log_info "Step 0: 인프라 서비스 확인 (mysql/redis/node/promtail)"
+    sudo -E docker compose -f $COMPOSE_FILE up -d \
+        kokomen-mysql-prod kokomen-redis-prod node promtail
+
     # Step 2: 새 컨테이너 시작
     log_info "Step 1: $TARGET 컨테이너 시작"
     sudo -E docker compose -f $COMPOSE_FILE --profile $TARGET up -d "kokomen-api-$TARGET"
