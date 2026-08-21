@@ -93,18 +93,6 @@ services:
     networks:
       - dev-kokomen-net
 
-  kokomen-loki:
-    image: grafana/loki
-    container_name: kokomen-loki
-    restart: unless-stopped
-    command: -config.file=/etc/loki/local-config.yaml
-    volumes:
-      - loki:/loki
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
   kokomen-promtail:
     image: grafana/promtail
     container_name: kokomen-promtail
@@ -122,86 +110,11 @@ services:
     networks:
       - dev-kokomen-net
 
-  kokomen-prometheus:
-    image: prom/prometheus
-    container_name: kokomen-prometheus
-    restart: unless-stopped
-    volumes:
-      - prometheus:/prometheus
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        cat <<EOF > /prometheus/prometheus.yml
-        scrape_configs:
-          - job_name: 'api-actuator'
-            metrics_path: '/actuator/prometheus'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['kokomen-interview-api-dev:8081']
-
-          - job_name: 'node'
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['kokomen-node:9100']
-        EOF
-        /bin/prometheus
-    environment:
-      TZ: Asia/Seoul
-    networks:
-      - dev-kokomen-net
-
-  kokomen-grafana:
-    image: grafana/grafana
-    container_name: kokomen-grafana
-    restart: unless-stopped
-    volumes:
-      - grafana:/var/lib/grafana
-    environment:
-      GF_AUTH_ANONYMOUS_ENABLED: false
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD_DEV}
-      TZ: Asia/Seoul
-    ports:
-      - 127.0.0.1:3015:3000
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy
-          orgId: 1
-          url: http://kokomen-loki:3100
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: false
-
-        - name: Prometheus
-          type: prometheus
-          access: proxy
-          orgId: 1
-          url: http://kokomen-prometheus:9090
-          basicAuth: false
-          isDefault: false
-          editable: false
-        EOF
-        /run.sh
-    networks:
-      - dev-kokomen-net
-
 volumes:
   promtail-tmp:
   mysql-data:
   mysql-init:
   kokomen-redis-data:
-  loki:
-  prometheus:
-  grafana:
 
 networks:
   dev-kokomen-net:
