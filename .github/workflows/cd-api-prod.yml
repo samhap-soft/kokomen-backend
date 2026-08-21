@@ -85,8 +85,16 @@ jobs:
           GOOGLE_CLIENT_SECRET_PROD: ${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}
           WIDGET_SECRET_KEY_PROD: ${{ secrets.WIDGET_SECRET_KEY_PROD }}
           SLACK_WEBHOOK_URL_PROD: ${{ secrets.SLACK_WEBHOOK_URL_PROD }}
+          MYSQL_ROOT_PASSWORD_PROD: ${{ secrets.MYSQL_ROOT_PASSWORD_PROD }}
+          # EC2 밖(OCI)에서는 IAM 인스턴스 프로파일이 없으므로 액세스 키로 인증한다.
+          # AwsConfig가 DefaultCredentialsProvider를 쓰기 때문에 환경변수가 그대로 먹는다.
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          export HOSTNAME=$(hostname)
+          # promtail이 Loki에 붙이는 host 라벨로만 쓰인다(앱 코드는 이 값을 읽지 않는다).
+          # $(hostname)을 쓰면 배포 호스트의 머신 이름이 그대로 라벨이 되어,
+          # 호스트를 옮길 때마다 라벨이 바뀌고 이 레포와 무관한 이름이 대시보드에 노출된다.
+          export HOSTNAME=kokomen-prod
           sudo -E ./deploy.sh
 
       - name: Verify deployment
