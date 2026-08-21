@@ -13,6 +13,7 @@ scrape_configs:
       - labels:
           job: interview-api
           app: interview-api
+          env: dev
           host: ${HOSTNAME}
           __path__: /logs/interviews/api/app.log
     pipeline_stages:
