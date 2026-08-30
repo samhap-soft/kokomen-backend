@@ -751,6 +751,19 @@ class InterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
+    void 다른_사용자의_완료된_인터뷰_목록_조회시_member_id가_숫자가_아니면_400() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews")
+                        .param("member_id", "NaN")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sort", "id,desc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("요청 파라미터 'member_id'에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'NaN')"));
+    }
+
+    @Test
     void 다른_사용자의_완료된_인터뷰_목록_조회_비회원_버전() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
