@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -80,6 +81,16 @@ public class GlobalExceptionHandler {
             MissingServletRequestParameterException e) {
         String message = "필수 요청 파라미터 '" + e.getParameterName() + "'가 누락되었습니다.";
         log.warn("MissingServletRequestParameterException :: message: {}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(message));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException e) {
+        String message = String.format("'%s'에 유효하지 않은 값이 전달되었습니다. (전달된 값: '%s')",
+                e.getName(), e.getValue());
+        log.warn("MethodArgumentTypeMismatchException :: message: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(message));
     }
