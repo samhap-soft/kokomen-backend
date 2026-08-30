@@ -760,7 +760,16 @@ class InterviewControllerTest extends BaseControllerTest {
                         .param("sort", "id,desc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
-                        .value("요청 파라미터 'member_id'에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'NaN')"));
+                        .value("'member_id'에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'NaN')"));
+    }
+
+    @Test
+    void 다른_사용자의_인터뷰_결과_조회시_interview_id가_숫자가_아니면_400() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/interviews/{interview_id}/result", "NaN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("'interviewId'에 유효하지 않은 값이 전달되었습니다. (전달된 값: 'NaN')"));
     }
 
     @Test

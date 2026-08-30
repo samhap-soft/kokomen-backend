@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e) {
-        String message = String.format("요청 파라미터 '%s'에 유효하지 않은 값이 전달되었습니다. (전달된 값: '%s')",
+        String message = String.format("'%s'에 유효하지 않은 값이 전달되었습니다. (전달된 값: '%s')",
                 e.getName(), e.getValue());
         log.warn("MethodArgumentTypeMismatchException :: message: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
