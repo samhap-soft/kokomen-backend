@@ -771,4 +771,55 @@ class InterviewServiceTest extends BaseTest {
                 .extracting(RootQuestionReferenceAnswer::answerContent)
                 .containsExactly("회원 답변");
     }
+
+    @Test
+    void 꼬리_질문의_답변은_참조_답변에서_제외된다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(107).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question).build());
+
+        // 루트 질문 답변은 C 랭크, 꼬리 질문 답변은 A 랭크인 인터뷰
+        Member otherMember1 = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview otherInterview1 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember1).rootQuestion(rootQuestion).likeCount(10L)
+                        .build());
+        Question otherFirstQuestion1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview1).content("자바의 특징은?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherFirstQuestion1).content("루트 질문 답변")
+                        .answerRank(AnswerRank.C).build());
+        Question otherFollowUpQuestion1 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview1).content("JVM은 어떻게 동작하나요?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherFollowUpQuestion1).content("꼬리 질문 답변")
+                        .answerRank(AnswerRank.A).build());
+
+        // 루트 질문 답변이 B 랭크인 인터뷰
+        Member otherMember2 = memberRepository.save(MemberFixtureBuilder.builder().nickname("이영희").build());
+        Interview otherInterview2 = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(otherMember2).rootQuestion(rootQuestion).likeCount(5L)
+                        .build());
+        Question otherFirstQuestion2 = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(otherInterview2).content("자바의 특징은?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(otherFirstQuestion2).content("다른 루트 질문 답변")
+                        .answerRank(AnswerRank.B).build());
+
+        interview.evaluate("총 피드백", 50);
+        interviewRepository.save(interview);
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers())
+                .extracting(RootQuestionReferenceAnswer::answerContent)
+                .containsExactly("다른 루트 질문 답변");
+    }
 }

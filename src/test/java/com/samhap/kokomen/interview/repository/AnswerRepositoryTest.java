@@ -252,4 +252,35 @@ class AnswerRepositoryTest extends BaseTest {
                 .extracting(Answer::getContent)
                 .containsExactly("회원 답변");
     }
+
+    @Test
+    void 꼬리_질문의_답변은_조회되지_않는다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(10).build());
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+
+        // 면접의 첫 질문이 루트 질문이고, 그 뒤 질문은 꼬리 질문이다
+        Question firstQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("자바의 특징은?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(firstQuestion).content("루트 질문 답변").answerRank(AnswerRank.A)
+                        .build());
+        Question followUpQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(interview).content("JVM은 어떻게 동작하나요?").build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(followUpQuestion).content("꼬리 질문 답변").answerRank(AnswerRank.A)
+                        .build());
+
+        // when
+        List<Answer> answers = answerRepository.findTopAnswersByRootQuestionAndRank(rootQuestion.getId(),
+                AnswerRank.A, -1L, 10);
+
+        // then
+        assertThat(answers)
+                .extracting(Answer::getContent)
+                .containsExactly("루트 질문 답변");
+    }
 }
