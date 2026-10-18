@@ -59,10 +59,6 @@ public class MemberResume extends BaseEntity {
         this(member, title, resumeUrl, null);
     }
 
-    public void updateContent(String content) {
-        this.content = content;
-    }
-
     public boolean hasContent() {
         return content != null && !content.isBlank();
     }

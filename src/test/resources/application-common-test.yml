@@ -1,12 +1,52 @@
+# 테스트는 운영 application.yml(+ application-common.yml)을 그대로 로드하고, 이 파일은 테스트에서 바꿔야 하는 값만 덮어쓴다.
+# BaseTest·DocsTest가 @ActiveProfiles로 common-test를 켠다. 프로파일 전용 파일에서는 spring.profiles.include를 쓸 수 없다.
+# src/test/resources에 application.yml을 두지 않는다. 같은 이름이면 클래스패스에서 운영 파일을 통째로 가린다(ProductionConfigParityTest).
 spring:
+  main:
+    lazy-initialization: true
   data:
     redis:
       host: localhost
       port: 16379
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true
 
 logging:
   level:
     org.springframework.jdbc.core.JdbcTemplate: trace
+
+cors:
+  allowed-origins: http://localhost:8080
+
+oauth:
+  kakao:
+    client-id: test_client_id
+    client-secret: test_client_secret
+  google:
+    client-id: test_google_client_id
+    client-secret: test_google_client_secret
+
+tosspayments:
+  widget-secret-key: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+retry:
+  tosspayments:
+    max-attempts: 3
+    initial-interval: 500
+    multiplier: 2.0
+    max-interval: 2000
+
+supertone:
+  api-token: mock-token
+
+aws:
+  root-question-s3-path: mock-path/
+  next-question-s3-path: mock-path/
+  resume-s3-path: mock-path/
+  portfolio-s3-path: mock-path/
+  bedrock:
+    model-id: test-model-id
 
 ---
 # test
@@ -19,11 +59,6 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: root
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQL8Dialect
 
 ---
 # docs
@@ -39,7 +74,14 @@ spring:
     username: sa
     password:
   jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
     database-platform: org.hibernate.dialect.H2Dialect
+    # 운영 공통 설정이 아래 두 키로 스키마 생성을 끈다. 두 키가 spring.jpa.hibernate.ddl-auto보다 우선하므로 같은 키로 켠다.
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: create-drop
+      javax:
+        persistence:
+          schema-generation:
+            database:
+              action: create-drop

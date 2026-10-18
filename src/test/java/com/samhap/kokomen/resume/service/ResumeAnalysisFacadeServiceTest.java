@@ -288,6 +288,39 @@ class ResumeAnalysisFacadeServiceTest extends BaseTest {
         );
     }
 
+    // 캐시 미스 때 추출한 원문은 자료 행에 남아야 다음 제출이 S3 다운로드와 추출을 건너뛴다. 제출 경로는 트랜잭션
+    // 없이 자료를 읽어 넘기므로(운영 OSIV off) 넘겨받은 엔티티를 바꾸는 것만으로는 아무것도 저장되지 않는다.
+    // 위 두 패리티 테스트도 이 미스 경로를 타지만 분석 원문만 보므로 이 결함을 잡지 못한다.
+    @Test
+    void content가_비어_있는_저장_이력서와_포트폴리오로_제출하면_추출한_원문이_각_자료에_캐시된다() {
+        // given
+        delegateExtractionToRealExtractor();
+        stubS3Download(linkedResumePdf());
+        Member member = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        MemberResume savedResume = memberResumeRepository.save(MemberResumeFixtureBuilder.builder()
+                .member(member)
+                .resumeUrl(AwsConstant.CLOUD_FRONT_DOMAIN_URL + "resume/reuse.pdf")
+                .content(null)
+                .build());
+        MemberPortfolio savedPortfolio = memberPortfolioRepository.save(MemberPortfolioFixtureBuilder.builder()
+                .member(member)
+                .portfolioUrl(AwsConstant.CLOUD_FRONT_DOMAIN_URL + "portfolio/reuse.pdf")
+                .content(null)
+                .build());
+
+        // when
+        resumeAnalysisFacadeService.submitMemberAnalysis(member.getId(), new ResumeAnalysisSubmitRequest(
+                null, null, savedResume.getId(), savedPortfolio.getId(), JOB_POSITION, null, JOB_CAREER));
+
+        // then
+        assertAll(
+                () -> assertThat(memberResumeRepository.findById(savedResume.getId()).orElseThrow().getContent())
+                        .isEqualTo(LINKED_RESUME_TEXT),
+                () -> assertThat(memberPortfolioRepository.findById(savedPortfolio.getId()).orElseThrow()
+                        .getContent()).isEqualTo(LINKED_RESUME_TEXT)
+        );
+    }
+
     @Test
     void 진행_중_분석이_있으면_제출할_수_없다() {
         // given
