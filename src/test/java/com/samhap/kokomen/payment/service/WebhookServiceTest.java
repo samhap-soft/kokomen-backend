@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResponseFixtureBuilder;
+import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -343,6 +344,44 @@ class WebhookServiceTest extends BaseTest {
         assertThat(paidToken.getTokenCount()).isEqualTo(product.getTokenCount());
         assertThat(tokenPurchaseRepository.findAll()).hasSize(1);
         verify(tosspaymentsClient, never()).confirmPayment(any(), any());
+    }
+
+    @Test
+    void 결제_결과가_이미_있는_결제에_결제완료_웹훅이_오면_결제_결과를_중복_저장하지_않는다() throws JsonProcessingException {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Long memberId = member.getId();
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(memberId)
+                .type(TokenType.PAID)
+                .tokenCount(0)
+                .build());
+        TokenProduct product = TokenProduct.TOKEN_10;
+        String metadata = objectMapper.writeValueAsString(
+                new PurchaseMetadata(product.name(), product.getTokenCount(), product.getUnitPrice()));
+        // 승인 경로가 결과 행까지 저장했지만 토큰 지급 전에 멈춘 결제
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("approved_test_key")
+                .memberId(memberId)
+                .orderId("approved_order_1")
+                .totalAmount(product.getPrice())
+                .metadata(metadata)
+                .build();
+        payment.updateState(PaymentState.APPROVED);
+        tosspaymentsPaymentRepository.save(payment);
+        TosspaymentsPaymentResult approvedResult = tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder().tosspaymentsPayment(payment).build());
+
+        given(tosspaymentsClient.getPayment("approved_test_key")).willReturn(createTossResponse(
+                "approved_test_key", "approved_order_1", product.getPrice(), TosspaymentsStatus.DONE, "카드", null));
+        webhookService.handlePaymentStatusChanged(createWebhookPayload(
+                "approved_test_key", "approved_order_1", TosspaymentsStatus.DONE, product.getPrice(), "카드", null));
+
+        TosspaymentsPayment completedPayment = tosspaymentsPaymentRepository.findByPaymentKey("approved_test_key")
+                .orElseThrow();
+        assertThat(completedPayment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(tosspaymentsPaymentResultRepository.findAll())
+                .extracting(TosspaymentsPaymentResult::getId)
+                .containsExactly(approvedResult.getId());
     }
 
     // 승인 요청이 읽기 타임아웃으로 끝나 결과 행 없이 NEED_CANCEL로 남은 결제

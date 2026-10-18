@@ -12,6 +12,7 @@ import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResponseFixtureBuilder;
+import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -114,6 +115,36 @@ class PaymentRecoveryServiceTest extends BaseTest {
         assertThat(refundedPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDED);
         Token paidToken = tokenRepository.findByMemberIdAndType(memberId, TokenType.PAID).orElseThrow();
         assertThat(paidToken.getTokenCount()).isZero();
+    }
+
+    @Test
+    void 결제_결과가_이미_있는_결제를_DONE으로_복구하면_결제_결과를_중복_저장하지_않는다() throws JsonProcessingException {
+        Long memberId = saveMemberWithPaidToken();
+        String metadata = objectMapper.writeValueAsString(
+                new PurchaseMetadata(PRODUCT.name(), PRODUCT.getTokenCount(), PRODUCT.getUnitPrice()));
+        // 승인 경로가 결과 행까지 저장했지만 토큰 지급 전에 멈춘 결제
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("recovery_approved_key")
+                .memberId(memberId)
+                .orderId("recovery_approved_order")
+                .totalAmount(PRODUCT.getPrice())
+                .metadata(metadata)
+                .build();
+        payment.updateState(PaymentState.APPROVED);
+        tosspaymentsPaymentRepository.save(payment);
+        TosspaymentsPaymentResult approvedResult = tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder().tosspaymentsPayment(payment).build());
+        given(tosspaymentsClient.getPayment("recovery_approved_key"))
+                .willReturn(createDoneResponse("recovery_approved_key", "recovery_approved_order"));
+
+        paymentRecoveryService.processRecovery("recovery_approved_key");
+
+        TosspaymentsPayment recoveredPayment = tosspaymentsPaymentRepository.findByPaymentKey("recovery_approved_key")
+                .orElseThrow();
+        assertThat(recoveredPayment.getState()).isEqualTo(PaymentState.COMPLETED);
+        assertThat(tosspaymentsPaymentResultRepository.findAll())
+                .extracting(TosspaymentsPaymentResult::getId)
+                .containsExactly(approvedResult.getId());
     }
 
     private Long saveMemberWithPaidToken() {

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentRecoveryService {
 
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
+    private final TosspaymentsPaymentResultService tosspaymentsPaymentResultService;
     private final TosspaymentsClient tosspaymentsClient;
     private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
@@ -82,6 +83,8 @@ public class PaymentRecoveryService {
         int tokenCount = metadata.count();
 
         payment.updateState(PaymentState.COMPLETED);
+        // 승인 경로와 같은 변환으로 결과 행을 남긴다. 환불과 같은 paymentKey 재승인이 이 행을 읽는다.
+        tosspaymentsPaymentResultService.saveIfAbsent(tossResponse.toTosspaymentsPaymentResult(payment));
 
         TokenPurchase tokenPurchase = TokenPurchase.builder()
                 .memberId(payment.getMemberId())

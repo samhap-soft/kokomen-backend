@@ -29,7 +29,10 @@ public class TosspaymentsTransactionService {
         TosspaymentsPayment payment = tosspaymentsPaymentService.readByPaymentKey(response.paymentKey());
         payment.updateState(PaymentState.CANCELED);
 
-        TosspaymentsPaymentResult result = tosspaymentsPaymentResultService.readByTosspaymentsPaymentId(payment.getId());
+        // 웹훅·복구가 결과 행을 저장하기 전에 그 경로로 완료된 결제에는 행이 없다.
+        // 취소 응답도 토스 Payment 객체 전체이므로 없으면 그것으로 만든다.
+        TosspaymentsPaymentResult result = tosspaymentsPaymentResultService.saveIfAbsent(
+                response.toTosspaymentsPaymentResult(payment));
 
         if (response.cancels() != null && !response.cancels().isEmpty()) {
             TosspaymentsCancel tosspaymentsCancel = response.cancels().get(response.cancels().size() - 1);

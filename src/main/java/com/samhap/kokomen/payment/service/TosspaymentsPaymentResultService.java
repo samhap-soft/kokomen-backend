@@ -22,6 +22,17 @@ public class TosspaymentsPaymentResultService {
         return tosspaymentsPaymentResultRepository.save(tosspaymentsPaymentResult);
     }
 
+    /**
+     * 결과 행은 결제당 하나다. tosspayments_payment_id에 유니크 제약이 없으므로, 이미 있으면(승인 경로가 저장한 경우 등)
+     * 새로 저장하지 않고 그 행을 돌려준다.
+     */
+    @Transactional
+    public TosspaymentsPaymentResult saveIfAbsent(TosspaymentsPaymentResult tosspaymentsPaymentResult) {
+        Long tosspaymentsPaymentId = tosspaymentsPaymentResult.getTosspaymentsPayment().getId();
+        return tosspaymentsPaymentResultRepository.findByTosspaymentsPaymentId(tosspaymentsPaymentId)
+                .orElseGet(() -> tosspaymentsPaymentResultRepository.save(tosspaymentsPaymentResult));
+    }
+
     @Transactional(readOnly = true)
     public TosspaymentsPaymentResult readByTosspaymentsPaymentId(Long tosspaymentsPaymentId) {
         return tosspaymentsPaymentResultRepository.findByTosspaymentsPaymentId(tosspaymentsPaymentId)
