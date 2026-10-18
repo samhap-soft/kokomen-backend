@@ -26,11 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookService {
 
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
+    private final TosspaymentsPaymentResultService tosspaymentsPaymentResultService;
     private final TosspaymentsClient tosspaymentsClient;
     private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
 
-    @DistributedLock(prefix = "payment", key = "#payload.data().paymentKey()")
+    @DistributedLock(prefix = PaymentFacadeService.PAYMENT_LOCK_PREFIX, key = "#payload.data().paymentKey()")
     @Transactional
     public void handlePaymentStatusChanged(WebhookPayload payload) {
         String paymentKey = payload.data().paymentKey();
@@ -82,6 +83,8 @@ public class WebhookService {
         int tokenCount = metadata.count();
 
         payment.updateState(PaymentState.COMPLETED);
+        // 승인 경로와 같은 변환으로 결과 행을 남긴다. 환불과 같은 paymentKey 재승인이 이 행을 읽는다.
+        tosspaymentsPaymentResultService.saveIfAbsent(tossResponse.toTosspaymentsPaymentResult(payment));
 
         TokenPurchase tokenPurchase = TokenPurchase.builder()
                 .memberId(memberId)
