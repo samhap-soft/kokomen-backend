@@ -243,6 +243,38 @@ class InterviewTokenChargeTest extends BaseTest {
         assertThat(readFreeTokenCount(member)).isZero();
     }
 
+    /**
+     * 음성 면접과 같은 흐름을 텍스트 면접에서도 실제 차감으로 고정한다. 텍스트 면접은 질문 음성이 없어 답변마다 1개만 쓴다.
+     */
+    @Test
+    void 텍스트_면접은_시작할_때_요구한_토큰만으로_마지막_답변까지_진행되고_토큰이_남지_않는다() throws InterruptedException {
+        // given
+        given(interviewProceedBedrockClient.requestToBedrock(any())).willReturn(
+                BedrockResponseFixtureBuilder.builder().buildProceed(),
+                BedrockResponseFixtureBuilder.builder().buildProceed(),
+                BedrockResponseFixtureBuilder.builder().buildEnd());
+        given(answerFeedbackBedrockClient.requestAnswerFeedback(any(), any())).willReturn("답변 피드백입니다.");
+        rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().category(Category.OPERATING_SYSTEM).build());
+        Member member = saveMemberWithTokens(3);
+        InterviewStartResponse response = interviewStartFacadeService.startInterview(
+                new InterviewRequest(Category.OPERATING_SYSTEM, MAX_QUESTION_COUNT, InterviewMode.TEXT, false),
+                new MemberAuth(member.getId()));
+        Long interviewId = response.interviewId();
+
+        // when
+        InterviewProceedState firstState = submitAnswerAndAwait(member, interviewId, response.questionId(),
+                InterviewMode.TEXT);
+        InterviewProceedState secondState = submitAnswerAndAwait(member, interviewId,
+                readLatestQuestionId(interviewId), InterviewMode.TEXT);
+        InterviewProceedState lastState = submitAnswerAndAwait(member, interviewId,
+                readLatestQuestionId(interviewId), InterviewMode.TEXT);
+
+        // then
+        assertThat(List.of(firstState, secondState, lastState)).containsOnly(InterviewProceedState.COMPLETED);
+        assertThat(readInterviewState(interviewId)).isEqualTo(InterviewState.FINISHED);
+        assertThat(readFreeTokenCount(member)).isZero();
+    }
+
     private Member saveMemberWithTokens(int freeTokenCount) {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -281,8 +313,13 @@ class InterviewTokenChargeTest extends BaseTest {
 
     private InterviewProceedState submitVoiceAnswerAndAwait(Member member, Long interviewId, Long curQuestionId)
             throws InterruptedException {
+        return submitAnswerAndAwait(member, interviewId, curQuestionId, InterviewMode.VOICE);
+    }
+
+    private InterviewProceedState submitAnswerAndAwait(Member member, Long interviewId, Long curQuestionId,
+                                                       InterviewMode mode) throws InterruptedException {
         interviewProceedFacadeService.proceedInterviewByBedrockFlow(interviewId, curQuestionId,
-                new AnswerRequestV2("답변입니다.", InterviewMode.VOICE), new MemberAuth(member.getId()),
+                new AnswerRequestV2("답변입니다.", mode), new MemberAuth(member.getId()),
                 new ClientIp("0.0.0.0"));
         awaitProceedLockReleased(member);
         String proceedStateKey = InterviewProceedFacadeService.createInterviewProceedStateKey(interviewId,

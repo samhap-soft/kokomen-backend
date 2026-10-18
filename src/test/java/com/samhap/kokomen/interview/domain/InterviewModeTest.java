@@ -37,14 +37,19 @@ class InterviewModeTest {
 
     /**
      * 시작 검증이 답변 전 검증의 합보다 적으면 마지막 답변에서 막히고, 많으면 쓰지 않을 토큰까지 요구한다.
+     * 기대값은 구현의 식을 옮기지 않고, 질문을 하나씩 받아 답하는 흐름을 따라가며 답변마다 다음 질문이 이어지는지
+     * (출제된 질문 수 < 최대 질문 수)로 요구량을 더해 구한다.
      */
     @EnumSource(InterviewMode.class)
     @ParameterizedTest
     void 시작에_필요한_토큰은_마지막_답변까지_각_답변에_필요한_토큰을_모두_더한_값과_같다(InterviewMode mode) {
         for (int maxQuestionCount = Interview.MIN_ALLOWED_MAX_QUESTION_COUNT;
              maxQuestionCount <= Interview.MAX_ALLOWED_MAX_QUESTION_COUNT; maxQuestionCount++) {
-            int requiredTokenCountToAnswerAll = mode.calculateRequiredTokenCountToAnswer(true) * (maxQuestionCount - 1)
-                    + mode.calculateRequiredTokenCountToAnswer(false);
+            int requiredTokenCountToAnswerAll = 0;
+            for (int askedQuestionCount = 1; askedQuestionCount <= maxQuestionCount; askedQuestionCount++) {
+                boolean hasNextQuestion = askedQuestionCount < maxQuestionCount;
+                requiredTokenCountToAnswerAll += mode.calculateRequiredTokenCountToAnswer(hasNextQuestion);
+            }
 
             assertThat(mode.calculateRequiredTokenCountToStart(maxQuestionCount))
                     .isEqualTo(requiredTokenCountToAnswerAll);
