@@ -195,26 +195,34 @@ class InterviewProceedServiceTest extends BaseTest {
             return createConfirmedTokenPaymentResponse();
         });
         ExecutorService executorService = Executors.newFixedThreadPool(2);
-        Future<?> purchase = executorService.submit(
-                () -> tokenFacadeService.purchaseTokens(member.getId(), createTokenPurchaseRequest()));
-        assertThat(confirmStarted.await(CONCURRENT_TASK_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
-        clearInvocations(redissonClient);
+        try {
+            Future<?> purchase = executorService.submit(
+                    () -> tokenFacadeService.purchaseTokens(member.getId(), createTokenPurchaseRequest()));
+            assertThat(confirmStarted.await(CONCURRENT_TASK_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+            clearInvocations(redissonClient);
 
-        // when
-        Future<InterviewProceedResult> proceed = executorService.submit(
-                () -> interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(member.getId(),
-                        questionAndAnswers, BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId()));
-        executorService.shutdown();
-        // 차감이 토큰 락을 요청한 뒤에 결제 승인을 끝내, 차감 전에 실행된 쓰기가 구매의 INSERT보다 먼저 락을 잡게 한다.
-        verify(redissonClient, timeout(CONCURRENT_TASK_TIMEOUT.toMillis()))
-                .getLock(TOKEN_LOCK_KEY_PREFIX + member.getId());
-        confirmReleased.countDown();
+            // when
+            Future<InterviewProceedResult> proceed = executorService.submit(
+                    () -> interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(member.getId(),
+                            questionAndAnswers, BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId()));
+            // 차감이 토큰 락을 요청한 뒤에 결제 승인을 끝내, 차감 전에 실행된 쓰기가 구매의 INSERT보다 먼저 락을 잡게 한다.
+            verify(redissonClient, timeout(CONCURRENT_TASK_TIMEOUT.toMillis()))
+                    .getLock(TOKEN_LOCK_KEY_PREFIX + member.getId());
+            confirmReleased.countDown();
 
-        // then
-        assertThat(purchase).succeedsWithin(CONCURRENT_TASK_TIMEOUT);
-        assertThat(proceed).succeedsWithin(CONCURRENT_TASK_TIMEOUT)
-                .extracting(InterviewProceedResult::isInProgress)
-                .isEqualTo(false);
+            // then
+            assertThat(purchase).succeedsWithin(CONCURRENT_TASK_TIMEOUT);
+            assertThat(proceed).succeedsWithin(CONCURRENT_TASK_TIMEOUT)
+                    .extracting(InterviewProceedResult::isInProgress)
+                    .isEqualTo(false);
+        } finally {
+            // 단언이 중간에 실패해도 멈춰 둔 결제 승인을 풀고 두 작업이 끝나기를 기다려, 다음 테스트에 쓰기가 남지 않게 한다.
+            confirmReleased.countDown();
+            executorService.shutdown();
+            if (!executorService.awaitTermination(CONCURRENT_TASK_TIMEOUT.toSeconds(), TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        }
         Interview finishedInterview = readInterview(interview);
         assertThat(finishedInterview.getInterviewState()).isEqualTo(InterviewState.FINISHED);
         assertThat(readMemberScore(member)).isEqualTo(finishedInterview.getTotalScore());
@@ -323,6 +331,43 @@ class InterviewProceedServiceTest extends BaseTest {
         assertThat(answerRepository.findByQuestionId(curQuestion.getId())).isEmpty();
     }
 
+    // 비회원은 차감할 토큰도 점수를 더할 회원도 없다. 회원 전용 단계를 건너뛰고 진행 결과는 그대로 저장되는지 고정한다.
+    @Test
+    void 비회원_면접을_이어가면_다음_질문과_답변을_저장한다() {
+        // given
+        Interview interview = saveGuestInterview();
+        Question curQuestion = saveCurrentQuestion(interview, 1);
+
+        // when
+        InterviewProceedResult result = interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(
+                null, createQuestionAndAnswers(interview, curQuestion),
+                BedrockResponseFixtureBuilder.builder().buildProceed(), interview.getId());
+
+        // then
+        assertThat(result.isInProgress()).isTrue();
+        assertThat(questionRepository.countByInterview(interview)).isEqualTo(3);
+        assertThat(answerRepository.findByQuestionId(curQuestion.getId())).isPresent();
+    }
+
+    @Test
+    void 비회원_면접의_마지막_답변이면_면접을_끝낸다() {
+        // given
+        Interview interview = saveGuestInterview();
+        Question curQuestion = saveCurrentQuestion(interview, interview.getMaxQuestionCount() - 1);
+
+        // when
+        InterviewProceedResult result = interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(
+                null, createQuestionAndAnswers(interview, curQuestion),
+                BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId());
+
+        // then
+        assertThat(result.isInProgress()).isFalse();
+        Interview finishedInterview = readInterview(interview);
+        assertThat(finishedInterview.getInterviewState()).isEqualTo(InterviewState.FINISHED);
+        assertThat(finishedInterview.getTotalScore()).isNotNull();
+        assertThat(answerRepository.findByQuestionId(curQuestion.getId())).isPresent();
+    }
+
     private Member saveMemberWithTokens(int freeTokenCount) {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -336,6 +381,15 @@ class InterviewProceedServiceTest extends BaseTest {
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         return interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+    }
+
+    private Interview saveGuestInterview() {
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        return interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(null)
+                .guestIp("1.2.3.4")
                 .rootQuestion(rootQuestion)
                 .build());
     }
