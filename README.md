@@ -138,7 +138,7 @@ docker compose -f test.yml up -d
 ### 메트릭 수집
 - **Spring Boot Actuator**: 애플리케이션 헬스체크
 - **Prometheus**: 메트릭 수집 (설정 가능)
-- **Custom Metrics**: 면접 진행률, API 응답시간 등
+- **Custom Metrics**: 루트 질문별 면접 시작 수(`root_question_interview_count`), API 응답시간(`http.server.requests` 히스토그램)
 
 ### 로깅
 - **Structured Logging**: JSON 형태 로그 출력

@@ -1,9 +1,12 @@
 package com.samhap.kokomen.member.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
@@ -11,7 +14,9 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.member.domain.Admin;
 import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
 import java.time.LocalDate;
@@ -28,6 +33,8 @@ class MemberServiceTest extends BaseTest {
     private InterviewRepository interviewRepository;
     @Autowired
     private RootQuestionRepository rootQuestionRepository;
+    @Autowired
+    private AdminRepository adminRepository;
 
     @Test
     void 스트릭_조회시_startDate와_endDate_필터링_경계_테스트() {
@@ -358,6 +365,27 @@ class MemberServiceTest extends BaseTest {
         assertThat(result.dailyCounts().get(0).count()).isEqualTo(3L);
         assertThat(result.currentStreak()).isEqualTo(1);
         assertThat(result.maxStreak()).isEqualTo(1);
+    }
+
+    @Test
+    void 관리자는_관리자_검증을_통과한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+
+        // when & then
+        assertThatCode(() -> memberService.validateAdmin(member.getId())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 관리자가_아닌_회원은_관리자_검증에서_권한_예외가_발생한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+
+        // when & then
+        assertThatThrownBy(() -> memberService.validateAdmin(member.getId()))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("권한이 없습니다.");
     }
 
     private void createFinishedInterview(Member member, RootQuestion rootQuestion, LocalDate finishedDate) {

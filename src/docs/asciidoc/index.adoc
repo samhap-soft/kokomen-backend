@@ -529,6 +529,7 @@ include::{snippetsDir}/admin-cancelPayment/curl-request.adoc[]
 === 루트 질문 음성 등록
 
 include::{snippetsDir}/admin-uploadRootQuestionVoice/http-request.adoc[]
+include::{snippetsDir}/admin-uploadRootQuestionVoice/request-headers.adoc[]
 include::{snippetsDir}/admin-uploadRootQuestionVoice/path-parameters.adoc[]
 include::{snippetsDir}/admin-uploadRootQuestionVoice/http-response.adoc[]
 include::{snippetsDir}/admin-uploadRootQuestionVoice/curl-request.adoc[]
