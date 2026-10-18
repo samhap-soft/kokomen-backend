@@ -16,6 +16,7 @@ import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.Question;
@@ -28,7 +29,10 @@ import com.samhap.kokomen.interview.tool.InterviewProceedResult;
 import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -57,6 +61,8 @@ class InterviewProceedServiceTest extends BaseTest {
     private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
 
     @Test
     void 면접을_이어가면_다음_질문과_답변을_저장하고_답변_토큰_1개를_차감한다() {
@@ -95,6 +101,37 @@ class InterviewProceedServiceTest extends BaseTest {
         assertThat(result.isInProgress()).isFalse();
         assertThat(readInterview(interview).getInterviewState()).isEqualTo(InterviewState.FINISHED);
         assertThat(readFreeTokenCount(member)).isEqualTo(INITIAL_FREE_TOKEN_COUNT - 1);
+    }
+
+    /**
+     * 차감은 면접 평가·점수 UPDATE를 flush한 뒤 별도 트랜잭션에서 실행되므로, 그동안 진행 트랜잭션이 회원 행 락을 쥐고 있다.
+     * 유료 토큰 차감은 회원을 참조하는 token·token_purchase를 함께 갱신하는데, 이 락에 막히지 않고 끝나야 한다.
+     */
+    @Test
+    void 마지막_답변을_유료_토큰으로_차감해도_면접을_끝낸다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.PAID).tokenCount(1).build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(member.getId()).purchaseCount(1).state(TokenPurchaseState.USABLE).build());
+        Interview interview = saveInterview(member);
+        Question curQuestion = saveCurrentQuestion(interview, interview.getMaxQuestionCount() - 1);
+
+        // when
+        InterviewProceedResult result = interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(
+                member.getId(), createQuestionAndAnswers(interview, curQuestion),
+                BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId());
+
+        // then
+        assertThat(result.isInProgress()).isFalse();
+        assertThat(readInterview(interview).getInterviewState()).isEqualTo(InterviewState.FINISHED);
+        assertThat(tokenRepository.findByMemberIdAndType(member.getId(), TokenType.PAID).orElseThrow()
+                .getTokenCount()).isZero();
+        assertThat(tokenPurchaseRepository.findById(tokenPurchase.getId()).orElseThrow().getRemainingCount())
+                .isZero();
     }
 
     @Test
