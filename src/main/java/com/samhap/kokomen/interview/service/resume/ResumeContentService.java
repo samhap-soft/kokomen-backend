@@ -21,6 +21,11 @@ import org.springframework.stereotype.Service;
  * PDF 추출 내내 커넥션만 붙잡는다. 캐시 쓰기는 추출 예외를 BadRequest로 바꾸는 try 밖에 둔다. 안에 두면
  * DB 오류까지 '텍스트 추출 실패'로 둔갑한다.
  *
+ * <p>호출하는 쪽도 트랜잭션 밖에서 불러야 한다. 안에서 부르면 캐시 UPDATE의 행 락이 그 트랜잭션이 끝날 때까지 남고,
+ * 뒤이은 saveAnalysis(REQUIRES_NEW)의 resume_analysis INSERT가 FK 검사로 그 행을 기다리다 lock wait timeout으로
+ * 실패한다. 캐시는 content가 NULL인 행에만 쓴다. 빈 문자열이 저장된 행(텍스트가 없는 PDF)은 매번 다시 추출하지만
+ * 같은 PDF라 결과도 같다.
+ *
  * <p>추출은 반드시 {@code extractTextWithLinks}로 한다. 파일 업로드 경로
  * ({@code ResumeAnalysisFacadeService})가 같은 메서드를 쓰므로, 여기서 링크를 뺀 추출을 쓰면 같은 이력서가
  * {@code resume_id}로 제출됐는지 파일로 제출됐는지에 따라 LLM 입력이 달라지고 technical_skills 점수가
