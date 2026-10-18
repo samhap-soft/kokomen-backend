@@ -218,4 +218,38 @@ class AnswerRepositoryTest extends BaseTest {
         assertThat(answers.get(0).getId()).isEqualTo(answer2.getId());
         assertThat(answers.get(0).getContent()).isEqualTo("스프링답변");
     }
+
+    @Test
+    void 비회원_면접의_답변은_조회되지_않는다() {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(
+                RootQuestionFixtureBuilder.builder().content("자바의 특징은?").questionOrder(10).build());
+
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().nickname("김철수").build());
+        Interview memberInterview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question memberQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(memberInterview).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(memberQuestion).content("회원 답변").answerRank(AnswerRank.A)
+                        .build());
+
+        Interview guestInterview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(null).guestIp("11.22.33.44").rootQuestion(rootQuestion)
+                        .build());
+        Question guestQuestion = questionRepository.save(
+                QuestionFixtureBuilder.builder().interview(guestInterview).build());
+        answerRepository.save(
+                AnswerFixtureBuilder.builder().question(guestQuestion).content("비회원 답변").answerRank(AnswerRank.A)
+                        .build());
+
+        // when
+        List<Answer> answers = answerRepository.findTopAnswersByRootQuestionAndRank(rootQuestion.getId(),
+                AnswerRank.A, -1L, 10);
+
+        // then
+        assertThat(answers)
+                .extracting(Answer::getContent)
+                .containsExactly("회원 답변");
+    }
 }
