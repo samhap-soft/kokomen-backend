@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service.resume;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.constant.AwsConstant;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberPortfolioFixtureBuilder;
 import com.samhap.kokomen.global.fixture.resume.MemberResumeFixtureBuilder;
@@ -19,12 +21,15 @@ import com.samhap.kokomen.resume.domain.MemberResume;
 import com.samhap.kokomen.resume.repository.MemberPortfolioRepository;
 import com.samhap.kokomen.resume.repository.MemberResumeRepository;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * 저장 자료의 content 캐시가 DB에 실제로 남는지 검증한다.
@@ -148,6 +153,71 @@ class ResumeContentServiceTest extends BaseTest {
 
         // then
         assertThat(readDetachedPortfolio(portfolioId).getContent()).isEqualTo(EXTRACTED_TEXT);
+    }
+
+    // 다운로드와 PDF 추출은 오래 걸린다. 트랜잭션을 열면 그동안 DB 커넥션을 붙잡으므로 트랜잭션 밖에서 내려받아야 한다.
+    @Test
+    void 저장_이력서_PDF는_트랜잭션_밖에서_내려받는다() {
+        // given
+        Long resumeId = saveResumeWithoutContent().getId();
+        AtomicBoolean downloadedInTransaction = recordTransactionOnDownload();
+
+        // when
+        resumeContentService.getOrExtractResumeContent(readDetachedResume(resumeId));
+
+        // then
+        assertThat(downloadedInTransaction.get()).isFalse();
+    }
+
+    @Test
+    void 저장_포트폴리오_PDF는_트랜잭션_밖에서_내려받는다() {
+        // given
+        Long portfolioId = savePortfolioWithoutContent().getId();
+        AtomicBoolean downloadedInTransaction = recordTransactionOnDownload();
+
+        // when
+        resumeContentService.getOrExtractPortfolioContent(readDetachedPortfolio(portfolioId));
+
+        // then
+        assertThat(downloadedInTransaction.get()).isFalse();
+    }
+
+    @Test
+    void 저장_이력서_PDF를_내려받지_못하면_추출_실패_예외가_나고_캐시는_비어_있다() {
+        // given
+        Long resumeId = saveResumeWithoutContent().getId();
+        given(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+                .willThrow(S3Exception.builder().message("다운로드 실패").build());
+
+        // when & then
+        assertThatThrownBy(() -> resumeContentService.getOrExtractResumeContent(readDetachedResume(resumeId)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("이력서에서 텍스트를 추출하는 데 실패했습니다.");
+        assertThat(readDetachedResume(resumeId).getContent()).isNull();
+    }
+
+    @Test
+    void 저장_포트폴리오_PDF를_내려받지_못하면_추출_실패_예외가_나고_캐시는_비어_있다() {
+        // given
+        Long portfolioId = savePortfolioWithoutContent().getId();
+        given(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+                .willThrow(S3Exception.builder().message("다운로드 실패").build());
+
+        // when & then
+        assertThatThrownBy(() -> resumeContentService.getOrExtractPortfolioContent(
+                readDetachedPortfolio(portfolioId)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("포트폴리오에서 텍스트를 추출하는 데 실패했습니다.");
+        assertThat(readDetachedPortfolio(portfolioId).getContent()).isNull();
+    }
+
+    private AtomicBoolean recordTransactionOnDownload() {
+        AtomicBoolean downloadedInTransaction = new AtomicBoolean(true);
+        given(s3Client.getObjectAsBytes(any(GetObjectRequest.class))).willAnswer(invocation -> {
+            downloadedInTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), PDF_BYTES);
+        });
+        return downloadedInTransaction;
     }
 
     private MemberResume saveResumeWithoutContent() {
