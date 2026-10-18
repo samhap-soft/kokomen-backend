@@ -1,26 +1,15 @@
 package com.samhap.kokomen.global.aop;
 
-import com.samhap.kokomen.answer.domain.Answer;
-import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.answer.service.AnswerService;
-import com.samhap.kokomen.interview.domain.Interview;
-import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
-import com.samhap.kokomen.interview.repository.QuestionRepository;
-import com.samhap.kokomen.interview.service.core.InterviewService;
 import com.samhap.kokomen.interview.service.dto.start.InterviewStartResponse;
 import io.micrometer.core.instrument.MeterRegistry;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @RequiredArgsConstructor
 @Component
 @Order(3)
@@ -28,10 +17,7 @@ import org.springframework.stereotype.Component;
 public class RootQuestionMetricAspect {
 
     private final MeterRegistry meterRegistry;
-    private final InterviewService interviewService;
-    private final AnswerService answerService;
     private final InterviewRepository interviewRepository;
-    private final QuestionRepository questionRepository;
 
     @Pointcut("execution(* com.samhap.kokomen.interview.service.InterviewStartFacadeService.startInterview(..))")
     public void startInterviewMethod() {
@@ -46,50 +32,5 @@ public class RootQuestionMetricAspect {
                 "root_question_interview_count",
                 "root_question_id", String.valueOf(rootQuestionId)
         ).increment();
-    }
-
-    @Pointcut("execution(* com.samhap.kokomen.interview.service.infra.InterviewProceedBedrockFlowAsyncService.proceedInterviewByBedrockFlowAsync(..)) && args(memberId, questionAndAnswers, interviewId)")
-    public void asyncProceedInterviewPointcut(Long memberId, QuestionAndAnswers questionAndAnswers, Long interviewId) {
-    }
-
-    // TODO: 테스트 코드 작성
-    @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
-    public void increaseRootQuestionInterviewEndCountByAsyncProceed(Long memberId,
-                                                                    QuestionAndAnswers questionAndAnswers,
-                                                                    Long interviewId) {
-        try {
-            Interview interview = interviewService.readInterview(interviewId);
-            if (interview.getInterviewState() == InterviewState.FINISHED) {
-                Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-                meterRegistry.counter(
-                        "root_question_interview_end_count_total",
-                        "root_question_id", String.valueOf(rootQuestionId)
-                ).increment();
-            }
-        } catch (Exception e) {
-            log.error("increaseRootQuestionInterviewEndCountByAsyncProceed 실패, interviewId: {}", interviewId, e);
-        }
-    }
-
-    // TODO: 테스트 코드 작성
-    @AfterReturning(pointcut = "asyncProceedInterviewPointcut(memberId, questionAndAnswers, interviewId)")
-    public void increaseRootQuestionAnswerRankCountByAsyncProceed(Long memberId, QuestionAndAnswers questionAndAnswers,
-                                                                  Long interviewId) {
-        try {
-            Long curQuestionId = questionAndAnswers.readCurQuestion().getId();
-            Long firstQuestionId = questionRepository.findFirstQuestionIdByInterviewIdOrderByIdAsc(interviewId);
-            boolean isRootQuestionAnswer = Objects.equals(curQuestionId, firstQuestionId);
-            if (isRootQuestionAnswer) {
-                Answer answer = answerService.readByQuestionId(curQuestionId);
-                AnswerRank answerRank = answer.getAnswerRank();
-                Long rootQuestionId = interviewRepository.findRootQuestionIdByInterviewId(interviewId);
-                meterRegistry.counter(
-                        "root_question_answer_rank_count_" + answerRank.name().toLowerCase(),
-                        "root_question_id", String.valueOf(rootQuestionId)
-                ).increment();
-            }
-        } catch (Exception e) {
-            log.error("increaseRootQuestionAnswerRankCountByAsyncProceed 실패, interviewId: {}", interviewId, e);
-        }
     }
 }
