@@ -5,14 +5,13 @@ import com.samhap.kokomen.admin.service.dto.AdminPaymentPageResponse;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentResponse;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.NotFoundException;
-import com.samhap.kokomen.global.exception.UnauthorizedException;
-import com.samhap.kokomen.member.repository.AdminRepository;
+import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentRepository;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentResultRepository;
-import com.samhap.kokomen.payment.service.PaymentFacadeService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +29,8 @@ public class AdminPaymentService {
 
     private final TosspaymentsPaymentRepository tosspaymentsPaymentRepository;
     private final TosspaymentsPaymentResultRepository tosspaymentsPaymentResultRepository;
-    private final PaymentFacadeService paymentFacadeService;
-    private final AdminRepository adminRepository;
+    private final TokenFacadeService tokenFacadeService;
+    private final MemberService memberService;
 
     @Transactional(readOnly = true)
     public AdminPaymentPageResponse findPayments(
@@ -42,7 +41,7 @@ public class AdminPaymentService {
             Pageable pageable,
             MemberAuth memberAuth
     ) {
-        validateAdmin(memberAuth.memberId());
+        memberService.validateAdmin(memberAuth.memberId());
         Page<TosspaymentsPayment> page = tosspaymentsPaymentRepository.findPaymentsWithFilters(
                 memberId, state, startDate, endDate, pageable
         );
@@ -50,9 +49,9 @@ public class AdminPaymentService {
     }
 
     public void cancelPayment(Long paymentId, AdminCancelPaymentRequest request, MemberAuth memberAuth) {
-        validateAdmin(memberAuth.memberId());
+        memberService.validateAdmin(memberAuth.memberId());
         TosspaymentsPayment payment = readPaymentById(paymentId);
-        paymentFacadeService.cancelPayment(request.toCancelRequest(payment.getPaymentKey()));
+        tokenFacadeService.refundTokensByAdmin(payment.getMemberId(), request.toCancelRequest(payment.getPaymentKey()));
     }
 
     private TosspaymentsPayment readPaymentById(Long paymentId) {
@@ -79,11 +78,5 @@ public class AdminPaymentService {
                 .toList();
 
         return AdminPaymentPageResponse.of(data, page);
-    }
-
-    private void validateAdmin(Long memberId) {
-        if (!adminRepository.existsByMemberId(memberId)) {
-            throw new UnauthorizedException("권한이 없습니다.");
-        }
     }
 }

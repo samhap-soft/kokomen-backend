@@ -1,10 +1,12 @@
 package com.samhap.kokomen.admin.service;
 
 import com.samhap.kokomen.admin.service.dto.RootQuestionVoiceResponse;
+import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionState;
 import com.samhap.kokomen.interview.service.question.RootQuestionService;
+import com.samhap.kokomen.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,8 +15,10 @@ import org.springframework.stereotype.Service;
 public class AdminService {
 
     private final RootQuestionService rootQuestionService;
+    private final MemberService memberService;
 
-    public RootQuestionVoiceResponse uploadRootQuestionVoice(Long rootQuestionId) {
+    public RootQuestionVoiceResponse uploadRootQuestionVoice(Long rootQuestionId, MemberAuth memberAuth) {
+        memberService.validateAdmin(memberAuth.memberId());
         if (rootQuestionService.isRootQuestionVoiceExists(rootQuestionId)) {
             throw new BadRequestException("이미 S3에 올라가있는 음성파일입니다. rootQuestionId = " + rootQuestionId);
         }
@@ -22,7 +26,9 @@ public class AdminService {
         return new RootQuestionVoiceResponse(rootQuestionVoiceCdnUrl);
     }
 
-    public RootQuestionVoiceResponse uploadRootQuestionVoiceWithApiKey(Long rootQuestionId, String oneTimeApiKey) {
+    public RootQuestionVoiceResponse uploadRootQuestionVoiceWithApiKey(Long rootQuestionId, String oneTimeApiKey,
+                                                                       MemberAuth memberAuth) {
+        memberService.validateAdmin(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.readRootQuestion(rootQuestionId);
         if (rootQuestion.getState() == RootQuestionState.INACTIVE) {
             throw new BadRequestException("비활성화된 질문입니다. rootQuestionId = " + rootQuestionId);

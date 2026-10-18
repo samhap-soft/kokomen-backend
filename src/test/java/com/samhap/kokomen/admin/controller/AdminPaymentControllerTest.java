@@ -1,6 +1,10 @@
 package com.samhap.kokomen.admin.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
@@ -242,6 +246,60 @@ class AdminPaymentControllerTest extends BaseControllerTest {
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
                         )
                 ));
+    }
+
+    @Test
+    void 관리자가_아닌_회원은_결제목록을_조회할_수_없다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/admin/payments")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+    }
+
+    @Test
+    void 관리자가_아닌_회원은_결제를_취소할_수_없다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
+                TosspaymentsPaymentFixtureBuilder.builder()
+                        .paymentKey("payment_key_cancel_forbidden")
+                        .orderId("order_cancel_forbidden")
+                        .build()
+        );
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder()
+                        .tosspaymentsPayment(payment)
+                        .tosspaymentsStatus(TosspaymentsStatus.DONE)
+                        .build()
+        );
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(createCancelResponse(payment));
+
+        AdminCancelPaymentRequest request = new AdminCancelPaymentRequest("고객 요청");
+
+        // when & then
+        mockMvc.perform(post("/api/v1/admin/payments/{paymentId}/cancel", payment.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+        verify(tosspaymentsClient, never()).cancelPayment(any(), any(), any());
+        assertThat(tosspaymentsPaymentRepository.findById(payment.getId()).orElseThrow().getState())
+                .isEqualTo(PaymentState.COMPLETED);
     }
 
     private TosspaymentsPaymentResponse createCancelResponse(TosspaymentsPayment payment) {
