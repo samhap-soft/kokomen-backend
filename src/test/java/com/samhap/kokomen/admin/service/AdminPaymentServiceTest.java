@@ -41,7 +41,13 @@ import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -349,6 +355,84 @@ class AdminPaymentServiceTest extends BaseTest {
                 .isEqualTo(PaymentState.CANCELED);
         verify(tosspaymentsClient).cancelPayment(eq("payment_key_approved"),
                 argThat(cancelRequest -> cancelRequest.cancelReason().equals("테스트 환불")), any());
+    }
+
+    // 사용자 환불과 같은 토큰 락 아래에서 취소해야, 미사용을 확인한 뒤 취소하기 전에 그 구매의 토큰이 쓰이지 않는다.
+    @Test
+    void 구매자의_토큰_락이_잡혀_있으면_관리자_취소는_결제를_취소하지_않는다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        Member buyer = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .type(TokenType.PAID)
+                .tokenCount(10)
+                .build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .paymentKey("payment_key_locked")
+                .orderId("order_locked")
+                .count(10)
+                .remainingCount(10)
+                .state(TokenPurchaseState.REFUNDABLE)
+                .build());
+        TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
+                TosspaymentsPaymentFixtureBuilder.builder()
+                        .paymentKey("payment_key_locked")
+                        .orderId("order_locked")
+                        .memberId(buyer.getId())
+                        .build()
+        );
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder()
+                        .tosspaymentsPayment(payment)
+                        .tosspaymentsStatus(TosspaymentsStatus.DONE)
+                        .build()
+        );
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(createCancelResponse(payment));
+
+        AdminCancelPaymentRequest request = new AdminCancelPaymentRequest("테스트 환불");
+
+        // RLock은 잡은 스레드만 풀 수 있으므로 다른 스레드가 구매자의 토큰 락(@DistributedLock prefix token)을 쥐고 있게 한다.
+        RLock buyerTokenLock = redissonClient.getLock("lock:token:" + buyer.getId());
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch cancelFinished = new CountDownLatch(1);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<?> lockHolder = executorService.submit(() -> {
+            buyerTokenLock.lock();
+            try {
+                lockAcquired.countDown();
+                cancelFinished.await(10, TimeUnit.SECONDS);
+            } finally {
+                buyerTokenLock.unlock();
+            }
+            return null;
+        });
+
+        try {
+            assertThat(lockAcquired.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when & then
+            assertThatThrownBy(() -> adminPaymentService.cancelPayment(payment.getId(), request,
+                    new MemberAuth(member.getId())))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("현재 다른 요청을 처리 중입니다. 잠시 후 다시 시도해주세요.");
+        } finally {
+            cancelFinished.countDown();
+            lockHolder.get(5, TimeUnit.SECONDS);
+            executorService.shutdownNow();
+        }
+        verify(tosspaymentsClient, never()).cancelPayment(any(), any(), any());
+        assertThat(tosspaymentsPaymentRepository.findById(payment.getId()).orElseThrow().getState())
+                .isEqualTo(PaymentState.COMPLETED);
+        TokenPurchase notRefundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId())
+                .orElseThrow();
+        assertThat(notRefundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDABLE);
+        assertThat(notRefundedTokenPurchase.getRemainingCount()).isEqualTo(10);
     }
 
     @Test
