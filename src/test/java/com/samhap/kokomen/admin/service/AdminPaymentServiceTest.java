@@ -2,17 +2,23 @@ package com.samhap.kokomen.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.samhap.kokomen.admin.service.dto.AdminCancelPaymentRequest;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentPageResponse;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResultFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.member.domain.Admin;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.AdminRepository;
@@ -26,6 +32,12 @@ import com.samhap.kokomen.payment.external.dto.TosspaymentsCancel;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentRepository;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentResultRepository;
+import com.samhap.kokomen.token.domain.RefundReasonCode;
+import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
+import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
@@ -49,6 +61,12 @@ class AdminPaymentServiceTest extends BaseTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private TokenRepository tokenRepository;
+
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
 
     @Test
     void 전체_결제목록을_조회한다() {
@@ -186,10 +204,25 @@ class AdminPaymentServiceTest extends BaseTest {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         adminRepository.save(new Admin(member));
+        Member buyer = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .type(TokenType.PAID)
+                .tokenCount(10)
+                .build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .paymentKey("payment_key_cancel")
+                .orderId("order_cancel")
+                .count(10)
+                .remainingCount(10)
+                .state(TokenPurchaseState.REFUNDABLE)
+                .build());
         TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
                 TosspaymentsPaymentFixtureBuilder.builder()
                         .paymentKey("payment_key_cancel")
                         .orderId("order_cancel")
+                        .memberId(buyer.getId())
                         .build()
         );
         payment.updateState(PaymentState.COMPLETED);
@@ -217,6 +250,68 @@ class AdminPaymentServiceTest extends BaseTest {
         // then
         TosspaymentsPayment canceledPayment = tosspaymentsPaymentRepository.findById(payment.getId()).orElseThrow();
         assertThat(canceledPayment.getState()).isEqualTo(PaymentState.CANCELED);
+        TokenPurchase refundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId()).orElseThrow();
+        assertThat(refundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.REFUNDED);
+        assertThat(refundedTokenPurchase.getRemainingCount()).isZero();
+        assertThat(refundedTokenPurchase.getRefundReasonCode()).isEqualTo(RefundReasonCode.OTHER);
+        assertThat(refundedTokenPurchase.getRefundReasonText()).isEqualTo("[관리자 취소] 테스트 환불");
+        assertThat(tokenRepository.findByMemberIdAndType(buyer.getId(), TokenType.PAID).orElseThrow().getTokenCount())
+                .isZero();
+    }
+
+    @Test
+    void 토큰을_일부_사용한_구매의_결제는_취소할_수_없다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        Member buyer = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .type(TokenType.PAID)
+                .tokenCount(5)
+                .build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(buyer.getId())
+                .paymentKey("payment_key_used")
+                .orderId("order_used")
+                .count(10)
+                .remainingCount(5)
+                .state(TokenPurchaseState.USABLE)
+                .build());
+        TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
+                TosspaymentsPaymentFixtureBuilder.builder()
+                        .paymentKey("payment_key_used")
+                        .orderId("order_used")
+                        .memberId(buyer.getId())
+                        .build()
+        );
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder()
+                        .tosspaymentsPayment(payment)
+                        .tosspaymentsStatus(TosspaymentsStatus.DONE)
+                        .build()
+        );
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(createCancelResponse(payment));
+
+        AdminCancelPaymentRequest request = new AdminCancelPaymentRequest("테스트 환불");
+
+        // when & then
+        assertThatThrownBy(() -> adminPaymentService.cancelPayment(payment.getId(), request,
+                new MemberAuth(member.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
+        verify(tosspaymentsClient, never()).cancelPayment(any(), any(), any());
+        assertThat(tosspaymentsPaymentRepository.findById(payment.getId()).orElseThrow().getState())
+                .isEqualTo(PaymentState.COMPLETED);
+        TokenPurchase notRefundedTokenPurchase = tokenPurchaseRepository.findById(tokenPurchase.getId())
+                .orElseThrow();
+        assertThat(notRefundedTokenPurchase.getState()).isEqualTo(TokenPurchaseState.USABLE);
+        assertThat(notRefundedTokenPurchase.getRemainingCount()).isEqualTo(5);
+        assertThat(tokenRepository.findByMemberIdAndType(buyer.getId(), TokenType.PAID).orElseThrow().getTokenCount())
+                .isEqualTo(5);
     }
 
     @Test
