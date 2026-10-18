@@ -72,6 +72,11 @@ public class TokenPurchaseService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<TokenPurchase> findTokenPurchaseByPaymentKey(String paymentKey) {
+        return tokenPurchaseRepository.findByPaymentKey(paymentKey);
+    }
+
+    @Transactional(readOnly = true)
     public TokenPurchase readTokenPurchaseById(Long tokenPurchaseId) {
         return tokenPurchaseRepository.findById(tokenPurchaseId)
                 .orElseThrow(() -> new BadRequestException("토큰 구매 내역을 찾을 수 없습니다."));

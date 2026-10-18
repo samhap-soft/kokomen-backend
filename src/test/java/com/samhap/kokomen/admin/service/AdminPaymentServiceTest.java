@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -312,6 +313,42 @@ class AdminPaymentServiceTest extends BaseTest {
         assertThat(notRefundedTokenPurchase.getRemainingCount()).isEqualTo(5);
         assertThat(tokenRepository.findByMemberIdAndType(buyer.getId(), TokenType.PAID).orElseThrow().getTokenCount())
                 .isEqualTo(5);
+    }
+
+    @Test
+    void 토큰이_지급되지_않은_결제는_결제만_취소한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        Member buyer = memberRepository.save(MemberFixtureBuilder.builder().build());
+        TosspaymentsPayment payment = tosspaymentsPaymentRepository.save(
+                TosspaymentsPaymentFixtureBuilder.builder()
+                        .paymentKey("payment_key_approved")
+                        .orderId("order_approved")
+                        .memberId(buyer.getId())
+                        .build()
+        );
+        payment.updateState(PaymentState.APPROVED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        tosspaymentsPaymentResultRepository.save(
+                TosspaymentsPaymentResultFixtureBuilder.builder()
+                        .tosspaymentsPayment(payment)
+                        .tosspaymentsStatus(TosspaymentsStatus.DONE)
+                        .build()
+        );
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(createCancelResponse(payment));
+
+        AdminCancelPaymentRequest request = new AdminCancelPaymentRequest("테스트 환불");
+
+        // when
+        adminPaymentService.cancelPayment(payment.getId(), request, new MemberAuth(member.getId()));
+
+        // then
+        assertThat(tosspaymentsPaymentRepository.findById(payment.getId()).orElseThrow().getState())
+                .isEqualTo(PaymentState.CANCELED);
+        verify(tosspaymentsClient).cancelPayment(eq("payment_key_approved"),
+                argThat(cancelRequest -> cancelRequest.cancelReason().equals("테스트 환불")), any());
     }
 
     @Test

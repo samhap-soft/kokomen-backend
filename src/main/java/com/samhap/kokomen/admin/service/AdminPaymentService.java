@@ -11,7 +11,7 @@ import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentRepository;
 import com.samhap.kokomen.payment.repository.TosspaymentsPaymentResultRepository;
-import com.samhap.kokomen.payment.service.PaymentFacadeService;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +29,7 @@ public class AdminPaymentService {
 
     private final TosspaymentsPaymentRepository tosspaymentsPaymentRepository;
     private final TosspaymentsPaymentResultRepository tosspaymentsPaymentResultRepository;
-    private final PaymentFacadeService paymentFacadeService;
+    private final TokenFacadeService tokenFacadeService;
     private final MemberService memberService;
 
     @Transactional(readOnly = true)
@@ -51,7 +51,7 @@ public class AdminPaymentService {
     public void cancelPayment(Long paymentId, AdminCancelPaymentRequest request, MemberAuth memberAuth) {
         memberService.validateAdmin(memberAuth.memberId());
         TosspaymentsPayment payment = readPaymentById(paymentId);
-        paymentFacadeService.cancelPayment(request.toCancelRequest(payment.getPaymentKey()));
+        tokenFacadeService.refundTokensByAdmin(payment.getMemberId(), request.toCancelRequest(payment.getPaymentKey()));
     }
 
     private TosspaymentsPayment readPaymentById(Long paymentId) {
