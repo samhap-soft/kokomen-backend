@@ -145,8 +145,8 @@ class InterviewProceedServiceTest extends BaseTest {
     }
 
     /**
-     * 차감은 면접 평가·점수 UPDATE를 flush한 뒤 별도 트랜잭션에서 실행되므로, 그동안 진행 트랜잭션이 회원 행 락을 쥐고 있다.
-     * 유료 토큰 차감은 회원을 참조하는 token·token_purchase를 함께 갱신하는데, 이 락에 막히지 않고 끝나야 한다.
+     * 차감은 면접 평가 UPDATE를 flush한 뒤 별도 트랜잭션에서 실행되므로, 그동안 진행 트랜잭션이 면접·답변 행 락을 쥐고 있다.
+     * 유료 토큰 차감은 token과 token_purchase를 함께 갱신하는데, 이 락에 막히지 않고 끝나야 한다.
      */
     @Test
     void 마지막_답변을_유료_토큰으로_차감해도_면접을_끝낸다() {

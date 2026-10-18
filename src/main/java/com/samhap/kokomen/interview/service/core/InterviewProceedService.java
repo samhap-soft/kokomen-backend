@@ -47,22 +47,26 @@ public class InterviewProceedService {
             member = memberService.readById(memberId);
         }
         Interview interview = interviewService.readInterview(interviewId);
-        InterviewProceedResult result = saveProceedResult(questionAndAnswers, llmResponse, interview, member);
+        InterviewProceedResult result = saveProceedResult(questionAndAnswers, llmResponse, interview);
         if (memberId != null) {
             chargeAnswerToken(memberId);
+        }
+        // 회원 UPDATE가 차감 전 flush에 들어가지 않도록 점수는 차감 뒤에 더한다. 이유는 chargeAnswerToken에 적었다.
+        if (member != null && !result.isInProgress()) {
+            member.addScore(interview.getTotalScore());
         }
         return result;
     }
 
     private InterviewProceedResult saveProceedResult(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse,
-                                                     Interview interview, Member member) {
+                                                     Interview interview) {
         if (questionAndAnswers.isProceedRequest()) {
             Question nextQuestion = saveNextQuestion(llmResponse, interview);
             Answer curAnswer = saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
             return InterviewProceedResult.createInProgress(curAnswer, nextQuestion);
         }
         Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
+        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse);
         return InterviewProceedResult.createFinished(curAnswer);
     }
 
@@ -82,7 +86,7 @@ public class InterviewProceedService {
     }
 
     private void evaluateInterview(QuestionAndAnswers questionAndAnswers, Answer curAnswer, Interview interview,
-                                   LlmResponse llmResponse, Member member) {
+                                   LlmResponse llmResponse) {
         int totalScore = questionAndAnswers.calculateTotalScore(curAnswer.getAnswerRank().getScore());
         TotalFeedbackResponse totalFeedbackResponse = llmResponse.extractTotalFeedbackResponse(objectMapper);
         String composedTotalFeedback = totalFeedbackResponse.composeTotalFeedback();
@@ -90,15 +94,16 @@ public class InterviewProceedService {
             throw new ExternalApiException("면접 종합 피드백 응답이 비어있습니다.");
         }
         interview.evaluate(composedTotalFeedback, totalScore);
-        if (member != null) {
-            member.addScore(totalScore);
-        }
     }
 
     /**
      * useTokens는 REQUIRES_NEW라 호출하는 즉시 따로 커밋되어, 이후 이 트랜잭션이 롤백돼도 돌아오지 않는다. 그래서 응답 해석과
      * 저장을 모두 끝낸 뒤 차감한다. 면접 평가처럼 커밋 때로 미뤄진 UPDATE도 flush로 먼저 실행해 저장에 실패한 진행에는
      * 과금하지 않는다. 토큰이 부족해 차감이 실패하면 저장한 진행 결과도 함께 롤백된다.
+     *
+     * <p>이 flush에 회원 UPDATE가 들어가면 안 된다. flush한 행의 락은 커밋 때까지 남는데, 차감은 그동안 토큰 락을 기다린다.
+     * 토큰 구매는 토큰 락을 쥔 채 token_purchase INSERT의 FK 검사로 회원 행 S 락을 기다리므로, 회원 행 X 락을 쥔 채
+     * 토큰 락을 기다리면 두 쪽이 서로를 기다리다 토큰 락 대기 시간이 지나 차감이 실패한다. 그래서 회원 점수는 차감 뒤에 더한다.
      */
     private void chargeAnswerToken(Long memberId) {
         entityManager.flush();
