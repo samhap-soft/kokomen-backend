@@ -1,8 +1,10 @@
 package com.samhap.kokomen.token.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
@@ -20,6 +22,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -39,6 +43,43 @@ class TokenServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+    @Test
+    void 유료_토큰이_없으면_한_개_차감은_예외가_발생하고_잔액은_그대로다() {
+        // given
+        Member member = saveMemberWithTokens(0, 0);
+
+        // when & then
+        assertThatThrownBy(() -> tokenService.usePaidToken(member.getId()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("사용할 수 있는 토큰이 없습니다.");
+        assertThat(readTokenCount(member, TokenType.PAID)).isZero();
+    }
+
+    @Test
+    void 무료_토큰이_요청보다_적으면_여러_개_차감은_예외가_발생하고_잔액은_그대로다() {
+        // given
+        Member member = saveMemberWithTokens(2, 0);
+
+        // when & then
+        assertThatThrownBy(() -> tokenService.useFreeTokens(member.getId(), 3))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("사용할 수 있는 토큰이 부족합니다.");
+        assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    void 차감할_토큰_수가_0_이하이면_예외가_발생하고_잔액은_그대로다(int count) {
+        // given
+        Member member = saveMemberWithTokens(0, 10);
+
+        // when & then
+        assertThatThrownBy(() -> tokenService.usePaidTokens(member.getId(), count))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("사용할 토큰 수는 0보다 커야 합니다.");
+        assertThat(readTokenCount(member, TokenType.PAID)).isEqualTo(10);
+    }
 
     @Test
     void 유료_토큰_차감과_지급이_겹쳐도_지급분이_유지된다() throws Exception {
