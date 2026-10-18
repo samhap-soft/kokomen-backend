@@ -27,8 +27,8 @@ import org.springframework.orm.jpa.support.OpenEntityManagerInViewInterceptor;
 class ProductionConfigParityTest extends BaseTest {
 
     private static final Path MAIN_RESOURCES = Path.of("src", "main", "resources");
-    private static final List<String> PRODUCTION_CONFIG_FILES = List.of("application.yml", "application-common.yml");
     private static final String PROFILE_ACTIVATION_KEY = "spring.config.activate.on-profile";
+    private static final String PROFILE_INCLUDE_KEY_PREFIX = "spring.profiles.include";
 
     // 테스트가 의도적으로 운영과 다르게 두는 키와 그 이유다. 여기 없는 운영 공통 키는 테스트에서도 운영과 같아야 한다.
     private static final Map<String, String> INTENTIONAL_OVERRIDES = Map.of(
@@ -59,6 +59,17 @@ class ProductionConfigParityTest extends BaseTest {
         assertThat(mismatches).isEmpty();
     }
 
+    // 예외 목록이 낡으면 그 키는 비교 없이 조용히 넘어간다. 각 예외가 운영에 실제로 있고 테스트가 실제로 다른 값을 쓰는지 본다.
+    @Test
+    void 의도적으로_다르게_둔_키는_운영에_있고_테스트에서_실제로_다른_값이다() throws IOException {
+        Map<String, String> productionProperties = readProductionCommonProperties();
+
+        assertThat(INTENTIONAL_OVERRIDES.keySet()).allSatisfy(key -> {
+            assertThat(productionProperties).containsKey(key);
+            assertThat(environment.getProperty(key)).isNotEqualTo(productionProperties.get(key));
+        });
+    }
+
     // 운영은 OSIV를 끈다. 테스트에서 켜져 있으면 트랜잭션 밖 지연 로딩이 컨트롤러 테스트에서는 성공하고 운영에서만 터진다.
     @Test
     void 테스트에서도_운영처럼_OSIV가_꺼져_있다() {
@@ -73,20 +84,34 @@ class ProductionConfigParityTest extends BaseTest {
         assertThat(sessionFactory.getJdbcServices().getDialect()).isExactlyInstanceOf(MySQLDialect.class);
     }
 
-    // 프로파일 전용 문서(spring.config.activate.on-profile)를 빼고, 모든 환경에 공통으로 적용되는 운영 설정만 모은다.
+    // 운영 application.yml과, 그 파일이 spring.profiles.include로 늘 켜는 프로파일 파일에서 모든 환경에 공통으로 적용되는
+    // 설정만 모은다. include한 프로파일 파일이 application.yml을 덮는 것도 Spring과 같다.
     private Map<String, String> readProductionCommonProperties() throws IOException {
-        YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
+        Map<String, String> properties = readCommonProperties("application.yml");
+        List<String> includedProfiles = properties.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(PROFILE_INCLUDE_KEY_PREFIX))
+                .map(Map.Entry::getValue)
+                .toList();
+        for (String profile : includedProfiles) {
+            properties.putAll(readCommonProperties("application-" + profile + ".yml"));
+        }
+        return properties;
+    }
+
+    // 프로파일 전용 문서(spring.config.activate.on-profile)는 뺀다.
+    private Map<String, String> readCommonProperties(String fileName) throws IOException {
+        FileSystemResource resource = new FileSystemResource(MAIN_RESOURCES.resolve(fileName));
         Map<String, String> properties = new TreeMap<>();
-        for (String fileName : PRODUCTION_CONFIG_FILES) {
-            FileSystemResource resource = new FileSystemResource(MAIN_RESOURCES.resolve(fileName));
-            for (PropertySource<?> document : loader.load(fileName, resource)) {
-                EnumerablePropertySource<?> source = (EnumerablePropertySource<?>) document;
-                if (source.containsProperty(PROFILE_ACTIVATION_KEY)) {
-                    continue;
-                }
-                for (String key : source.getPropertyNames()) {
-                    properties.put(key, String.valueOf(source.getProperty(key)));
-                }
+        if (!resource.exists()) {
+            return properties;
+        }
+        for (PropertySource<?> document : new YamlPropertySourceLoader().load(fileName, resource)) {
+            EnumerablePropertySource<?> source = (EnumerablePropertySource<?>) document;
+            if (source.containsProperty(PROFILE_ACTIVATION_KEY)) {
+                continue;
+            }
+            for (String key : source.getPropertyNames()) {
+                properties.put(key, String.valueOf(source.getProperty(key)));
             }
         }
         return properties;

@@ -153,6 +153,8 @@ Start with: `docker compose -f test.yml up -d`
 ### Test Configuration
 - Tests load the main `application.yml` (+ `application-common.yml`) as-is, so production behavior settings such as `spring.jpa.open-in-view: false` apply. `src/test/resources/application-common-test.yml` overrides only test-specific values (hosts, secrets, lazy-initialization, H2 for `docs`).
 - Never add `src/test/resources/application.yml`: it shadows the main file on the classpath and silently drops every production setting from tests. `ProductionConfigParityTest` guards this.
+- A key that tests must deliberately set differently goes into `ProductionConfigParityTest.INTENTIONAL_OVERRIDES` with the reason; the test also fails when an entry there goes stale.
+- Tests inherit `management.server.port: 8081`, so actuator endpoints run on a separate management server and MockMvc gets 404 for `/actuator/**`. A test that needs them must override `management.server.port` itself.
 
 ## Environment Variables
 
