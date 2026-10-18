@@ -2,6 +2,11 @@ package com.samhap.kokomen.interview.service.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
@@ -29,12 +34,25 @@ import com.samhap.kokomen.interview.tool.InterviewProceedResult;
 import com.samhap.kokomen.interview.tool.QuestionAndAnswers;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.payment.domain.PaymentType;
+import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
+import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
+import com.samhap.kokomen.product.domain.TokenProduct;
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.dto.TokenPurchaseRequest;
 import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import com.samhap.kokomen.token.service.TokenFacadeService;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -46,9 +64,14 @@ class InterviewProceedServiceTest extends BaseTest {
 
     private static final int INITIAL_FREE_TOKEN_COUNT = 20;
     private static final int TOTAL_FEEDBACK_MAX_LENGTH = 2_000;
+    // TokenFacadeService의 @DistributedLock(prefix = "token", key = "#memberId")가 쓰는 Redisson 락 이름
+    private static final String TOKEN_LOCK_KEY_PREFIX = "lock:token:";
+    private static final Duration CONCURRENT_TASK_TIMEOUT = Duration.ofSeconds(10);
 
     @Autowired
     private InterviewProceedService interviewProceedService;
+    @Autowired
+    private TokenFacadeService tokenFacadeService;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
@@ -103,6 +126,24 @@ class InterviewProceedServiceTest extends BaseTest {
         assertThat(readFreeTokenCount(member)).isEqualTo(INITIAL_FREE_TOKEN_COUNT - 1);
     }
 
+    @Test
+    void 마지막_답변이면_면접_총점을_회원_점수에_더한다() {
+        // given
+        Member member = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        Interview interview = saveInterview(member);
+        Question curQuestion = saveCurrentQuestion(interview, interview.getMaxQuestionCount() - 1);
+
+        // when
+        interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(member.getId(),
+                createQuestionAndAnswers(interview, curQuestion), BedrockResponseFixtureBuilder.builder().buildEnd(),
+                interview.getId());
+
+        // then
+        Integer totalScore = readInterview(interview).getTotalScore();
+        assertThat(totalScore).isPositive();
+        assertThat(readMemberScore(member)).isEqualTo(totalScore);
+    }
+
     /**
      * 차감은 면접 평가·점수 UPDATE를 flush한 뒤 별도 트랜잭션에서 실행되므로, 그동안 진행 트랜잭션이 회원 행 락을 쥐고 있다.
      * 유료 토큰 차감은 회원을 참조하는 token·token_purchase를 함께 갱신하는데, 이 락에 막히지 않고 끝나야 한다.
@@ -132,6 +173,53 @@ class InterviewProceedServiceTest extends BaseTest {
                 .getTokenCount()).isZero();
         assertThat(tokenPurchaseRepository.findById(tokenPurchase.getId()).orElseThrow().getRemainingCount())
                 .isZero();
+    }
+
+    /**
+     * 토큰 구매는 토큰 락을 쥔 채 결제 승인을 기다리고, 승인 뒤 token_purchase INSERT의 FK 검사로 회원 행 S 락을 잡는다.
+     * 마지막 답변이 회원 점수 UPDATE로 회원 행 X 락을 쥔 채 차감용 토큰 락을 기다리면 두 쪽이 서로를 기다린다.
+     * DB는 Redis 락 대기를 모르므로 이 순환은 토큰 락 대기 시간(3초)이 지나야 풀리고, 그때 답변이 실패해 면접이 끝나지 않는다.
+     */
+    @Test
+    void 토큰_구매_승인_중에_마지막_답변을_차감해도_면접을_끝낸다() throws InterruptedException {
+        // given
+        Member member = saveMemberWithTokens(INITIAL_FREE_TOKEN_COUNT);
+        Interview interview = saveInterview(member);
+        Question curQuestion = saveCurrentQuestion(interview, interview.getMaxQuestionCount() - 1);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interview, curQuestion);
+        CountDownLatch confirmStarted = new CountDownLatch(1);
+        CountDownLatch confirmReleased = new CountDownLatch(1);
+        given(tosspaymentsClient.confirmPayment(any(), any())).willAnswer(invocation -> {
+            confirmStarted.countDown();
+            confirmReleased.await(CONCURRENT_TASK_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+            return createConfirmedTokenPaymentResponse();
+        });
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        Future<?> purchase = executorService.submit(
+                () -> tokenFacadeService.purchaseTokens(member.getId(), createTokenPurchaseRequest()));
+        assertThat(confirmStarted.await(CONCURRENT_TASK_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+        clearInvocations(redissonClient);
+
+        // when
+        Future<InterviewProceedResult> proceed = executorService.submit(
+                () -> interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(member.getId(),
+                        questionAndAnswers, BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId()));
+        executorService.shutdown();
+        // 차감이 토큰 락을 요청한 뒤에 결제 승인을 끝내, 차감 전에 실행된 쓰기가 구매의 INSERT보다 먼저 락을 잡게 한다.
+        verify(redissonClient, timeout(CONCURRENT_TASK_TIMEOUT.toMillis()))
+                .getLock(TOKEN_LOCK_KEY_PREFIX + member.getId());
+        confirmReleased.countDown();
+
+        // then
+        assertThat(purchase).succeedsWithin(CONCURRENT_TASK_TIMEOUT);
+        assertThat(proceed).succeedsWithin(CONCURRENT_TASK_TIMEOUT)
+                .extracting(InterviewProceedResult::isInProgress)
+                .isEqualTo(false);
+        Interview finishedInterview = readInterview(interview);
+        assertThat(finishedInterview.getInterviewState()).isEqualTo(InterviewState.FINISHED);
+        assertThat(readMemberScore(member)).isEqualTo(finishedInterview.getTotalScore());
+        assertThat(readFreeTokenCount(member)).isEqualTo(INITIAL_FREE_TOKEN_COUNT - 1);
+        assertThat(readPaidTokenCount(member)).isEqualTo(TokenProduct.TOKEN_10.getTokenCount());
     }
 
     @Test
@@ -217,6 +305,24 @@ class InterviewProceedServiceTest extends BaseTest {
         assertThat(answerRepository.findByQuestionId(curQuestion.getId())).isEmpty();
     }
 
+    @Test
+    void 마지막_답변에_쓸_토큰이_없으면_면접을_끝내지_않고_회원_점수도_더하지_않는다() {
+        // given
+        Member member = saveMemberWithTokens(0);
+        Interview interview = saveInterview(member);
+        Question curQuestion = saveCurrentQuestion(interview, interview.getMaxQuestionCount() - 1);
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interview, curQuestion);
+
+        // when & then
+        assertThatThrownBy(() -> interviewProceedService.proceedOrEndInterviewByBedrockFlowAsync(member.getId(),
+                questionAndAnswers, BedrockResponseFixtureBuilder.builder().buildEnd(), interview.getId()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertThat(readInterview(interview).getInterviewState()).isEqualTo(InterviewState.IN_PROGRESS);
+        assertThat(readMemberScore(member)).isZero();
+        assertThat(answerRepository.findByQuestionId(curQuestion.getId())).isEmpty();
+    }
+
     private Member saveMemberWithTokens(int freeTokenCount) {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -255,5 +361,28 @@ class InterviewProceedServiceTest extends BaseTest {
 
     private int readFreeTokenCount(Member member) {
         return tokenRepository.findByMemberIdAndType(member.getId(), TokenType.FREE).orElseThrow().getTokenCount();
+    }
+
+    private int readPaidTokenCount(Member member) {
+        return tokenRepository.findByMemberIdAndType(member.getId(), TokenType.PAID).orElseThrow().getTokenCount();
+    }
+
+    private int readMemberScore(Member member) {
+        return memberRepository.findById(member.getId()).orElseThrow().getScore();
+    }
+
+    private TokenPurchaseRequest createTokenPurchaseRequest() {
+        return new TokenPurchaseRequest("payment_key", "order_id", TokenProduct.TOKEN_10.getPrice(),
+                TokenProduct.TOKEN_10.getOrderName(), TokenProduct.TOKEN_10.name());
+    }
+
+    private TosspaymentsPaymentResponse createConfirmedTokenPaymentResponse() {
+        return new TosspaymentsPaymentResponse(
+                "payment_key", PaymentType.NORMAL, "order_id", TokenProduct.TOKEN_10.getOrderName(),
+                "tvivarepublica", "KRW", "카드", TokenProduct.TOKEN_10.getPrice(), TokenProduct.TOKEN_10.getPrice(),
+                TosspaymentsStatus.DONE, LocalDateTime.now(), LocalDateTime.now(),
+                "transaction_key", 9091L, 909L, 0L, 0L, true,
+                "{}", null, null, null, "KR", null, null
+        );
     }
 }
