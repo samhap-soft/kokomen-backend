@@ -18,6 +18,7 @@ import com.samhap.kokomen.interview.service.question.QuestionService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class InterviewProceedService {
     private final QuestionService questionService;
     private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     @Transactional
     public InterviewProceedResult proceedOrEndInterviewByBedrockFlowAsync(
@@ -43,9 +45,17 @@ public class InterviewProceedService {
         Member member = null;
         if (memberId != null) {
             member = memberService.readById(memberId);
-            tokenFacadeService.useTokens(memberId, InterviewMode.ANSWER_TOKEN_COST);
         }
         Interview interview = interviewService.readInterview(interviewId);
+        InterviewProceedResult result = saveProceedResult(questionAndAnswers, llmResponse, interview, member);
+        if (memberId != null) {
+            chargeAnswerToken(memberId);
+        }
+        return result;
+    }
+
+    private InterviewProceedResult saveProceedResult(QuestionAndAnswers questionAndAnswers, LlmResponse llmResponse,
+                                                     Interview interview, Member member) {
         if (questionAndAnswers.isProceedRequest()) {
             Question nextQuestion = saveNextQuestion(llmResponse, interview);
             Answer curAnswer = saveCurrentAnswerWithoutFeedback(questionAndAnswers, llmResponse);
@@ -83,6 +93,16 @@ public class InterviewProceedService {
         if (member != null) {
             member.addScore(totalScore);
         }
+    }
+
+    /**
+     * useTokens는 REQUIRES_NEW라 호출하는 즉시 따로 커밋되어, 이후 이 트랜잭션이 롤백돼도 돌아오지 않는다. 그래서 응답 해석과
+     * 저장을 모두 끝낸 뒤 차감한다. 면접 평가처럼 커밋 때로 미뤄진 UPDATE도 flush로 먼저 실행해 저장에 실패한 진행에는
+     * 과금하지 않는다. 토큰이 부족해 차감이 실패하면 저장한 진행 결과도 함께 롤백된다.
+     */
+    private void chargeAnswerToken(Long memberId) {
+        entityManager.flush();
+        tokenFacadeService.useTokens(memberId, InterviewMode.ANSWER_TOKEN_COST);
     }
 
     public boolean isVoiceMode(Long interviewId) {
