@@ -30,6 +30,7 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     @Query("UPDATE Answer a SET a.likeCount = a.likeCount - 1 WHERE a.id = :answerId")
     void decrementLikeCountModifying(Long answerId);
 
+    // 비회원 면접은 결과를 공개하지 않고 답변자 닉네임도 없으므로 후보에서 뺀다.
     @Query("""
         SELECT a
         FROM Answer a
@@ -38,6 +39,7 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
         WHERE i.rootQuestion.id = :rootQuestionId
         AND a.answerRank = :rank
         AND i.id != :excludeInterviewId
+        AND i.member IS NOT NULL
         ORDER BY i.likeCount DESC
         LIMIT :limit
         """)
