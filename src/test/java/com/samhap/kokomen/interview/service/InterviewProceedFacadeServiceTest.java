@@ -229,7 +229,8 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
         AnswerRequestV2 answerRequest = new AnswerRequestV2("절차지향 프로그래밍과 반대되는 개념입니다.", InterviewMode.TEXT);
         assertThatThrownBy(() -> interviewProceedFacadeService.proceedInterviewByBedrockFlow(interview.getId(),
                 question1.getId(), answerRequest, memberAuth, clientIp))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("현재 질문이 아닙니다. 현재 질문 id: " + question2.getId());
 
         // when & then
         assertThatCode(() -> interviewProceedFacadeService.proceedInterviewByBedrockFlow(interview.getId(),
@@ -239,5 +240,32 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
         // 비동기 작업이 끝나며 락을 풀 때까지 기다려 다음 테스트와 겹치지 않게 한다.
         String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(member.getId());
         await().atMost(Duration.ofSeconds(5)).until(() -> redisService.get(lockKey, String.class).isEmpty());
+    }
+
+    // 검증을 락 앞으로 옮기면 동시에 들어온 같은 답변이 모두 검증을 통과해 중복 저장될 수 있다. 락을 먼저 잡는지를 고정한다.
+    @Test
+    void 진행_중인_답변이_있으면_현재_질문이_아닌_질문에_답변해도_처리_중_예외가_나고_기존_락은_유지된다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(20).build());
+        tokenRepository.save(
+                TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(
+                InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Question question1 = questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        answerRepository.save(AnswerFixtureBuilder.builder().question(question1).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(interview).build());
+        String lockKey = InterviewProceedFacadeService.createInterviewProceedLockKey(member.getId());
+        redisService.acquireLockWithValue(lockKey, "other-request", Duration.ofMinutes(5));
+        AnswerRequestV2 answerRequest = new AnswerRequestV2("이미 답변한 질문에 다시 보낸 답변입니다.", InterviewMode.TEXT);
+
+        // when & then
+        assertThatThrownBy(() -> interviewProceedFacadeService.proceedInterviewByBedrockFlow(interview.getId(),
+                question1.getId(), answerRequest, new MemberAuth(member.getId()), new ClientIp("0.0.0.0")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
+        assertThat(redisService.get(lockKey, String.class)).contains("other-request");
     }
 }
