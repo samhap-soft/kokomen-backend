@@ -31,7 +31,7 @@ public class WebhookService {
     private final TokenFacadeService tokenFacadeService;
     private final ObjectMapper objectMapper;
 
-    @DistributedLock(prefix = "payment", key = "#payload.data().paymentKey()")
+    @DistributedLock(prefix = PaymentFacadeService.PAYMENT_LOCK_PREFIX, key = "#payload.data().paymentKey()")
     @Transactional
     public void handlePaymentStatusChanged(WebhookPayload payload) {
         String paymentKey = payload.data().paymentKey();
