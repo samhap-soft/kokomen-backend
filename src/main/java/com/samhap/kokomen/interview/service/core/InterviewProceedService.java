@@ -15,11 +15,9 @@ import com.samhap.kokomen.interview.external.dto.response.LlmResponse;
 import com.samhap.kokomen.interview.external.dto.response.NextQuestionResponse;
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.service.question.QuestionService;
-import com.samhap.kokomen.interview.service.dto.InterviewProceedResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,28 +34,6 @@ public class InterviewProceedService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public Optional<InterviewProceedResponse> proceedOrEndInterview(
-            Long memberId,
-            QuestionAndAnswers questionAndAnswers,
-            LlmResponse llmResponse,
-            Long interviewId
-    ) {
-        Member member = null;
-        if (memberId != null) {
-            member = memberService.readById(memberId);
-            tokenFacadeService.useToken(memberId);
-        }
-        Answer curAnswer = saveCurrentAnswer(questionAndAnswers, llmResponse);
-        Interview interview = interviewService.readInterview(interviewId);
-        if (questionAndAnswers.isProceedRequest()) {
-            Question nextQuestion = saveNextQuestion(llmResponse, interview);
-            return Optional.of(InterviewProceedResponse.createFollowingQuestionResponse(curAnswer, nextQuestion));
-        }
-        evaluateInterview(questionAndAnswers, curAnswer, interview, llmResponse, member);
-        return Optional.empty();
-    }
-
-    @Transactional
     public InterviewProceedResult proceedOrEndInterviewByBedrockFlowAsync(
             Long memberId,
             QuestionAndAnswers questionAndAnswers,
@@ -67,7 +43,7 @@ public class InterviewProceedService {
         Member member = null;
         if (memberId != null) {
             member = memberService.readById(memberId);
-            tokenFacadeService.useToken(memberId);
+            tokenFacadeService.useTokens(memberId, InterviewMode.ANSWER_TOKEN_COST);
         }
         Interview interview = interviewService.readInterview(interviewId);
         if (questionAndAnswers.isProceedRequest()) {

@@ -261,6 +261,16 @@ public class InterviewService {
         }
     }
 
+    /**
+     * 현재 질문에 답한 뒤 다음 질문이 이어지는지 판단한다. 락 안에서 실제 진행 여부를 정하는
+     * QuestionAndAnswers.isProceedRequest()와 같은 기준(출제된 질문 수 < 최대 질문 수)이어야 한다.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasNextQuestion(Long interviewId) {
+        Interview interview = readInterview(interviewId);
+        return questionRepository.countByInterview(interview) < interview.getMaxQuestionCount();
+    }
+
     @Transactional(readOnly = true)
     public void validateInterviewee(Long interviewId, Long memberId) {
         Interview interview = readInterview(interviewId);

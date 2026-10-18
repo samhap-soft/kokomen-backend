@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service.infra;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.BedrockConverseResponse;
@@ -116,7 +117,8 @@ public class InterviewProceedBedrockFlowAsyncService {
         try {
             questionService.createAndUploadQuestionVoice(result.getNextQuestion());
             if (memberId != null) {
-                tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
+                // TODO: TTS는 성공했는데 useTokens만 실패하는 경우 고려 필요
+                tokenFacadeService.useTokens(memberId, InterviewMode.VOICE.getQuestionVoiceTokenCost());
             }
         } catch (Exception e) {
             log.error("TTS 생성 실패 - 인터뷰 진행 자체는 정상 완료됨. interviewProceedStateKey={}",
