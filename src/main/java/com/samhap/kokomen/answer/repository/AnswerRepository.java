@@ -30,6 +30,7 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     @Query("UPDATE Answer a SET a.likeCount = a.likeCount - 1 WHERE a.id = :answerId")
     void decrementLikeCountModifying(Long answerId);
 
+    // 면접의 첫 질문이 루트 질문이고 그 뒤는 꼬리 질문이므로, 첫 질문의 답변만 고른다.
     // 비회원 면접은 결과를 공개하지 않고 답변자 닉네임도 없으므로 후보에서 뺀다.
     @Query("""
         SELECT a
@@ -40,6 +41,7 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
         AND a.answerRank = :rank
         AND i.id != :excludeInterviewId
         AND i.member IS NOT NULL
+        AND q.id = (SELECT MIN(q2.id) FROM Question q2 WHERE q2.interview = i)
         ORDER BY i.likeCount DESC
         LIMIT :limit
         """)
