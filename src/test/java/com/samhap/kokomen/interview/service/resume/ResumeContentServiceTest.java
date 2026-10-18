@@ -37,6 +37,8 @@ class ResumeContentServiceTest extends BaseTest {
 
     private static final byte[] PDF_BYTES = "pdf-bytes".getBytes(StandardCharsets.UTF_8);
     private static final String EXTRACTED_TEXT = "S3에서 내려받은 PDF에서 추출한 원문";
+    // 실제로는 같은 PDF라 두 추출 결과가 같다. 덮어쓰기를 관측하려고 늦게 끝난 쪽만 다른 값을 돌려준다.
+    private static final String LATE_EXTRACTED_TEXT = "늦게 끝난 추출의 원문";
 
     @Autowired
     private ResumeContentService resumeContentService;
@@ -83,6 +85,25 @@ class ResumeContentServiceTest extends BaseTest {
         assertThat(content).isEqualTo(EXTRACTED_TEXT);
     }
 
+    // content가 비어 있는 것을 본 뒤 추출하는 사이에 다른 제출이 캐시를 먼저 채운 경우다. 늦게 끝난 쪽이 행을
+    // 통째로 다시 쓰면(준영속 엔티티를 save로 merge하는 식) 먼저 쓴 캐시가 덮인다.
+    @Test
+    void 먼저_채워진_이력서_캐시는_늦게_끝난_추출이_덮어쓰지_않는다() {
+        // given
+        Long resumeId = saveResumeWithoutContent().getId();
+        MemberResume first = readDetachedResume(resumeId);
+        MemberResume late = readDetachedResume(resumeId);
+        given(pdfTextExtractor.extractTextWithLinks(any(byte[].class)))
+                .willReturn(EXTRACTED_TEXT, LATE_EXTRACTED_TEXT);
+        resumeContentService.getOrExtractResumeContent(first);
+
+        // when
+        resumeContentService.getOrExtractResumeContent(late);
+
+        // then
+        assertThat(readDetachedResume(resumeId).getContent()).isEqualTo(EXTRACTED_TEXT);
+    }
+
     @Test
     void content가_비어_있는_저장_포트폴리오는_추출한_원문을_DB에_캐시한다() {
         // given
@@ -110,6 +131,23 @@ class ResumeContentServiceTest extends BaseTest {
         // then
         verify(s3Client, times(1)).getObjectAsBytes(any(GetObjectRequest.class));
         assertThat(content).isEqualTo(EXTRACTED_TEXT);
+    }
+
+    @Test
+    void 먼저_채워진_포트폴리오_캐시는_늦게_끝난_추출이_덮어쓰지_않는다() {
+        // given
+        Long portfolioId = savePortfolioWithoutContent().getId();
+        MemberPortfolio first = readDetachedPortfolio(portfolioId);
+        MemberPortfolio late = readDetachedPortfolio(portfolioId);
+        given(pdfTextExtractor.extractTextWithLinks(any(byte[].class)))
+                .willReturn(EXTRACTED_TEXT, LATE_EXTRACTED_TEXT);
+        resumeContentService.getOrExtractPortfolioContent(first);
+
+        // when
+        resumeContentService.getOrExtractPortfolioContent(late);
+
+        // then
+        assertThat(readDetachedPortfolio(portfolioId).getContent()).isEqualTo(EXTRACTED_TEXT);
     }
 
     private MemberResume saveResumeWithoutContent() {
