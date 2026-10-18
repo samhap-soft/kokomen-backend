@@ -40,9 +40,10 @@ class PaymentRecoverySchedulerTest extends BaseTest {
     private JdbcTemplate jdbcTemplate;
 
     /**
-     * 승인·취소·웹훅은 {@code @DistributedLock}이 조립한 키로, 복구 스케줄러는 같은 RLock을 직접 잡는다.
-     * 락 키 문자열을 테스트에 적지 않고 실제 {@code @DistributedLock} 메서드가 락을 쥐게 하므로,
-     * 어느 한쪽의 키 형식만 바뀌어도 스케줄러가 락을 얻어 토스를 다시 조회하고 이 테스트가 실패한다.
+     * 웹훅은 {@code @DistributedLock}이 조립한 키로, 복구 스케줄러는 같은 RLock을 직접 잡는다.
+     * 락 키 문자열을 테스트에 적지 않고 실제 웹훅 메서드가 락을 쥐게 하므로, 웹훅 쪽 키나 스케줄러 쪽 키 형식만
+     * 바뀌어도 스케줄러가 락을 얻어 토스를 다시 조회하고 이 테스트가 실패한다. 승인·취소는 웹훅과 같은
+     * {@code PaymentFacadeService.PAYMENT_LOCK_PREFIX}를 쓰는 것으로 맞추며, 이 테스트가 직접 잡지는 않는다.
      *
      * <p>스케줄러 빈은 컨텍스트가 뜰 때 백그라운드에서도 한 번 돈다. 그 실행이 이전 실행의 잔여 행을 집어
      * 같은 목을 호출해도 검증에 섞이지 않도록 결제 키를 실행마다 새로 만들고, 마지막에는 결제를 종료 상태로
