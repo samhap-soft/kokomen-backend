@@ -34,9 +34,13 @@ import org.springframework.util.ReflectionUtils;
  * <p>
  * 어드바이저는 Spring이 기동할 때 쓰는 ReflectiveAspectJAdvisorFactory로 만든다. 이 팩토리가 포인트컷의 선언 범위를
  * Aspect 클래스로, 파라미터 이름·타입을 어드바이스 메서드 시그니처로 채우므로 이름 붙은 포인트컷 참조와 args(...)·
- * {@code @annotation(...)} 바인딩이 실제와 똑같이 해석된다. 바인딩이 맞지 않는 어드바이스는 Spring이 디버그 로그만 남기고
- * 버리므로(getAdvisor가 null) 그것도 걸리지 않은 것으로 본다. 매칭 판정은 Spring이 프록시 대상을 고를 때 쓰는
- * AopUtils.canApply를 그대로 쓴다. 테스트 컨텍스트는 지연 초기화라 빈 인스턴스 대신 빈 정의의 타입을 대상 클래스로 삼는다.
+ * {@code @annotation(...)} 바인딩이 실제와 똑같이 해석된다. 바인딩이 맞지 않으면 Spring은 어드바이저를 만들지 않거나
+ * (getAdvisor가 null) 포인트컷 해석 실패로 매칭 0건으로 처리하고 디버그 로그만 남긴다. 두 경우 모두 걸리지 않은 것으로 본다.
+ * 매칭 판정은 Spring이 프록시 대상을 고를 때 쓰는 AopUtils.canApply를 그대로 쓴다. 테스트 컨텍스트는 지연 초기화라
+ * 빈 인스턴스 대신 빈 정의의 타입을 대상 클래스로 삼는다.
+ * <p>
+ * 판정 단위는 어드바이스 하나라서 {@code @within(X) || @annotation(X)}처럼 OR로 묶인 포인트컷의 한쪽만 죽는 것은 잡지
+ * 못한다. 또 빈으로 등록된 Aspect만 검사하므로 {@code @Component}가 빠져 통째로 꺼진 Aspect는 대상에서 빠진다.
  */
 class AspectPointcutMatchTest extends BaseTest {
 
