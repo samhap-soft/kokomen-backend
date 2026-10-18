@@ -1,6 +1,7 @@
 package com.samhap.kokomen.admin.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -110,6 +111,30 @@ class AdminControllerTest extends BaseControllerTest {
                 .andExpect(status().isForbidden());
         verify(supertoneClient, never()).request(any());
         verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void 관리자는_API_키로_루트_질문_음성을_업로드할_수_있다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        adminRepository.save(new Admin(member));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("MEMBER_ID", member.getId());
+
+        when(supertoneClient.requestWithApiKey(any(), any())).thenReturn(new SupertoneResponse(new byte[0]));
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenThrow(S3Exception.builder().statusCode(404).build());
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/admin/root-question/{rootQuestionId}/upload-voice-with-api-key",
+                        rootQuestion.getId())
+                        .param("oneTimeApiKey", "one-time-api-key")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session))
+                .andExpect(status().isOk());
+        verify(supertoneClient).requestWithApiKey(any(), eq("one-time-api-key"));
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.samhap.kokomen.admin.controller;
 
 import com.samhap.kokomen.admin.service.AdminService;
 import com.samhap.kokomen.admin.service.dto.RootQuestionVoiceResponse;
+import com.samhap.kokomen.global.annotation.Authentication;
+import com.samhap.kokomen.global.dto.MemberAuth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,12 +21,20 @@ public class AdminController {
     private final AdminService adminService;
 
     @PostMapping("/root-question/{rootQuestionId}/upload-voice")
-    public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoice(@PathVariable Long rootQuestionId) {
-        return ResponseEntity.ok(adminService.uploadRootQuestionVoice(rootQuestionId));
+    public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoice(
+            @PathVariable Long rootQuestionId,
+            @Authentication MemberAuth memberAuth
+    ) {
+        return ResponseEntity.ok(adminService.uploadRootQuestionVoice(rootQuestionId, memberAuth));
     }
 
     @PostMapping("/root-question/{rootQuestionId}/upload-voice-with-api-key")
-    public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoiceWithApiKey(@PathVariable Long rootQuestionId, @RequestParam String oneTimeApiKey) {
-        return ResponseEntity.ok(adminService.uploadRootQuestionVoiceWithApiKey(rootQuestionId, oneTimeApiKey));
+    public ResponseEntity<RootQuestionVoiceResponse> uploadRootQuestionVoiceWithApiKey(
+            @PathVariable Long rootQuestionId,
+            @RequestParam String oneTimeApiKey,
+            @Authentication MemberAuth memberAuth
+    ) {
+        return ResponseEntity.ok(
+                adminService.uploadRootQuestionVoiceWithApiKey(rootQuestionId, oneTimeApiKey, memberAuth));
     }
 }
