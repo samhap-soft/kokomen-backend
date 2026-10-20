@@ -49,7 +49,9 @@ public class InterviewProceedFacadeService {
                                               MemberAuth memberAuth, ClientIp clientIp) {
         interviewService.validateInterviewMode(interviewId, answerRequest.mode());
         if (memberAuth.isAuthenticated()) {
-            tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), answerRequest.mode().getRequiredTokenCount());
+            int requiredTokenCount = answerRequest.mode()
+                    .calculateRequiredTokenCountToAnswer(interviewService.hasNextQuestion(interviewId));
+            tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
             interviewService.validateInterviewee(interviewId, memberAuth.memberId());
         } else {
             interviewService.validateGuestInterviewee(interviewId, clientIp);

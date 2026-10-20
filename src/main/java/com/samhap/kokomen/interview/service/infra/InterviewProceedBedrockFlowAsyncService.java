@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.service.infra;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.service.RedisService;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.BedrockConverseResponse;
@@ -115,14 +116,26 @@ public class InterviewProceedBedrockFlowAsyncService {
                                                     InterviewProceedResult result) {
         try {
             questionService.createAndUploadQuestionVoice(result.getNextQuestion());
-            if (memberId != null) {
-                tokenFacadeService.useToken(memberId); // TODO: TTS는 성공했는데 useToken만 실패하는 경우 고려 필요
-            }
         } catch (Exception e) {
             log.error("TTS 생성 실패 - 인터뷰 진행 자체는 정상 완료됨. interviewProceedStateKey={}",
                     interviewProceedStateKey, e);
             redisService.setValue(interviewProceedStateKey, InterviewProceedState.TTS_FAILED.name(),
                     Duration.ofSeconds(300));
+            return;
+        }
+        if (memberId != null) {
+            chargeQuestionVoiceToken(memberId, interviewProceedStateKey);
+        }
+    }
+
+    // 음성은 이미 올라갔으므로 차감이 실패해도 TTS_FAILED로 기록하지 않는다. 사용자는 음성을 정상으로 받고,
+    // 받지 못한 음성 토큰은 이 로그로 추적한다.
+    private void chargeQuestionVoiceToken(Long memberId, String interviewProceedStateKey) {
+        try {
+            tokenFacadeService.useTokens(memberId, InterviewMode.VOICE.getQuestionVoiceTokenCost());
+        } catch (Exception e) {
+            log.error("TTS 성공 후 음성 토큰 차감 실패 - 음성은 정상 제공됨. memberId={}, interviewProceedStateKey={}",
+                    memberId, interviewProceedStateKey, e);
         }
     }
 
