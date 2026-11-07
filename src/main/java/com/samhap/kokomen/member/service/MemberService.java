@@ -1,6 +1,7 @@
 package com.samhap.kokomen.member.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.dto.DailyInterviewCount;
@@ -126,6 +127,12 @@ public class MemberService {
         memberSocialLoginRepository.deleteAll(socialLogins);
         // Member 엔티티 탈퇴 처리
         member.withdraw();
+    }
+
+    public void validateAdmin(Long memberId) {
+        if (!isAdmin(memberId)) {
+            throw new ForbiddenException("권한이 없습니다.");
+        }
     }
 
     private boolean isAdmin(Long memberId) {

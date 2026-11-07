@@ -53,23 +53,6 @@ public class Token extends BaseEntity {
         this.tokenCount += count;
     }
 
-    public void useToken() {
-        if (tokenCount <= 0) {
-            throw new BadRequestException("사용할 수 있는 토큰이 없습니다.");
-        }
-        this.tokenCount--;
-    }
-
-    public void useTokens(int count) {
-        if (count <= 0) {
-            throw new BadRequestException("사용할 토큰 수는 0보다 커야 합니다.");
-        }
-        if (this.tokenCount < count) {
-            throw new BadRequestException("사용할 수 있는 토큰이 부족합니다.");
-        }
-        this.tokenCount -= count;
-    }
-
     public boolean hasTokens() {
         return tokenCount > 0;
     }

@@ -59,10 +59,6 @@ public class MemberPortfolio extends BaseEntity {
         this(member, title, portfolioUrl, null);
     }
 
-    public void updateContent(String content) {
-        this.content = content;
-    }
-
     public boolean hasContent() {
         return content != null && !content.isBlank();
     }

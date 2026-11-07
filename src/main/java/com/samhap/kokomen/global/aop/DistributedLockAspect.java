@@ -68,6 +68,14 @@ public class DistributedLockAspect {
         if (resolvedKey == null) {
             throw new BadRequestException("분산 락 키를 생성할 수 없습니다.");
         }
-        return LOCK_KEY_PREFIX + distributedLock.prefix() + ":" + resolvedKey;
+        return createLockKey(distributedLock.prefix(), resolvedKey);
+    }
+
+    /**
+     * {@code @DistributedLock}이 잡는 RLock의 키다. 애너테이션 밖에서 같은 락을 직접 잡는 곳(결제 복구 스케줄러)도
+     * 키를 다시 조립하지 않고 이 메서드를 쓴다. 한쪽 형식만 바뀌면 서로 다른 락을 잡아 상호 배제가 조용히 깨진다.
+     */
+    public static String createLockKey(String prefix, Object key) {
+        return LOCK_KEY_PREFIX + prefix + ":" + key;
     }
 }

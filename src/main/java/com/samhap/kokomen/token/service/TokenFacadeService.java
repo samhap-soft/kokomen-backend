@@ -19,6 +19,7 @@ import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
 import com.samhap.kokomen.token.dto.TokenRefundRequest;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -31,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TokenFacadeService {
+
+    private static final String ADMIN_REFUND_REASON_PREFIX = "[관리자 취소] ";
 
     private final TokenService tokenService;
     private final TokenPurchaseService tokenPurchaseService;
@@ -146,9 +149,7 @@ public class TokenFacadeService {
             throw new BadRequestException("본인의 토큰 구매 내역만 환불할 수 있습니다.");
         }
 
-        if (tokenPurchase.isNotRefundable()) {
-            throw new BadRequestException("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
-        }
+        validateRefundable(tokenPurchase);
 
         RefundReasonCode refundReasonCode = request.refundReasonCode();
         refundReasonCode.validateRefundReasonText(request.refundReasonText());
@@ -161,13 +162,54 @@ public class TokenFacadeService {
                 "토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}, refundReasonCode: {}, refundReasonText: {}",
                 memberId, tokenPurchaseId, paymentKey, refundTokenCount, refundReasonCode, refundReasonText);
 
-        paymentFacadeService.cancelPayment(new CancelRequest(paymentKey, refundReasonText));
-
-        tokenPurchaseService.refundTokenPurchase(tokenPurchase, refundReasonCode, request.refundReasonText());
-        tokenService.refundPaidTokenCount(memberId, refundTokenCount);
+        refund(memberId, tokenPurchase, new CancelRequest(paymentKey, refundReasonText), refundReasonCode,
+                request.refundReasonText());
 
         log.info("토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId, tokenPurchaseId,
                 refundTokenCount);
+    }
+
+    /**
+     * 관리자 결제 취소도 사용자 환불과 같은 규칙(미사용 구매만, 토스 취소 → 구매 내역 환불 → 유료 토큰 회수)을 따른다.
+     * 토큰이 지급되기 전이라 구매 내역이 없는 결제는 결제만 취소한다.
+     */
+    @DistributedLock(prefix = "token", key = "#memberId")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void refundTokensByAdmin(Long memberId, CancelRequest cancelRequest) {
+        String paymentKey = cancelRequest.paymentKey();
+        Optional<TokenPurchase> foundTokenPurchase = tokenPurchaseService.findTokenPurchaseByPaymentKey(paymentKey);
+        if (foundTokenPurchase.isEmpty()) {
+            log.info("관리자 결제 취소 - 지급된 토큰 없음, memberId: {}, paymentKey: {}", memberId, paymentKey);
+            paymentFacadeService.cancelPayment(cancelRequest);
+            return;
+        }
+
+        TokenPurchase tokenPurchase = foundTokenPurchase.get();
+        validateRefundable(tokenPurchase);
+
+        int refundTokenCount = tokenPurchase.getPurchaseCount();
+        log.info("관리자 토큰 환불 요청 - memberId: {}, tokenPurchaseId: {}, paymentKey: {}, refundTokenCount: {}",
+                memberId, tokenPurchase.getId(), paymentKey, refundTokenCount);
+
+        refund(memberId, tokenPurchase, cancelRequest, RefundReasonCode.OTHER,
+                ADMIN_REFUND_REASON_PREFIX + cancelRequest.cancelReason());
+
+        log.info("관리자 토큰 환불 완료 - memberId: {}, tokenPurchaseId: {}, 차감된 토큰: {}", memberId,
+                tokenPurchase.getId(), refundTokenCount);
+    }
+
+    private void validateRefundable(TokenPurchase tokenPurchase) {
+        if (tokenPurchase.isNotRefundable()) {
+            throw new BadRequestException("환불 불가능한 상태입니다. 환불 가능한 토큰은 사용하지 않은 상태여야 합니다.");
+        }
+    }
+
+    private void refund(Long memberId, TokenPurchase tokenPurchase, CancelRequest cancelRequest,
+                        RefundReasonCode refundReasonCode, String refundReasonText) {
+        paymentFacadeService.cancelPayment(cancelRequest);
+
+        tokenPurchaseService.refundTokenPurchase(tokenPurchase, refundReasonCode, refundReasonText);
+        tokenService.refundPaidTokenCount(memberId, tokenPurchase.getPurchaseCount());
     }
 
     @Transactional(readOnly = true)

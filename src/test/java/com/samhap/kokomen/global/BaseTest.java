@@ -24,7 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import software.amazon.awssdk.services.s3.S3Client;
 
-@ActiveProfiles("test")
+@ActiveProfiles({"common-test", "test"})
 @ExtendWith(MySQLDatabaseCleaner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
 public abstract class BaseTest {

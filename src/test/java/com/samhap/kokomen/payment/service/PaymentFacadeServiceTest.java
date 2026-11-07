@@ -401,6 +401,36 @@ class PaymentFacadeServiceTest extends BaseTest {
     }
 
     @Test
+    void 결제_결과가_없는_COMPLETED_결제도_취소에_성공한다() {
+        saveCancellablePayment("payment_key");
+
+        LocalDateTime canceledAt = LocalDateTime.of(2025, 1, 1, 12, 0);
+        TosspaymentsCancel cancel = new TosspaymentsCancel(
+                "cancel_tx_key", "단순 변심", 0L,
+                canceledAt, 0L, null, 10000L, 0L, 10000L, "DONE", null
+        );
+        TosspaymentsPaymentResponse cancelResponse = new TosspaymentsPaymentResponse(
+                "payment_key", PaymentType.NORMAL, "order_id", "주문명",
+                "tvivarepublica", "KRW", "카드", 10000L, 0L,
+                TosspaymentsStatus.CANCELED, LocalDateTime.now(), LocalDateTime.now(),
+                "cancel_tx_key", 9091L, 909L, 0L, 0L, true,
+                "{}", null, null, null, "KR", null, List.of(cancel)
+        );
+        when(tosspaymentsClient.cancelPayment(any(), any(), any())).thenReturn(cancelResponse);
+
+        paymentFacadeService.cancelPayment(new CancelRequest("payment_key", "단순 변심"));
+
+        TosspaymentsPayment updatedPayment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key")
+                .orElseThrow();
+        assertThat(updatedPayment.getState()).isEqualTo(PaymentState.CANCELED);
+        TosspaymentsPaymentResult createdResult = tosspaymentsPaymentResultRepository
+                .findByTosspaymentsPaymentId(updatedPayment.getId()).orElseThrow();
+        assertThat(createdResult.getTosspaymentsStatus()).isEqualTo(TosspaymentsStatus.CANCELED);
+        assertThat(createdResult.getCancelReason()).isEqualTo("단순 변심");
+        assertThat(createdResult.getCanceledAt()).isEqualTo(canceledAt);
+    }
+
+    @Test
     void 결제_취소_시_400_에러가_발생하면_BadRequestException을_던진다() {
         saveCancellablePayment("payment_key");
         HttpClientErrorException clientError = mock(HttpClientErrorException.class);

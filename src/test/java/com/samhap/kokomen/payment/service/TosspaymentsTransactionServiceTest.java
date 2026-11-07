@@ -98,4 +98,39 @@ class TosspaymentsTransactionServiceTest extends BaseTest {
                 .findByTosspaymentsPaymentId(updatedPayment.getId()).orElseThrow();
         assertThat(updatedResult.getCancelReason()).isNull();
     }
+
+    @Test
+    void 결제_결과가_없는_결제에_취소_결과를_반영하면_취소_응답으로_결제_결과를_만들고_CANCELED로_변경한다() {
+        TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()
+                .paymentKey("payment_key")
+                .build();
+        payment.updateState(PaymentState.COMPLETED);
+        tosspaymentsPaymentRepository.save(payment);
+
+        LocalDateTime canceledAt = LocalDateTime.of(2025, 1, 1, 12, 0);
+        TosspaymentsCancel cancel = new TosspaymentsCancel(
+                "cancel_tx_key", "단순 변심", 0L,
+                canceledAt, 0L, null, 10000L, 0L, 10000L, "DONE", null
+        );
+        TosspaymentsPaymentResponse response = new TosspaymentsPaymentResponse(
+                "payment_key", PaymentType.NORMAL, "order_id", "주문명",
+                "tvivarepublica", "KRW", "카드", 10000L, 0L,
+                TosspaymentsStatus.CANCELED, LocalDateTime.now(), LocalDateTime.now(),
+                "cancel_tx_key", 9091L, 909L, 0L, 0L, true,
+                "{}", null, null, null, "KR", null, List.of(cancel)
+        );
+
+        tosspaymentsTransactionService.applyCancelResult(response);
+
+        TosspaymentsPayment updatedPayment = tosspaymentsPaymentRepository.findByPaymentKey("payment_key")
+                .orElseThrow();
+        assertThat(updatedPayment.getState()).isEqualTo(PaymentState.CANCELED);
+        TosspaymentsPaymentResult createdResult = tosspaymentsPaymentResultRepository
+                .findByTosspaymentsPaymentId(updatedPayment.getId()).orElseThrow();
+        assertThat(createdResult.getTosspaymentsStatus()).isEqualTo(TosspaymentsStatus.CANCELED);
+        assertThat(createdResult.getBalanceAmount()).isZero();
+        assertThat(createdResult.getCancelReason()).isEqualTo("단순 변심");
+        assertThat(createdResult.getCanceledAt()).isEqualTo(canceledAt);
+        assertThat(createdResult.getCancelStatus()).isEqualTo("DONE");
+    }
 }

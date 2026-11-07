@@ -34,13 +34,16 @@ import org.springframework.web.client.ResourceAccessException;
 @Service
 public class PaymentFacadeService {
 
+    // 승인·취소·웹훅의 @DistributedLock과 복구 스케줄러가 같은 결제 락을 잡도록 공유한다.
+    public static final String PAYMENT_LOCK_PREFIX = "payment";
+
     private final TosspaymentsTransactionService tosspaymentsTransactionService;
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
     private final TosspaymentsPaymentResultService tosspaymentsPaymentResultService;
     private final TosspaymentsClient tosspaymentsClient;
     private final RetryTemplate tosspaymentsConfirmRetryTemplate;
 
-    @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
+    @DistributedLock(prefix = PAYMENT_LOCK_PREFIX, key = "#request.paymentKey()")
     public PaymentResponse confirmPayment(ConfirmRequest request) {
         TosspaymentsPayment tosspaymentsPayment;
         try {
@@ -183,7 +186,7 @@ public class PaymentFacadeService {
         payment.updateState(PaymentState.COMPLETED);
     }
 
-    @DistributedLock(prefix = "payment", key = "#request.paymentKey()")
+    @DistributedLock(prefix = PAYMENT_LOCK_PREFIX, key = "#request.paymentKey()")
     public void cancelPayment(CancelRequest request) {
         TosspaymentsPayment payment = tosspaymentsPaymentService.readByPaymentKey(request.paymentKey());
         if (!payment.canCancelByApi()) {

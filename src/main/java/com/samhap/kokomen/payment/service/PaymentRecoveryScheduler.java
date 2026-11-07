@@ -1,5 +1,6 @@
 package com.samhap.kokomen.payment.service;
 
+import com.samhap.kokomen.global.aop.DistributedLockAspect;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import java.time.LocalDateTime;
@@ -22,7 +23,6 @@ public class PaymentRecoveryScheduler {
     );
     private static final int STALE_THRESHOLD_MINUTES = 10;
     private static final int MAX_RECOVERY_COUNT = 10;
-    private static final String LOCK_KEY_PREFIX = "lock:payment:";
 
     private final TosspaymentsPaymentService tosspaymentsPaymentService;
     private final PaymentRecoveryService paymentRecoveryService;
@@ -47,7 +47,8 @@ public class PaymentRecoveryScheduler {
 
     private void recoverPayment(TosspaymentsPayment payment) {
         String paymentKey = payment.getPaymentKey();
-        RLock lock = redissonClient.getLock(LOCK_KEY_PREFIX + paymentKey);
+        RLock lock = redissonClient.getLock(
+                DistributedLockAspect.createLockKey(PaymentFacadeService.PAYMENT_LOCK_PREFIX, paymentKey));
 
         boolean acquired = false;
         try {
