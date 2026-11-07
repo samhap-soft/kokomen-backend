@@ -57,8 +57,8 @@ public class InterviewProceedFacadeService {
         String lockKey = resolveProceedLockKey(memberAuth, clientIp);
         String lockValue = UUID.randomUUID().toString();
         acquireLockForProceedInterview(lockKey, lockValue);
-        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswers(interviewId, curQuestionId,
-                answerRequest.answer());
+        QuestionAndAnswers questionAndAnswers = createQuestionAndAnswersOrReleaseLock(interviewId, curQuestionId,
+                answerRequest.answer(), lockKey, lockValue);
         try {
             log.info("Bedrock API 호출 시도 - interviewId: {}, curQuestionId: {}, memberId: {}",
                     interviewId, curQuestionId, memberAuth.memberId());
@@ -95,6 +95,19 @@ public class InterviewProceedFacadeService {
         boolean lockAcquired = redisService.acquireLockWithValue(lockKey, lockValue, Duration.ofMinutes(5));
         if (!lockAcquired) {
             throw new BadRequestException("이미 처리 중인 답변이 있습니다. 잠시 후 다시 시도해주세요.");
+        }
+    }
+
+    // 같은 질문에 답변이 중복 저장되지 않도록 검증은 락을 잡은 뒤에 한다. 검증에 실패하면 락을 비동기 서비스에
+    // 넘기기 전이므로 여기서 해제한다. 넘긴 뒤의 해제는 InterviewProceedBedrockFlowAsyncService가 맡는다.
+    private QuestionAndAnswers createQuestionAndAnswersOrReleaseLock(Long interviewId, Long curQuestionId,
+                                                                     String answerContent, String lockKey,
+                                                                     String lockValue) {
+        try {
+            return createQuestionAndAnswers(interviewId, curQuestionId, answerContent);
+        } catch (RuntimeException e) {
+            redisService.releaseLockSafely(lockKey, lockValue);
+            throw e;
         }
     }
 
