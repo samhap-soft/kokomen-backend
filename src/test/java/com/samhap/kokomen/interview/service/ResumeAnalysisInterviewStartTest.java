@@ -95,11 +95,41 @@ class ResumeAnalysisInterviewStartTest extends BaseTest {
     }
 
     @Test
-    void 음성모드_면접_시작은_토큰_2배를_요구한다() {
+    void 텍스트모드_면접은_최대_질문_수만큼_토큰이_있어야_시작할_수_있다() {
+        // given
+        Member enough = saveMemberWithTokens(3);
+        Member notEnough = saveMemberWithTokens(2);
+        ResumeAnalysis enoughAnalysis = saveAnalysis(enough, ResumeAnalysisState.COMPLETED);
+        ResumeAnalysis notEnoughAnalysis = saveAnalysis(notEnough, ResumeAnalysisState.COMPLETED);
+        GeneratedQuestion enoughQuestion = saveFiveQuestions(enoughAnalysis).get(0);
+        GeneratedQuestion notEnoughQuestion = saveFiveQuestions(notEnoughAnalysis).get(0);
+
+        // when
+        InterviewStartResponse response = interviewStartFacadeService.startResumeAnalysisInterview(
+                enoughAnalysis.getId(),
+                new ResumeAnalysisInterviewStartRequest(enoughQuestion.getId(), 3, InterviewMode.TEXT),
+                new MemberAuth(enough.getId()));
+
+        // then
+        assertThat(response).isInstanceOf(InterviewStartTextModeResponse.class);
+        assertThatThrownBy(() -> interviewStartFacadeService.startResumeAnalysisInterview(
+                notEnoughAnalysis.getId(),
+                new ResumeAnalysisInterviewStartRequest(notEnoughQuestion.getId(), 3, InterviewMode.TEXT),
+                new MemberAuth(notEnough.getId())))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+    }
+
+    /**
+     * 시작할 때 만드는 첫 질문 음성은 차감하지 않는다. 음성 토큰은 답변 뒤 다음 질문 음성을 만들 때만 차감되므로
+     * 3문항 음성 면접이 실제로 쓰는 토큰은 답변 3개와 다음 질문 음성 2개를 더한 5개다.
+     */
+    @Test
+    void 음성모드_면접은_최대_질문_수의_2배에서_1을_뺀_만큼_토큰이_있어야_시작할_수_있다() {
         // given
         given(supertoneClient.request(any())).willReturn(new SupertoneResponse(new byte[0]));
-        Member enough = saveMemberWithTokens(6);
-        Member notEnough = saveMemberWithTokens(5);
+        Member enough = saveMemberWithTokens(5);
+        Member notEnough = saveMemberWithTokens(4);
         ResumeAnalysis enoughAnalysis = saveAnalysis(enough, ResumeAnalysisState.COMPLETED);
         ResumeAnalysis notEnoughAnalysis = saveAnalysis(notEnough, ResumeAnalysisState.COMPLETED);
         GeneratedQuestion enoughQuestion = saveFiveQuestions(enoughAnalysis).get(0);

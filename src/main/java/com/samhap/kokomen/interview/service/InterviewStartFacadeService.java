@@ -45,8 +45,6 @@ public class InterviewStartFacadeService {
     public static final InterviewMode GUEST_INTERVIEW_MODE = InterviewMode.TEXT;
     public static final Duration GUEST_INTERVIEW_LOCK_TTL = Duration.ofDays(365);
 
-    private static final int TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE = 1;
-
     private final QuestionVoicePathResolver questionVoicePathResolver;
     private final InterviewService interviewService;
     private final MemberService memberService;
@@ -61,8 +59,7 @@ public class InterviewStartFacadeService {
     public InterviewStartResponse startInterview(InterviewRequest interviewRequest, MemberAuth memberAuth) {
         InterviewMode interviewMode = interviewRequest.mode();
         validateLiveCodingNotVoice(interviewRequest, interviewMode);
-        int requiredTokenCount = interviewRequest.maxQuestionCount() * interviewMode.getRequiredTokenCount()
-                - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
+        int requiredTokenCount = interviewMode.calculateRequiredTokenCountToStart(interviewRequest.maxQuestionCount());
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         RootQuestion rootQuestion = rootQuestionService.findNextRootQuestionForMember(member, interviewRequest);
@@ -110,8 +107,7 @@ public class InterviewStartFacadeService {
         InterviewMode interviewMode = request.mode();
         RootQuestion rootQuestion = rootQuestionService.readRootQuestion(request.rootQuestionId());
         validateModeSupportedForRootQuestion(rootQuestion, interviewMode);
-        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount()
-                - TOKEN_NOT_REQUIRED_FOR_ROOT_QUESTION_VOICE;
+        int requiredTokenCount = interviewMode.calculateRequiredTokenCountToStart(request.maxQuestionCount());
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
         Member member = memberService.readById(memberAuth.memberId());
         Interview interview = interviewService.saveInterview(
@@ -140,7 +136,7 @@ public class InterviewStartFacadeService {
         GeneratedQuestion generatedQuestion = readAnalysisGeneratedQuestion(request.generatedQuestionId(), analysisId);
 
         InterviewMode interviewMode = request.mode();
-        int requiredTokenCount = request.maxQuestionCount() * interviewMode.getRequiredTokenCount();
+        int requiredTokenCount = interviewMode.calculateRequiredTokenCountToStart(request.maxQuestionCount());
         tokenFacadeService.validateEnoughTokens(memberAuth.memberId(), requiredTokenCount);
 
         Interview interview = interviewService.saveInterview(

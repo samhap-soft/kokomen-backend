@@ -65,6 +65,19 @@ public class BedrockResponseFixtureBuilder {
         return new BedrockConverseResponse(Document.fromMap(input));
     }
 
+    /**
+     * next_question이 문자열이 아니라 객체로 온 진행 응답이다. 스키마를 벗어난 tool 입력이라 다음 질문을 해석할 수 없다.
+     */
+    public BedrockConverseResponse buildProceedWithObjectNextQuestion() {
+        Map<String, Document> input = new LinkedHashMap<>();
+        input.put("reasoning",
+                Document.fromString(reasoning != null ? reasoning : "답변 평가 근거와 다음 질문 설계 근거입니다."));
+        input.put("rank", Document.fromString(answerRank != null ? answerRank.name() : "A"));
+        input.put("next_question", Document.fromMap(Map.of("content",
+                Document.fromString(nextQuestion != null ? nextQuestion : "스레드 안전하다는 것은 무엇인가요?"))));
+        return new BedrockConverseResponse(Document.fromMap(input));
+    }
+
     public BedrockConverseResponse buildEnd() {
         Map<String, Document> input = new LinkedHashMap<>();
         input.put("reasoning",
