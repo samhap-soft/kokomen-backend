@@ -87,6 +87,20 @@ class SystemDesignDiagramTest {
         );
     }
 
+    // JS .length처럼 UTF-16 단위로 센다. 이모지는 서로게이트 쌍이라 한 개가 2단위다.
+    @Test
+    void 블록_id는_UTF_16_단위로_세어_이모지_32개까지_받고_33개는_거절한다() {
+        String maxId = "😀".repeat(32);
+        String overId = "😀".repeat(33);
+
+        assertAll(
+                () -> assertThat(maxId).hasSize(64),
+                () -> assertAccepted(blocksOf(block(maxId))),
+                () -> assertThat(overId).hasSize(66),
+                () -> assertRejected(blocksOf(block(overId)), BLOCK_ID)
+        );
+    }
+
     @Test
     void 블록_id가_겹치면_거절한다() {
         assertRejected(blocksOf(block("api"), block("api")), "블록 id가 겹쳐요.");

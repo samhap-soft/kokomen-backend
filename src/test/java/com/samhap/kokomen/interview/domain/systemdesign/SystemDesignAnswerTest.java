@@ -41,6 +41,22 @@ class SystemDesignAnswerTest {
                 "가".repeat(SystemDesignAnswer.MAX_CONTENT_LENGTH + 1));
     }
 
+    // JS .length처럼 UTF-16 단위로 센다. 이모지는 서로게이트 쌍이라 한 개가 2단위다.
+    @Test
+    void 답변은_UTF_16_단위로_세어_이모지_1500개까지_받고_1501개는_거절한다() {
+        String maxContent = "😀".repeat(1_500);
+        String overContent = "😀".repeat(1_501);
+
+        assertAll(
+                () -> assertThat(maxContent).hasSize(3_000),
+                () -> assertThat(SystemDesignAnswer.normalizeContent(maxContent)).isEqualTo(maxContent),
+                () -> assertThat(overContent).hasSize(3_002),
+                () -> assertThatThrownBy(() -> SystemDesignAnswer.normalizeContent(overContent))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("답변은 1~3,000자로 적어 주세요.")
+        );
+    }
+
     @Test
     void 피드백이_2000자를_넘으면_잘라_저장한다() {
         // given
