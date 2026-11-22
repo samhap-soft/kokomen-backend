@@ -58,18 +58,23 @@ class SystemDesignSeedScriptTest {
             "SEARCH_AUTOCOMPLETE", List.of("500만", "4번", "5번", "200만", "6글자", "10개", "7일", "100ms", "1시간"),
             "IMAGE_UPLOAD", List.of("100만", "4%", "10장", "3장", "20MB", "2MB", "60장", "15장", "1초", "5초"));
 
-    // 공개 문구에 허용한 숫자. 숨은 수치가 아니다. URL_SHORTENER의 301·302는 HTTP 상태 코드이고,
-    // ONE_TO_ONE_CHAT 제목·설명의 1:1은 채팅 종류다.
-    private static final Pattern REDIRECT_STATUS_CODE = Pattern.compile("(?<!\\d)30[12](?!\\d)");
-    private static final String ONE_TO_ONE = "1:1";
+    // 공개 문구에 허용한 숫자와 그 위치(PUBLIC_TEXT_SQL의 location). 숨은 수치가 아니다.
+    // URL_SHORTENER의 301·302는 HTTP 상태 코드로 6번 질문과 평가 포인트에만, ONE_TO_ONE_CHAT의 1:1은 채팅 종류로
+    // 제목과 설명에만 허용한다.
+    private static final List<AllowedNumber> ALLOWED_NUMBERS = List.of(
+            new AllowedNumber("URL_SHORTENER", Set.of("QUESTION 6", "EVALUATION_POINT"),
+                    Pattern.compile("(?<!\\d)30[12](?!\\d)")),
+            new AllowedNumber("ONE_TO_ONE_CHAT", Set.of("TITLE", "DESCRIPTION"),
+                    Pattern.compile("(?<!\\d)1:1(?!\\d)")));
 
     private static final Pattern CODE_FORMAT = Pattern.compile("^[A-Z][A-Z0-9_]*$");
     private static final Pattern REQUIREMENT_NAME_FORMAT = Pattern.compile("^[^|:\\r\\n]+$");
     private static final Pattern NUMBER_TOKEN = Pattern.compile("\\d+");
     private static final Pattern DIGIT = Pattern.compile("\\d");
 
+    // 지원자가 역질문을 하지 않아도 보는 문구. location은 출처이고 질문에는 순번을 붙인다(QUESTION 6).
     private static final String PUBLIC_TEXT_SQL = """
-            SELECT p.code AS problem_code, 'TITLE' AS field, p.title AS content
+            SELECT p.code AS problem_code, 'TITLE' AS location, p.title AS content
             FROM system_design_problem p
             UNION ALL
             SELECT p.code, 'DESCRIPTION', p.description
@@ -81,7 +86,7 @@ class SystemDesignSeedScriptTest {
             SELECT p.code, 'EVALUATION_POINT', e.description
             FROM system_design_evaluation_point e JOIN system_design_problem p ON p.id = e.problem_id
             UNION ALL
-            SELECT p.code, 'QUESTION', q.content
+            SELECT p.code, CONCAT('QUESTION ', q.question_order), q.content
             FROM system_design_problem_question q JOIN system_design_problem p ON p.id = q.problem_id
             """;
 
@@ -269,7 +274,7 @@ class SystemDesignSeedScriptTest {
     void 공개_문구에는_숨은_요구사항의_숫자가_없다() {
         Map<String, List<String>> answers = readHiddenRequirementColumn("answer");
         Map<String, List<PublicText>> publicTexts = queryByProblem(PUBLIC_TEXT_SQL,
-                (rs, rowNum) -> new PublicText(rs.getString("field"), rs.getString("content")));
+                (rs, rowNum) -> new PublicText(rs.getString("location"), rs.getString("content")));
 
         assertThat(publicTexts).containsOnlyKeys(PROBLEM_CODES)
                 .allSatisfy((problemCode, texts) -> {
@@ -284,10 +289,22 @@ class SystemDesignSeedScriptTest {
     }
 
     @Test
+    void 숨은_요구사항_이름에는_숨은_요구사항의_숫자가_없다() {
+        // 마지막 채점(L3) user 메시지는 확인하지 않은 요구사항의 이름도 쓰고("- 이름: 확인하지 않음") 답의 수치는 넣지 않는다.
+        // 이름에 수치가 있으면 묻지 않은 수치가 종합 평가에 들어간다. 숫자 자체는 막지 않는다(1인당 발급 한도).
+        Map<String, List<String>> names = readHiddenRequirementColumn("name");
+
+        assertThat(names).containsOnlyKeys(PROBLEM_CODES)
+                .allSatisfy((problemCode, problemNames) -> assertThat(problemNames).as(problemCode)
+                        .allSatisfy(name -> assertThat(name)
+                                .doesNotContain(HIDDEN_NUMBER_EXPRESSIONS.get(problemCode))));
+    }
+
+    @Test
     void 공개_문구에는_숫자를_쓰지_않는다() {
         // 숨은 수치 목록에 없는 새 숫자가 공개 문구에 들어가는 것도 막는다.
         Map<String, List<PublicText>> publicTexts = queryByProblem(PUBLIC_TEXT_SQL,
-                (rs, rowNum) -> new PublicText(rs.getString("field"), rs.getString("content")));
+                (rs, rowNum) -> new PublicText(rs.getString("location"), rs.getString("content")));
 
         assertThat(publicTexts).containsOnlyKeys(PROBLEM_CODES)
                 .allSatisfy((problemCode, texts) -> assertThat(texts).as(problemCode)
@@ -296,13 +313,13 @@ class SystemDesignSeedScriptTest {
     }
 
     private static String withoutAllowedNumbers(String problemCode, PublicText text) {
-        if (problemCode.equals("URL_SHORTENER")) {
-            return REDIRECT_STATUS_CODE.matcher(text.content()).replaceAll("");
+        String content = text.content();
+        for (AllowedNumber allowed : ALLOWED_NUMBERS) {
+            if (allowed.problemCode().equals(problemCode) && allowed.locations().contains(text.location())) {
+                content = allowed.pattern().matcher(content).replaceAll("");
+            }
         }
-        if (problemCode.equals("ONE_TO_ONE_CHAT") && text.isTitleOrDescription()) {
-            return text.content().replace(ONE_TO_ONE, "");
-        }
-        return text.content();
+        return content;
     }
 
     private static Set<String> numberTokensOf(String text) {
@@ -339,11 +356,10 @@ class SystemDesignSeedScriptTest {
     private record ProblemRow<T>(String problemCode, T value) {
     }
 
-    // 지원자가 역질문을 하지 않아도 보는 문구. field는 PUBLIC_TEXT_SQL의 출처 이름(TITLE, DESCRIPTION 등)이다.
-    private record PublicText(String field, String content) {
+    private record PublicText(String location, String content) {
+    }
 
-        private boolean isTitleOrDescription() {
-            return field.equals("TITLE") || field.equals("DESCRIPTION");
-        }
+    // problemCode 문제의 locations에 있는 공개 문구에서만 pattern에 맞는 숫자를 허용한다.
+    private record AllowedNumber(String problemCode, Set<String> locations, Pattern pattern) {
     }
 }
