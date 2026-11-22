@@ -30,11 +30,11 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * 시스템 설계 다이어그램(스펙 2.10, 5.4). 검사를 마친 값만 담는 불변 값 객체다.
+ * 시스템 설계 다이어그램. 검사를 마친 값만 담는 불변 값 객체다.
  *
- * <p>검사는 {@link #from(Input)} 한곳에서 원시 값을 보고 스펙 2.10의 순서대로 한다. 요청 DTO와 DB 값({@link #fromJson(String)})이
- * 모두 이 메서드를 거치므로 시드의 시작 다이어그램도 같은 규칙·같은 순서로 검사된다. 값 record의 생성자에서 검사하지 않는 이유는
- * Java가 생성자 인자를 먼저 평가해 2.10의 순서를 지킬 수 없기 때문이다.
+ * <p>검사는 {@link #from(Input)} 한곳에서 원시 값을 보고 {@link SystemDesignErrorMessage}의 다이어그램 규칙 순서(1~16번)대로 한다.
+ * 요청 DTO와 DB 값({@link #fromJson(String)})이 모두 이 메서드를 거치므로 시드의 시작 다이어그램도 같은 규칙·같은 순서로 검사된다.
+ * 값 record의 생성자에서 검사하지 않는 이유는 Java가 생성자 인자를 먼저 평가해 이 순서를 지킬 수 없기 때문이다.
  *
  * <p>문자열은 자르거나 공백을 지우지 않고 받은 그대로 검사·저장하고, 글자 수는 {@code String.length()}(JS {@code .length}와 같다)로 센다.
  */
@@ -68,15 +68,17 @@ public final class SystemDesignDiagram {
     }
 
     /**
-     * 스펙 2.10의 1~3을 먼저 보고, 블록을 배열 순서대로 하나씩 4~11, 연결을 배열 순서대로 하나씩 12~16을 본다.
-     * 처음 어긴 규칙 하나의 문구로 400을 던진다. 배열 원소가 null이면 그 원소를 볼 차례에 1번 문구로 알린다.
+     * 규칙 1~3번을 먼저 보고, 블록을 배열 순서대로 하나씩 4~11번, 연결을 배열 순서대로 하나씩 12~16번을 본다.
+     * 번호는 {@link SystemDesignErrorMessage}에 둔 다이어그램 문구의 순서다. 처음 어긴 규칙 하나의 문구로 400을 던진다.
+     * 배열 원소가 null이면 그 원소를 볼 차례에 1번({@link SystemDesignErrorMessage#DIAGRAM_FORMAT}) 문구로 알린다.
      */
     public static SystemDesignDiagram from(Input input) {
         validate(input != null && input.blocks() != null && input.connections() != null, DIAGRAM_FORMAT);
         validate(input.blocks().size() <= MAX_BLOCK_COUNT, DIAGRAM_TOO_MANY_BLOCKS);
         validate(input.connections().size() <= MAX_CONNECTION_COUNT, DIAGRAM_TOO_MANY_CONNECTIONS);
 
-        // Set.of·Set.copyOf는 contains(null)에서 NPE를 던지므로 HashSet을 쓴다(null인 source·target은 15번 규칙으로 알린다).
+        // Set.of·Set.copyOf는 contains(null)에서 NPE를 던지므로 HashSet을 쓴다.
+        // null인 source·target은 15번 규칙(없는 블록을 가리키는 연결)으로 알린다.
         Set<String> blockIds = new HashSet<>();
         List<Block> blocks = new ArrayList<>();
         for (InputBlock inputBlock : input.blocks()) {
@@ -148,7 +150,7 @@ public final class SystemDesignDiagram {
     }
 
     /**
-     * 저장 모양의 JSON({@link #toJson()}의 결과)을 읽어 {@link #from(Input)}으로 검사한다. JSON이 깨졌으면 1번 문구로 400이다.
+     * 저장 모양의 JSON({@link #toJson()}의 결과)을 읽어 {@link #from(Input)}으로 검사한다. JSON이 깨졌으면 형식 오류(1번) 문구로 400이다.
      */
     public static SystemDesignDiagram fromJson(String json) {
         validate(json != null, DIAGRAM_FORMAT);
@@ -164,7 +166,7 @@ public final class SystemDesignDiagram {
         return from(diagramJson.toInput());
     }
 
-    // null 배열과 null 원소를 그대로 남겨 from(Input)이 볼 차례에 1번 문구로 알리게 한다.
+    // null 배열과 null 원소를 그대로 남겨 from(Input)이 볼 차례에 형식 오류(1번) 문구로 알리게 한다.
     private static <T, R> List<R> mapKeepingNull(List<T> values, Function<T, R> mapper) {
         if (values == null) {
             return null;
@@ -175,7 +177,7 @@ public final class SystemDesignDiagram {
     }
 
     /**
-     * 스펙 2.10 타입의 필드만 쓴 정규화 JSON. 연결 label이 null이면 키를 쓰지 않는다.
+     * 아래 저장 모양(DiagramJson)의 필드만 쓴 정규화 JSON. 연결 label이 null이면 키를 쓰지 않는다.
      */
     public String toJson() {
         try {
@@ -215,7 +217,7 @@ public final class SystemDesignDiagram {
     }
 
     /**
-     * 검사하기 전의 원시 값. 모르는 종류와 빠진 좌표를 2.10의 문구로 알리려고 {@code kind}는 String, 좌표는 Double로 받는다.
+     * 검사하기 전의 원시 값. 모르는 종류와 빠진 좌표를 각 규칙의 문구(6번, 11번)로 알리려고 {@code kind}는 String, 좌표는 Double로 받는다.
      */
     public record Input(List<InputBlock> blocks, List<InputConnection> connections) {
     }
@@ -244,7 +246,7 @@ public final class SystemDesignDiagram {
     public record Connection(String id, String source, String target, String label) {
     }
 
-    // 저장 모양(스펙 2.10의 Diagram 타입). 읽기와 쓰기가 같은 모양을 쓰도록 여기 한곳에만 둔다.
+    // 저장 모양(DB JSON 컬럼에 쓰는 모양). 읽기와 쓰기가 같은 모양을 쓰도록 여기 한곳에만 둔다.
     private record DiagramJson(List<BlockJson> blocks, List<ConnectionJson> connections) {
 
         private static DiagramJson from(SystemDesignDiagram diagram) {

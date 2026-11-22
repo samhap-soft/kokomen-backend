@@ -29,7 +29,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 시스템 설계 면접의 단계와 다이어그램(스펙 5.3). interview 행과 1:1이고, interview 행이 소유자·면접 상태·종료 시각·등급 합 점수를,
+ * 시스템 설계 면접의 단계와 다이어그램. interview 행과 1:1이고, interview 행이 소유자·면접 상태·종료 시각·등급 합 점수를,
  * 이 행이 단계·현재 다이어그램·리포트 점수를 갖는다. 단계·순번을 어긴 요청은 409다.
  */
 @Getter

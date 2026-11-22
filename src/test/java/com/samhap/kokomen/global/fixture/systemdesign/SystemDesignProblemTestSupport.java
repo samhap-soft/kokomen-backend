@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 시스템 설계 문제 하나를 숨은 요구사항 5개, 평가 포인트 5개, 기준 질문 6개(1~3 HIGH_LEVEL, 4~6 DEEP_DIVE)까지 저장한다.
- * 문구는 시드 문서(docs/superpowers/specs/2026-11-22-system-design-seed-problems.md)의 URL 단축기 문제와 같다.
+ * 문구는 실제로 출제할 URL 단축기 문제와 같다.
  * MySQLDatabaseCleaner가 매 테스트 전에 모든 테이블을 TRUNCATE해 Flyway 시드가 남지 않으므로 테스트는 문제를 이것으로 만든다.
  */
 @Component

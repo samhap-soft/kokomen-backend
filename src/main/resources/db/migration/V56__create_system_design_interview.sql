@@ -1,4 +1,4 @@
--- 시스템 설계 면접(설계: docs/superpowers/specs/2026-11-22-system-design-interview-design.md).
+-- 시스템 설계 면접.
 -- interview 행(interview_type = 'SYSTEM_DESIGN')이 부모이고, 시스템 설계에만 있는 데이터를 아래 9개 테이블에 둔다.
 -- interview_type은 VARCHAR(50)이라 새 값에 DDL이 필요 없다(V33).
 -- 테이블명은 엔티티 클래스명의 snake_case와 같아야 하고, 모든 테이블에 id 컬럼이 있어야 한다.

@@ -3,7 +3,7 @@ package com.samhap.kokomen.interview.domain.systemdesign;
 import lombok.Getter;
 
 /**
- * 시스템 설계 면접의 사용자 오류 문구(스펙 2.10, 2.12). 프론트가 message를 그대로 보여 주므로 문구가 곧 계약이다.
+ * 시스템 설계 면접의 사용자 오류 문구. 프론트가 message를 그대로 보여 주므로 문구가 곧 계약이다.
  */
 @Getter
 public enum SystemDesignErrorMessage {
@@ -30,7 +30,8 @@ public enum SystemDesignErrorMessage {
 
     REPORT_NOT_READY("면접이 끝나야 리포트를 볼 수 있어요."),
 
-    // 다이어그램 검증 문구. 스펙 2.10 표의 순서와 같다.
+    // 다이어그램 검증 문구. SystemDesignDiagram이 검사하는 순서대로 두고, 위에서부터 1~16번 규칙이라 부른다.
+    // SystemDesignDiagram의 주석과 테스트 이름이 이 번호를 쓴다.
     DIAGRAM_FORMAT("다이어그램 형식이 맞지 않아요."),
     DIAGRAM_TOO_MANY_BLOCKS("블록은 30개까지 그릴 수 있어요."),
     DIAGRAM_TOO_MANY_CONNECTIONS("연결은 60개까지 그릴 수 있어요."),

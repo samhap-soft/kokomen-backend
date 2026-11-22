@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class SystemDesignDiagramFixture {
 
-    // 시드 문서 URL 단축기 문제의 시작 다이어그램(블록 3개, 연결 2개) 원문
+    // URL 단축기 문제의 시작 다이어그램(블록 3개, 연결 2개)을 저장 모양 그대로 적은 JSON
     private static final String URL_SHORTENER_STARTER_JSON = """
             {"blocks":[{"id":"client","kind":"CLIENT","label":"Client","props":[],"position":{"x":0,"y":80}},\
             {"id":"api","kind":"API_SERVER","label":"API Server","props":[],"position":{"x":260,"y":80}},\
