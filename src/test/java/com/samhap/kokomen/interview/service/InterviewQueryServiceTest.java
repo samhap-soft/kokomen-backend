@@ -11,7 +11,6 @@ import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -105,24 +104,17 @@ class InterviewQueryServiceTest extends BaseTest {
     void 시스템_설계_면접에는_좋아요를_누를_수_없다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = saveSystemDesignInterview(member, InterviewState.FINISHED);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
 
         // when & then
         assertThatThrownBy(() -> interviewQueryService.likeInterview(interview.getId(), new MemberAuth(member.getId())))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("존재하지 않는 인터뷰입니다.");
         assertThat(interviewRepository.findById(interview.getId()).orElseThrow().getLikeCount()).isZero();
-    }
-
-    private Interview saveSystemDesignInterview(Member member, InterviewState interviewState) {
-        return interviewRepository.save(InterviewFixtureBuilder.builder()
-                .member(member)
-                .rootQuestion(null)
-                .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6)
-                .interviewState(interviewState)
-                .totalScore(interviewState == InterviewState.FINISHED ? 0 : null)
-                .finishedAt(interviewState == InterviewState.FINISHED ? LocalDateTime.now() : null)
-                .build());
     }
 }

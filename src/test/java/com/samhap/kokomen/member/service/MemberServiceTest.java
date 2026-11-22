@@ -12,7 +12,6 @@ import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -441,11 +440,8 @@ class MemberServiceTest extends BaseTest {
     }
 
     private void createFinishedSystemDesignInterview(Member member, LocalDate finishedDate) {
-        interviewRepository.save(InterviewFixtureBuilder.builder()
+        interviewRepository.save(InterviewFixtureBuilder.systemDesign()
                 .member(member)
-                .rootQuestion(null)
-                .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6)
                 .interviewState(InterviewState.FINISHED)
                 .totalFeedback("테스트 피드백")
                 .totalScore(0)

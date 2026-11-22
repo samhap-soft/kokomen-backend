@@ -25,7 +25,6 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -38,7 +37,6 @@ import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -280,7 +278,7 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
                 TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
         tokenRepository.save(
                 TokenFixtureBuilder.builder().memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
-        Interview interview = saveSystemDesignInterview(member, InterviewState.IN_PROGRESS);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign().member(member).build());
         AnswerRequestV2 answerRequest = new AnswerRequestV2("기존 흐름으로 보낸 답변입니다.", InterviewMode.TEXT);
 
         // when & then
@@ -296,24 +294,12 @@ class InterviewProceedFacadeServiceTest extends BaseTest {
     void 시스템_설계_면접의_진행_상황은_기존_폴링으로_조회할_수_없다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = saveSystemDesignInterview(member, InterviewState.IN_PROGRESS);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign().member(member).build());
 
         // when & then
         assertThatThrownBy(() -> interviewProceedFacadeService.findInterviewProceedState(interview.getId(), 1L,
                 InterviewMode.TEXT, new MemberAuth(member.getId()), new ClientIp("0.0.0.0")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("존재하지 않는 인터뷰입니다.");
-    }
-
-    private Interview saveSystemDesignInterview(Member member, InterviewState interviewState) {
-        return interviewRepository.save(InterviewFixtureBuilder.builder()
-                .member(member)
-                .rootQuestion(null)
-                .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6)
-                .interviewState(interviewState)
-                .totalScore(interviewState == InterviewState.FINISHED ? 0 : null)
-                .finishedAt(interviewState == InterviewState.FINISHED ? LocalDateTime.now() : null)
-                .build());
     }
 }

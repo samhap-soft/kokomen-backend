@@ -831,7 +831,12 @@ class InterviewServiceTest extends BaseTest {
     void 시스템_설계_면접은_기존_결과_조회_진행_확인_좋아요_취소에서_존재하지_않는_인터뷰로_거절한다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = saveSystemDesignInterview(member, InterviewState.FINISHED);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
         MemberAuth memberAuth = new MemberAuth(member.getId());
         ClientIp clientIp = new ClientIp("0.0.0.0");
 
@@ -860,7 +865,7 @@ class InterviewServiceTest extends BaseTest {
     void 진행_중인_시스템_설계_면접은_기존_진행_확인에서_존재하지_않는_인터뷰로_거절한다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        Interview interview = saveSystemDesignInterview(member, InterviewState.IN_PROGRESS);
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign().member(member).build());
 
         // when & then
         assertThatThrownBy(() -> interviewService.checkInterview(interview.getId(), InterviewMode.TEXT,
@@ -881,7 +886,8 @@ class InterviewServiceTest extends BaseTest {
                 .interview(categoryInterview).content(rootQuestion.getContent()).build());
         answerRepository.save(AnswerFixtureBuilder.builder().question(firstQuestion).build());
         questionRepository.save(QuestionFixtureBuilder.builder().interview(categoryInterview).build());
-        Interview systemDesignInterview = saveSystemDesignInterview(member, InterviewState.IN_PROGRESS);
+        Interview systemDesignInterview = interviewRepository.save(
+                InterviewFixtureBuilder.systemDesign().member(member).build());
 
         // when
         List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
@@ -908,8 +914,18 @@ class InterviewServiceTest extends BaseTest {
                     .member(member).rootQuestion(rootQuestion).interviewState(InterviewState.FINISHED).totalScore(10)
                     .finishedAt(LocalDateTime.now()).build());
         }
-        Interview systemDesign1 = saveSystemDesignInterview(member, InterviewState.FINISHED);
-        Interview systemDesign2 = saveSystemDesignInterview(member, InterviewState.FINISHED);
+        Interview systemDesign1 = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        Interview systemDesign2 = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
 
         // when
         InterviewSummaryResponses responses = interviewService.findOtherMemberInterviews(member.getId(),
@@ -932,12 +948,9 @@ class InterviewServiceTest extends BaseTest {
     void 비회원이_시스템_설계_면접_id로_기존_결과_조회와_진행_확인을_하면_존재하지_않는_인터뷰로_거절한다() {
         // given
         ClientIp clientIp = new ClientIp("127.0.0.1");
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder()
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
                 .member(null)
                 .guestIp(clientIp.address())
-                .rootQuestion(null)
-                .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6)
                 .interviewState(InterviewState.FINISHED)
                 .totalScore(0)
                 .finishedAt(LocalDateTime.now())
@@ -954,17 +967,5 @@ class InterviewServiceTest extends BaseTest {
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("존재하지 않는 인터뷰입니다.")
         );
-    }
-
-    private Interview saveSystemDesignInterview(Member member, InterviewState interviewState) {
-        return interviewRepository.save(InterviewFixtureBuilder.builder()
-                .member(member)
-                .rootQuestion(null)
-                .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6)
-                .interviewState(interviewState)
-                .totalScore(interviewState == InterviewState.FINISHED ? 0 : null)
-                .finishedAt(interviewState == InterviewState.FINISHED ? LocalDateTime.now() : null)
-                .build());
     }
 }

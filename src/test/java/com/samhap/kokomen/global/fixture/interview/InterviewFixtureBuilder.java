@@ -31,6 +31,16 @@ public class InterviewFixtureBuilder {
         return new InterviewFixtureBuilder();
     }
 
+    /**
+     * 루트 질문이 없는 시스템 설계 면접. 회원·면접 상태·점수는 호출하는 쪽이 이어서 정한다.
+     */
+    public static InterviewFixtureBuilder systemDesign() {
+        return builder()
+                .rootQuestion(null)
+                .interviewType(InterviewType.SYSTEM_DESIGN)
+                .maxQuestionCount(6);
+    }
+
     public InterviewFixtureBuilder id(Long id) {
         this.id = id;
         return this;
