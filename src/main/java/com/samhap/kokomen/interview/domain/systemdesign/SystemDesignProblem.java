@@ -56,8 +56,8 @@ public class SystemDesignProblem extends BaseEntity {
     private String difficultyComment;
 
     // 없으면 NULL이다. 면접은 startingDiagram()으로 빈 다이어그램에서 시작한다.
-    @Column(name = "starter_diagram", columnDefinition = "JSON")
     @Convert(converter = SystemDesignDiagramConverter.class)
+    @Column(name = "starter_diagram", columnDefinition = "JSON")
     private SystemDesignDiagram starterDiagram;
 
     public SystemDesignProblem(String code, SystemDesignDifficulty difficulty, SystemDesignProblemState state,

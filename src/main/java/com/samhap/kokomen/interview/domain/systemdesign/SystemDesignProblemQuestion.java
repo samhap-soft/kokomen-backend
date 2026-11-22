@@ -52,8 +52,8 @@ public class SystemDesignProblemQuestion extends BaseEntity {
     @Column(name = "content", nullable = false, length = 500)
     private String content;
 
-    @Column(name = "target_point_codes", nullable = false, columnDefinition = "JSON")
     @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "target_point_codes", nullable = false, columnDefinition = "JSON")
     private List<String> targetPointCodes;
 
     public SystemDesignProblemQuestion(SystemDesignProblem problem, SystemDesignStage stage, Integer questionOrder,

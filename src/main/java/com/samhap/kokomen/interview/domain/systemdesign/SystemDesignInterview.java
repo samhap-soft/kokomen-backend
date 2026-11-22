@@ -65,8 +65,8 @@ public class SystemDesignInterview extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private SystemDesignStage stage;
 
-    @Column(name = "current_diagram", nullable = false, columnDefinition = "JSON")
     @Convert(converter = SystemDesignDiagramConverter.class)
+    @Column(name = "current_diagram", nullable = false, columnDefinition = "JSON")
     private SystemDesignDiagram currentDiagram;
 
     @Column(name = "report_score")

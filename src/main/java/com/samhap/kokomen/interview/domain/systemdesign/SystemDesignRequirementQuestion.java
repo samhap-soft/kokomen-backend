@@ -60,8 +60,8 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     @Column(name = "answer", nullable = false, length = MAX_ANSWER_LENGTH)
     private String answer;
 
-    @Column(name = "asked_requirement_codes", nullable = false, columnDefinition = "JSON")
     @Convert(converter = StringListJsonConverter.class)
+    @Column(name = "asked_requirement_codes", nullable = false, columnDefinition = "JSON")
     private List<String> askedRequirementCodes;
 
     public SystemDesignRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,

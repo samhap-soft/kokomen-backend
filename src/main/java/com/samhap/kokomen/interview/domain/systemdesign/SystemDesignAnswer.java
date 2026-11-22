@@ -49,8 +49,8 @@ public class SystemDesignAnswer extends BaseEntity {
     @Column(name = "content", nullable = false, length = MAX_CONTENT_LENGTH)
     private String content;
 
-    @Column(name = "diagram", nullable = false, columnDefinition = "JSON")
     @Convert(converter = SystemDesignDiagramConverter.class)
+    @Column(name = "diagram", nullable = false, columnDefinition = "JSON")
     private SystemDesignDiagram diagram;
 
     @Column(name = "answer_rank", nullable = false, length = 20)
