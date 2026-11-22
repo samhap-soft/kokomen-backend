@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.member.domain.Member;
 import java.time.LocalDateTime;
 
@@ -38,7 +39,7 @@ public class InterviewFixtureBuilder {
         return builder()
                 .rootQuestion(null)
                 .interviewType(InterviewType.SYSTEM_DESIGN)
-                .maxQuestionCount(6);
+                .maxQuestionCount(SystemDesignInterview.MAX_QUESTION_COUNT);
     }
 
     public InterviewFixtureBuilder id(Long id) {

@@ -51,4 +51,30 @@ class SystemDesignTextTest {
                 () -> assertThat(SystemDesignText.normalize("\u001C질문\u001C")).isEqualTo("\u001C질문\u001C")
         );
     }
+
+    @Test
+    void truncate는_최대_길이를_넘는_뒷부분을_자른다() {
+        assertThat(SystemDesignText.truncate("가나다라마", 3)).isEqualTo("가나다");
+    }
+
+    @Test
+    void truncate는_최대_길이_이하이거나_null이면_그대로_둔다() {
+        assertAll(
+                () -> assertThat(SystemDesignText.truncate("가나다", 3)).isEqualTo("가나다"),
+                () -> assertThat(SystemDesignText.truncate("가", 3)).isEqualTo("가"),
+                () -> assertThat(SystemDesignText.truncate(null, 3)).isNull()
+        );
+    }
+
+    // 자른 자리가 서로게이트 쌍 가운데면 짝 잃은 상위 서로게이트가 남지 않게 한 글자 앞에서 자른다.
+    @Test
+    void truncate는_서로게이트_쌍을_가르지_않는다() {
+        String emoji = "😀";
+
+        assertAll(
+                () -> assertThat(SystemDesignText.truncate("가나" + emoji, 3)).isEqualTo("가나"),
+                () -> assertThat(SystemDesignText.truncate("가나" + emoji, 4)).isEqualTo("가나" + emoji),
+                () -> assertThat(SystemDesignText.truncate("가" + emoji + "나", 3)).isEqualTo("가" + emoji)
+        );
+    }
 }
