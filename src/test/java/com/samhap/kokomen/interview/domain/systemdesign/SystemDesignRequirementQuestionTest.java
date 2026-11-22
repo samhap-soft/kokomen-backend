@@ -74,6 +74,21 @@ class SystemDesignRequirementQuestionTest {
     }
 
     @Test
+    void 역질문_답은_1000자까지_받고_넘으면_자르지_않고_거절한다() {
+        String maxAnswer = "가".repeat(SystemDesignRequirementQuestion.MAX_ANSWER_LENGTH);
+
+        assertAll(
+                () -> assertThat(SystemDesignRequirementQuestionFixtureBuilder.builder().answer(maxAnswer).build()
+                        .getAnswer()).isEqualTo(maxAnswer),
+                () -> assertThatThrownBy(() -> SystemDesignRequirementQuestionFixtureBuilder.builder()
+                        .answer(maxAnswer + "나")
+                        .build())
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("역질문 답은 1000자 이하여야 합니다: 1001자")
+        );
+    }
+
+    @Test
     void 역질문을_만들면_정규화한_내용과_물은_요구사항_code를_복사해_담는다() {
         // given
         SystemDesignInterview systemDesignInterview = SystemDesignInterviewFixtureBuilder.builder().build();

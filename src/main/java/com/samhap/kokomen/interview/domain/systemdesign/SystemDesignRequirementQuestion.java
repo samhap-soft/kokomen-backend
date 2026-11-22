@@ -38,6 +38,7 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
 
     public static final int MAX_COUNT = 5;
     public static final int MAX_CONTENT_LENGTH = 200;
+    public static final int MAX_ANSWER_LENGTH = 1_000;
 
     private static final int FIRST_QUESTION_ORDER = 1;
 
@@ -56,7 +57,7 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     @Column(name = "content", nullable = false, length = MAX_CONTENT_LENGTH)
     private String content;
 
-    @Column(name = "answer", nullable = false, length = 1_000)
+    @Column(name = "answer", nullable = false, length = MAX_ANSWER_LENGTH)
     private String answer;
 
     @Column(name = "asked_requirement_codes", nullable = false, columnDefinition = "JSON")
@@ -66,6 +67,7 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     public SystemDesignRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
                                            String content, String answer, List<String> askedRequirementCodes) {
         validateQuestionOrder(questionOrder);
+        validateAnswer(answer);
         this.systemDesignInterview = systemDesignInterview;
         this.questionOrder = questionOrder;
         this.content = normalizeContent(content);
@@ -77,6 +79,14 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
         if (questionOrder < FIRST_QUESTION_ORDER || questionOrder > MAX_COUNT) {
             throw new IllegalArgumentException(
                     "역질문 순번은 %d~%d이어야 합니다: %d".formatted(FIRST_QUESTION_ORDER, MAX_COUNT, questionOrder));
+        }
+    }
+
+    // 답은 면접자가 설계 근거로 삼는 사실 문장이라 잘라 저장하지 않고, 컬럼 한도를 넘으면 거절한다.
+    private static void validateAnswer(String answer) {
+        if (answer != null && answer.length() > MAX_ANSWER_LENGTH) {
+            throw new IllegalArgumentException(
+                    "역질문 답은 %d자 이하여야 합니다: %d자".formatted(MAX_ANSWER_LENGTH, answer.length()));
         }
     }
 
