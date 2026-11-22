@@ -17,7 +17,6 @@ import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.tool.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
@@ -123,7 +122,7 @@ public class InterviewService {
     }
 
     private int countCurAnswers(Interview interview) {
-        // question 행을 쓰지 않는 타입. 시스템 설계는 PR 4에서 전용 답변 수로 바꾼다.
+        // TODO: 시스템 설계 답변 저장 구현 시 - question 행을 쓰지 않는 타입이라 지금은 0이다. 전용 답변 수로 바꾼다.
         if (!interview.getInterviewType().isTailQuestionFlow()) {
             return 0;
         }
@@ -227,7 +226,7 @@ public class InterviewService {
     }
 
     private List<RootQuestionReferenceAnswer> getReferenceAnswers(Interview interview) {
-        if (interview.isResumeBased() || interview.isLiveCoding() || interview.getRootQuestion() == null) {
+        if (interview.isResumeBased() || interview.isLiveCoding()) {
             return List.of();
         }
         return findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());
@@ -380,7 +379,8 @@ public class InterviewService {
 
     // 시스템 설계처럼 꼬리 질문 흐름이 아닌 면접은 기존 API에서 없는 면접으로 다룬다.
     public Interview readInterview(Long interviewId) {
-        return interviewRepository.findByIdAndInterviewTypeIn(interviewId, InterviewType.TAIL_QUESTION_FLOW_TYPES)
+        return interviewRepository.findById(interviewId)
+                .filter(interview -> interview.getInterviewType().isTailQuestionFlow())
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
 

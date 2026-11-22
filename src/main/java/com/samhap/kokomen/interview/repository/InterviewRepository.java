@@ -2,12 +2,9 @@ package com.samhap.kokomen.interview.repository;
 
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.repository.dto.DailyInterviewCount;
 import com.samhap.kokomen.member.domain.Member;
-import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,8 +13,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface InterviewRepository extends JpaRepository<Interview, Long> {
-
-    Optional<Interview> findByIdAndInterviewTypeIn(Long id, Collection<InterviewType> interviewTypes);
 
     List<Interview> findByMember(Member member, Pageable pageable);
 

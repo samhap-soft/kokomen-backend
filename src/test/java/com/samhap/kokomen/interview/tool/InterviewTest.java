@@ -70,11 +70,4 @@ class InterviewTest {
                 () -> assertThat(interview.getDisplayQuestion()).isEqualTo("시스템 설계 면접")
         );
     }
-
-    @Test
-    void 루트_질문을_지정하지_않으면_픽스처는_기본_루트_질문을_채운다() {
-        Interview interview = InterviewFixtureBuilder.builder().build();
-
-        assertThat(interview.getRootQuestion()).isNotNull();
-    }
 }

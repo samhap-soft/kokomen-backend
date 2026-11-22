@@ -19,10 +19,4 @@ class InterviewTypeTest {
                 InterviewType.LIVE_CODING,
                 InterviewType.PERSONALITY);
     }
-
-    @Test
-    void 기존_네_타입은_꼬리_질문_흐름이다() {
-        assertThat(InterviewType.TAIL_QUESTION_FLOW_TYPES)
-                .allSatisfy(interviewType -> assertThat(interviewType.isTailQuestionFlow()).isTrue());
-    }
 }
