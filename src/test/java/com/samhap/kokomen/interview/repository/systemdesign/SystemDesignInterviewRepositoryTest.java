@@ -31,13 +31,18 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import java.util.List;
 import java.util.Optional;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.metamodel.MappingMetamodel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class SystemDesignInterviewRepositoryTest extends BaseTest {
 
@@ -63,6 +68,12 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
     private SystemDesignProblemTestSupport problemTestSupport;
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+    @Autowired
+    private EntityManager entityManager;
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     void 시스템_설계_면접을_interview와_함께_저장하고_조회한다() {
@@ -145,6 +156,46 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                 () -> assertThat(found.getStage()).isEqualTo(SystemDesignStage.DEEP_DIVE),
                 () -> assertThat(found.getCurrentDiagram()).isEqualTo(SystemDesignDiagram.empty()),
                 () -> assertThat(found.getReportScore()).isEqualTo(85)
+        );
+    }
+
+    @Test
+    void 현재_다이어그램을_새_객체로_바꾸면_flush가_UPDATE한다() {
+        // given
+        SystemDesignInterview saved = saveSystemDesignInterview(SystemDesignStage.HIGH_LEVEL);
+        SystemDesignDiagram newDiagram = SystemDesignDiagramFixture.withCache();
+
+        // when
+        SystemDesignDiagram reloaded = transactionTemplate.execute(status -> {
+            SystemDesignInterview managed = systemDesignInterviewRepository.findById(saved.getId()).orElseThrow();
+            managed.recordAnswer(newDiagram, null);
+            entityManager.flush();
+            entityManager.clear();
+            return systemDesignInterviewRepository.findById(saved.getId()).orElseThrow().getCurrentDiagram();
+        });
+
+        // then
+        assertAll(
+                () -> assertThat(saved.getCurrentDiagram()).isEqualTo(SystemDesignDiagramFixture.urlShortenerStarter()),
+                () -> assertThat(reloaded).isEqualTo(newDiagram),
+                () -> assertThat(jdbcTemplate.queryForObject(
+                        "SELECT JSON_LENGTH(current_diagram, '$.blocks') FROM system_design_interview WHERE id = ?",
+                        Integer.class, saved.getId())).isEqualTo(5)
+        );
+    }
+
+    // 컨버터의 @Immutable이 빠지면 Hibernate가 스냅샷마다 toJson·fromJson으로 다이어그램을 다시 만든다.
+    @Test
+    void 다이어그램_컬럼은_불변으로_매핑해_스냅샷을_JSON으로_다시_만들지_않는다() {
+        // given
+        MappingMetamodel metamodel = entityManagerFactory.unwrap(SessionFactoryImplementor.class)
+                .getMappingMetamodel();
+
+        // when & then
+        assertAll(
+                () -> assertThat(isMutable(metamodel, SystemDesignInterview.class, "currentDiagram")).isFalse(),
+                () -> assertThat(isMutable(metamodel, SystemDesignAnswer.class, "diagram")).isFalse(),
+                () -> assertThat(isMutable(metamodel, SystemDesignProblem.class, "starterDiagram")).isFalse()
         );
     }
 
@@ -460,6 +511,14 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                 .systemDesignInterview(systemDesignInterview)
                 .questionOrder(questionOrder)
                 .build());
+    }
+
+    private static boolean isMutable(MappingMetamodel metamodel, Class<?> entityClass, String attributeName) {
+        return metamodel.getEntityDescriptor(entityClass)
+                .findAttributeMapping(attributeName)
+                .getAttributeMetadata()
+                .getMutabilityPlan()
+                .isMutable();
     }
 
     private static SystemDesignEvaluationResult evaluationResult(SystemDesignInterview systemDesignInterview,
