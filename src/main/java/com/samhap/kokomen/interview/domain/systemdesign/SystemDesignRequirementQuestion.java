@@ -13,10 +13,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,18 +24,22 @@ import lombok.NoArgsConstructor;
 
 /**
  * 요구사항 역질문과 답. askedRequirementCodes는 LLM이 YES로 판정하고 서버가 검증한 숨은 요구사항 code 목록이다(문제 순서).
- * 면접당 {@link #MAX_COUNT}개까지이고 서비스가 진행 락 안에서 센다.
+ * 면접당 {@link #MAX_COUNT}개까지이고 서비스가 진행 락 안에서 센다. questionOrder는 면접 안 순번(1~{@value #MAX_COUNT})이고,
+ * (면접, 순번) 유니크와 순번 CHECK가 락 없이도 개수 한도를 DB에서 지킨다.
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "system_design_requirement_question", indexes = {
-        @Index(name = "idx_system_design_requirement_question_interview_id", columnList = "system_design_interview_id")
+@Table(name = "system_design_requirement_question", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_system_design_requirement_question_order",
+                columnNames = {"system_design_interview_id", "question_order"})
 })
 public class SystemDesignRequirementQuestion extends BaseEntity {
 
     public static final int MAX_COUNT = 5;
     public static final int MAX_CONTENT_LENGTH = 200;
+
+    private static final int FIRST_QUESTION_ORDER = 1;
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,6 +49,9 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "system_design_interview_id", nullable = false)
     private SystemDesignInterview systemDesignInterview;
+
+    @Column(name = "question_order", nullable = false)
+    private Integer questionOrder;
 
     @Column(name = "content", nullable = false, length = MAX_CONTENT_LENGTH)
     private String content;
@@ -56,12 +63,21 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     @Convert(converter = StringListJsonConverter.class)
     private List<String> askedRequirementCodes;
 
-    public SystemDesignRequirementQuestion(SystemDesignInterview systemDesignInterview, String content, String answer,
-                                           List<String> askedRequirementCodes) {
+    public SystemDesignRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
+                                           String content, String answer, List<String> askedRequirementCodes) {
+        validateQuestionOrder(questionOrder);
         this.systemDesignInterview = systemDesignInterview;
+        this.questionOrder = questionOrder;
         this.content = normalizeContent(content);
         this.answer = answer;
         this.askedRequirementCodes = List.copyOf(askedRequirementCodes);
+    }
+
+    private static void validateQuestionOrder(int questionOrder) {
+        if (questionOrder < FIRST_QUESTION_ORDER || questionOrder > MAX_COUNT) {
+            throw new IllegalArgumentException(
+                    "역질문 순번은 %d~%d이어야 합니다: %d".formatted(FIRST_QUESTION_ORDER, MAX_COUNT, questionOrder));
+        }
     }
 
     /**

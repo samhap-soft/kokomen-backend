@@ -182,6 +182,7 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
         SystemDesignRequirementQuestion first = requirementQuestionRepository.save(
                 SystemDesignRequirementQuestionFixtureBuilder.builder()
                         .systemDesignInterview(systemDesignInterview)
+                        .questionOrder(1)
                         .content("하루 생성량과 조회 비율이 어떻게 되나요?")
                         .answer("하루 평균 10만 개가 만들어지고, 조회는 생성의 100배쯤이에요.")
                         .askedRequirementCodes(List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"))
@@ -192,6 +193,7 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
         SystemDesignRequirementQuestion second = requirementQuestionRepository.save(
                 SystemDesignRequirementQuestionFixtureBuilder.builder()
                         .systemDesignInterview(systemDesignInterview)
+                        .questionOrder(2)
                         .content("사용자 인증도 해야 하나요?")
                         .answer("등록되지 않은 내용이에요. 가정하고 진행하세요.")
                         .askedRequirementCodes(List.of())
@@ -199,7 +201,7 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
 
         // when
         List<SystemDesignRequirementQuestion> found = requirementQuestionRepository
-                .findBySystemDesignInterviewOrderByIdAsc(systemDesignInterview);
+                .findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
         long count = requirementQuestionRepository.countBySystemDesignInterview(systemDesignInterview);
 
         // then
@@ -219,6 +221,59 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                         "SELECT JSON_LENGTH(asked_requirement_codes) FROM system_design_requirement_question "
                                 + "WHERE id = ?",
                         Integer.class, second.getId())).isZero()
+        );
+    }
+
+    @Test
+    void 면접의_역질문을_순번_순서로_찾는다() {
+        // given
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview otherInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        SystemDesignRequirementQuestion second = saveRequirementQuestion(systemDesignInterview, 2);
+        saveRequirementQuestion(otherInterview, 1);
+        SystemDesignRequirementQuestion first = saveRequirementQuestion(systemDesignInterview, 1);
+
+        // when
+        List<SystemDesignRequirementQuestion> found = requirementQuestionRepository
+                .findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
+
+        // then
+        assertThat(found)
+                .extracting(SystemDesignRequirementQuestion::getId, SystemDesignRequirementQuestion::getQuestionOrder)
+                .containsExactly(tuple(first.getId(), 1), tuple(second.getId(), 2));
+    }
+
+    @Test
+    void 같은_면접에_같은_순번의_역질문을_두_번_저장하면_유니크_제약이_막는다() {
+        // given
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1);
+        SystemDesignRequirementQuestion duplicate = SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(1)
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionRepository.save(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uk_system_design_requirement_question_order");
+    }
+
+    @Test
+    void 역질문_순번_CHECK_제약이_1에서_5_밖의_값을_막는다() {
+        // given
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        SystemDesignRequirementQuestion question = saveRequirementQuestion(systemDesignInterview, 5);
+        String updateOrder = "UPDATE system_design_requirement_question SET question_order = ? WHERE id = ?";
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> jdbcTemplate.update(updateOrder, 6, question.getId()))
+                        .isInstanceOf(DataAccessException.class)
+                        .hasMessageContaining("chk_system_design_requirement_question_order"),
+                () -> assertThatThrownBy(() -> jdbcTemplate.update(updateOrder, 0, question.getId()))
+                        .isInstanceOf(DataAccessException.class)
+                        .hasMessageContaining("chk_system_design_requirement_question_order")
         );
     }
 
@@ -396,6 +451,14 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                 .systemDesignInterview(systemDesignInterview)
                 .problemQuestion(problemQuestion)
                 .content(questionOrder + "번 질문이에요.")
+                .build());
+    }
+
+    private SystemDesignRequirementQuestion saveRequirementQuestion(SystemDesignInterview systemDesignInterview,
+                                                                    int questionOrder) {
+        return requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(questionOrder)
                 .build());
     }
 

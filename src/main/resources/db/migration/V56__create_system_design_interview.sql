@@ -101,19 +101,24 @@ CREATE TABLE system_design_interview
 );
 
 -- 요구사항 역질문. 면접당 5개까지이고 서비스가 진행 락 안에서 센다.
+-- question_order는 면접 안 순번(1~5)이다. (면접, 순번) 유니크와 순번 CHECK가 락 없이도 6번째 역질문을 DB에서 막고,
+-- 유니크의 leftmost가 system_design_interview_id라서 FK가 요구하는 인덱스도 이것이 겸한다.
 -- asked_requirement_codes는 LLM이 YES로 판정하고 서버가 검증한 숨은 요구사항 code의 JSON 배열이다(문제 순서, missed_requirements 계산).
 CREATE TABLE system_design_requirement_question
 (
     id                         BIGINT        NOT NULL AUTO_INCREMENT,
     system_design_interview_id BIGINT        NOT NULL,
+    question_order             INT           NOT NULL,
     content                    VARCHAR(200)  NOT NULL,
     answer                     VARCHAR(1000) NOT NULL,
     asked_requirement_codes    JSON          NOT NULL,
     created_at                 DATETIME(6)   NOT NULL,
     PRIMARY KEY (id),
-    KEY idx_system_design_requirement_question_interview_id (system_design_interview_id),
+    CONSTRAINT uk_system_design_requirement_question_order UNIQUE (system_design_interview_id, question_order),
     CONSTRAINT fk_system_design_requirement_question_interview
-        FOREIGN KEY (system_design_interview_id) REFERENCES system_design_interview (id)
+        FOREIGN KEY (system_design_interview_id) REFERENCES system_design_interview (id),
+    CONSTRAINT chk_system_design_requirement_question_order
+        CHECK (question_order BETWEEN 1 AND 5)
 );
 
 -- 설계 질문. 출제할 때 한 행씩 넣는다. content는 실제로 낸 문장(기준 질문 그대로이거나 LLM이 다듬은 문장)이다.

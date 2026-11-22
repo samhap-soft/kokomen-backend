@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SystemDesignRequirementQuestionRepository
         extends JpaRepository<SystemDesignRequirementQuestion, Long> {
 
-    List<SystemDesignRequirementQuestion> findBySystemDesignInterviewOrderByIdAsc(
+    List<SystemDesignRequirementQuestion> findBySystemDesignInterviewOrderByQuestionOrderAsc(
             SystemDesignInterview systemDesignInterview);
 
     long countBySystemDesignInterview(SystemDesignInterview systemDesignInterview);
