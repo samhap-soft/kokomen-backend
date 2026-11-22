@@ -122,6 +122,10 @@ public class InterviewService {
     }
 
     private int countCurAnswers(Interview interview) {
+        // TODO: 시스템 설계 답변 저장 구현 시 - question 행을 쓰지 않는 타입이라 지금은 0이다. 전용 답변 수로 바꾼다.
+        if (!interview.getInterviewType().isTailQuestionFlow()) {
+            return 0;
+        }
         int qurQuestionCount = questionRepository.countByInterview(interview);
 
         // TODO: 해당 로직 적절한 도메인에 부여하기
@@ -373,8 +377,10 @@ public class InterviewService {
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
+    // 시스템 설계처럼 꼬리 질문 흐름이 아닌 면접은 기존 API에서 없는 면접으로 다룬다.
     public Interview readInterview(Long interviewId) {
         return interviewRepository.findById(interviewId)
+                .filter(interview -> interview.getInterviewType().isTailQuestionFlow())
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
 

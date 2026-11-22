@@ -38,6 +38,7 @@ import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.external.dto.response.SupertoneResponse;
@@ -503,6 +504,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 [
                 	{
                 		"interview_id": %d,
+                		"interview_type": "CATEGORY_BASED",
                 		"interview_state": "%s",
                 		"interview_mode": "TEXT",
                 		"interview_category": "%s",
@@ -518,6 +520,7 @@ class InterviewControllerTest extends BaseControllerTest {
                 	},
                 	{
                 		"interview_id": %d,
+                		"interview_type": "CATEGORY_BASED",
                 		"interview_state": "%s",
                 		"interview_mode": "TEXT",
                 		"interview_category": "%s",
@@ -563,6 +566,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("[].interview_id").description("면접 ID"),
+                                fieldWithPath("[].interview_type").description(
+                                        "면접 유형 " + Arrays.asList(InterviewType.values())),
                                 fieldWithPath("[].interview_state").description(
                                         "면접 상태 " + Arrays.asList(InterviewState.values())),
                                 fieldWithPath("[].interview_category").description("면접 카테고리"),
@@ -666,6 +671,7 @@ class InterviewControllerTest extends BaseControllerTest {
                     "interview_summaries": [
                         {
                             "interview_id": %d,
+                            "interview_type": "CATEGORY_BASED",
                             "interview_category": "%s",
                             "interview_mode": "TEXT",
                             "root_question": "%s",
@@ -678,6 +684,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         },
                         {
                             "interview_id": %d,
+                            "interview_type": "CATEGORY_BASED",
                             "interview_category": "%s",
                             "interview_mode": "TEXT",
                             "root_question": "%s",
@@ -729,6 +736,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
+                                fieldWithPath("interview_summaries[].interview_type").description(
+                                        "면접 유형 " + Arrays.asList(InterviewType.values())),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
                                 fieldWithPath("interview_summaries[].interview_mode").description(
                                         "인터뷰 모드 (TEXT, VOICE)"),
@@ -843,6 +852,7 @@ class InterviewControllerTest extends BaseControllerTest {
                     "interview_summaries": [
                         {
                             "interview_id": %d,
+                            "interview_type": "CATEGORY_BASED",
                             "interview_category": "%s",
                             "interview_mode": "TEXT",
                             "root_question": "%s",
@@ -855,6 +865,7 @@ class InterviewControllerTest extends BaseControllerTest {
                         },
                         {
                             "interview_id": %d,
+                            "interview_type": "CATEGORY_BASED",
                             "interview_category": "%s",
                             "interview_mode": "TEXT",
                             "root_question": "%s",
@@ -900,6 +911,8 @@ class InterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("interview_summaries[].interview_id").description("면접 ID"),
+                                fieldWithPath("interview_summaries[].interview_type").description(
+                                        "면접 유형 " + Arrays.asList(InterviewType.values())),
                                 fieldWithPath("interview_summaries[].interview_category").description("면접 카테고리"),
                                 fieldWithPath("interview_summaries[].interview_mode").description(
                                         "인터뷰 모드 (TEXT, VOICE)"),

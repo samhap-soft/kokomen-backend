@@ -36,6 +36,8 @@ public class Interview extends BaseEntity {
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
     public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
     private static final String RESUME_BASED_DISPLAY_CATEGORY = "이력서 기반";
+    private static final String SYSTEM_DESIGN_DISPLAY_CATEGORY = "시스템 설계";
+    private static final String SYSTEM_DESIGN_DISPLAY_QUESTION = "시스템 설계 면접";
 
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -192,9 +194,16 @@ public class Interview extends BaseEntity {
         return this.interviewType == InterviewType.PERSONALITY;
     }
 
+    public boolean isSystemDesign() {
+        return this.interviewType == InterviewType.SYSTEM_DESIGN;
+    }
+
     public String getDisplayCategory() {
         if (isResumeBased()) {
             return RESUME_BASED_DISPLAY_CATEGORY;
+        }
+        if (isSystemDesign()) {
+            return SYSTEM_DESIGN_DISPLAY_CATEGORY;
         }
         return rootQuestion.getCategory().getTitle();
     }
@@ -202,6 +211,9 @@ public class Interview extends BaseEntity {
     public String getDisplayQuestion() {
         if (isResumeBased()) {
             return generatedQuestion.getContent();
+        }
+        if (isSystemDesign()) {
+            return SYSTEM_DESIGN_DISPLAY_QUESTION;
         }
         return rootQuestion.getContent();
     }

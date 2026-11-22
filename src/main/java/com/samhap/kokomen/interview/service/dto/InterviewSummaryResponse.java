@@ -3,10 +3,12 @@ package com.samhap.kokomen.interview.service.dto;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import java.time.LocalDateTime;
 
 public record InterviewSummaryResponse(
         Long interviewId,
+        InterviewType interviewType,
         InterviewState interviewState,
         InterviewMode interviewMode,
         String interviewCategory,
@@ -26,6 +28,7 @@ public record InterviewSummaryResponse(
             Integer submittedAnswerMemoCount, Boolean hasTempAnswerMemo) {
         this(
                 interview.getId(),
+                interview.getInterviewType(),
                 interviewState,
                 interview.getInterviewMode(),
                 interview.getDisplayCategory(),
@@ -56,6 +59,7 @@ public record InterviewSummaryResponse(
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
+                    interview.getInterviewType(),
                     interview.getInterviewState(),
                     interview.getInterviewMode(),
                     interview.getDisplayCategory(),
@@ -73,6 +77,7 @@ public record InterviewSummaryResponse(
         }
         return new InterviewSummaryResponse(
                 interview.getId(),
+                interview.getInterviewType(),
                 interview.getInterviewState(),
                 interview.getInterviewMode(),
                 interview.getDisplayCategory(),

@@ -14,6 +14,7 @@ public class InterviewFixtureBuilder {
     private Long id;
     private boolean memberSet;
     private Member member;
+    private boolean rootQuestionSet;
     private RootQuestion rootQuestion;
     private Integer maxQuestionCount;
     private InterviewState interviewState;
@@ -48,6 +49,7 @@ public class InterviewFixtureBuilder {
 
     public InterviewFixtureBuilder rootQuestion(RootQuestion rootQuestion) {
         this.rootQuestion = rootQuestion;
+        this.rootQuestionSet = true;
         return this;
     }
 
@@ -100,7 +102,7 @@ public class InterviewFixtureBuilder {
         return new Interview(
                 id,
                 memberSet ? member : defaultMember(),
-                rootQuestion != null ? rootQuestion : defaultRootQuestion(),
+                rootQuestionSet ? rootQuestion : defaultRootQuestion(),
                 maxQuestionCount != null ? maxQuestionCount : Interview.MIN_ALLOWED_MAX_QUESTION_COUNT,
                 interviewState != null ? interviewState : InterviewState.IN_PROGRESS,
                 interviewMode != null ? interviewMode : InterviewMode.TEXT,
