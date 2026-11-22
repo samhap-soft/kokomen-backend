@@ -86,6 +86,7 @@ enum InterviewPromptProfile {
             case LIVE_CODING -> CODING;
             case PERSONALITY -> PERSONALITY;
             case CATEGORY_BASED, RESUME_BASED -> GENERAL;
+            case SYSTEM_DESIGN -> throw new IllegalArgumentException("시스템 설계 면접은 꼬리 질문 프롬프트를 쓰지 않습니다.");
         };
     }
 
