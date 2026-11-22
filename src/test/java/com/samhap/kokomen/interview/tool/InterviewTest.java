@@ -3,11 +3,13 @@ package com.samhap.kokomen.interview.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -49,5 +51,30 @@ class InterviewTest {
         // when & then
         assertThatThrownBy(() -> interview.evaluate("더 공부하세요", 0))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void 시스템_설계_면접은_루트_질문_없이도_표시_카테고리와_질문을_돌려준다() {
+        // given
+        Interview interview = InterviewFixtureBuilder.builder()
+                .interviewType(InterviewType.SYSTEM_DESIGN)
+                .rootQuestion(null)
+                .maxQuestionCount(6)
+                .build();
+
+        // when & then
+        assertAll(
+                () -> assertThat(interview.getRootQuestion()).isNull(),
+                () -> assertThat(interview.isSystemDesign()).isTrue(),
+                () -> assertThat(interview.getDisplayCategory()).isEqualTo("시스템 설계"),
+                () -> assertThat(interview.getDisplayQuestion()).isEqualTo("시스템 설계 면접")
+        );
+    }
+
+    @Test
+    void 루트_질문을_지정하지_않으면_픽스처는_기본_루트_질문을_채운다() {
+        Interview interview = InterviewFixtureBuilder.builder().build();
+
+        assertThat(interview.getRootQuestion()).isNotNull();
     }
 }
