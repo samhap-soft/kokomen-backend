@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.domain.systemdesign;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,21 @@ class SystemDesignTextTest {
                 () -> assertThat(SystemDesignText.truncate("가나다", 3)).isEqualTo("가나다"),
                 () -> assertThat(SystemDesignText.truncate("가", 3)).isEqualTo("가"),
                 () -> assertThat(SystemDesignText.truncate(null, 3)).isNull()
+        );
+    }
+
+    @Test
+    void truncate는_최대_길이가_0_이하면_값과_상관없이_거절한다() {
+        assertAll(
+                () -> assertThatThrownBy(() -> SystemDesignText.truncate("가나다", 0))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("최대 길이는 1 이상이어야 합니다: 0"),
+                () -> assertThatThrownBy(() -> SystemDesignText.truncate("가", -1))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("최대 길이는 1 이상이어야 합니다: -1"),
+                () -> assertThatThrownBy(() -> SystemDesignText.truncate(null, 0))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("최대 길이는 1 이상이어야 합니다: 0")
         );
     }
 

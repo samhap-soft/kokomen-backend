@@ -45,8 +45,12 @@ public final class SystemDesignText {
     /**
      * LLM 출력처럼 길이를 믿을 수 없는 값을 컬럼 한도({@code String.length()} 기준)에 맞춰 뒤를 자른다.
      * 자르는 자리가 서로게이트 쌍 가운데면 한 글자 앞에서 잘라 짝 잃은 서로게이트를 남기지 않는다. null은 그대로 둔다.
+     * 최대 길이가 0 이하면 값과 상관없이 IllegalArgumentException이다.
      */
     public static String truncate(String value, int maxLength) {
+        if (maxLength <= 0) {
+            throw new IllegalArgumentException("최대 길이는 1 이상이어야 합니다: %d".formatted(maxLength));
+        }
         if (value == null || value.length() <= maxLength) {
             return value;
         }
