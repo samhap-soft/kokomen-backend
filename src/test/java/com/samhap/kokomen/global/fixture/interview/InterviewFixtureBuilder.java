@@ -6,6 +6,7 @@ import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.member.domain.Member;
 import java.time.LocalDateTime;
 
@@ -29,6 +30,16 @@ public class InterviewFixtureBuilder {
 
     public static InterviewFixtureBuilder builder() {
         return new InterviewFixtureBuilder();
+    }
+
+    /**
+     * 루트 질문이 없는 시스템 설계 면접. 회원·면접 상태·점수는 호출하는 쪽이 이어서 정한다.
+     */
+    public static InterviewFixtureBuilder systemDesign() {
+        return builder()
+                .rootQuestion(null)
+                .interviewType(InterviewType.SYSTEM_DESIGN)
+                .maxQuestionCount(SystemDesignInterview.MAX_QUESTION_COUNT);
     }
 
     public InterviewFixtureBuilder id(Long id) {
