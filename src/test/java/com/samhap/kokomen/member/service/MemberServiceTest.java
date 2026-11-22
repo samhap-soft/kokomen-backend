@@ -3,6 +3,7 @@ package com.samhap.kokomen.member.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
@@ -11,6 +12,7 @@ import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -19,9 +21,12 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.AdminRepository;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.member.service.dto.MemberStreakResponse;
+import com.samhap.kokomen.member.service.dto.RankingResponse;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 
 class MemberServiceTest extends BaseTest {
 
@@ -367,6 +372,42 @@ class MemberServiceTest extends BaseTest {
         assertThat(result.maxStreak()).isEqualTo(1);
     }
 
+    // 랭킹의 완료 면접 수와 스트릭은 면접 유형을 가리지 않는다. 시스템 설계도 그대로 포함하는 현재 집계를 고정한다.
+    @Test
+    void 끝난_시스템_설계_면접도_스트릭에_들어간다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        LocalDate today = LocalDate.now();
+        createFinishedSystemDesignInterview(member, today);
+
+        // when
+        MemberStreakResponse result = memberService.findMemberStreaks(new MemberAuth(member.getId()),
+                today.minusMonths(1), today.plusMonths(1));
+
+        // then
+        assertThat(result.dailyCounts()).hasSize(1);
+        assertThat(result.dailyCounts().get(0).date()).isEqualTo(today);
+        assertThat(result.dailyCounts().get(0).count()).isEqualTo(1L);
+        assertThat(result.currentStreak()).isEqualTo(1);
+    }
+
+    @Test
+    void 끝난_시스템_설계_면접도_랭킹의_완료_면접_수에_들어간다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        createFinishedInterview(member, rootQuestion, LocalDate.now());
+        createFinishedSystemDesignInterview(member, LocalDate.now());
+
+        // when
+        List<RankingResponse> rankings = memberService.findRanking(PageRequest.of(0, 10));
+
+        // then
+        assertThat(rankings)
+                .extracting(RankingResponse::id, RankingResponse::finishedInterviewCount)
+                .containsExactly(tuple(member.getId(), 2));
+    }
+
     @Test
     void 관리자는_관리자_검증을_통과한다() {
         // given
@@ -395,6 +436,19 @@ class MemberServiceTest extends BaseTest {
                 .interviewState(InterviewState.FINISHED)
                 .totalFeedback("테스트 피드백")
                 .totalScore(85)
+                .finishedAt(finishedDate.atTime(12, 0))
+                .build());
+    }
+
+    private void createFinishedSystemDesignInterview(Member member, LocalDate finishedDate) {
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(null)
+                .interviewType(InterviewType.SYSTEM_DESIGN)
+                .maxQuestionCount(6)
+                .interviewState(InterviewState.FINISHED)
+                .totalFeedback("테스트 피드백")
+                .totalScore(0)
                 .finishedAt(finishedDate.atTime(12, 0))
                 .build());
     }

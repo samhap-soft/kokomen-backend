@@ -123,6 +123,10 @@ public class InterviewService {
     }
 
     private int countCurAnswers(Interview interview) {
+        // question 행을 쓰지 않는 타입. 시스템 설계는 PR 4에서 전용 답변 수로 바꾼다.
+        if (!interview.getInterviewType().isTailQuestionFlow()) {
+            return 0;
+        }
         int qurQuestionCount = questionRepository.countByInterview(interview);
 
         // TODO: 해당 로직 적절한 도메인에 부여하기
