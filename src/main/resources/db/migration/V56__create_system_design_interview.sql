@@ -143,7 +143,7 @@ CREATE TABLE system_design_answer
     question_id BIGINT        NOT NULL,
     content     VARCHAR(3000) NOT NULL,
     diagram     JSON          NOT NULL,
-    answer_rank VARCHAR(1)    NOT NULL,
+    answer_rank VARCHAR(20)   NOT NULL,
     feedback    VARCHAR(2000) NOT NULL,
     created_at  DATETIME(6)   NOT NULL,
     PRIMARY KEY (id),

@@ -53,7 +53,7 @@ public class SystemDesignAnswer extends BaseEntity {
     @Convert(converter = SystemDesignDiagramConverter.class)
     private SystemDesignDiagram diagram;
 
-    @Column(name = "answer_rank", nullable = false, length = 1)
+    @Column(name = "answer_rank", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private AnswerRank answerRank;
 

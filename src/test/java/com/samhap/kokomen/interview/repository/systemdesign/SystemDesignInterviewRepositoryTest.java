@@ -324,6 +324,18 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
     }
 
     @Test
+    void 답변_등급_컬럼은_다른_enum_컬럼처럼_VARCHAR_20이다() {
+        // when
+        String answerRankType = jdbcTemplate.queryForObject("""
+                SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_design_answer' AND COLUMN_NAME = 'answer_rank'
+                """, String.class);
+
+        // then
+        assertThat(answerRankType).isEqualTo("varchar(20)");
+    }
+
+    @Test
     void 평가_포인트_결과를_면접으로_찾는다() {
         // given
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.DEEP_DIVE);
