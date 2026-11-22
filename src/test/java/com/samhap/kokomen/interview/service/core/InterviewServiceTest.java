@@ -25,6 +25,7 @@ import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
@@ -39,6 +40,7 @@ import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.RootQuestionReferenceAnswer;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -821,5 +823,80 @@ class InterviewServiceTest extends BaseTest {
         assertThat(result.rootQuestionReferenceAnswers())
                 .extracting(RootQuestionReferenceAnswer::answerContent)
                 .containsExactly("다른 루트 질문 답변");
+    }
+
+    @Test
+    void 시스템_설계_면접은_기존_결과_조회와_진행_확인에서_존재하지_않는_인터뷰로_거절한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = saveSystemDesignInterview(member, InterviewState.FINISHED);
+        MemberAuth memberAuth = new MemberAuth(member.getId());
+        ClientIp clientIp = new ClientIp("0.0.0.0");
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> interviewService.findMyInterviewResult(interview.getId(), memberAuth,
+                        clientIp))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("존재하지 않는 인터뷰입니다."),
+                () -> assertThatThrownBy(() -> interviewService.findOtherMemberInterviewResult(interview.getId(),
+                        MemberAuth.notAuthenticated(), clientIp))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("존재하지 않는 인터뷰입니다."),
+                () -> assertThatThrownBy(() -> interviewService.checkInterview(interview.getId(), InterviewMode.TEXT,
+                        memberAuth, clientIp))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("존재하지 않는 인터뷰입니다."),
+                () -> assertThatThrownBy(() -> interviewService.unlikeInterview(interview.getId(), memberAuth))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("존재하지 않는 인터뷰입니다.")
+        );
+    }
+
+    // 시스템 설계는 question 행이 없어, 막지 않으면 진행 중인 면접의 진행 확인이 마지막 질문을 꺼내다 500이 난다.
+    @Test
+    void 진행_중인_시스템_설계_면접은_기존_진행_확인에서_존재하지_않는_인터뷰로_거절한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = saveSystemDesignInterview(member, InterviewState.IN_PROGRESS);
+
+        // when & then
+        assertThatThrownBy(() -> interviewService.checkInterview(interview.getId(), InterviewMode.TEXT,
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("존재하지 않는 인터뷰입니다.");
+    }
+
+    // 타입 가드와 별개로, 루트 질문이 없는 면접이 결과 조회까지 오더라도 참조 답변 조회에서 NPE가 나지 않게 막는다.
+    @Test
+    void 루트_질문이_없는_면접의_결과_조회는_참조_답변_없이_응답한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(null)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
+
+        // when
+        InterviewResultResponse result = interviewService.findMyInterviewResult(interview.getId(),
+                new MemberAuth(member.getId()), new ClientIp("0.0.0.0"));
+
+        // then
+        assertThat(result.rootQuestionReferenceAnswers()).isEmpty();
+    }
+
+    private Interview saveSystemDesignInterview(Member member, InterviewState interviewState) {
+        return interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(null)
+                .interviewType(InterviewType.SYSTEM_DESIGN)
+                .maxQuestionCount(6)
+                .interviewState(interviewState)
+                .totalScore(interviewState == InterviewState.FINISHED ? 0 : null)
+                .finishedAt(interviewState == InterviewState.FINISHED ? LocalDateTime.now() : null)
+                .build());
     }
 }

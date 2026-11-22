@@ -17,6 +17,7 @@ import com.samhap.kokomen.global.exception.UnauthorizedException;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.tool.QuestionVoicePathResolver;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
@@ -222,7 +223,7 @@ public class InterviewService {
     }
 
     private List<RootQuestionReferenceAnswer> getReferenceAnswers(Interview interview) {
-        if (interview.isResumeBased() || interview.isLiveCoding()) {
+        if (interview.isResumeBased() || interview.isLiveCoding() || interview.getRootQuestion() == null) {
             return List.of();
         }
         return findRootQuestionReferenceAnswers(interview.getRootQuestion().getId(), interview.getId());
@@ -373,8 +374,9 @@ public class InterviewService {
                 .orElseThrow(() -> new UnauthorizedException("존재하지 않는 회원입니다."));
     }
 
+    // 시스템 설계처럼 꼬리 질문 흐름이 아닌 면접은 기존 API에서 없는 면접으로 다룬다.
     public Interview readInterview(Long interviewId) {
-        return interviewRepository.findById(interviewId)
+        return interviewRepository.findByIdAndInterviewTypeIn(interviewId, InterviewType.TAIL_QUESTION_FLOW_TYPES)
                 .orElseThrow(() -> new BadRequestException("존재하지 않는 인터뷰입니다."));
     }
 
