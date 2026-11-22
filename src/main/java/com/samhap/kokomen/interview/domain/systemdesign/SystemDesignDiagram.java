@@ -71,6 +71,8 @@ public final class SystemDesignDiagram {
      * 규칙 1~3번을 먼저 보고, 블록을 배열 순서대로 하나씩 4~11번, 연결을 배열 순서대로 하나씩 12~16번을 본다.
      * 번호는 {@link SystemDesignErrorMessage}에 둔 다이어그램 문구의 순서다. 처음 어긴 규칙 하나의 문구로 400을 던진다.
      * 배열 원소가 null이면 그 원소를 볼 차례에 1번({@link SystemDesignErrorMessage#DIAGRAM_FORMAT}) 문구로 알린다.
+     *
+     * <p>DB에서 읽을 때({@link #fromJson(String)})도 같은 규칙을 거친다. 규칙은 완화만 한다. 조이면 이미 저장된 행을 읽을 수 없으므로 데이터 이전이 먼저다.
      */
     public static SystemDesignDiagram from(Input input) {
         validate(input != null && input.blocks() != null && input.connections() != null, DIAGRAM_FORMAT);
