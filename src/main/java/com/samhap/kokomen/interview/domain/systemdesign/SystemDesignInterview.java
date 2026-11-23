@@ -95,10 +95,17 @@ public class SystemDesignInterview extends BaseEntity {
         }
     }
 
-    public void completeRequirements() {
+    /**
+     * 요구사항 정리를 끝낼 수 있는지만 본다. 단계를 바꾸지 않으므로 진행 락을 잡기 전의 사전 검사에도 쓴다.
+     */
+    public void validateRequirementsCompletable() {
         if (stage != SystemDesignStage.REQUIREMENTS) {
             throw new ConflictException(ALREADY_DESIGN_STAGE.getMessage());
         }
+    }
+
+    public void completeRequirements() {
+        validateRequirementsCompletable();
         this.stage = SystemDesignStage.HIGH_LEVEL;
     }
 

@@ -392,6 +392,86 @@ include::{snippetsDir}/resume-analysis-interview-start-voice-mode/response-body.
 include::{snippetsDir}/resume-analysis-interview-start-voice-mode/response-fields.adoc[]
 include::{snippetsDir}/resume-analysis-interview-start-voice-mode/curl-request.adoc[]
 
+== 시스템 설계 면접
+
+모든 API는 로그인한 회원만 쓸 수 있다(로그인하지 않으면 401). 경로의 면접 ID가 숫자가 아니거나, 없는 면접이거나, 시스템 설계가 아닌 면접이면
+404 `면접을 찾을 수 없어요.`, 다른 회원의 면접이면 403 `본인의 면접만 볼 수 있어요.`다. 오류 본문은 `{"message": ...}`이고 문구를 그대로 보여 주면 된다.
+
+=== 시스템 설계 면접 시작
+
+요청 본문은 없다. 서버가 ACTIVE BASIC 문제 중 하나를 골라 요구사항 단계(`REQUIREMENTS`)로 면접을 만든다.
+토큰은 6개 이상 가졌는지만 확인하고 차감하지 않는다. 토큰은 답변이 저장될 때마다 1개씩 차감한다.
+토큰이 모자라면 400 `토큰 갯수가 부족합니다.`이고, 출제할 문제가 없거나 문제 데이터가 잘못됐으면
+500 `시스템 설계 문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.`다(문구를 그대로 보여 주고 다시 시도하게 하면 된다).
+
+include::{snippetsDir}/system-design-interview-start/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-start/request-headers.adoc[]
+include::{snippetsDir}/system-design-interview-start/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-start/response-fields.adoc[]
+include::{snippetsDir}/system-design-interview-start/curl-request.adoc[]
+
+==== 시스템 설계 면접 시작 예외 - 토큰 부족
+
+include::{snippetsDir}/system-design-interview-start-not-enough-tokens/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-start-not-enough-tokens/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-start-not-enough-tokens/response-fields.adoc[]
+
+=== 시스템 설계 면접 조회 - 요구사항 단계
+
+새로고침해도 이어서 진행할 수 있게 진행 상태를 모두 돌려준다. 요구사항 단계와 면접이 끝난 뒤에는 `cur_question_id`와 `cur_question`이
+`null`로 온다(키는 항상 있다). `diagram`은 마지막으로 저장된 답변의 다이어그램이고, 답변 전에는 문제의 시작 다이어그램(없으면 빈 다이어그램)이다.
+
+include::{snippetsDir}/system-design-interview-find-requirements/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-find-requirements/request-headers.adoc[]
+include::{snippetsDir}/system-design-interview-find-requirements/path-parameters.adoc[]
+include::{snippetsDir}/system-design-interview-find-requirements/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-find-requirements/response-fields.adoc[]
+include::{snippetsDir}/system-design-interview-find-requirements/curl-request.adoc[]
+
+=== 시스템 설계 면접 조회 - 설계 단계
+
+include::{snippetsDir}/system-design-interview-find-in-progress/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-find-in-progress/path-parameters.adoc[]
+include::{snippetsDir}/system-design-interview-find-in-progress/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-find-in-progress/response-fields.adoc[]
+
+==== 시스템 설계 면접 예외 - 없는 면접
+
+include::{snippetsDir}/system-design-interview-not-found/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-not-found/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-not-found/response-fields.adoc[]
+
+==== 시스템 설계 면접 예외 - 다른 회원의 면접
+
+include::{snippetsDir}/system-design-interview-forbidden/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-forbidden/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-forbidden/response-fields.adoc[]
+
+=== 요구사항 정리 완료
+
+요청 본문은 없다. 역질문을 하나도 하지 않았어도 끝낼 수 있다. 단계가 `HIGH_LEVEL`로 바뀌고, 문제의 1번 기준 질문이 첫 설계 질문(`cur_question_id = 1`)으로 나온다.
+
+include::{snippetsDir}/system-design-interview-complete-requirements/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/request-headers.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/path-parameters.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/response-fields.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/curl-request.adoc[]
+
+==== 요구사항 정리 완료 예외 - 이미 설계 단계
+
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/response-fields.adoc[]
+
+==== 시스템 설계 면접 예외 - 이전 요청 처리 중
+
+같은 회원의 다른 진행 요청(시스템 설계 요구사항 정리 완료, 기존 면접 답변 채점 등)을 처리하는 중이면 409다. 잠시 뒤 다시 보내면 된다.
+
+include::{snippetsDir}/system-design-interview-proceed-locked/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-proceed-locked/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-proceed-locked/response-fields.adoc[]
+
 == 답변
 
 === 답변 좋아요 요청
