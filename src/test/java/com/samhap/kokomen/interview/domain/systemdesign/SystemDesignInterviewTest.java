@@ -138,6 +138,10 @@ class SystemDesignInterviewTest {
                 () -> assertThatThrownBy(() -> highLevel.validateAnswerable(null, 1))
                         .isInstanceOf(ConflictException.class)
                         .hasMessage("지금 질문이 아니에요."),
+                // 답할 질문이 없으면(현재 순번 null) 어떤 순번도 지금 질문이 아니다.
+                () -> assertThatThrownBy(() -> highLevel.validateAnswerable(1, null))
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("지금 질문이 아니에요."),
                 () -> assertThatCode(() -> highLevel.validateAnswerable(1, 1)).doesNotThrowAnyException(),
                 () -> assertThatCode(() -> deepDive.validateAnswerable(6, 6)).doesNotThrowAnyException()
         );
