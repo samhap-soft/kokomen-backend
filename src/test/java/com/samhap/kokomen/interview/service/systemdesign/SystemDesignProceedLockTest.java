@@ -7,12 +7,17 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.BDDMockito.willThrow;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.ConflictException;
 import com.samhap.kokomen.global.service.RedisService;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.redisson.client.codec.StringCodec;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class SystemDesignProceedLockTest extends BaseTest {
@@ -90,6 +95,37 @@ class SystemDesignProceedLockTest extends BaseTest {
                 () -> assertThatThrownBy(() -> systemDesignProceedLock.acquire(MEMBER_ID))
                         .isInstanceOf(ConflictException.class)
                         .hasMessage(PROCEED_IN_PROGRESS_MESSAGE)
+        );
+    }
+
+    // 동시 실행 허가를 기다리다 인터럽트되어 503이 난 요청도 finally에서 락을 푼다. 인터럽트 플래그가 있으면 Redis 동기 호출이
+    // 결과를 기다리지 않고 바로 실패한다(커넥션을 비동기로 받는 중이면 해제 명령이 나가지 않아 키가 TTL까지 남는다).
+    // 그래서 해제하는 동안만 플래그를 내렸다가 되살린다. 키가 지워졌는지만 보면 명령이 먼저 나간 경우에 실패를 놓치므로
+    // 해제가 실패로 끝나지 않았는지(WARN이 없는지)도 본다.
+    @Test
+    void 인터럽트된_스레드에서도_락을_풀고_인터럽트_플래그를_되살린다() {
+        // given
+        String lockValue = systemDesignProceedLock.acquire(MEMBER_ID);
+        Logger lockLogger = (Logger) LoggerFactory.getLogger(SystemDesignProceedLock.class);
+        ListAppender<ILoggingEvent> lockLogs = new ListAppender<>();
+        lockLogs.start();
+        lockLogger.addAppender(lockLogs);
+        boolean interruptedAfterRelease;
+
+        // when
+        Thread.currentThread().interrupt();
+        try {
+            systemDesignProceedLock.release(MEMBER_ID, lockValue);
+        } finally {
+            interruptedAfterRelease = Thread.interrupted();
+            lockLogger.detachAppender(lockLogs);
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(interruptedAfterRelease).isTrue(),
+                () -> assertThat(lockLogs.list).noneMatch(event -> event.getLevel() == Level.WARN),
+                () -> assertThat(redisService.get(LOCK_KEY, String.class)).isEmpty()
         );
     }
 

@@ -1,12 +1,14 @@
 package com.samhap.kokomen.global.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClient;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -15,7 +17,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.util.ReflectionTestUtils;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeServiceClientConfiguration;
 
 /**
  * 시스템 설계 역질문 답(요청 스레드에서 부르는 동기 호출)이 공용 빈(소켓 60초, apiCall 타임아웃 없음, SDK 기본 재시도)이 아니라
@@ -48,6 +53,28 @@ class SystemDesignBedrockWiringTest {
         contextRunner.run(context -> assertThat(context.getBean("systemDesignBedrockRuntimeClient"))
                 .isNotSameAs(context.getBean("bedrockRuntimeClient"))
                 .isNotSameAs(context.getBean("resumeAnalysisBedrockRuntimeClient")));
+    }
+
+    // 빌드된 클라이언트에서 읽을 수 있는 설정(리전, apiCall 타임아웃, 재시도 전략)이 전용 사양으로 걸렸는지 본다. 이력서 상수를 잘못
+    // 넣거나 overrideConfiguration을 빠뜨리면 여기서 드러난다. 연결·소켓 타임아웃과 최대 연결 수는 HTTP 클라이언트 안에 있어 읽을 수 없다.
+    @Test
+    void 시스템_설계_전용_런타임_클라이언트는_공용과_같은_리전에_전용_타임아웃과_재시도를_쓴다() {
+        contextRunner.run(context -> {
+            BedrockRuntimeServiceClientConfiguration dedicated = context.getBean(
+                    "systemDesignBedrockRuntimeClient", BedrockRuntimeClient.class).serviceClientConfiguration();
+            BedrockRuntimeServiceClientConfiguration primary = context.getBean(
+                    "bedrockRuntimeClient", BedrockRuntimeClient.class).serviceClientConfiguration();
+            ClientOverrideConfiguration override = dedicated.overrideConfiguration();
+            assertAll(
+                    () -> assertThat(dedicated.region()).isEqualTo(Region.US_EAST_1),
+                    () -> assertThat(primary.region()).isEqualTo(Region.US_EAST_1),
+                    () -> assertThat(override.apiCallTimeout()).contains(Duration.ofSeconds(25)),
+                    () -> assertThat(override.retryStrategy()).hasValueSatisfying(strategy -> assertAll(
+                            () -> assertThat(strategy.maxAttempts()).isEqualTo(2),
+                            () -> assertThat(strategy.useClientDefaults()).isFalse()
+                    ))
+            );
+        });
     }
 
     // 전용 converse 빈의 @Qualifier가 빠져도 두 converse 객체는 여전히 다른 인스턴스라 위 비교는 통과한다.

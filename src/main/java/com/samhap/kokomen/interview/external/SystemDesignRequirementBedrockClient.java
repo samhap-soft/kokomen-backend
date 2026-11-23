@@ -82,11 +82,11 @@ public class SystemDesignRequirementBedrockClient {
         JsonNode toolInput = converseClient.parseToolInput(toolUse, JsonNode.class);
         List<String> askedCodes = SystemDesignRequirementAnswerComposer.resolveAskedCodes(requirements, toolInput);
         return new SystemDesignRequirementAnswerResult(askedCodes,
-                SystemDesignUserMessages.unescape(readAnswer(toolInput)));
+                SystemDesignUserMessages.unescape(answerOrEmpty(toolInput)));
     }
 
     // 답이 없거나 문자열이 아니면 빈 답으로 본다. 빈 답은 서비스가 시드 답으로 바꾼다.
-    private static String readAnswer(JsonNode toolInput) {
+    private static String answerOrEmpty(JsonNode toolInput) {
         JsonNode answer = toolInput == null ? null : toolInput.get(SystemDesignToolSchemas.ANSWER_FIELD);
         if (answer == null || !answer.isTextual()) {
             return "";

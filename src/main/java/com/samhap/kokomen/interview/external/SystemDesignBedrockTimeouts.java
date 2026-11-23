@@ -15,8 +15,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.ThrottlingException;
  * 동시 실행 허가 대기 2초 + 25초 + 저장 정도다. 공용 클라이언트(소켓 60초, apiCall 타임아웃 없음, SDK 기본 재시도)를 쓰면 장애 때
  * 요청 하나가 분 단위로 Tomcat 스레드를 붙잡는다.
  *
- * <p>재시도는 빈 전략에서 시작해 생산 없이 바로 오는 세 예외만 허용한다. 소켓 타임아웃은 이미 20초를 쓴 뒤라 다시 시도하면
- * 응답만 늦어지므로 허용 목록에 넣지 않는다. 빌드된 BedrockRuntimeClient에서는 타임아웃 설정을 읽을 수 없어 값을 상수로 고정한다.
+ * <p>재시도는 빈 전략에서 시작해 세 예외만 허용한다. 스로틀링과 서버 내부 오류는 대개 생성 전에 바로 온다. 모델 타임아웃(408)은
+ * 처리한 뒤에 올 수 있지만, 재시도까지 포함한 한 호출을 apiCall 타임아웃 25초가 묶는다. 소켓 타임아웃은 이미 20초를 쓴 뒤라
+ * 다시 시도하면 응답만 늦어지므로 허용 목록에 넣지 않는다. 연결·소켓 타임아웃과 최대 연결 수는 빌드된 BedrockRuntimeClient에서 읽을
+ * 수 없어 상수로 고정한다. 리전·apiCall 타임아웃·재시도 전략은 빌드된 클라이언트에서 읽히므로 배선 테스트가 실제 빈에서 확인한다.
  */
 public final class SystemDesignBedrockTimeouts {
 

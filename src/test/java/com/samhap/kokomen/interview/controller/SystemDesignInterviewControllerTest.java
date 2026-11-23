@@ -137,13 +137,17 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     private ObjectMapper objectMapper;
 
     // MySQLDatabaseCleaner가 매번 TRUNCATE해 테이블마다 id가 1부터 다시 시작하면 interview와 system_design_interview의 id,
-    // 질문 PK와 순번이 우연히 같아진다. 다른 회원의 면접 기록(시스템 설계 면접 1개와 그 질문 1개, 일반 면접 1개)을 먼저 두어
-    // id를 서로 어긋나게 한다. 그래야 interview id 대신 다른 테이블의 PK를 찾거나 내보내는 실수가 테스트에서 드러난다.
+    // 문제와 system_design_interview의 id, 질문·역질문의 PK와 순번이 우연히 같아진다. 다른 회원의 면접 기록(출제하지 않는 문제 2개 중
+    // 하나로 한 시스템 설계 면접 1개와 그 숨은 요구사항·역질문·질문 1개씩, 일반 면접 1개)을 먼저 두어 id를 서로 어긋나게 한다.
+    // 그래야 다른 테이블의 PK를 찾거나 내보내는 실수(역질문 남은 개수를 PK로 셈하기 등)가 테스트에서 드러난다.
     // 문제는 INACTIVE라 시작 API가 고르지 않는다.
     @BeforeEach
     void setUpOtherMemberInterviews() {
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
         SystemDesignProblem retiredProblem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
+                .state(SystemDesignProblemState.INACTIVE)
+                .build());
+        problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
                 .state(SystemDesignProblemState.INACTIVE)
                 .build());
         SystemDesignProblemQuestion retiredQuestion = problemQuestionRepository.save(
@@ -635,7 +639,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("message")
-                                        .description("질문이 없거나, 공백뿐이거나, 앞뒤 공백을 지운 뒤 200자를 넘을 때의 오류 문구")
+                                        .description("question이 없거나 null이거나, 공백뿐이거나, 앞뒤 공백을 지운 뒤 200자를 넘을 때의 "
+                                                + "오류 문구")
                         )
                 ));
         for (String body : List.of("{}", "{\"question\": \"" + "가".repeat(201) + "\"}")) {
@@ -651,6 +656,32 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         assertAll(
                 () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty()
+        );
+    }
+
+    // 요청 본문이 없거나 JSON 형식이 틀리면 본문을 읽는 단계에서 기존 공용 400이 나간다. 경로 값·소유자·단계 검사보다 먼저다.
+    @Test
+    void 역질문은_본문이_없으면_JSON_형식_400() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.HIGH_LEVEL, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        for (Object interviewId : List.of(systemDesignInterview.getInterview().getId(), "not-a-number")) {
+            mockMvc.perform(post(REQUIREMENT_QUESTIONS_URL, interviewId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("잘못된 요청 형식입니다. JSON 형식을 확인해주세요."));
+        }
+        assertAll(
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
         );
     }
 
@@ -798,7 +829,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 역질문_없는_면접은_404() throws Exception {
+    void 역질문은_없는_면접이면_404() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
@@ -830,7 +861,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     }
 
     @Test
-    void 역질문_다른_회원의_면접은_403() throws Exception {
+    void 역질문은_다른_회원의_면접이면_403() throws Exception {
         // given
         Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());

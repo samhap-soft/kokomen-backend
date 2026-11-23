@@ -39,12 +39,19 @@ public class SystemDesignProceedLock {
     /**
      * 잡을 때 받은 값이 남아 있을 때만 푼다. 해제 실패가 이미 만든 응답이나 원래 예외를 덮지 않도록 WARN 로그만 남긴다.
      * 남은 키는 TTL이 지나면 사라진다.
+     * 인터럽트된 스레드(동시 실행 허가를 기다리다 인터럽트되어 503이 난 요청 등)에서는 Redis 동기 호출이 결과를 기다리지 않고
+     * 바로 실패하므로, 해제하는 동안만 인터럽트 플래그를 내렸다가 되살린다.
      */
     public void release(Long memberId, String lockValue) {
+        boolean interrupted = Thread.interrupted();
         try {
             redisService.releaseLockSafely(createLockKey(memberId), lockValue);
         } catch (RuntimeException e) {
             log.warn("시스템 설계 진행 락 해제 실패 - memberId: {}", memberId, e);
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

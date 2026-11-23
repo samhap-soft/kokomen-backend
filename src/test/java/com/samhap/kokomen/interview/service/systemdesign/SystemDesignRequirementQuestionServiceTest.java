@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ConflictException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignHiddenRequirementFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
@@ -18,6 +20,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSup
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
@@ -25,6 +28,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQ
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignHiddenRequirementRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
@@ -63,29 +67,24 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+    @Autowired
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
 
-    // TRUNCATE 뒤 테이블마다 id가 1부터 다시 시작해 interview·system_design_interview·문제·역질문의 id가 같아지지 않게,
-    // 다른 회원이 다른 문제(숨은 요구사항 code가 다르다)로 역질문까지 한 면접을 먼저 둔다. 면접이나 문제를 다른 id로 찾으면
-    // 그 회원의 문제 문맥이나 역질문이 섞여 드러난다. 문제는 INACTIVE라 시작 API가 고르지 않는다.
+    // TRUNCATE 뒤에는 테이블마다 id가 1부터 다시 시작한다. 테이블마다 다른 수의 행(회원 1, 문제 2, 시스템 설계 면접 3, 면접 4,
+    // 역질문 1)을 먼저 두어, 각 테스트가 만드는 회원·문제·시스템 설계 면접·면접의 id가 서로 같아지지 않게 한다. 면접이나 문제를
+    // 다른 테이블의 id로 찾으면 다른 회원의 문제 문맥·역질문이 섞이거나 행을 못 찾아 드러난다. 문제는 INACTIVE라 시작 API가 고르지 않는다.
     @BeforeEach
-    void setUpOtherMemberInterview() {
+    void setUpOtherMemberInterviews() {
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
-        SystemDesignProblem retiredProblem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
-                .state(SystemDesignProblemState.INACTIVE)
-                .title("지난 문제")
-                .build());
-        hiddenRequirementRepository.save(SystemDesignHiddenRequirementFixtureBuilder.builder()
-                .problem(retiredProblem)
-                .code("RETIRED_REQUIREMENT")
-                .name("지난 요구사항")
-                .answer("지난 문제의 정해 둔 사실이에요.")
-                .displayOrder(1)
-                .build());
+        SystemDesignProblem retiredProblem = saveRetiredProblem("지난 문제", "RETIRED_REQUIREMENT");
+        saveRetiredProblem("더 지난 문제", "OLDER_RETIRED_REQUIREMENT");
         SystemDesignInterview otherInterview = saveSystemDesignInterview(otherMember, retiredProblem,
                 SystemDesignStage.REQUIREMENTS);
+        saveSystemDesignInterview(otherMember, retiredProblem, SystemDesignStage.HIGH_LEVEL);
+        saveSystemDesignInterview(otherMember, retiredProblem, SystemDesignStage.DEEP_DIVE);
         requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
                 .systemDesignInterview(otherInterview)
                 .questionOrder(1)
@@ -93,6 +92,29 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 .answer("지난 문제의 답")
                 .askedRequirementCodes(List.of("RETIRED_REQUIREMENT"))
                 .build());
+        // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.NETWORK)
+                .build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .build());
+    }
+
+    @Test
+    void 선행_데이터_덕분에_회원_문제_시스템_설계_면접_면접의_id가_서로_다르다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+
+        // when
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+
+        // then
+        assertThat(List.of(member.getId(), problem.getId(), systemDesignInterview.getId(),
+                systemDesignInterview.getInterview().getId())).doesNotHaveDuplicates();
     }
 
     @Test
@@ -211,7 +233,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
-        String paddedQuestion = "　 \t하루에 몇 개나　만들어지나요?\n　";
+        String paddedQuestion = "\u3000 \t하루에 몇 개나\u3000만들어지나요?\n\u3000";
 
         // when
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
@@ -221,10 +243,10 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // then
         assertAll(
-                () -> assertThat(response.question()).isEqualTo("하루에 몇 개나　만들어지나요?"),
+                () -> assertThat(response.question()).isEqualTo("하루에 몇 개나\u3000만들어지나요?"),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).singleElement()
                         .extracting(SystemDesignRequirementQuestion::getContent)
-                        .isEqualTo("하루에 몇 개나　만들어지나요?")
+                        .isEqualTo("하루에 몇 개나\u3000만들어지나요?")
         );
     }
 
@@ -256,6 +278,34 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                         fullInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?"))
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("역질문은 5개까지 할 수 있어요.")
+        );
+    }
+
+    @Test
+    void 다섯_번째_역질문을_저장하면_남은_개수가_0이다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            saveRequirementQuestion(systemDesignInterview, order, "역질문 " + order, "답 " + order);
+        }
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "다섯 번째 역질문");
+
+        // when
+        SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
+                new SystemDesignRequirementAnswerResult(List.of(), ""));
+
+        // then
+        assertAll(
+                () -> assertThat(response.remainingCount()).isZero(),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview))
+                        .extracting(SystemDesignRequirementQuestion::getQuestionOrder,
+                                SystemDesignRequirementQuestion::getContent)
+                        .hasSize(SystemDesignRequirementQuestion.MAX_COUNT)
+                        .last()
+                        .isEqualTo(tuple(SystemDesignRequirementQuestion.MAX_COUNT, "다섯 번째 역질문"))
         );
     }
 
@@ -327,6 +377,21 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 () -> assertThat(readTokenCount(member, TokenType.FREE)).isZero(),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero()
         );
+    }
+
+    private SystemDesignProblem saveRetiredProblem(String title, String requirementCode) {
+        SystemDesignProblem problem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
+                .state(SystemDesignProblemState.INACTIVE)
+                .title(title)
+                .build());
+        hiddenRequirementRepository.save(SystemDesignHiddenRequirementFixtureBuilder.builder()
+                .problem(problem)
+                .code(requirementCode)
+                .name(title + "의 요구사항")
+                .answer(title + "의 정해 둔 사실이에요.")
+                .displayOrder(1)
+                .build());
+        return problem;
     }
 
     private SystemDesignInterview saveSystemDesignInterview(Member member, SystemDesignProblem problem,

@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.BooleanNode;
@@ -19,6 +23,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 
 class SystemDesignRequirementAnswerComposerTest {
 
@@ -151,6 +156,19 @@ class SystemDesignRequirementAnswerComposerTest {
         );
     }
 
+    // 판정은 YES인데 답이 정해진 문구면 답과 판정이 어긋난다. 판정을 따라 시드 답을 이어 써서 물은 것으로 기록한 요구사항을
+    // 면접자가 실제로 듣게 한다.
+    @Test
+    void 물은_요구사항이_있는데_답이_정해진_문구면_시드_답을_이어_쓴다() {
+        assertAll(
+                () -> assertThat(SystemDesignRequirementAnswerComposer.compose(REQUIREMENTS,
+                        List.of("DAILY_CREATION_VOLUME"), DEFAULT_ANSWER)).isEqualTo(DAILY_CREATION_VOLUME_ANSWER),
+                () -> assertThat(SystemDesignRequirementAnswerComposer.compose(REQUIREMENTS,
+                        List.of("DAILY_CREATION_VOLUME"), "음, " + DEFAULT_ANSWER))
+                        .isEqualTo(DAILY_CREATION_VOLUME_ANSWER)
+        );
+    }
+
     // 면접자가 직접 계산할 값(초당 요청 수)을 대신 계산했거나 정해 둔 사실에 없는 수치를 지어낸 답이다.
     @Test
     void LLM_답에_시드에_없는_숫자가_있으면_시드_답을_이어_쓴다() {
@@ -189,6 +207,31 @@ class SystemDesignRequirementAnswerComposerTest {
         assertThat(SystemDesignRequirementAnswerComposer.compose(REQUIREMENTS, List.of("READ_WRITE_RATIO"),
                 "조회는 생성의 100배쯤이고, 하루에 10만 개가 만들어져요."))
                 .isEqualTo(READ_WRITE_RATIO_ANSWER);
+    }
+
+    @Test
+    void 폴백하면_이유와_물은_요구사항을_WARN으로_남긴다() {
+        // given
+        Logger composerLogger = (Logger) LoggerFactory.getLogger(SystemDesignRequirementAnswerComposer.class);
+        ListAppender<ILoggingEvent> composerLogs = new ListAppender<>();
+        composerLogs.start();
+        composerLogger.addAppender(composerLogs);
+
+        // when
+        try {
+            SystemDesignRequirementAnswerComposer.compose(REQUIREMENTS, List.of("DAILY_CREATION_VOLUME"),
+                    "하루 평균 10만 개, 초당 116건 정도예요.");
+            SystemDesignRequirementAnswerComposer.compose(REQUIREMENTS, List.of("DAILY_CREATION_VOLUME"),
+                    "하루 평균 10만 개 정도예요.");
+        } finally {
+            composerLogger.detachAppender(composerLogs);
+        }
+
+        // then: 폴백한 첫 호출만 남긴다
+        assertThat(composerLogs.list).singleElement().satisfies(event -> assertAll(
+                () -> assertThat(event.getLevel()).isEqualTo(Level.WARN),
+                () -> assertThat(event.getFormattedMessage()).contains("시드에 없는 숫자 [116]", "DAILY_CREATION_VOLUME")
+        ));
     }
 
     private ObjectNode verdicts(String dailyCreationVolume, String readWriteRatio, String retentionPeriod,

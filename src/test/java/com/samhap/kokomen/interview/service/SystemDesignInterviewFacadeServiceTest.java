@@ -2,9 +2,11 @@ package com.samhap.kokomen.interview.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,6 +32,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
@@ -43,6 +46,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignIntervi
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignInterviewService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -58,6 +62,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.redisson.client.codec.StringCodec;
@@ -69,6 +75,8 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
     @Autowired
     private SystemDesignInterviewFacadeService systemDesignInterviewFacadeService;
+    @Autowired
+    private SystemDesignInterviewService systemDesignInterviewService;
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
     @Autowired
@@ -96,9 +104,13 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
     // TRUNCATE로 테이블마다 id가 1부터 다시 시작해도 interview와 system_design_interview의 id가 같아지지 않게
     // 다른 회원의 일반 면접을 먼저 둔다. interview id 대신 system_design_interview id로 찾는 실수가 드러난다.
+    // 출제하지 않는(INACTIVE) 문제도 하나 먼저 두어 문제 id와 system_design_interview id도 어긋나게 한다.
     @BeforeEach
     void setUpOtherMemberInterview() {
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
+        problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
+                .state(SystemDesignProblemState.INACTIVE)
+                .build());
         // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
                 .category(Category.NETWORK)
@@ -240,6 +252,68 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         );
     }
 
+    // 역질문은 소유자 → 단계 → 길이 → 개수를 진행 락보다 먼저 본다. 락을 기다리게 하지 않고 흔한 오류를 바로 알려 준다.
+    @Test
+    void 역질문은_다른_요청이_진행_락을_쥐고_있어도_단계_길이_개수_오류를_먼저_준다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        SystemDesignInterview designStageInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.HIGH_LEVEL);
+        SystemDesignInterview requirementStageInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview fullInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        for (int order = 1; order <= SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            saveRequirementQuestion(fullInterview, order);
+        }
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> askRequirementQuestion(designStageInterview, member, "하루에 몇 개나요?"))
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("요구사항 단계가 끝났어요."),
+                () -> assertThatThrownBy(() -> askRequirementQuestion(requirementStageInterview, member,
+                        "가".repeat(201)))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("질문은 1~200자로 적어 주세요."),
+                () -> assertThatThrownBy(() -> askRequirementQuestion(fullInterview, member, "하루에 몇 개나요?"))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("역질문은 5개까지 할 수 있어요."),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any())
+        );
+    }
+
+    // 사전 검사와 락 획득 사이에 요구사항 정리가 끝나면 락 안에서 다시 준비하다 409로 실패한다. 이때도 락을 풀어야 한다.
+    @Test
+    void 락을_잡는_사이에_요구사항_정리가_끝나면_락_안에서_409이고_락을_푼다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        AtomicBoolean completedBeforeLock = new AtomicBoolean();
+        willAnswer(invocation -> {
+            if (completedBeforeLock.compareAndSet(false, true)) {
+                systemDesignInterviewService.completeRequirements(interviewId, member.getId());
+            }
+            return invocation.callRealMethod();
+        }).given(redissonClient).getBucket(lockKeyOf(member), StringCodec.INSTANCE);
+
+        // when & then
+        assertThatThrownBy(() -> askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("요구사항 단계가 끝났어요.");
+        assertAll(
+                () -> assertThat(completedBeforeLock).isTrue(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty()
+        );
+    }
+
     // 클라이언트는 전송 실패와 응답 검증 실패를 모두 ExternalApiException(내부 문구)으로 올린다. 사용자에게는 정해진 문구만 보인다.
     @Test
     void LLM이_실패하면_사용자_문구로_500이고_저장하지_않으며_락을_푼다() {
@@ -319,6 +393,65 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
             executor.shutdownNow();
         }
         assertThat(llmBulkhead.availablePermits()).isEqualTo(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS);
+    }
+
+    // 허가를 기다리는 요청 스레드가 인터럽트되어도(예: 강제 종료) 503으로 끝나고 진행 락을 풀며 인터럽트 플래그를 남긴다.
+    @Test
+    void 동시_실행_허가를_기다리다_인터럽트되면_503이고_락을_푼다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        ExecutorService executor = Executors.newFixedThreadPool(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS);
+        CountDownLatch acquired = new CountDownLatch(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS);
+        CountDownLatch release = new CountDownLatch(1);
+        List<Future<?>> occupants = new ArrayList<>();
+        AtomicReference<Throwable> thrown = new AtomicReference<>();
+        AtomicBoolean interruptedAfterThrow = new AtomicBoolean();
+        try {
+            for (int i = 0; i < SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS; i++) {
+                occupants.add(executor.submit(() -> llmBulkhead.execute(() -> {
+                    acquired.countDown();
+                    return awaitQuietly(release);
+                })));
+            }
+            assertThat(acquired.await(5, TimeUnit.SECONDS)).isTrue();
+            Thread requestThread = new Thread(() -> {
+                try {
+                    askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
+                } catch (RuntimeException e) {
+                    thrown.set(e);
+                    interruptedAfterThrow.set(Thread.currentThread().isInterrupted());
+                }
+            });
+            requestThread.start();
+            // 진행 락을 잡은 뒤 허가를 기다리는 중(TIMED_WAITING)일 때 인터럽트한다.
+            await().atMost(Duration.ofSeconds(2))
+                    .pollInterval(Duration.ofMillis(20))
+                    .until(() -> redisService.get(lockKeyOf(member), String.class).isPresent()
+                            && requestThread.getState() == Thread.State.TIMED_WAITING);
+
+            // when
+            requestThread.interrupt();
+            requestThread.join(Duration.ofSeconds(5).toMillis());
+        } finally {
+            release.countDown();
+            for (Future<?> occupant : occupants) {
+                occupant.get(5, TimeUnit.SECONDS);
+            }
+            executor.shutdownNow();
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(thrown.get()).isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage("요청이 많아 답하지 못했어요. 잠시 후 다시 시도해 주세요."),
+                () -> assertThat(interruptedAfterThrow).isTrue(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(llmBulkhead.availablePermits()).isEqualTo(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS)
+        );
     }
 
     @Test

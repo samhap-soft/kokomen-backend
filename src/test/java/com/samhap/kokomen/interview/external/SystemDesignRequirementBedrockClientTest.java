@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
+import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
@@ -65,6 +67,8 @@ class SystemDesignRequirementBedrockClientTest {
     private SystemDesignRequirementBedrockClient client;
     private Logger callLogger;
     private ListAppender<ILoggingEvent> callLogs;
+    private Logger clientLogger;
+    private ListAppender<ILoggingEvent> clientLogs;
 
     @BeforeEach
     void setUp() {
@@ -76,11 +80,16 @@ class SystemDesignRequirementBedrockClientTest {
         callLogs = new ListAppender<>();
         callLogs.start();
         callLogger.addAppender(callLogs);
+        clientLogger = (Logger) LoggerFactory.getLogger(SystemDesignRequirementBedrockClient.class);
+        clientLogs = new ListAppender<>();
+        clientLogs.start();
+        clientLogger.addAppender(clientLogs);
     }
 
     @AfterEach
     void tearDown() {
         callLogger.detachAppender(callLogs);
+        clientLogger.detachAppender(clientLogs);
     }
 
     @Test
@@ -111,6 +120,66 @@ class SystemDesignRequirementBedrockClientTest {
                 () -> assertThat(request.messages().get(0).role()).isEqualTo(ConversationRole.USER),
                 () -> assertThat(request.messages().get(0).content().get(0).text())
                         .isEqualTo(SystemDesignUserMessages.requirementAnswer(command))
+        );
+    }
+
+    // 운영 값에서는 answer-feedback-max-tokens도 1024라 위 테스트만으로는 어느 키를 읽는지 가려지지 않는다.
+    // 다른 키와 겹치지 않는 값으로 역질문 전용 maxTokens와 평가 temperature를 읽는지, 이 문제의 판정 필드를 싣는지 본다.
+    @Test
+    void 요청은_역질문_전용_maxTokens와_평가_temperature를_읽고_문제의_판정_필드를_싣는다() {
+        // given
+        BedrockConverseProperties properties = BedrockConversePropertiesFixture.builder()
+                .modelId("system-design-test-model")
+                .systemDesignRequirementMaxTokens(777)
+                .evaluationTemperature(0.3f)
+                .build();
+        SystemDesignRequirementBedrockClient distinctClient = new SystemDesignRequirementBedrockClient(
+                new BedrockConverseClient(bedrockRuntimeClient, properties, objectMapper()), properties);
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
+                .willReturn(toolUseResponse(verdicts("YES", "NO", "NO", "NO", "NO", "하루 평균 10만 개 정도예요.")));
+
+        // when
+        distinctClient.answerRequirement(command());
+
+        // then
+        ConverseRequest request = captureRequest();
+        assertAll(
+                () -> assertThat(request.modelId()).isEqualTo("system-design-test-model"),
+                () -> assertThat(request.inferenceConfig().maxTokens()).isEqualTo(777),
+                () -> assertThat(request.inferenceConfig().temperature()).isEqualTo(0.3f),
+                () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("reasoning",
+                        "requirement_daily_creation_volume", "requirement_read_write_ratio",
+                        "requirement_retention_period", "requirement_short_key_length",
+                        "requirement_click_statistics", "answer")
+        );
+    }
+
+    // 같은 문제면 면접·이전 역질문·이번 역질문이 달라도 도구와 system 블록(캐시포인트까지)이 글자 그대로 같아 캐시 프리픽스를 함께 쓴다.
+    @Test
+    void 같은_문제의_다른_역질문은_같은_도구와_system_블록으로_요청한다() {
+        // given
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
+                .willReturn(toolUseResponse(verdicts("YES", "NO", "NO", "NO", "NO", "하루 평균 10만 개 정도예요.")));
+        SystemDesignRequirementAnswerCommand first = new SystemDesignRequirementAnswerCommand(41L,
+                SystemDesignProblemContextFixture.urlShortener(), List.of(), "하루에 몇 개나 만들어지나요?");
+        SystemDesignRequirementAnswerCommand second = new SystemDesignRequirementAnswerCommand(42L,
+                SystemDesignProblemContextFixture.urlShortener(),
+                List.of(new SystemDesignRequirementTurn("하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.")),
+                "그럼 조회는요?");
+
+        // when
+        client.answerRequirement(first);
+        client.answerRequirement(second);
+
+        // then
+        ArgumentCaptor<ConverseRequest> captor = ArgumentCaptor.forClass(ConverseRequest.class);
+        verify(bedrockRuntimeClient, times(2)).converse(captor.capture());
+        ConverseRequest firstRequest = captor.getAllValues().get(0);
+        ConverseRequest secondRequest = captor.getAllValues().get(1);
+        assertAll(
+                () -> assertThat(secondRequest.toolConfig()).isEqualTo(firstRequest.toolConfig()),
+                () -> assertThat(secondRequest.system()).isEqualTo(firstRequest.system()),
+                () -> assertThat(secondRequest.messages()).isNotEqualTo(firstRequest.messages())
         );
     }
 
@@ -225,6 +294,11 @@ class SystemDesignRequirementBedrockClientTest {
                 .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("stopReason=max_tokens");
         assertFailureLogged();
+        assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.ERROR)
+                .singleElement()
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .asString()
+                .contains("interviewId: 31", "maxTokens: 1024");
     }
 
     @Test
@@ -323,6 +397,13 @@ class SystemDesignRequirementBedrockClientTest {
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .asString()
                 .contains("interviewId: 31", "callType: REQUIREMENT_ANSWER");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> inputSchemaPropertyNames(ConverseRequest request) {
+        Map<String, Object> schema = (Map<String, Object>) DocumentJsonConverter.toJavaObject(
+                request.toolConfig().tools().get(0).toolSpec().inputSchema().json());
+        return List.copyOf(((Map<String, Object>) schema.get("properties")).keySet());
     }
 
     private ConverseRequest captureRequest() {

@@ -63,9 +63,10 @@ public final class SystemDesignRequirementAnswerComposer {
 
     /**
      * 물은 요구사항이 없으면 LLM 답과 상관없이 정해진 문구다. 물은 요구사항이 있으면 LLM 답을 쓰되, 답이 비었거나
-     * {@value #MAX_ANSWER_LENGTH}자를 넘거나 물은 요구사항의 시드 답에 없는 숫자가 있으면 그 요구사항들의 시드 답을
-     * 문제 순서로 공백 하나를 두고 이어 쓴다(폴백). 숫자 검증은 지어낸 수치, 묻지 않은 요구사항의 수치, 면접자가 직접 할 계산을
-     * 막는다. "백만" 같은 한글 수사는 잡지 못해 프롬프트 규칙이 함께 막는다.
+     * {@value #MAX_ANSWER_LENGTH}자를 넘거나 정해진 문구를 담았거나 물은 요구사항의 시드 답에 없는 숫자가 있으면 그 요구사항들의
+     * 시드 답을 문제 순서로 공백 하나를 두고 이어 쓴다(폴백). 숫자 검증은 지어낸 수치, 묻지 않은 요구사항의 수치, 면접자가 직접 할
+     * 계산을 막는다. "백만" 같은 한글 수사와 전각 숫자처럼 ASCII가 아닌 숫자는 잡지 못해 프롬프트 규칙이 함께 막는다. 허용하는 숫자는
+     * 물은 요구사항의 시드 답에서만 나오므로, 이름에만 있는 숫자(예: "1인당")를 답에 쓰면 폴백된다.
      *
      * @param askedCodes {@link #resolveAskedCodes}가 돌려준 code
      * @param llmAnswer  엔티티를 되돌린 LLM 답
@@ -95,6 +96,10 @@ public final class SystemDesignRequirementAnswerComposer {
         }
         if (answer.length() > MAX_ANSWER_LENGTH) {
             return "답 길이 " + answer.length() + "자";
+        }
+        // 판정은 YES인데 답은 "등록되지 않은 내용"이면 둘이 어긋난다. 물은 것으로 기록하는 요구사항을 면접자가 실제로 듣게 한다.
+        if (answer.contains(DEFAULT_ANSWER)) {
+            return "물은 요구사항이 있는데 정해진 문구";
         }
         Set<String> unknownNumbers = new LinkedHashSet<>(numbers(answer));
         unknownNumbers.removeAll(numbers(seedAnswer));
