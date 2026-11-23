@@ -401,6 +401,8 @@ include::{snippetsDir}/resume-analysis-interview-start-voice-mode/curl-request.a
 
 요청 본문은 없다. 서버가 ACTIVE BASIC 문제 중 하나를 골라 요구사항 단계(`REQUIREMENTS`)로 면접을 만든다.
 토큰은 6개 이상 가졌는지만 확인하고 차감하지 않는다. 토큰은 답변이 저장될 때마다 1개씩 차감한다.
+토큰이 모자라면 400 `토큰 갯수가 부족합니다.`이고, 출제할 문제가 없거나 문제 데이터가 잘못됐으면
+500 `시스템 설계 문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.`다(문구를 그대로 보여 주고 다시 시도하게 하면 된다).
 
 include::{snippetsDir}/system-design-interview-start/http-request.adoc[]
 include::{snippetsDir}/system-design-interview-start/request-headers.adoc[]

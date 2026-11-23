@@ -131,7 +131,8 @@ public class SystemDesignInterviewService {
         return systemDesignInterview;
     }
 
-    // OSIV가 꺼져 있어 지연 로딩이 필요한 응답 조립까지 이 트랜잭션 안에서 끝낸다.
+    // 면접·역질문·질문·답변을 한 트랜잭션(한 스냅샷)에서 읽어, 요구사항 정리 완료나 답변 저장이 그 사이에 커밋돼도
+    // 단계·현재 질문·답변·다이어그램이 서로 어긋나지 않게 한다. OSIV가 꺼져 있어 응답 조립도 이 트랜잭션 안에서 끝낸다.
     @Transactional(readOnly = true)
     public SystemDesignInterviewResponse findInterview(Long interviewId, Long memberId) {
         SystemDesignInterview systemDesignInterview = readOwnedInterview(interviewId, memberId);

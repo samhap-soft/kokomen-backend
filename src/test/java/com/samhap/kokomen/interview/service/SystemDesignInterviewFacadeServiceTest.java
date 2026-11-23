@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.BDDMockito.willThrow;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.ConflictException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
@@ -16,10 +19,12 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSup
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
@@ -32,6 +37,7 @@ import com.samhap.kokomen.token.repository.TokenRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +59,8 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+    @Autowired
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
@@ -60,6 +68,21 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     private RedisService redisService;
     @Autowired
     private MeterRegistry meterRegistry;
+
+    // TRUNCATE로 테이블마다 id가 1부터 다시 시작해도 interview와 system_design_interview의 id가 같아지지 않게
+    // 다른 회원의 일반 면접을 먼저 둔다. interview id 대신 system_design_interview id로 찾는 실수가 드러난다.
+    @BeforeEach
+    void setUpOtherMemberInterview() {
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
+        // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.NETWORK)
+                .build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .build());
+    }
 
     // 루트 질문 메트릭 애스펙트는 기존 시작 파사드에만 걸린다. 시스템 설계 시작에 걸리면 루트 질문 id 조회가 null을 돌려
     // root_question_id="null" 계열이 생긴다. MeterRegistry는 캐시된 컨텍스트에서 테스트끼리 공유되므로 합계의 변화만 본다.
@@ -135,11 +158,13 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         assertAll(
                 () -> assertThat(response.stage()).isEqualTo(SystemDesignStage.HIGH_LEVEL),
                 () -> assertThat(response.curQuestionId()).isEqualTo(1),
-                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL)
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL),
+                // 해제가 실제로 실패해 키가 남아 있다. 남은 키는 TTL이 지나면 사라진다.
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isPresent()
         );
     }
 
-    // 스펙의 검사 순서(소유자 → 단계 → 진행 락)대로 단계 오류가 락 충돌보다 먼저다.
+    // 요구사항 정리 완료는 소유자 → 단계 → 진행 락 순서로 검사하므로 락이 잡혀 있어도 단계 오류가 먼저다.
     @Test
     void 다른_요청이_진행_락을_쥐고_있어도_단계가_틀리면_단계_오류를_먼저_준다() {
         // given
@@ -154,6 +179,21 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("이미 설계 단계예요.");
         assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request");
+    }
+
+    @Test
+    void 다른_회원의_면접이면_단계가_틀려도_403을_먼저_준다() {
+        // given
+        Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(owner,
+                problemTestSupport.saveProblem(), SystemDesignStage.HIGH_LEVEL);
+
+        // when & then
+        assertThatThrownBy(() -> systemDesignInterviewFacadeService.completeRequirements(
+                systemDesignInterview.getInterview().getId(), new MemberAuth(otherMember.getId())))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("본인의 면접만 볼 수 있어요.");
     }
 
     private double sumRootQuestionMetric() {

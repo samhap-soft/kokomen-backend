@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
@@ -22,6 +25,7 @@ import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
@@ -29,6 +33,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignEvaluationPointRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
@@ -73,6 +78,8 @@ class SystemDesignInterviewServiceTest extends BaseTest {
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
+    private RootQuestionRepository rootQuestionRepository;
+    @Autowired
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
@@ -90,9 +97,23 @@ class SystemDesignInterviewServiceTest extends BaseTest {
         assertThat(systemDesignInterviewRepository.findByInterviewId(response.interviewId())).isPresent();
     }
 
+    // 문제가 없어도 토큰 부족(400)을 먼저 알려 프론트가 토큰 구매로 안내하게 한다. 문제 오류(500)는 그 뒤다.
+    @Test
+    void 토큰이_부족하면_문제가_없어도_토큰_오류를_먼저_준다() {
+        // given
+        Member member = saveMemberWithTokens(5, 0);
+
+        // when & then
+        assertThatThrownBy(() -> systemDesignInterviewService.start(member.getId()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertNoInterviewStarted();
+    }
+
     @Test
     void ACTIVE_BASIC_문제_중_하나로_시작한다() {
         // given
+        saveOtherMemberInterviews();
         Member member = saveMemberWithTokens(6, 0);
         SystemDesignProblem first = problemTestSupport.saveProblem();
         SystemDesignProblem second = problemTestSupport.saveProblem();
@@ -239,6 +260,7 @@ class SystemDesignInterviewServiceTest extends BaseTest {
     @Test
     void 끝난_면접은_현재_질문이_null이고_단계는_DEEP_DIVE다() {
         // given
+        saveOtherMemberInterviews();
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
                 .member(member)
@@ -287,6 +309,32 @@ class SystemDesignInterviewServiceTest extends BaseTest {
                         .extracting(SystemDesignDiagramResponse.Block::id)
                         .containsExactly("client", "lb", "api", "cache", "db")
         );
+    }
+
+    // MySQLDatabaseCleaner가 매번 TRUNCATE해 테이블마다 id가 1부터 다시 시작하면 interview와 system_design_interview의 id,
+    // 질문 PK와 순번이 우연히 같아진다. 다른 회원의 면접 기록(시스템 설계 면접 1개와 그 질문 1개, 일반 면접 1개)을 먼저 두어
+    // id를 서로 어긋나게 한다. 문제는 INACTIVE라 start가 고르지 않는다.
+    private void saveOtherMemberInterviews() {
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
+        SystemDesignProblem retiredProblem = saveProblem(SystemDesignProblemState.INACTIVE, VALID_STAGES, 1);
+        Interview otherInterview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(otherMember)
+                .build());
+        SystemDesignInterview otherSystemDesignInterview = systemDesignInterviewRepository.save(
+                SystemDesignInterviewFixtureBuilder.builder()
+                        .interview(otherInterview)
+                        .problem(retiredProblem)
+                        .stage(SystemDesignStage.HIGH_LEVEL)
+                        .build());
+        saveQuestion(otherSystemDesignInterview, 1);
+        // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.NETWORK)
+                .build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .build());
     }
 
     private Member saveMemberWithTokens(int freeTokenCount, int paidTokenCount) {

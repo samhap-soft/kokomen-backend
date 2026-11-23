@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseControllerTest;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -28,6 +29,8 @@ import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
@@ -40,6 +43,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -47,6 +51,7 @@ import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
@@ -57,8 +62,10 @@ import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
@@ -78,6 +85,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Autowired
     private SystemDesignRequirementQuestionRepository requirementQuestionRepository;
     @Autowired
+    private SystemDesignProblemRepository problemRepository;
+    @Autowired
     private SystemDesignProblemQuestionRepository problemQuestionRepository;
     @Autowired
     private SystemDesignQuestionRepository questionRepository;
@@ -95,6 +104,38 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     private RedisService redisService;
     @Autowired
     private ObjectMapper objectMapper;
+
+    // MySQLDatabaseCleaner가 매번 TRUNCATE해 테이블마다 id가 1부터 다시 시작하면 interview와 system_design_interview의 id,
+    // 질문 PK와 순번이 우연히 같아진다. 다른 회원의 면접 기록(시스템 설계 면접 1개와 그 질문 1개, 일반 면접 1개)을 먼저 두어
+    // id를 서로 어긋나게 한다. 그래야 interview id 대신 다른 테이블의 PK를 찾거나 내보내는 실수가 테스트에서 드러난다.
+    // 문제는 INACTIVE라 시작 API가 고르지 않는다.
+    @BeforeEach
+    void setUpOtherMemberInterviews() {
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
+        SystemDesignProblem retiredProblem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
+                .state(SystemDesignProblemState.INACTIVE)
+                .build());
+        SystemDesignProblemQuestion retiredQuestion = problemQuestionRepository.save(
+                SystemDesignProblemQuestionFixtureBuilder.builder()
+                        .problem(retiredProblem)
+                        .questionOrder(1)
+                        .stage(SystemDesignStage.HIGH_LEVEL)
+                        .build());
+        SystemDesignInterview otherInterview = saveSystemDesignInterview(otherMember, retiredProblem,
+                SystemDesignStage.HIGH_LEVEL, null);
+        questionRepository.save(SystemDesignQuestionFixtureBuilder.builder()
+                .systemDesignInterview(otherInterview)
+                .problemQuestion(retiredQuestion)
+                .build());
+        // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
+                .category(Category.NETWORK)
+                .build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .build());
+    }
 
     @Test
     void 시스템_설계_면접을_시작한다() throws Exception {
@@ -122,11 +163,13 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
         // then
         Long interviewId = readBody(result).get("interview_id").asLong();
+        Interview interview = interviewRepository.findById(interviewId).orElseThrow();
         assertAll(
-                () -> assertThat(interviewRepository.findById(interviewId)).get()
-                        .extracting(Interview::getInterviewType)
-                        .isEqualTo(InterviewType.SYSTEM_DESIGN),
-                () -> assertThat(systemDesignInterviewRepository.findByInterviewId(interviewId)).isPresent(),
+                () -> assertThat(interview.getInterviewType()).isEqualTo(InterviewType.SYSTEM_DESIGN),
+                () -> assertThat(interview.getMember().getId()).isEqualTo(member.getId()),
+                () -> assertThat(systemDesignInterviewRepository.findByInterviewId(interviewId)).get()
+                        .extracting(SystemDesignInterview::getStage)
+                        .isEqualTo(SystemDesignStage.REQUIREMENTS),
                 () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(10),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero()
         );
@@ -154,22 +197,20 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("message").description("FREE와 PAID 토큰을 합해 6개보다 적을 때의 오류 문구")
                         )
                 ));
-        assertAll(
-                () -> assertThat(interviewRepository.count()).isZero(),
-                () -> assertThat(systemDesignInterviewRepository.count()).isZero()
-        );
+        assertThat(interviewRepository.findByMember(member, Pageable.unpaged())).isEmpty();
     }
 
     @Test
     void 시작은_로그인하지_않으면_401() throws Exception {
         // given
         problemTestSupport.saveProblem();
+        long interviewCount = interviewRepository.count();
 
         // when & then
         mockMvc.perform(post("/api/v1/interviews/system-design"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
-        assertThat(interviewRepository.count()).isZero();
+        assertThat(interviewRepository.count()).isEqualTo(interviewCount);
     }
 
     @Test
@@ -428,8 +469,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                                 fieldWithPath("cur_question").description("첫 설계 질문. 문제의 1번 기준 질문 그대로")
                         )
                 ));
-        List<SystemDesignQuestion> questions = questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(
-                systemDesignInterview);
+        List<SystemDesignQuestion> questions = readQuestions(systemDesignInterview);
         assertAll(
                 () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL),
                 () -> assertThat(questions).extracting(SystemDesignQuestion::getQuestionOrder,
@@ -486,7 +526,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 ));
         assertAll(
                 () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL),
-                () -> assertThat(questionRepository.count()).isZero(),
+                () -> assertThat(readQuestions(systemDesignInterview)).isEmpty(),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
         );
     }
@@ -522,7 +562,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         assertAll(
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
                 () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
-                () -> assertThat(questionRepository.count()).isZero()
+                () -> assertThat(readQuestions(systemDesignInterview)).isEmpty()
         );
     }
 
@@ -571,7 +611,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("본인의 면접만 볼 수 있어요."));
         assertAll(
                 () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
-                () -> assertThat(questionRepository.count()).isZero(),
+                () -> assertThat(readQuestions(systemDesignInterview)).isEmpty(),
                 () -> assertThat(redisService.get(lockKeyOf(otherMember), String.class)).isEmpty()
         );
     }
@@ -590,7 +630,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS);
     }
 
-    // E2 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
+    // 면접 조회 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
     private static ResponseFieldsSnippet interviewResponseFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
                 fieldWithPath("interview_id").description("시스템 설계 면접 ID"),
@@ -702,6 +742,10 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
     private SystemDesignStage readStage(SystemDesignInterview systemDesignInterview) {
         return systemDesignInterviewRepository.findById(systemDesignInterview.getId()).orElseThrow().getStage();
+    }
+
+    private List<SystemDesignQuestion> readQuestions(SystemDesignInterview systemDesignInterview) {
+        return questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
     }
 
     private static String lockKeyOf(Member member) {
