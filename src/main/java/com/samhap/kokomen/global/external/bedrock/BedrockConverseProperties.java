@@ -16,6 +16,7 @@ public record BedrockConverseProperties(
         @NotNull Integer resumeEvaluationMaxTokens,
         @NotNull Float evaluationTemperature,
         @NotNull Float generationTemperature,
-        @NotNull Float feedbackTemperature
+        @NotNull Float feedbackTemperature,
+        @NotNull Integer systemDesignRequirementMaxTokens
 ) {
 }

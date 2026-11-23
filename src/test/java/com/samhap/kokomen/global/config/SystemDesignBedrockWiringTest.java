@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
+import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -28,7 +29,8 @@ class SystemDesignBedrockWiringTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
-            .withUserConfiguration(AwsConfig.class, TestBeans.class);
+            .withUserConfiguration(AwsConfig.class, TestBeans.class)
+            .withBean(SystemDesignRequirementBedrockClient.class);
 
     @Test
     void 컨텍스트가_모호성_없이_기동한다() {
@@ -55,6 +57,15 @@ class SystemDesignBedrockWiringTest {
         contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(
                 context.getBean("systemDesignBedrockConverseClient"), "bedrockRuntimeClient"))
                 .isSameAs(context.getBean("systemDesignBedrockRuntimeClient")));
+    }
+
+    // @Qualifier가 생성자 파라미터에서 빠지면 공용 converse 빈(@Primary)이 조용히 주입된다. BaseTest는 이 클라이언트를 목으로 바꾸므로
+    // 일반 테스트로는 드러나지 않는다.
+    @Test
+    void 요구사항_클라이언트는_시스템_설계_전용_converse_클라이언트를_주입받는다() {
+        contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(
+                context.getBean(SystemDesignRequirementBedrockClient.class), "converseClient"))
+                .isSameAs(context.getBean("systemDesignBedrockConverseClient")));
     }
 
     /**

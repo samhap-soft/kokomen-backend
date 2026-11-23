@@ -35,6 +35,7 @@ public final class BedrockConversePropertiesFixture {
                 KEY_PREFIX + "evaluation-temperature=" + properties.evaluationTemperature(),
                 KEY_PREFIX + "generation-temperature=" + properties.generationTemperature(),
                 KEY_PREFIX + "feedback-temperature=" + properties.feedbackTemperature(),
+                KEY_PREFIX + "system-design-requirement-max-tokens=" + properties.systemDesignRequirementMaxTokens(),
         };
     }
 
@@ -49,6 +50,7 @@ public final class BedrockConversePropertiesFixture {
         private float evaluationTemperature = 0.2f;
         private float generationTemperature = 0.7f;
         private float feedbackTemperature = 0.5f;
+        private int systemDesignRequirementMaxTokens = 1024;
 
         private Builder() {
         }
@@ -98,10 +100,15 @@ public final class BedrockConversePropertiesFixture {
             return this;
         }
 
+        public Builder systemDesignRequirementMaxTokens(int systemDesignRequirementMaxTokens) {
+            this.systemDesignRequirementMaxTokens = systemDesignRequirementMaxTokens;
+            return this;
+        }
+
         public BedrockConverseProperties build() {
             return new BedrockConverseProperties(modelId, proceedMaxTokens, endMaxTokens, answerFeedbackMaxTokens,
                     resumeQuestionMaxTokens, resumeEvaluationMaxTokens, evaluationTemperature, generationTemperature,
-                    feedbackTemperature);
+                    feedbackTemperature, systemDesignRequirementMaxTokens);
         }
     }
 }
