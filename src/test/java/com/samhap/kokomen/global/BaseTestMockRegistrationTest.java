@@ -25,6 +25,12 @@ class BaseTestMockRegistrationTest extends BaseTest {
         assertThat(Mockito.mockingDetails(systemDesignRequirementBedrockClient).isMock()).isTrue();
     }
 
+    // 답변 채점은 워커에서 실제 Bedrock을 부르므로 목이 빠지면 테스트가 외부 호출을 시도한다.
+    @Test
+    void 시스템_설계_답변_채점_LLM_클라이언트가_목으로_등록된다() {
+        assertThat(Mockito.mockingDetails(systemDesignAnswerBedrockClient).isMock()).isTrue();
+    }
+
     // 비동기 워커 목은 BaseTest에 단일 선언되어 있어야 한다. 하위 클래스가 같은 타입을 다시 선언하면
     // Spring이 중복 오버라이드를 거부해 그 클래스의 컨텍스트 기동이 실패한다.
     @Test
@@ -67,7 +73,7 @@ class BaseTestMockRegistrationTest extends BaseTest {
                 .count();
 
         assertAll(
-                () -> assertThat(mocks).isEqualTo(13),
+                () -> assertThat(mocks).isEqualTo(14),
                 () -> assertThat(spies).isEqualTo(2)
         );
     }

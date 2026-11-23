@@ -6,6 +6,7 @@ import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.interview.external.AnswerFeedbackBedrockClient;
 import com.samhap.kokomen.interview.external.InterviewProceedBedrockClient;
 import com.samhap.kokomen.interview.external.SupertoneClient;
+import com.samhap.kokomen.interview.external.SystemDesignAnswerBedrockClient;
 import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClient;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
@@ -61,6 +62,8 @@ public abstract class BaseTest {
     protected PdfTextExtractor pdfTextExtractor;
     @MockitoBean
     protected SystemDesignRequirementBedrockClient systemDesignRequirementBedrockClient;
+    @MockitoBean
+    protected SystemDesignAnswerBedrockClient systemDesignAnswerBedrockClient;
     @MockitoSpyBean
     protected RedisTemplate<String, Object> redisTemplate;
     @MockitoSpyBean

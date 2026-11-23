@@ -36,6 +36,8 @@ public final class BedrockConversePropertiesFixture {
                 KEY_PREFIX + "generation-temperature=" + properties.generationTemperature(),
                 KEY_PREFIX + "feedback-temperature=" + properties.feedbackTemperature(),
                 KEY_PREFIX + "system-design-requirement-max-tokens=" + properties.systemDesignRequirementMaxTokens(),
+                KEY_PREFIX + "system-design-answer-max-tokens=" + properties.systemDesignAnswerMaxTokens(),
+                KEY_PREFIX + "system-design-end-max-tokens=" + properties.systemDesignEndMaxTokens(),
         };
     }
 
@@ -51,6 +53,8 @@ public final class BedrockConversePropertiesFixture {
         private float generationTemperature = 0.7f;
         private float feedbackTemperature = 0.5f;
         private int systemDesignRequirementMaxTokens = 1024;
+        private int systemDesignAnswerMaxTokens = 2048;
+        private int systemDesignEndMaxTokens = 2560;
 
         private Builder() {
         }
@@ -105,10 +109,21 @@ public final class BedrockConversePropertiesFixture {
             return this;
         }
 
+        public Builder systemDesignAnswerMaxTokens(int systemDesignAnswerMaxTokens) {
+            this.systemDesignAnswerMaxTokens = systemDesignAnswerMaxTokens;
+            return this;
+        }
+
+        public Builder systemDesignEndMaxTokens(int systemDesignEndMaxTokens) {
+            this.systemDesignEndMaxTokens = systemDesignEndMaxTokens;
+            return this;
+        }
+
         public BedrockConverseProperties build() {
             return new BedrockConverseProperties(modelId, proceedMaxTokens, endMaxTokens, answerFeedbackMaxTokens,
                     resumeQuestionMaxTokens, resumeEvaluationMaxTokens, evaluationTemperature, generationTemperature,
-                    feedbackTemperature, systemDesignRequirementMaxTokens);
+                    feedbackTemperature, systemDesignRequirementMaxTokens, systemDesignAnswerMaxTokens,
+                    systemDesignEndMaxTokens);
         }
     }
 }

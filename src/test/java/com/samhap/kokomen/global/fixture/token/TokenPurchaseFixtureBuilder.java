@@ -2,6 +2,7 @@ package com.samhap.kokomen.global.fixture.token;
 
 import com.samhap.kokomen.token.domain.TokenPurchase;
 import com.samhap.kokomen.token.domain.TokenPurchaseState;
+import java.util.UUID;
 
 public class TokenPurchaseFixtureBuilder {
 
@@ -97,10 +98,13 @@ public class TokenPurchaseFixtureBuilder {
         if ("간편결제".equals(paymentMethod) && easyPayProvider == null) {
             easyPayProvider = "카카오페이";
         }
+        // payment_key는 UNIQUE(uk_token_purchase_payment_key)다. 반복문에서 기본값으로 여러 건을 저장해도 겹치지 않게
+        // 시각이 아니라 UUID로 만든다. 시각으로 만들면 같은 밀리초에 만든 두 건이 같은 값을 받는다. order_id는 UNIQUE가 아니지만
+        // 실제 주문처럼 건마다 다르게 같은 방식으로 만든다.
         return new TokenPurchase(
                 memberId != null ? memberId : 1L,
-                paymentKey != null ? paymentKey : "test-payment-key-" + System.currentTimeMillis(),
-                orderId != null ? orderId : "test-order-id-" + System.currentTimeMillis(),
+                paymentKey != null ? paymentKey : "test-payment-key-" + UUID.randomUUID(),
+                orderId != null ? orderId : "test-order-id-" + UUID.randomUUID(),
                 totalAmount != null ? totalAmount : 1000L,
                 orderName != null ? orderName : "테스트 주문",
                 productName != null ? productName : "token",
