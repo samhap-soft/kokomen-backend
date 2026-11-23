@@ -1189,11 +1189,21 @@ class InterviewServiceTest extends BaseTest {
     }
 
     @Test
-    void 시스템_설계_행이_없는_페이지는_시스템_설계_조회를_하지_않는다() {
+    void 내_목록에_시스템_설계_행이_여러_개여도_시스템_설계_조회는_한_번만_나간다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
-        interviewRepository.save(InterviewFixtureBuilder.builder().member(member).rootQuestion(rootQuestion).build());
+        Interview inProgressInterview = interviewRepository.save(
+                InterviewFixtureBuilder.systemDesign().member(member).build());
+        saveSystemDesignInterview(inProgressInterview, 3, 2);
+        for (int i = 0; i < 2; i++) {
+            Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                    .member(member)
+                    .interviewState(InterviewState.FINISHED)
+                    .totalScore(30)
+                    .finishedAt(LocalDateTime.now())
+                    .build());
+            saveSystemDesignInterview(finishedInterview, 6, 6);
+        }
         PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
 
         // when
@@ -1201,7 +1211,34 @@ class InterviewServiceTest extends BaseTest {
                 new MemberAuth(member.getId()), null, pageRequest));
 
         // then
-        assertThat(systemDesignSelectCount).isZero();
+        assertThat(systemDesignSelectCount).isOne();
+    }
+
+    @Test
+    void 시스템_설계_행이_없는_페이지는_시스템_설계_조회를_하지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(10)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        long myListSelectCount = countSystemDesignSelects(() -> interviewService.findMyInterviews(
+                new MemberAuth(member.getId()), null, pageRequest));
+        long memberListSelectCount = countSystemDesignSelects(() -> interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), pageRequest));
+
+        // then
+        assertAll(
+                () -> assertThat(myListSelectCount).isZero(),
+                () -> assertThat(memberListSelectCount).isZero()
+        );
     }
 
     // 기준 질문 1~questionCount번을 내고 그중 앞에서부터 answerCount개에 답한 system_design_interview 행을 저장한다.
