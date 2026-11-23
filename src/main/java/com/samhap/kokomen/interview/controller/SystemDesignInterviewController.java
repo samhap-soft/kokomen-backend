@@ -8,6 +8,7 @@ import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.interview.service.SystemDesignInterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,16 @@ public class SystemDesignInterviewController {
     ) {
         return ResponseEntity.ok(
                 systemDesignInterviewFacadeService.findInterview(parseInterviewId(interviewId), memberAuth));
+    }
+
+    // 요청 본문은 받지 않는다. 역질문을 하나도 하지 않았어도 끝낼 수 있다.
+    @PostMapping("/{interviewId}/requirements/complete")
+    public ResponseEntity<SystemDesignRequirementsCompleteResponse> completeRequirements(
+            @Authentication MemberAuth memberAuth,
+            @PathVariable String interviewId
+    ) {
+        return ResponseEntity.ok(
+                systemDesignInterviewFacadeService.completeRequirements(parseInterviewId(interviewId), memberAuth));
     }
 
     // 면접을 가리키지 못하는 경로 값(숫자가 아님, 빈 값, long 범위 밖)은 잘못된 입력(400)이 아니라 없는 면접(404)으로 답한다.

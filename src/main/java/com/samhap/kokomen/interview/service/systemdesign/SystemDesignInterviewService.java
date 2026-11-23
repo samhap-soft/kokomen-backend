@@ -29,6 +29,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignIntervi
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignQuestionAndAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
@@ -49,6 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemDesignInterviewService {
 
     private static final SystemDesignDifficulty START_DIFFICULTY = SystemDesignDifficulty.BASIC;
+    private static final int FIRST_QUESTION_ORDER = 1;
 
     private final TokenFacadeService tokenFacadeService;
     private final MemberService memberService;
@@ -170,5 +172,28 @@ public class SystemDesignInterviewService {
             return Optional.empty();
         }
         return Optional.of(lastQuestion);
+    }
+
+    // 진행 락을 잡기 전에 흔한 오류(404·403·409)를 빨리 돌려준다. 락 안에서 completeRequirements가 같은 검사를 다시 한다.
+    @Transactional(readOnly = true)
+    public void validateRequirementsCompletable(Long interviewId, Long memberId) {
+        readOwnedInterview(interviewId, memberId).validateRequirementsCompletable();
+    }
+
+    /**
+     * 진행 락 안에서 부른다. 단계를 개략 설계로 바꾸고 문제의 1번 기준 질문을 LLM 없이 그대로 첫 질문으로 저장한다.
+     */
+    @Transactional
+    public SystemDesignRequirementsCompleteResponse completeRequirements(Long interviewId, Long memberId) {
+        SystemDesignInterview systemDesignInterview = readOwnedInterview(interviewId, memberId);
+        systemDesignInterview.completeRequirements();
+        SystemDesignProblemQuestion firstProblemQuestion = problemQuestionRepository
+                .findByProblemAndQuestionOrder(systemDesignInterview.getProblem(), FIRST_QUESTION_ORDER)
+                .orElseThrow(() -> new IllegalStateException(
+                        "시스템 설계 문제에 1번 기준 질문이 없습니다. problemId: "
+                                + systemDesignInterview.getProblem().getId()));
+        SystemDesignQuestion firstQuestion = questionRepository.save(new SystemDesignQuestion(systemDesignInterview,
+                firstProblemQuestion, firstProblemQuestion.getContent()));
+        return SystemDesignRequirementsCompleteResponse.of(systemDesignInterview, firstQuestion);
     }
 }

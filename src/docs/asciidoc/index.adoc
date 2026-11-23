@@ -445,6 +445,31 @@ include::{snippetsDir}/system-design-interview-forbidden/http-request.adoc[]
 include::{snippetsDir}/system-design-interview-forbidden/http-response.adoc[]
 include::{snippetsDir}/system-design-interview-forbidden/response-fields.adoc[]
 
+=== 요구사항 정리 완료
+
+요청 본문은 없다. 역질문을 하나도 하지 않았어도 끝낼 수 있다. 단계가 `HIGH_LEVEL`로 바뀌고, 문제의 1번 기준 질문이 첫 설계 질문(`cur_question_id = 1`)으로 나온다.
+
+include::{snippetsDir}/system-design-interview-complete-requirements/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/request-headers.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/path-parameters.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/response-fields.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements/curl-request.adoc[]
+
+==== 요구사항 정리 완료 예외 - 이미 설계 단계
+
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-complete-requirements-conflict/response-fields.adoc[]
+
+==== 시스템 설계 면접 예외 - 이전 요청 처리 중
+
+같은 회원의 다른 진행 요청(시스템 설계 요구사항 정리 완료, 기존 면접 답변 채점 등)을 처리하는 중이면 409다. 잠시 뒤 다시 보내면 된다.
+
+include::{snippetsDir}/system-design-interview-proceed-locked/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-proceed-locked/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-proceed-locked/response-fields.adoc[]
+
 == 답변
 
 === 답변 좋아요 요청

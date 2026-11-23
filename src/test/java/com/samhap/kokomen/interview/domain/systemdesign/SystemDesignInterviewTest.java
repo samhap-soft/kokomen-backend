@@ -62,6 +62,26 @@ class SystemDesignInterviewTest {
     }
 
     @Test
+    void 요구사항_완료_가능_검사는_설계_단계면_409이고_단계를_바꾸지_않는다() {
+        // given
+        SystemDesignInterview requirements = interviewAt(SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview highLevel = interviewAt(SystemDesignStage.HIGH_LEVEL);
+        SystemDesignInterview deepDive = interviewAt(SystemDesignStage.DEEP_DIVE);
+
+        // when & then
+        assertAll(
+                () -> assertThatCode(requirements::validateRequirementsCompletable).doesNotThrowAnyException(),
+                () -> assertThat(requirements.getStage()).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThatThrownBy(highLevel::validateRequirementsCompletable)
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("이미 설계 단계예요."),
+                () -> assertThatThrownBy(deepDive::validateRequirementsCompletable)
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("이미 설계 단계예요.")
+        );
+    }
+
+    @Test
     void 요구사항을_완료하면_개략_설계_단계가_된다() {
         // given
         SystemDesignInterview systemDesignInterview = interviewAt(SystemDesignStage.REQUIREMENTS);

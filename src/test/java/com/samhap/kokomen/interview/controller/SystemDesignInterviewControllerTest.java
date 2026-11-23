@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
@@ -31,6 +32,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSup
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
@@ -47,10 +49,12 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignIntervie
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
+import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -64,6 +68,8 @@ import org.springframework.test.web.servlet.MvcResult;
 class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
     private static final String INTERVIEW_URL = "/api/v1/interviews/system-design/{interviewId}";
+    private static final String COMPLETE_REQUIREMENTS_URL =
+            "/api/v1/interviews/system-design/{interviewId}/requirements/complete";
 
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
@@ -85,6 +91,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private RedisService redisService;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -386,6 +394,202 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
     }
 
+    @Test
+    void 요구사항_정리를_끝내면_첫_기준_질문을_낸다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS, null);
+        saveRequirementQuestion(systemDesignInterview, 1);
+        saveRequirementQuestion(systemDesignInterview, 2);
+        String firstBaseQuestion = readBaseQuestion(problem, 1);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("HIGH_LEVEL"))
+                .andExpect(jsonPath("$.cur_question_id").value(1))
+                .andExpect(jsonPath("$.cur_question").value(firstBaseQuestion))
+                .andDo(document("system-design-interview-complete-requirements",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("stage").description("바뀐 단계. 항상 HIGH_LEVEL"),
+                                fieldWithPath("cur_question_id").description("첫 설계 질문의 순번. 항상 1"),
+                                fieldWithPath("cur_question").description("첫 설계 질문. 문제의 1번 기준 질문 그대로")
+                        )
+                ));
+        List<SystemDesignQuestion> questions = questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(
+                systemDesignInterview);
+        assertAll(
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL),
+                () -> assertThat(questions).extracting(SystemDesignQuestion::getQuestionOrder,
+                                SystemDesignQuestion::getStage, SystemDesignQuestion::getContent)
+                        .containsExactly(tuple(1, SystemDesignStage.HIGH_LEVEL, firstBaseQuestion)),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    @Test
+    void 역질문_없이도_끝낼_수_있다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("HIGH_LEVEL"))
+                .andExpect(jsonPath("$.cur_question_id").value(1));
+        assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL);
+    }
+
+    @Test
+    void 이미_설계_단계면_409() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.HIGH_LEVEL, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 설계 단계예요."))
+                .andDo(document("system-design-interview-complete-requirements-conflict",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message").description("요구사항 단계가 이미 끝났을 때의 오류 문구")
+                        )
+                ));
+        assertAll(
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.HIGH_LEVEL),
+                () -> assertThat(questionRepository.count()).isZero(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    @Test
+    void 다른_요청이_진행_락을_쥐고_있으면_409이고_질문이_생기지_않는다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요."))
+                .andDo(document("system-design-interview-proceed-locked",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("같은 회원의 다른 요청(기존 면접 답변 포함)을 처리하는 중일 때의 오류 문구")
+                        )
+                ));
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThat(questionRepository.count()).isZero()
+        );
+    }
+
+    @Test
+    void 없는_면접은_404() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId() + 999L)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, "not-a-number")
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        assertAll(
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    @Test
+    void 다른_회원의_면접은_403이고_단계와_질문이_그대로다() throws Exception {
+        // given
+        Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(owner,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("본인의 면접만 볼 수 있어요."));
+        assertAll(
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThat(questionRepository.count()).isZero(),
+                () -> assertThat(redisService.get(lockKeyOf(otherMember), String.class)).isEmpty()
+        );
+    }
+
+    @Test
+    void 로그인하지_않으면_401() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
+        assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS);
+    }
+
     // E2 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
     private static ResponseFieldsSnippet interviewResponseFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
@@ -482,6 +686,26 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .problemQuestion(problemQuestion)
                 .content(content)
                 .build());
+    }
+
+    private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder) {
+        requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(questionOrder)
+                .build());
+    }
+
+    private String readBaseQuestion(SystemDesignProblem problem, int questionOrder) {
+        return problemQuestionRepository.findByProblemAndQuestionOrder(problem, questionOrder).orElseThrow()
+                .getContent();
+    }
+
+    private SystemDesignStage readStage(SystemDesignInterview systemDesignInterview) {
+        return systemDesignInterviewRepository.findById(systemDesignInterview.getId()).orElseThrow().getStage();
+    }
+
+    private static String lockKeyOf(Member member) {
+        return InterviewProceedFacadeService.createInterviewProceedLockKey(member.getId());
     }
 
     private Member saveMemberWithTokens(int freeTokenCount, int paidTokenCount) {
