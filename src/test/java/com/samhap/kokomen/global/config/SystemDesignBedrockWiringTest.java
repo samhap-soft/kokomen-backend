@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
+import com.samhap.kokomen.interview.external.SystemDesignAnswerBedrockClient;
 import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClient;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,8 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeServiceClien
 
 /**
  * 시스템 설계 역질문 답(요청 스레드에서 부르는 동기 호출)이 공용 빈(소켓 60초, apiCall 타임아웃 없음, SDK 기본 재시도)이 아니라
- * 짧은 타임아웃의 전용 빈에 물리는지 고정한다. BaseTest는 Bedrock 클라이언트를 목으로 바꾸므로 실제 배선은
- * ApplicationContextRunner로 필요한 빈만 띄워 본다.
+ * 짧은 타임아웃의 전용 빈에 물리고, 답변 채점(비동기 워커에서 부르는 호출)은 기존 V2 답변 흐름처럼 공용 빈에 물리는지 고정한다.
+ * BaseTest는 Bedrock 클라이언트를 목으로 바꾸므로 실제 배선은 ApplicationContextRunner로 필요한 빈만 띄워 본다.
  */
 class SystemDesignBedrockWiringTest {
 
@@ -35,7 +36,8 @@ class SystemDesignBedrockWiringTest {
             .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
-            .withBean(SystemDesignRequirementBedrockClient.class);
+            .withBean(SystemDesignRequirementBedrockClient.class)
+            .withBean(SystemDesignAnswerBedrockClient.class);
 
     @Test
     void 컨텍스트가_모호성_없이_기동한다() {
@@ -93,6 +95,17 @@ class SystemDesignBedrockWiringTest {
         contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(
                 context.getBean(SystemDesignRequirementBedrockClient.class), "converseClient"))
                 .isSameAs(context.getBean("systemDesignBedrockConverseClient")));
+    }
+
+    // 답변 채점은 워커 스레드에서 부르므로 요청 스레드를 잡지 않아 공용 converse 빈(@Primary)을 쓴다. 전용 빈을 쓰면 apiCall 25초가
+    // 마지막 답변 평가(상한까지 쓰면 생성만 약 41초)를 끊고, 연결 8개를 역질문과 나눠 쓰게 된다.
+    @Test
+    void 답변_클라이언트는_공용_converse_클라이언트를_주입받는다() {
+        contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(
+                context.getBean(SystemDesignAnswerBedrockClient.class), "converseClient"))
+                .isSameAs(context.getBean(BedrockConverseClient.class))
+                .isNotSameAs(context.getBean("systemDesignBedrockConverseClient"))
+                .isNotSameAs(context.getBean("resumeAnalysisBedrockConverseClient")));
     }
 
     /**
