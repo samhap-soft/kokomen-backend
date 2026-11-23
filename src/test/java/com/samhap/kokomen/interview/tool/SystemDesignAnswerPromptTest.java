@@ -90,33 +90,24 @@ class SystemDesignAnswerPromptTest {
     }
 
     // system 블록이 "호출 종류 × 문제"마다 글자 그대로 같아야 같은 문제의 모든 채점 호출이 캐시 프리픽스를 함께 쓴다.
-    // 저장소가 숨은 요구사항과 평가 포인트를 어떤 순서로 돌려주든, 면접과 답변이 무엇이든 같은 system이 나와야 한다.
+    // system은 문제 문맥만으로 만들므로, 저장소가 숨은 요구사항과 평가 포인트를 표시 순서와 반대로 돌려줘도 같은 system(정본)이어야 한다.
+    // 면접마다 다른 값이 system에 들어가지 않는지는 클라이언트 테스트가 실제 요청 두 개로 본다.
     @Test
-    void L2_L3_system_프롬프트는_요청마다_바뀌는_값을_담지_않는다() throws IOException {
+    void L2_L3_system_프롬프트는_저장소가_돌려준_순서와_상관없이_같다() throws IOException {
         // given
-        SystemDesignAnswerCommand first = answerCommand(urlShortenerContextFromEntities(false), List.of(),
-                List.of(), turn(1, Q1, "클라이언트 요청은 API 서버로 바로 갑니다."), SystemDesignDiagramFixture.urlShortenerStarter(),
-                nextBase(2, Q2));
-        SystemDesignAnswerCommand second = answerCommand(urlShortenerContextFromEntities(true),
-                List.of(new SystemDesignRequirementTurn("하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.")),
-                List.of(turn(1, Q1, "로드 밸런서 뒤에 API 서버를 두 대 둡니다.")),
-                turn(2, Q2, "범위를 나눠 받는 카운터를 Base62로 인코딩합니다."), SystemDesignDiagramFixture.withCache(),
-                nextBase(3, Q3));
+        SystemDesignProblemContext inOrder = urlShortenerContextFromEntities(false);
+        SystemDesignProblemContext reversed = urlShortenerContextFromEntities(true);
 
         // when
-        String firstAnswerSystem = SystemDesignSystemMessages.answer(first.problem());
-        String secondAnswerSystem = SystemDesignSystemMessages.answer(second.problem());
-        String firstEndSystem = SystemDesignSystemMessages.end(first.problem());
-        String secondEndSystem = SystemDesignSystemMessages.end(second.problem());
+        String answerSystem = SystemDesignSystemMessages.answer(reversed);
+        String endSystem = SystemDesignSystemMessages.end(reversed);
 
         // then
         assertAll(
-                () -> assertThat(secondAnswerSystem).isEqualTo(firstAnswerSystem)
+                () -> assertThat(answerSystem).isEqualTo(SystemDesignSystemMessages.answer(inOrder))
                         .isEqualTo(SystemDesignCanonicalPromptFile.read(L2_SYSTEM_PROMPT)),
-                () -> assertThat(secondEndSystem).isEqualTo(firstEndSystem)
-                        .isEqualTo(SystemDesignCanonicalPromptFile.read(L3_SYSTEM_PROMPT)),
-                () -> assertThat(secondAnswerSystem).doesNotContain(second.currentTurn().answer(), Q2, "Redis 캐시 ⚡"),
-                () -> assertThat(secondEndSystem).doesNotContain(second.currentTurn().answer(), Q2, "Redis 캐시 ⚡")
+                () -> assertThat(endSystem).isEqualTo(SystemDesignSystemMessages.end(inOrder))
+                        .isEqualTo(SystemDesignCanonicalPromptFile.read(L3_SYSTEM_PROMPT))
         );
     }
 

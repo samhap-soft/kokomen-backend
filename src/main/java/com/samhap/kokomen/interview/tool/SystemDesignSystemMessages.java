@@ -87,10 +87,6 @@ public final class SystemDesignSystemMessages {
                 REQUIREMENT_ANSWER_OUTPUT);
     }
 
-    private static String topic(SystemDesignProblemContext problem) {
-        return tagged("topic", "제목: " + problem.title() + LINE_SEPARATOR + "설명: " + problem.description());
-    }
-
     private static String hiddenRequirementLines(List<Requirement> requirements) {
         if (requirements.isEmpty()) {
             return NONE;
@@ -148,11 +144,6 @@ public final class SystemDesignSystemMessages {
                 END_OUTPUT);
     }
 
-    private static String difficultyStandard(SystemDesignProblemContext problem) {
-        return SystemDesignPromptFragments.DIFFICULTY_STANDARD_TEMPLATE.replace(
-                SystemDesignPromptFragments.DIFFICULTY_COMMENT_PLACEHOLDER, problem.difficultyComment());
-    }
-
     private static String evaluationPointLines(List<EvaluationPoint> points) {
         if (points.isEmpty()) {
             return NONE;
@@ -160,6 +151,15 @@ public final class SystemDesignSystemMessages {
         return points.stream()
                 .map(point -> "- " + SystemDesignToolSchemas.pointFieldName(point.code()) + " | " + point.description())
                 .collect(Collectors.joining(LINE_SEPARATOR));
+    }
+
+    private static String difficultyStandard(SystemDesignProblemContext problem) {
+        return SystemDesignPromptFragments.DIFFICULTY_STANDARD_TEMPLATE.replace(
+                SystemDesignPromptFragments.DIFFICULTY_COMMENT_PLACEHOLDER, problem.difficultyComment());
+    }
+
+    private static String topic(SystemDesignProblemContext problem) {
+        return tagged("topic", "제목: " + problem.title() + LINE_SEPARATOR + "설명: " + problem.description());
     }
 
     static String tagged(String tag, String content) {

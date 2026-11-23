@@ -70,8 +70,8 @@ class SystemDesignAnswerBedrockClientTest {
     private static final String END_TOOL_NAME = "submit_system_design_end";
     private static final String ANSWER_CALL_FAILED_MESSAGE = "시스템 설계 답변 평가 호출에 실패했습니다.";
     private static final String END_CALL_FAILED_MESSAGE = "시스템 설계 마지막 답변 평가 호출에 실패했습니다.";
-    private static final String RANK_INVALID_MESSAGE = "시스템 설계 답변 평가의 rank가 없거나 A~F가 아닙니다.";
-    private static final String FEEDBACK_EMPTY_MESSAGE = "시스템 설계 답변 평가의 feedback이 비었습니다.";
+    private static final String RANK_INVALID_MESSAGE = "시스템 설계 답변 평가의 rank가 없거나 A~F가 아닙니다. rank=";
+    private static final String FEEDBACK_EMPTY_MESSAGE = "시스템 설계 답변 평가의 feedback이 비었습니다. feedback=";
     private static final String TOTAL_FEEDBACK_EMPTY_MESSAGE = "시스템 설계 마지막 답변 평가의 종합 피드백이 비었습니다.";
     private static final long INTERVIEW_ID = 41L;
     private static final String FEEDBACK = "카운터를 Base62로 인코딩해 7자 안에서 충돌을 피한 근거가 분명했어요.";
@@ -239,6 +239,35 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
+    @Test
+    void 같은_문제의_다른_마지막_답변은_같은_도구와_system_블록으로_요청한다() {
+        // given
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
+                .willReturn(toolUseResponse(END_TOOL_NAME, endInput("MET", "MET", "MET", "MET", "MET")));
+        SystemDesignEndCommand first = endCommand();
+        SystemDesignEndCommand second = new SystemDesignEndCommand(43L,
+                SystemDesignProblemContextFixture.urlShortener(), List.of(),
+                List.of(new SystemDesignAnswerTurn(5, SystemDesignStage.DEEP_DIVE, "캐시가 내려가면 어떻게 되나요?",
+                        "DB로 바로 읽습니다.")),
+                new SystemDesignAnswerTurn(6, SystemDesignStage.DEEP_DIVE, "301과 302 중 무엇을 쓰나요?", "301을 씁니다."),
+                SystemDesignDiagramFixture.urlShortenerStarter(), List.of("READ_WRITE_RATIO", "CLICK_STATISTICS"));
+
+        // when
+        client.evaluateEnd(first);
+        client.evaluateEnd(second);
+
+        // then
+        ArgumentCaptor<ConverseRequest> captor = ArgumentCaptor.forClass(ConverseRequest.class);
+        verify(bedrockRuntimeClient, times(2)).converse(captor.capture());
+        ConverseRequest firstRequest = captor.getAllValues().get(0);
+        ConverseRequest secondRequest = captor.getAllValues().get(1);
+        assertAll(
+                () -> assertThat(secondRequest.toolConfig()).isEqualTo(firstRequest.toolConfig()),
+                () -> assertThat(secondRequest.system()).isEqualTo(firstRequest.system()),
+                () -> assertThat(secondRequest.messages()).isNotEqualTo(firstRequest.messages())
+        );
+    }
+
     // 저장할 값이라 앞뒤 공백은 지운다.
     @Test
     void L2는_rank와_feedback과_다음_질문을_돌려준다() {
@@ -298,6 +327,7 @@ class SystemDesignAnswerBedrockClientTest {
     }
 
     // 도구 스키마의 enum은 모델에 대한 지시일 뿐이라 서버가 다시 본다. 등급은 대소문자를 구분하고, E는 등급에 없다.
+    // 실패 원인(없음, 다른 타입, 다른 값)을 가릴 수 있게 받은 값을 JSON 표현으로 메시지에 남긴다.
     @Test
     void rank가_A부터_F_밖이면_ExternalApiException() {
         // given
@@ -317,15 +347,26 @@ class SystemDesignAnswerBedrockClientTest {
 
         // when & then
         assertAll(
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertRankInvalid(() -> client.evaluateEnd(endCommand()))
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\"S\""),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\"E\""),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\"a\""),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\" A\""),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\"\""),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "없음"),
+                () -> assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "1"),
+                () -> assertRankInvalid(() -> client.evaluateEnd(endCommand()), "\"S\"")
         );
+    }
+
+    // 받은 값이 길어도 LLM 출력을 길게 남기지 않는다. JSON 표현의 앞 20자(여는 따옴표 포함)까지만 쓴다.
+    @Test
+    void 검증_실패_메시지에는_받은_값을_20자까지만_남긴다() {
+        // given
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
+                toolUseResponse(ANSWER_TOOL_NAME, answerInput("가".repeat(30), FEEDBACK, NEXT_QUESTION)));
+
+        // when & then
+        assertRankInvalid(() -> client.evaluateAnswer(answerCommand()), "\"" + "가".repeat(19));
     }
 
     @Test
@@ -346,11 +387,11 @@ class SystemDesignAnswerBedrockClientTest {
 
         // when & then
         assertAll(
-                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand())),
-                () -> assertFeedbackEmpty(() -> client.evaluateEnd(endCommand()))
+                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand()), "\"\""),
+                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand()), "\"  \\t\\n\""),
+                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand()), "없음"),
+                () -> assertFeedbackEmpty(() -> client.evaluateAnswer(answerCommand()), "3"),
+                () -> assertFeedbackEmpty(() -> client.evaluateEnd(endCommand()), "\" \\n \"")
         );
     }
 
@@ -424,12 +465,12 @@ class SystemDesignAnswerBedrockClientTest {
 
         // when & then
         assertAll(
-                () -> assertPointInvalid("point_redirect_status_tradeoff"),
-                () -> assertPointInvalid("point_read_path_cache"),
-                () -> assertPointInvalid("point_key_generation_collision"),
-                () -> assertPointInvalid("point_storage_estimation"),
-                () -> assertPointInvalid("point_storage_estimation"),
-                () -> assertPointInvalid("point_redirect_availability")
+                () -> assertPointInvalid("point_redirect_status_tradeoff", "없음"),
+                () -> assertPointInvalid("point_read_path_cache", "\"met\""),
+                () -> assertPointInvalid("point_key_generation_collision", "\"YES\""),
+                () -> assertPointInvalid("point_storage_estimation", "\"\""),
+                () -> assertPointInvalid("point_storage_estimation", "1"),
+                () -> assertPointInvalid("point_redirect_availability", "null")
         );
     }
 
@@ -608,8 +649,10 @@ class SystemDesignAnswerBedrockClientTest {
     void 사용량을_INFO_한_줄로_남긴다() {
         // given
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
-                toolUseResponse(ANSWER_TOOL_NAME, answerInput("B", FEEDBACK, NEXT_QUESTION), usage(4_200, 650, 3_900, 0)),
-                toolUseResponse(END_TOOL_NAME, endInput("MET", "MET", "MET", "MET", "MET"), usage(5_100, 980, 0, 4_300)));
+                toolUseResponse(ANSWER_TOOL_NAME, answerInput("B", FEEDBACK, NEXT_QUESTION),
+                        usage(4_200, 650, 3_900, 0)),
+                toolUseResponse(END_TOOL_NAME, endInput("MET", "MET", "MET", "MET", "MET"),
+                        usage(5_100, 980, 0, 4_300)));
 
         // when
         client.evaluateAnswer(answerCommand());
@@ -649,22 +692,23 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
-    private void assertRankInvalid(Runnable call) {
+    private void assertRankInvalid(Runnable call, String received) {
         assertThatThrownBy(call::run)
                 .isInstanceOf(ExternalApiException.class)
-                .hasMessage(RANK_INVALID_MESSAGE);
+                .hasMessage(RANK_INVALID_MESSAGE + received);
     }
 
-    private void assertFeedbackEmpty(Runnable call) {
+    private void assertFeedbackEmpty(Runnable call, String received) {
         assertThatThrownBy(call::run)
                 .isInstanceOf(ExternalApiException.class)
-                .hasMessage(FEEDBACK_EMPTY_MESSAGE);
+                .hasMessage(FEEDBACK_EMPTY_MESSAGE + received);
     }
 
-    private void assertPointInvalid(String fieldName) {
+    private void assertPointInvalid(String fieldName, String received) {
         assertThatThrownBy(() -> client.evaluateEnd(endCommand()))
                 .isInstanceOf(ExternalApiException.class)
-                .hasMessage("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName);
+                .hasMessage("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName
+                        + ", value=" + received);
     }
 
     private void assertFailureLogged(String... callTypes) {

@@ -6,6 +6,7 @@ import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import com.samhap.kokomen.interview.external.dto.request.SystemDesignBedrockRequestFactory;
@@ -31,8 +32,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 /**
  * 답변 평가(L2, 1~5번째 답변)와 마지막 답변 평가·리포트(L3, 6번째 답변). 비동기 워커에서 부른다.
- * {@code converse}부터 응답 검증까지를 감싸, SDK 예외(소켓 타임아웃, apiCall 타임아웃, 재시도를 다 쓴 스로틀링)와 검증 실패를 모두
- * {@link ExternalApiException}으로 올린다. 실패하면 워커가 아무것도 저장하지 않아 면접자가 다시 낼 수 있다.
+ * {@code converse}부터 응답 검증까지를 감싸, SDK 예외(소켓 타임아웃, 재시도를 다 쓴 스로틀링, Bedrock 서버 오류 등)와 검증 실패를 모두
+ * {@link ExternalApiException}으로 올린다. 실패는 아무것도 저장하지 않고 면접자가 다시 내게 하려는 것이다.
  * 다음 질문만 실패가 아니라 폴백이다(null을 주고 서비스가 기준 질문을 쓴다).
  */
 @Slf4j
@@ -40,11 +41,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Component
 public class SystemDesignAnswerBedrockClient {
 
-    // interview.total_feedback 컬럼 한도
-    public static final int MAX_TOTAL_FEEDBACK_LENGTH = 2_000;
-
     private static final String ANSWER_CALL_FAILED_MESSAGE = "시스템 설계 답변 평가 호출에 실패했습니다.";
     private static final String END_CALL_FAILED_MESSAGE = "시스템 설계 마지막 답변 평가 호출에 실패했습니다.";
+    private static final String MISSING_VALUE = "없음";
+    private static final int MAX_RECEIVED_VALUE_LENGTH = 20;
 
     private final BedrockConverseClient converseClient;
     private final BedrockConverseProperties properties;
@@ -66,21 +66,6 @@ public class SystemDesignAnswerBedrockClient {
                 () -> requestAnswer(command));
     }
 
-    private <T> T call(SystemDesignCallType callType, Long interviewId, String failureMessage, Supplier<T> request) {
-        long startedAt = System.currentTimeMillis();
-        try {
-            return request.get();
-        } catch (SdkException e) {
-            ExternalApiException failure = new ExternalApiException(failureMessage, e);
-            SystemDesignBedrockCallLogger.logFailure(callType, interviewId, System.currentTimeMillis() - startedAt,
-                    failure);
-            throw failure;
-        } catch (RuntimeException e) {
-            SystemDesignBedrockCallLogger.logFailure(callType, interviewId, System.currentTimeMillis() - startedAt, e);
-            throw e;
-        }
-    }
-
     private SystemDesignAnswerEvaluation requestAnswer(SystemDesignAnswerCommand command) {
         int maxTokens = properties.systemDesignAnswerMaxTokens();
         ConverseResponse response = converseClient.converse(
@@ -92,60 +77,18 @@ public class SystemDesignAnswerBedrockClient {
         JsonNode toolInput = readToolInput(SystemDesignCallType.ANSWER, command.interviewId(), maxTokens, response,
                 SystemDesignToolSchemas.ANSWER_TOOL_NAME);
         return new SystemDesignAnswerEvaluation(readRank(toolInput), readFeedback(toolInput),
-                readNextQuestion(command.interviewId(), toolInput));
-    }
-
-    // 사용량을 남긴 뒤 tool_use를 꺼낸다. maxTokens에서 잘렸으면 stopReason이 tool_use가 아니라 extractToolUse가 실패시킨다.
-    private JsonNode readToolInput(SystemDesignCallType callType, Long interviewId, int maxTokens,
-                                   ConverseResponse response, String toolName) {
-        SystemDesignBedrockCallLogger.logUsage(callType, interviewId, response);
-        if (response.stopReason() == StopReason.MAX_TOKENS) {
-            log.error("시스템 설계 LLM 응답이 maxTokens에서 잘렸습니다. callType: {}, interviewId: {}, maxTokens: {}",
-                    callType, interviewId, maxTokens);
-        }
-        ToolUseBlock toolUse = converseClient.extractToolUse(response, toolName);
-        return converseClient.parseToolInput(toolUse, JsonNode.class);
-    }
-
-    // 등급은 A~F(AnswerRank 이름)를 대소문자까지 그대로 받는다. 도구 스키마의 enum은 모델에 대한 지시일 뿐이라 다시 본다.
-    private static AnswerRank readRank(JsonNode toolInput) {
-        String rank = readRawText(toolInput, SystemDesignToolSchemas.RANK_FIELD);
-        return Arrays.stream(AnswerRank.values())
-                .filter(value -> value.name().equals(rank))
-                .findFirst()
-                .orElseThrow(() -> new ExternalApiException("시스템 설계 답변 평가의 rank가 없거나 A~F가 아닙니다."));
-    }
-
-    private static String readFeedback(JsonNode toolInput) {
-        String feedback = readText(toolInput, SystemDesignToolSchemas.FEEDBACK_FIELD);
-        if (feedback.isEmpty()) {
-            throw new ExternalApiException("시스템 설계 답변 평가의 feedback이 비었습니다.");
-        }
-        return feedback;
+                nextQuestionOrNull(command.interviewId(), toolInput));
     }
 
     // 다음 질문만 폴백이 있다. 비었거나 질문 컬럼 한도를 넘으면 null을 주고, 서비스가 기준 질문을 그대로 쓴다.
-    private static String readNextQuestion(Long interviewId, JsonNode toolInput) {
-        String nextQuestion = readText(toolInput, SystemDesignToolSchemas.NEXT_QUESTION_FIELD);
+    private static String nextQuestionOrNull(Long interviewId, JsonNode toolInput) {
+        String nextQuestion = textOrEmpty(toolInput, SystemDesignToolSchemas.NEXT_QUESTION_FIELD);
         if (nextQuestion.isEmpty() || nextQuestion.length() > SystemDesignQuestion.MAX_CONTENT_LENGTH) {
             log.warn("시스템 설계 다음 질문을 기준 질문으로 바꿉니다. interviewId: {}, length: {}", interviewId,
                     nextQuestion.length());
             return null;
         }
         return nextQuestion;
-    }
-
-    // LLM 텍스트 출력. 엔티티를 원래 문자로 되돌리고 앞뒤 공백을 지운다. 없거나 문자열이 아니면 빈 문자열이다.
-    private static String readText(JsonNode toolInput, String fieldName) {
-        return SystemDesignText.normalize(SystemDesignUserMessages.unescape(readRawText(toolInput, fieldName)));
-    }
-
-    private static String readRawText(JsonNode toolInput, String fieldName) {
-        JsonNode value = toolInput == null ? null : toolInput.get(fieldName);
-        if (value == null || !value.isTextual()) {
-            return null;
-        }
-        return value.textValue();
     }
 
     /**
@@ -175,13 +118,13 @@ public class SystemDesignAnswerBedrockClient {
     // 기존 면접의 종합 피드백과 같은 규칙으로 세 필드를 잇는다. 비면 실패이고, interview.total_feedback 한도를 넘으면 자른다.
     private static String readTotalFeedback(JsonNode toolInput) {
         String totalFeedback = new TotalFeedbackResponse(
-                readText(toolInput, SystemDesignToolSchemas.STRENGTHS_FIELD),
-                readText(toolInput, SystemDesignToolSchemas.IMPROVEMENTS_FIELD),
-                readText(toolInput, SystemDesignToolSchemas.LEARNING_DIRECTION_FIELD)).composeTotalFeedback();
+                textOrEmpty(toolInput, SystemDesignToolSchemas.STRENGTHS_FIELD),
+                textOrEmpty(toolInput, SystemDesignToolSchemas.IMPROVEMENTS_FIELD),
+                textOrEmpty(toolInput, SystemDesignToolSchemas.LEARNING_DIRECTION_FIELD)).composeTotalFeedback();
         if (SystemDesignText.normalize(totalFeedback).isEmpty()) {
             throw new ExternalApiException("시스템 설계 마지막 답변 평가의 종합 피드백이 비었습니다.");
         }
-        return SystemDesignText.truncate(totalFeedback, MAX_TOTAL_FEEDBACK_LENGTH);
+        return SystemDesignText.truncate(totalFeedback, Interview.MAX_TOTAL_FEEDBACK_LENGTH);
     }
 
     /**
@@ -192,13 +135,82 @@ public class SystemDesignAnswerBedrockClient {
         Map<String, Boolean> metByPointCode = new LinkedHashMap<>();
         for (EvaluationPoint point : points) {
             String fieldName = SystemDesignToolSchemas.pointFieldName(point.code());
-            String verdict = readRawText(toolInput, fieldName);
+            String verdict = rawTextOrNull(toolInput, fieldName);
             if (!SystemDesignToolSchemas.POINT_MET.equals(verdict)
                     && !SystemDesignToolSchemas.POINT_NOT_MET.equals(verdict)) {
-                throw new ExternalApiException("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName);
+                throw new ExternalApiException("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName
+                        + ", value=" + received(toolInput, fieldName));
             }
             metByPointCode.put(point.code(), SystemDesignToolSchemas.POINT_MET.equals(verdict));
         }
         return metByPointCode;
+    }
+
+    private <T> T call(SystemDesignCallType callType, Long interviewId, String failureMessage, Supplier<T> request) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            return request.get();
+        } catch (SdkException e) {
+            ExternalApiException failure = new ExternalApiException(failureMessage, e);
+            SystemDesignBedrockCallLogger.logFailure(callType, interviewId, System.currentTimeMillis() - startedAt,
+                    failure);
+            throw failure;
+        } catch (RuntimeException e) {
+            SystemDesignBedrockCallLogger.logFailure(callType, interviewId, System.currentTimeMillis() - startedAt, e);
+            throw e;
+        }
+    }
+
+    // 사용량을 남긴 뒤 tool_use를 꺼낸다. maxTokens에서 잘렸으면 stopReason이 tool_use가 아니라 extractToolUse가 실패시킨다.
+    private JsonNode readToolInput(SystemDesignCallType callType, Long interviewId, int maxTokens,
+                                   ConverseResponse response, String toolName) {
+        SystemDesignBedrockCallLogger.logUsage(callType, interviewId, response);
+        if (response.stopReason() == StopReason.MAX_TOKENS) {
+            log.error("시스템 설계 LLM 응답이 maxTokens에서 잘렸습니다. callType: {}, interviewId: {}, maxTokens: {}",
+                    callType, interviewId, maxTokens);
+        }
+        ToolUseBlock toolUse = converseClient.extractToolUse(response, toolName);
+        return converseClient.parseToolInput(toolUse, JsonNode.class);
+    }
+
+    // 등급은 A~F(AnswerRank 이름)를 대소문자까지 그대로 받는다. 도구 스키마의 enum은 모델에 대한 지시일 뿐이라 다시 본다.
+    private static AnswerRank readRank(JsonNode toolInput) {
+        String rank = rawTextOrNull(toolInput, SystemDesignToolSchemas.RANK_FIELD);
+        return Arrays.stream(AnswerRank.values())
+                .filter(value -> value.name().equals(rank))
+                .findFirst()
+                .orElseThrow(() -> new ExternalApiException("시스템 설계 답변 평가의 rank가 없거나 A~F가 아닙니다. rank="
+                        + received(toolInput, SystemDesignToolSchemas.RANK_FIELD)));
+    }
+
+    private static String readFeedback(JsonNode toolInput) {
+        String feedback = textOrEmpty(toolInput, SystemDesignToolSchemas.FEEDBACK_FIELD);
+        if (feedback.isEmpty()) {
+            throw new ExternalApiException("시스템 설계 답변 평가의 feedback이 비었습니다. feedback="
+                    + received(toolInput, SystemDesignToolSchemas.FEEDBACK_FIELD));
+        }
+        return feedback;
+    }
+
+    // 실패 원인(없음, 다른 타입, 다른 값)을 가릴 수 있게 받은 값을 JSON 표현으로 짧게 남긴다. LLM 출력을 길게 남기지 않는다.
+    private static String received(JsonNode toolInput, String fieldName) {
+        JsonNode value = toolInput == null ? null : toolInput.get(fieldName);
+        if (value == null) {
+            return MISSING_VALUE;
+        }
+        return SystemDesignText.truncate(value.toString(), MAX_RECEIVED_VALUE_LENGTH);
+    }
+
+    // LLM 텍스트 출력. 엔티티를 원래 문자로 되돌리고 앞뒤 공백을 지운다. 없거나 문자열이 아니면 빈 문자열이다.
+    private static String textOrEmpty(JsonNode toolInput, String fieldName) {
+        return SystemDesignText.normalize(SystemDesignUserMessages.unescape(rawTextOrNull(toolInput, fieldName)));
+    }
+
+    private static String rawTextOrNull(JsonNode toolInput, String fieldName) {
+        JsonNode value = toolInput == null ? null : toolInput.get(fieldName);
+        if (value == null || !value.isTextual()) {
+            return null;
+        }
+        return value.textValue();
     }
 }

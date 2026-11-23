@@ -36,6 +36,7 @@ public class Interview extends BaseEntity {
 
     public static final int MIN_ALLOWED_MAX_QUESTION_COUNT = 3;
     public static final int MAX_ALLOWED_MAX_QUESTION_COUNT = 20;
+    public static final int MAX_TOTAL_FEEDBACK_LENGTH = 2_000;
     private static final String RESUME_BASED_DISPLAY_CATEGORY = "이력서 기반";
     private static final String SYSTEM_DESIGN_DISPLAY_CATEGORY = "시스템 설계";
     private static final String SYSTEM_DESIGN_DISPLAY_QUESTION = "시스템 설계 면접";
@@ -72,7 +73,7 @@ public class Interview extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private InterviewType interviewType;
 
-    @Column(name = "total_feedback", length = 2_000)
+    @Column(name = "total_feedback", length = MAX_TOTAL_FEEDBACK_LENGTH)
     private String totalFeedback;
 
     @Column(name = "total_score")

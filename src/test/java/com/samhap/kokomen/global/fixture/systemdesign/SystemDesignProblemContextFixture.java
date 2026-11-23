@@ -7,7 +7,9 @@ import java.util.List;
 
 /**
  * 실제로 출제할 URL 단축기 문제의 LLM 입력 문맥. 숨은 요구사항과 평가 포인트 문구는 SystemDesignProblemTestSupport가 DB에 저장하는
- * 값과 같은 한곳이다. 프롬프트 정본 파일(prompts/system-design-l1-url-shortener.txt)도 이 값으로 조립한 결과다.
+ * 값과 같은 한곳이다. src/test/resources/prompts/의 정본 파일 세 개도 이 문맥으로 조립한 결과다. 제목·설명은 세 파일 모두에,
+ * 난이도 코멘트는 답변 평가 파일 두 개(l2, l3)에, 숨은 요구사항은 역질문 답 파일(l1)에만, 평가 포인트는 마지막 답변 평가 파일(l3)에만
+ * 들어간다. 문구를 바꾸면 정본 파일과 SystemDesignToolSchemasTest의 도구 스키마 기대값(판정 필드 설명)도 함께 고친다.
  */
 public final class SystemDesignProblemContextFixture {
 

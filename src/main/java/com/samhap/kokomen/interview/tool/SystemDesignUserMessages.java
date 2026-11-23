@@ -32,17 +32,6 @@ public final class SystemDesignUserMessages {
                         candidateQuestion(command.currentQuestion())));
     }
 
-    private static String requirementItems(List<SystemDesignRequirementTurn> turns) {
-        return turns.stream()
-                .map(turn -> SystemDesignSystemMessages.tagged("item", candidateQuestion(turn.question())
-                        + LINE_SEPARATOR + "<interviewer_answer>" + escape(turn.answer()) + "</interviewer_answer>"))
-                .collect(Collectors.joining(LINE_SEPARATOR));
-    }
-
-    private static String candidateQuestion(String question) {
-        return "<candidate_question>" + escape(question) + "</candidate_question>";
-    }
-
     /**
      * 답변 평가(L2). 역질문 기록, 이전 설계 대화, 이번 질문·답변·다이어그램, 다음 기준 질문 순서다. 이전 답변의 rank는 넣지 않아
      * 지금 답변만으로 채점하게 하고, 다이어그램은 답변마다 누적되므로 이번 것만 넣는다.
@@ -53,6 +42,11 @@ public final class SystemDesignUserMessages {
                 designDialogue(command.previousTurns()),
                 currentTurn(command.currentTurn(), command.currentDiagram()),
                 nextBaseQuestion(command.nextBaseQuestion()));
+    }
+
+    private static String nextBaseQuestion(SystemDesignNextBaseQuestion question) {
+        return "<next_base_question" + turnAttributes(question.questionOrder(), question.stage()) + ">"
+                + escape(question.content()) + "</next_base_question>";
     }
 
     /**
@@ -67,9 +61,31 @@ public final class SystemDesignUserMessages {
                 hiddenRequirementsStatus(command.problem().requirements(), command.confirmedRequirementCodes()));
     }
 
+    // 확인 여부는 code로 정하고 줄에는 이름을 문제의 요구사항 순서로 쓴다. 이름도 시드 문장이지만 출처와 관계없이 이스케이프한다.
+    private static String hiddenRequirementsStatus(List<Requirement> requirements, List<String> confirmedCodes) {
+        if (requirements.isEmpty()) {
+            return SystemDesignSystemMessages.tagged("hidden_requirements_status", NONE);
+        }
+        return SystemDesignSystemMessages.tagged("hidden_requirements_status", requirements.stream()
+                .map(requirement -> "- " + escape(requirement.name()) + ": "
+                        + (confirmedCodes.contains(requirement.code()) ? CONFIRMED : NOT_CONFIRMED))
+                .collect(Collectors.joining(LINE_SEPARATOR)));
+    }
+
     private static String requirementsDialogue(List<SystemDesignRequirementTurn> turns) {
         return SystemDesignSystemMessages.tagged("requirements_dialogue",
                 turns.isEmpty() ? NO_REQUIREMENT_QUESTIONS : requirementItems(turns));
+    }
+
+    private static String requirementItems(List<SystemDesignRequirementTurn> turns) {
+        return turns.stream()
+                .map(turn -> SystemDesignSystemMessages.tagged("item", candidateQuestion(turn.question())
+                        + LINE_SEPARATOR + "<interviewer_answer>" + escape(turn.answer()) + "</interviewer_answer>"))
+                .collect(Collectors.joining(LINE_SEPARATOR));
+    }
+
+    private static String candidateQuestion(String question) {
+        return "<candidate_question>" + escape(question) + "</candidate_question>";
     }
 
     private static String designDialogue(List<SystemDesignAnswerTurn> turns) {
@@ -80,6 +96,13 @@ public final class SystemDesignUserMessages {
                 .map(turn -> element("turn", turnAttributes(turn.questionOrder(), turn.stage()),
                         questionAndAnswer(turn)))
                 .collect(Collectors.joining(LINE_SEPARATOR)));
+    }
+
+    private static String currentTurn(SystemDesignAnswerTurn turn, SystemDesignDiagram diagram) {
+        String candidateDiagram = SystemDesignSystemMessages.tagged("candidate_diagram",
+                SystemDesignDiagramRenderer.render(diagram));
+        return element("current_turn", turnAttributes(turn.questionOrder(), turn.stage()),
+                questionAndAnswer(turn) + LINE_SEPARATOR + candidateDiagram);
     }
 
     private static String questionAndAnswer(SystemDesignAnswerTurn turn) {
@@ -94,29 +117,6 @@ public final class SystemDesignUserMessages {
 
     private static String element(String tag, String attributes, String content) {
         return "<" + tag + attributes + ">" + LINE_SEPARATOR + content + LINE_SEPARATOR + "</" + tag + ">";
-    }
-
-    private static String currentTurn(SystemDesignAnswerTurn turn, SystemDesignDiagram diagram) {
-        String candidateDiagram = SystemDesignSystemMessages.tagged("candidate_diagram",
-                SystemDesignDiagramRenderer.render(diagram));
-        return element("current_turn", turnAttributes(turn.questionOrder(), turn.stage()),
-                questionAndAnswer(turn) + LINE_SEPARATOR + candidateDiagram);
-    }
-
-    private static String nextBaseQuestion(SystemDesignNextBaseQuestion question) {
-        return "<next_base_question" + turnAttributes(question.questionOrder(), question.stage()) + ">"
-                + escape(question.content()) + "</next_base_question>";
-    }
-
-    // 확인 여부는 code로 정하고 줄에는 이름을 문제의 요구사항 순서로 쓴다. 이름도 시드 문장이지만 출처와 관계없이 이스케이프한다.
-    private static String hiddenRequirementsStatus(List<Requirement> requirements, List<String> confirmedCodes) {
-        if (requirements.isEmpty()) {
-            return SystemDesignSystemMessages.tagged("hidden_requirements_status", NONE);
-        }
-        return SystemDesignSystemMessages.tagged("hidden_requirements_status", requirements.stream()
-                .map(requirement -> "- " + escape(requirement.name()) + ": "
-                        + (confirmedCodes.contains(requirement.code()) ? CONFIRMED : NOT_CONFIRMED))
-                .collect(Collectors.joining(LINE_SEPARATOR)));
     }
 
     /**
