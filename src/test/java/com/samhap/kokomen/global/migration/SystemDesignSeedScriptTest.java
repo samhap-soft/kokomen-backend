@@ -3,12 +3,17 @@ package com.samhap.kokomen.global.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.persistence.StringListJsonConverter;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDifficulty;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
+import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
+import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -141,6 +146,35 @@ class SystemDesignSeedScriptTest {
                 tuple("ONE_TO_ONE_CHAT", basic, active),
                 tuple("SEARCH_AUTOCOMPLETE", basic, active),
                 tuple("IMAGE_UPLOAD", basic, active));
+    }
+
+    // 테스트의 URL 단축기 문제(SystemDesignProblemTestSupport, SystemDesignProblemContextFixture)는 실제로 출제할 시드와 같아야
+    // 한다. 프롬프트 정본 파일이 그 픽스처로 조립한 결과라, 둘이 어긋나면 정본이 운영에서 모델이 받는 프롬프트와 달라진다.
+    @Test
+    void URL_단축기_시드는_테스트_픽스처와_같다() {
+        List<String> problem = jdbcTemplate.queryForObject(
+                "SELECT title, description, difficulty_comment FROM system_design_problem WHERE code = 'URL_SHORTENER'",
+                (rs, rowNum) -> List.of(rs.getString("title"), rs.getString("description"),
+                        rs.getString("difficulty_comment")));
+        List<Requirement> requirements = jdbcTemplate.query(
+                "SELECT r.code, r.name, r.answer FROM system_design_hidden_requirement r "
+                        + "JOIN system_design_problem p ON p.id = r.problem_id "
+                        + "WHERE p.code = 'URL_SHORTENER' ORDER BY r.display_order",
+                (rs, rowNum) -> new Requirement(rs.getString("code"), rs.getString("name"), rs.getString("answer")));
+        List<EvaluationPoint> evaluationPoints = jdbcTemplate.query(
+                "SELECT e.code, e.description FROM system_design_evaluation_point e "
+                        + "JOIN system_design_problem p ON p.id = e.problem_id "
+                        + "WHERE p.code = 'URL_SHORTENER' ORDER BY e.display_order",
+                (rs, rowNum) -> new EvaluationPoint(rs.getString("code"), rs.getString("description")));
+
+        assertAll(
+                () -> assertThat(problem).containsExactly(SystemDesignProblemTestSupport.TITLE,
+                        SystemDesignProblemTestSupport.DESCRIPTION, SystemDesignProblemTestSupport.DIFFICULTY_COMMENT),
+                () -> assertThat(requirements)
+                        .containsExactlyElementsOf(SystemDesignProblemContextFixture.URL_SHORTENER_REQUIREMENTS),
+                () -> assertThat(evaluationPoints)
+                        .containsExactlyElementsOf(SystemDesignProblemContextFixture.URL_SHORTENER_EVALUATION_POINTS)
+        );
     }
 
     @Test

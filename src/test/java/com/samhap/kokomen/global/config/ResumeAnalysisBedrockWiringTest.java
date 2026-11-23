@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,12 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
  */
 class ResumeAnalysisBedrockWiringTest {
 
+    private static final BedrockConverseProperties PROPERTIES = BedrockConversePropertiesFixture.builder()
+            .modelId("test-model-id")
+            .endMaxTokens(2048)
+            .resumeQuestionMaxTokens(2048)
+            .build();
+
     /**
      * AwsConfig의 @EnableConfigurationProperties(BedrockConverseProperties.class)는 TestBeans의
      * bedrockConverseProperties() 빈과 별개로 "aws.bedrock-..." 이름의 BedrockConverseProperties
@@ -33,16 +40,7 @@ class ResumeAnalysisBedrockWiringTest {
      */
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
-            .withPropertyValues(
-                    "aws.bedrock.model-id=test-model-id",
-                    "aws.bedrock.proceed-max-tokens=2048",
-                    "aws.bedrock.end-max-tokens=2048",
-                    "aws.bedrock.answer-feedback-max-tokens=1024",
-                    "aws.bedrock.resume-question-max-tokens=2048",
-                    "aws.bedrock.resume-evaluation-max-tokens=16000",
-                    "aws.bedrock.evaluation-temperature=0.2",
-                    "aws.bedrock.generation-temperature=0.7",
-                    "aws.bedrock.feedback-temperature=0.5")
+            .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
             .withBean(ResumeAnalysisEvaluationBedrockClient.class)
             .withBean(ResumeAnalysisQuestionBedrockClient.class);
@@ -124,8 +122,7 @@ class ResumeAnalysisBedrockWiringTest {
         @Primary
         @Bean
         BedrockConverseProperties bedrockConverseProperties() {
-            return new BedrockConverseProperties(
-                    "test-model-id", 2048, 2048, 1024, 2048, 16000, 0.2f, 0.7f, 0.5f);
+            return PROPERTIES;
         }
     }
 }

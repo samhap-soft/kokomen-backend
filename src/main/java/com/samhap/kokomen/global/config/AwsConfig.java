@@ -3,6 +3,7 @@ package com.samhap.kokomen.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import com.samhap.kokomen.interview.external.SystemDesignBedrockTimeouts;
 import com.samhap.kokomen.resume.external.ResumeAnalysisBedrockTimeouts;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -72,6 +73,37 @@ public class AwsConfig {
             ObjectMapper objectMapper
     ) {
         return new BedrockConverseClient(resumeAnalysisBedrockRuntimeClient, properties, objectMapper);
+    }
+
+    /**
+     * 시스템 설계 역질문 답 전용 클라이언트. 역질문 답은 HTTP 요청 스레드에서 동기로 부르므로 공용 빈의 소켓 타임아웃 60초와
+     * SDK 기본 재시도를 그대로 쓰면 장애 때 요청 하나가 Tomcat 스레드를 분 단위로 붙잡는다. 짧은 타임아웃과 좁은 재시도로 분리한다.
+     * maxConnections는 동시 실행 상한(SystemDesignLlmBulkhead)과 같다. 리전과 모델은 공용 빈과 같다.
+     */
+    @Bean
+    public BedrockRuntimeClient systemDesignBedrockRuntimeClient() {
+        return BedrockRuntimeClient.builder()
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .httpClientBuilder(ApacheHttpClient.builder()
+                        .maxConnections(SystemDesignBedrockTimeouts.MAX_CONNECTIONS)
+                        .connectionAcquisitionTimeout(java.time.Duration.ofSeconds(5))
+                        .connectionTimeout(SystemDesignBedrockTimeouts.CONNECT_TIMEOUT)
+                        .socketTimeout(SystemDesignBedrockTimeouts.SOCKET_TIMEOUT)
+                )
+                .overrideConfiguration(override -> override
+                        .apiCallTimeout(SystemDesignBedrockTimeouts.API_CALL_TIMEOUT)
+                        .retryStrategy(SystemDesignBedrockTimeouts.retryStrategy()))
+                .region(Region.US_EAST_1)
+                .build();
+    }
+
+    @Bean
+    public BedrockConverseClient systemDesignBedrockConverseClient(
+            @Qualifier("systemDesignBedrockRuntimeClient") BedrockRuntimeClient systemDesignBedrockRuntimeClient,
+            BedrockConverseProperties properties,
+            ObjectMapper objectMapper
+    ) {
+        return new BedrockConverseClient(systemDesignBedrockRuntimeClient, properties, objectMapper);
     }
 
     @Bean
