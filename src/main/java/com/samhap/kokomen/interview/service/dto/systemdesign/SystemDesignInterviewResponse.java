@@ -13,6 +13,8 @@ import java.util.List;
 
 /**
  * 새로고침해도 이어서 진행할 수 있는 면접 상태 전부. curQuestionId는 답이 아직 없는 현재 질문의 면접 안 순번이다.
+ * curAnswerProceedState는 현재 질문에 낸 답변의 채점 상태(NONE, LLM_PENDING, LLM_FAILED)이고, 현재 질문이 없으면 null이라
+ * 전역 non_null 설정으로 키가 빠진다.
  */
 public record SystemDesignInterviewResponse(
         Long interviewId,
@@ -31,19 +33,22 @@ public record SystemDesignInterviewResponse(
         List<SystemDesignQuestionAndAnswerResponse> prevQuestionsAndAnswers,
         int curQuestionCount,
         int maxQuestionCount,
-        SystemDesignDiagramResponse diagram
+        SystemDesignDiagramResponse diagram,
+        String curAnswerProceedState
 ) {
 
     /**
-     * @param curQuestionId 현재 질문 순번. 요구사항 단계와 끝난 면접에서는 null이다
-     * @param curQuestion   현재 질문 문장. curQuestionId가 null이면 null이다
+     * @param curQuestionId         현재 질문 순번. 요구사항 단계와 끝난 면접에서는 null이다
+     * @param curQuestion           현재 질문 문장. curQuestionId가 null이면 null이다
+     * @param curAnswerProceedState 현재 질문에 낸 답변의 채점 상태. curQuestionId가 null이면 null이다
      */
     public static SystemDesignInterviewResponse of(
             SystemDesignInterview systemDesignInterview,
             List<SystemDesignRequirementQuestionResponse> requirementQuestions,
             Integer curQuestionId,
             String curQuestion,
-            List<SystemDesignQuestionAndAnswerResponse> prevQuestionsAndAnswers
+            List<SystemDesignQuestionAndAnswerResponse> prevQuestionsAndAnswers,
+            String curAnswerProceedState
     ) {
         Interview interview = systemDesignInterview.getInterview();
         SystemDesignProblem problem = systemDesignInterview.getProblem();
@@ -61,7 +66,8 @@ public record SystemDesignInterviewResponse(
                 prevQuestionsAndAnswers,
                 prevQuestionsAndAnswers.size(),
                 SystemDesignInterview.MAX_QUESTION_COUNT,
-                SystemDesignDiagramResponse.from(systemDesignInterview.getCurrentDiagram())
+                SystemDesignDiagramResponse.from(systemDesignInterview.getCurrentDiagram()),
+                curAnswerProceedState
         );
     }
 }

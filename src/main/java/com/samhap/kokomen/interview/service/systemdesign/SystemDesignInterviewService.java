@@ -30,6 +30,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignIntervi
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignQuestionAndAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
+import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.service.MemberService;
 import com.samhap.kokomen.token.service.TokenFacadeService;
@@ -51,6 +52,7 @@ public class SystemDesignInterviewService {
 
     private static final SystemDesignDifficulty START_DIFFICULTY = SystemDesignDifficulty.BASIC;
     private static final int FIRST_QUESTION_ORDER = 1;
+    private static final String NO_CUR_ANSWER_PROCEED_STATE = "NONE";
 
     private final TokenFacadeService tokenFacadeService;
     private final MemberService memberService;
@@ -62,6 +64,7 @@ public class SystemDesignInterviewService {
     private final SystemDesignRequirementQuestionRepository requirementQuestionRepository;
     private final SystemDesignQuestionRepository questionRepository;
     private final SystemDesignAnswerRepository answerRepository;
+    private final SystemDesignProceedStateStore stateStore;
 
     /**
      * 6문항을 모두 답할 토큰이 있는지만 확인하고 차감하지 않는다. 토큰은 답변이 저장될 때마다 1개씩 차감한다.
@@ -148,11 +151,15 @@ public class SystemDesignInterviewService {
                 .map(question -> SystemDesignQuestionAndAnswerResponse.of(question,
                         answersByQuestionId.get(question.getId())))
                 .toList();
-        Optional<SystemDesignQuestion> curQuestion = findCurrentQuestion(questions, answersByQuestionId);
+        // 현재 질문은 진행 중인 면접에서 답이 없는 마지막 질문이다. 요구사항 단계와 끝난 면접에는 없고, 그때는 채점 상태 키도 없다.
+        Optional<SystemDesignQuestion> curQuestion = systemDesignInterview.findCurrentQuestion(questions,
+                answersByQuestionId.keySet());
         return SystemDesignInterviewResponse.of(systemDesignInterview, requirementQuestions,
                 curQuestion.map(SystemDesignQuestion::getQuestionOrder).orElse(null),
                 curQuestion.map(SystemDesignQuestion::getContent).orElse(null),
-                prevQuestionsAndAnswers);
+                prevQuestionsAndAnswers,
+                curQuestion.map(question -> findCurAnswerProceedState(interviewId, question.getQuestionOrder()))
+                        .orElse(null));
     }
 
     private Map<Long, SystemDesignAnswer> findAnswersByQuestionId(List<SystemDesignQuestion> questions) {
@@ -160,19 +167,30 @@ public class SystemDesignInterviewService {
                 .collect(Collectors.toMap(answer -> answer.getQuestion().getId(), Function.identity()));
     }
 
-    // 현재 질문은 답이 없는 마지막 질문이다. 요구사항 단계에는 질문이 없고, 끝난 면접은 모든 질문에 답이 있어 없다.
-    private static Optional<SystemDesignQuestion> findCurrentQuestion(
-            List<SystemDesignQuestion> questions,
-            Map<Long, SystemDesignAnswer> answersByQuestionId
-    ) {
-        if (questions.isEmpty()) {
-            return Optional.empty();
+    /**
+     * 현재 질문에 낸 답변의 채점 상태(답변 결과 폴링과 같은 Redis 값). 기록이 없으면 NONE이다. 현재 질문을 DB에서 정한 뒤 Redis를
+     * 읽기 전에 워커가 끝나면 COMPLETED가 보이는데, 이때는 LLM_PENDING으로 보내 프론트가 폴링으로 결과를 받게 한다.
+     * Redis를 읽지 못하면 조회가 Redis 장애로 막히지 않게 NONE으로 두고 WARN 로그만 남긴다.
+     */
+    private String findCurAnswerProceedState(Long interviewId, int curQuestionOrder) {
+        try {
+            return stateStore.find(interviewId, curQuestionOrder)
+                    .map(SystemDesignInterviewService::toCurAnswerProceedState)
+                    .orElse(NO_CUR_ANSWER_PROCEED_STATE);
+        } catch (RuntimeException e) {
+            log.warn("시스템 설계 현재 답변 채점 상태 조회 실패 - interviewId: {}, questionOrder: {}", interviewId,
+                    curQuestionOrder, e);
+            return NO_CUR_ANSWER_PROCEED_STATE;
         }
-        SystemDesignQuestion lastQuestion = questions.get(questions.size() - 1);
-        if (answersByQuestionId.containsKey(lastQuestion.getId())) {
-            return Optional.empty();
-        }
-        return Optional.of(lastQuestion);
+    }
+
+    private static String toCurAnswerProceedState(InterviewProceedState state) {
+        return switch (state) {
+            case LLM_FAILED -> InterviewProceedState.LLM_FAILED.name();
+            case LLM_PENDING, COMPLETED -> InterviewProceedState.LLM_PENDING.name();
+            // 시스템 설계 채점은 음성 단계를 쓰지 않는다.
+            case TTS_PENDING, TTS_FAILED -> NO_CUR_ANSWER_PROCEED_STATE;
+        };
     }
 
     // 진행 락을 잡기 전에 흔한 오류(404·403·409)를 빨리 돌려준다. 락 안에서 completeRequirements가 같은 검사를 다시 한다.

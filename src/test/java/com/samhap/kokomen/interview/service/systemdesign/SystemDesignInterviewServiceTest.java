@@ -64,6 +64,8 @@ class SystemDesignInterviewServiceTest extends BaseTest {
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
     @Autowired
+    private SystemDesignProceedStateStore stateStore;
+    @Autowired
     private SystemDesignProblemRepository problemRepository;
     @Autowired
     private SystemDesignProblemQuestionRepository problemQuestionRepository;
@@ -293,6 +295,7 @@ class SystemDesignInterviewServiceTest extends BaseTest {
                 () -> assertThat(response.stage()).isEqualTo(SystemDesignStage.DEEP_DIVE),
                 () -> assertThat(response.curQuestionId()).isNull(),
                 () -> assertThat(response.curQuestion()).isNull(),
+                () -> assertThat(response.curAnswerProceedState()).isNull(),
                 () -> assertThat(response.curQuestionCount()).isEqualTo(6),
                 () -> assertThat(response.prevQuestionsAndAnswers())
                         .extracting(SystemDesignQuestionAndAnswerResponse::questionId,
@@ -308,6 +311,44 @@ class SystemDesignInterviewServiceTest extends BaseTest {
                 () -> assertThat(response.diagram().blocks())
                         .extracting(SystemDesignDiagramResponse.Block::id)
                         .containsExactly("client", "lb", "api", "cache", "db")
+        );
+    }
+
+    // 끝난 면접에는 답할 질문이 없다. 마지막 질문에 답이 없는 어긋난 데이터여도 현재 질문과 채점 상태를 내보내지 않는다.
+    @Test
+    void 끝난_면접은_마지막_질문에_답이_없어도_현재_질문과_채점_상태가_없다() {
+        // given
+        saveOtherMemberInterviews();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .build());
+        SystemDesignInterview systemDesignInterview = systemDesignInterviewRepository.save(
+                SystemDesignInterviewFixtureBuilder.builder()
+                        .interview(interview)
+                        .problem(problemTestSupport.saveProblem())
+                        .stage(SystemDesignStage.DEEP_DIVE)
+                        .build());
+        for (int order = 1; order <= 6; order++) {
+            SystemDesignQuestion question = saveQuestion(systemDesignInterview, order);
+            if (order < 6) {
+                answerRepository.save(SystemDesignAnswerFixtureBuilder.builder().question(question).build());
+            }
+        }
+        stateStore.markPending(interview.getId(), 6);
+
+        // when
+        SystemDesignInterviewResponse response = systemDesignInterviewService.findInterview(interview.getId(),
+                member.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(response.interviewState()).isEqualTo(InterviewState.FINISHED),
+                () -> assertThat(response.curQuestionId()).isNull(),
+                () -> assertThat(response.curQuestion()).isNull(),
+                () -> assertThat(response.curAnswerProceedState()).isNull(),
+                () -> assertThat(response.curQuestionCount()).isEqualTo(5)
         );
     }
 

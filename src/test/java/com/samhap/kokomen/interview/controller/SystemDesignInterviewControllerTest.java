@@ -291,6 +291,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.diagram.blocks[*].id", contains("client", "api", "db")))
                 .andExpect(jsonPath("$.diagram.connections[0].label").value("HTTPS"))
                 .andExpect(jsonPath("$.diagram.connections[1].label").doesNotExist())
+                .andExpect(jsonPath("$.cur_answer_proceed_state").doesNotExist())
                 .andDo(document("system-design-interview-find-requirements",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -356,6 +357,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.prev_questions_and_answers[0].answer").value("API 서버 앞에 캐시를 두어 DB 조회를 줄여요."))
                 .andExpect(jsonPath("$.diagram.connections[1].label").doesNotExist())
                 .andExpect(jsonPath("$.diagram.connections[3].label").value(""))
+                .andExpect(jsonPath("$.cur_answer_proceed_state").value("NONE"))
                 .andDo(document("system-design-interview-find-in-progress",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -1139,6 +1141,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         fields.add(fieldWithPath("diagram")
                 .description("현재 다이어그램. 마지막으로 저장된 답변의 다이어그램이고, 답변 전에는 문제의 시작 다이어그램(없으면 빈 다이어그램)"));
         fields.addAll(diagramFields("diagram."));
+        fields.add(fieldWithPath("cur_answer_proceed_state").type(JsonFieldType.STRING).optional()
+                .description("현재 질문에 낸 답변의 채점 상태 (NONE: 내지 않았거나 기록이 사라짐, LLM_PENDING: 채점 중, "
+                        + "LLM_FAILED: 채점 실패라 같은 질문에 다시 낼 수 있음). 현재 질문이 없는 요구사항 단계와 면접이 끝난 뒤에는 키가 없다"));
         return responseFields(fields);
     }
 

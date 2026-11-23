@@ -421,6 +421,12 @@ include::{snippetsDir}/system-design-interview-start-not-enough-tokens/response-
 새로고침해도 이어서 진행할 수 있게 진행 상태를 모두 돌려준다. 요구사항 단계와 면접이 끝난 뒤에는 `cur_question_id`와 `cur_question`이
 `null`로 온다(키는 항상 있다). `diagram`은 마지막으로 저장된 답변의 다이어그램이고, 답변 전에는 문제의 시작 다이어그램(없으면 빈 다이어그램)이다.
 
+`cur_answer_proceed_state`는 현재 질문에 낸 답변의 채점 상태다. `NONE`(내지 않았거나 기록이 사라짐), `LLM_PENDING`(채점 중),
+`LLM_FAILED`(채점 실패, 같은 질문에 다시 낼 수 있다) 중 하나이고, 현재 질문이 없는 요구사항 단계와 면접이 끝난 뒤에는 키가 없다.
+채점 중에 새로고침하면 같은 `cur_question_id`와 `LLM_PENDING`이 오므로 입력창 대신 채점 중을 보이고 답변 결과 조회(폴링)를 이어 가면 된다.
+채점 중이거나 실패한 답변은 저장되지 않아 `prev_questions_and_answers`·`cur_question_count`·`diagram`에 들어가지 않는다.
+이 조회는 채점이 끝나기를 기다리지 않는다.
+
 include::{snippetsDir}/system-design-interview-find-requirements/http-request.adoc[]
 include::{snippetsDir}/system-design-interview-find-requirements/request-headers.adoc[]
 include::{snippetsDir}/system-design-interview-find-requirements/path-parameters.adoc[]
