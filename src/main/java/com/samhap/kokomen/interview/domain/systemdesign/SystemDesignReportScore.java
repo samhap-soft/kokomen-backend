@@ -26,7 +26,8 @@ public final class SystemDesignReportScore {
         int rankQuarterSum = ranks.stream()
                 .mapToInt(SystemDesignReportScore::toQuarters)
                 .sum();
-        // 100 × (0.5 × met / points + 0.5 × (quarters / 4) / ranks) = 100 × (4·ranks·met + points·quarters) / (8·ranks·points)
+        // 100 × (0.5 × met / points + 0.5 × (quarters / 4) / ranks)
+        //   = 100 × (4·ranks·met + points·quarters) / (8·ranks·points)
         long numerator = 100L * (4L * rankCount * metCount + (long) pointCount * rankQuarterSum);
         long denominator = 8L * rankCount * pointCount;
         return Math.toIntExact((2 * numerator + denominator) / (2 * denominator));

@@ -1498,7 +1498,13 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         .content(SUBMIT_ANSWER_JSON)
                 )
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요."));
+                .andExpect(jsonPath("$.message").value("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요."))
+                .andDo(document("system-design-interview-submit-answer-locked",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("채점 중인 답변을 다시 냈거나 같은 회원의 다른 진행 요청을 처리하고 있을 때의 오류 문구")
+                        )
+                ));
         assertAll(
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
                 () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any())
@@ -1750,6 +1756,28 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 ));
         for (String questionId : List.of("not-a-number", "0", "7")) {
             mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/questions/" + questionId)
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("질문을 찾을 수 없어요."));
+        }
+    }
+
+    // 질문 ID가 숫자가 아니면 경로 값 오류라 소유자·면접 검사보다 먼저 없는 질문(404)으로 답한다.
+    @Test
+    void 숫자가_아닌_질문_ID로_폴링하면_소유자_검사보다_먼저_404() throws Exception {
+        // given
+        Member owner = saveMemberWithTokens(6, 0);
+        Member otherMember = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(owner,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        for (Long requestedInterviewId : List.of(interviewId, interviewId + 999L)) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + requestedInterviewId + "/questions/abc")
                             .header("Cookie", "JSESSIONID=" + session.getId())
                             .session(session)
                     )

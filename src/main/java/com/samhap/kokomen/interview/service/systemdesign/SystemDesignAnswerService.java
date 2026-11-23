@@ -164,6 +164,12 @@ public class SystemDesignAnswerService {
         chargeAnswerToken(draft.memberId());
     }
 
+    private SystemDesignProblemQuestion readProblemQuestion(SystemDesignProblem problem, int questionOrder) {
+        return problemQuestionRepository.findByProblemAndQuestionOrder(problem, questionOrder)
+                .orElseThrow(() -> new IllegalStateException("시스템 설계 문제에 %d번 기준 질문이 없습니다. problemId: %d"
+                        .formatted(questionOrder, problem.getId())));
+    }
+
     /**
      * 마지막 답변을 저장하고 면접을 끝낸 뒤 토큰 1개를 차감한다. 평가 포인트 판정, 리포트 점수, 종합 피드백, 등급 점수 합을 같은
      * 트랜잭션에 저장하므로 COMPLETED가 보이면 리포트를 바로 조립할 수 있다. 회원 점수는 차감 뒤에 더하고, 그 뒤에는 아무것도 하지 않는다.
@@ -229,19 +235,38 @@ public class SystemDesignAnswerService {
         tokenFacadeService.useTokens(memberId, InterviewMode.ANSWER_TOKEN_COST);
     }
 
+    private DesignDialogue readDesignDialogue(SystemDesignInterview systemDesignInterview) {
+        List<SystemDesignQuestion> questions =
+                questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
+        Map<Long, SystemDesignAnswer> answersByQuestionId = answerRepository.findByQuestionIn(questions).stream()
+                .collect(Collectors.toMap(answer -> answer.getQuestion().getId(), Function.identity()));
+        return new DesignDialogue(questions, answersByQuestionId);
+    }
+
+    // 끝난 면접 → 요구사항 단계 → 질문 순번 순서로 검사하고 지금 답할 질문을 돌려준다.
+    private static SystemDesignQuestion readAnswerableQuestion(SystemDesignInterview systemDesignInterview,
+                                                               DesignDialogue dialogue, Integer questionOrder) {
+        Optional<SystemDesignQuestion> currentQuestion = systemDesignInterview.findCurrentQuestion(
+                dialogue.questions(), dialogue.answeredQuestionIds());
+        systemDesignInterview.validateAnswerable(questionOrder,
+                currentQuestion.map(SystemDesignQuestion::getQuestionOrder).orElse(null));
+        return currentQuestion.orElseThrow();
+    }
+
     /**
      * 그 질문에 답변이 저장돼 있으면 Redis 값과 상관없이 COMPLETED와 그 답변을 처리한 결과를 준다. 워커는 저장을 커밋한 뒤에
      * Redis를 바꾸므로 DB가 먼저다. 답변이 없으면 Redis의 채점 상태를 본다.
+     * 질문 순번을 숫자로 바꾸지 못했으면(null) 경로 값 오류라 소유자 검사보다 먼저 없는 질문으로 알린다.
      *
      * @throws NotFoundException 그 순번의 질문이 아직 없다(순번이 null인 경우 포함)
      */
     @Transactional(readOnly = true)
     public SystemDesignAnswerResultResponse findAnswerResult(Long interviewId, Long memberId, Integer questionOrder) {
-        SystemDesignInterview systemDesignInterview =
-                systemDesignInterviewService.readOwnedInterview(interviewId, memberId);
         if (questionOrder == null) {
             throw new NotFoundException(QUESTION_NOT_FOUND.getMessage());
         }
+        SystemDesignInterview systemDesignInterview =
+                systemDesignInterviewService.readOwnedInterview(interviewId, memberId);
         SystemDesignQuestion question = questionRepository
                 .findBySystemDesignInterviewAndQuestionOrder(systemDesignInterview, questionOrder)
                 .orElseThrow(() -> new NotFoundException(QUESTION_NOT_FOUND.getMessage()));
@@ -281,32 +306,8 @@ public class SystemDesignAnswerService {
         return InterviewProceedState.LLM_FAILED;
     }
 
-    private DesignDialogue readDesignDialogue(SystemDesignInterview systemDesignInterview) {
-        List<SystemDesignQuestion> questions =
-                questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
-        Map<Long, SystemDesignAnswer> answersByQuestionId = answerRepository.findByQuestionIn(questions).stream()
-                .collect(Collectors.toMap(answer -> answer.getQuestion().getId(), Function.identity()));
-        return new DesignDialogue(questions, answersByQuestionId);
-    }
-
-    // 끝난 면접 → 요구사항 단계 → 질문 순번 순서로 검사하고 지금 답할 질문을 돌려준다.
-    private static SystemDesignQuestion readAnswerableQuestion(SystemDesignInterview systemDesignInterview,
-                                                               DesignDialogue dialogue, Integer questionOrder) {
-        Optional<SystemDesignQuestion> currentQuestion = systemDesignInterview.findCurrentQuestion(
-                dialogue.questions(), dialogue.answeredQuestionIds());
-        systemDesignInterview.validateAnswerable(questionOrder,
-                currentQuestion.map(SystemDesignQuestion::getQuestionOrder).orElse(null));
-        return currentQuestion.orElseThrow();
-    }
-
     private static boolean isLastQuestion(SystemDesignQuestion question) {
         return question.getQuestionOrder() == SystemDesignInterview.MAX_QUESTION_COUNT;
-    }
-
-    private SystemDesignProblemQuestion readProblemQuestion(SystemDesignProblem problem, int questionOrder) {
-        return problemQuestionRepository.findByProblemAndQuestionOrder(problem, questionOrder)
-                .orElseThrow(() -> new IllegalStateException("시스템 설계 문제에 %d번 기준 질문이 없습니다. problemId: %d"
-                        .formatted(questionOrder, problem.getId())));
     }
 
     /**

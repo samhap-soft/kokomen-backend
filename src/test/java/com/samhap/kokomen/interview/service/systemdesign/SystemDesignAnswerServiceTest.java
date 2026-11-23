@@ -213,6 +213,57 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     }
 
     /**
+     * 면접 종료(interview.evaluate)와 리포트 점수는 엔티티 변경이라 UPDATE가 커밋 때로 미뤄진다. 차감(REQUIRES_NEW)이 그보다 먼저
+     * 커밋되면 저장에 실패한 마지막 답변에도 과금된다. 종합 피드백 컬럼(VARCHAR 2000)을 넘겨 그 UPDATE를 실패시킨다.
+     */
+    @Test
+    void 면접_종료를_저장하지_못하면_마지막_답변_토큰을_차감하지_않는다() {
+        // given
+        Member member = saveMemberWithTokens(1, 100);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(A, A, A, A, A));
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
+        SystemDesignEndEvaluation tooLongTotalFeedback = new SystemDesignEndEvaluation(A, "A 등급 피드백이에요.",
+                "가".repeat(Interview.MAX_TOTAL_FEEDBACK_LENGTH + 1), verdicts(5));
+
+        // when & then
+        assertThatThrownBy(() -> answerService.saveLastAnswer(draft, tooLongTotalFeedback))
+                .hasStackTraceContaining("total_feedback");
+        assertAll(
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(1),
+                () -> assertThat(readInterview(systemDesignInterview).getInterviewState())
+                        .isEqualTo(InterviewState.IN_PROGRESS),
+                () -> assertThat(readSystemDesignInterview(systemDesignInterview).getReportScore()).isNull(),
+                () -> assertThat(readEvaluationResults(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readAnswers(systemDesignInterview)).hasSize(5),
+                () -> assertThat(readMemberScore(member)).isEqualTo(100)
+        );
+    }
+
+    // 답변을 저장한 뒤 다음 기준 질문을 읽지 못해 실패시킨다. 차감이 저장보다 앞서면 저장하지 못한 답변에도 과금된다.
+    @Test
+    void 다음_기준_질문을_읽지_못하면_답변_토큰을_차감하지_않는다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 1);
+        problemQuestionRepository.delete(problemQuestionRepository.findByProblemAndQuestionOrder(
+                systemDesignInterview.getProblem(), 2).orElseThrow());
+
+        // when & then
+        assertThatThrownBy(() -> answerService.saveAnswer(draft, answerEvaluation(B, "다듬은 2번 질문이에요.")))
+                .isInstanceOf(IllegalStateException.class);
+        assertAll(
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
+                () -> assertThat(readAnswers(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readQuestions(systemDesignInterview)).hasSize(1),
+                () -> assertThat(readSystemDesignInterview(systemDesignInterview).getCurrentDiagram())
+                        .isNotEqualTo(SUBMITTED_DIAGRAM)
+        );
+    }
+
+    /**
      * 토큰 구매는 토큰 락을 쥔 채 token_purchase INSERT의 FK 검사로 회원 행 S 락을 기다린다. 마지막 답변이 회원 점수 UPDATE로
      * 회원 행 X 락을 쥔 채 차감용 토큰 락을 기다리면 두 쪽이 서로를 기다리다 토큰 락 대기 시간이 지나 차감이 실패한다.
      */
@@ -771,17 +822,27 @@ class SystemDesignAnswerServiceTest extends BaseTest {
         );
     }
 
+    // 숫자로 바꾸지 못한 질문 순번(null)은 경로 값 오류라 소유자 검사보다 먼저 없는 질문으로 알린다.
     @Test
-    void 질문_순번이_null이면_404다() {
+    void 질문_순번이_null이면_소유자_검사보다_먼저_404다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
         SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when & then
-        assertThatThrownBy(() -> answerService.findAnswerResult(systemDesignInterview.getInterview().getId(),
-                member.getId(), null))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessage(QUESTION_NOT_FOUND_MESSAGE);
+        assertAll(
+                () -> assertThatThrownBy(() -> answerService.findAnswerResult(interviewId, member.getId(), null))
+                        .isInstanceOf(NotFoundException.class)
+                        .hasMessage(QUESTION_NOT_FOUND_MESSAGE),
+                () -> assertThatThrownBy(() -> answerService.findAnswerResult(interviewId, otherMember.getId(), null))
+                        .isInstanceOf(NotFoundException.class)
+                        .hasMessage(QUESTION_NOT_FOUND_MESSAGE),
+                () -> assertThatThrownBy(() -> answerService.findAnswerResult(interviewId + 999L, member.getId(), null))
+                        .isInstanceOf(NotFoundException.class)
+                        .hasMessage(QUESTION_NOT_FOUND_MESSAGE)
+        );
     }
 
     private int precheck(SystemDesignInterview systemDesignInterview, Member member, Integer questionOrder) {

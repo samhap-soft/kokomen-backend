@@ -100,7 +100,8 @@ public class SystemDesignInterviewFacadeService {
     /**
      * 사전 검사(소유자 → 끝난 면접 → 요구사항 단계 → 질문 순번) → 답변 길이 → 다이어그램 → 토큰 1개 보유 → 진행 락 → 락 안에서 준비 →
      * 워커 제출 순서다. 상태를 입력과 토큰보다 먼저 봐서, 응답을 받지 못한 마지막 답변을 다시 보내면 마지막 토큰을 썼더라도
-     * 토큰 부족이 아니라 끝난 면접으로 알린다. 락 안의 준비가 실패하면 여기서 락을 풀고, 워커에 넘긴 뒤에는 워커가 푼다.
+     * 토큰 부족이 아니라 끝난 면접으로 알린다. 다만 차감(REQUIRES_NEW)은 답변 저장이 커밋되기 직전에 따로 커밋되므로, 그 사이(수 ms)에
+     * 다시 보낸 요청은 토큰 부족(400)을 받을 수 있다. 락 안의 준비가 실패하면 여기서 락을 풀고, 워커에 넘긴 뒤에는 워커가 푼다.
      * 토큰은 워커가 답변 저장에 성공한 뒤에 차감한다.
      */
     public void submitAnswer(Long interviewId, Integer questionOrder, SystemDesignAnswerRequest request,
