@@ -16,45 +16,35 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.answer.domain.AnswerRank;
-import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ConflictException;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
-import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
-import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
-import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
-import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewState;
-import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignAnswer;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationResult;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
-import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
-import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
-import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluation;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
-import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignEvaluationResultRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQuestionRepository;
-import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerCompletedResponse;
@@ -115,13 +105,13 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
     @Autowired
+    private SystemDesignInterviewTestSupport interviewTestSupport;
+    @Autowired
     private TokenFacadeService tokenFacadeService;
     @Autowired
     private TransactionTemplate transactionTemplate;
     @Autowired
     private SystemDesignInterviewRepository systemDesignInterviewRepository;
-    @Autowired
-    private SystemDesignProblemRepository problemRepository;
     @Autowired
     private SystemDesignProblemQuestionRepository problemQuestionRepository;
     @Autowired
@@ -135,65 +125,21 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
-    private RootQuestionRepository rootQuestionRepository;
-    @Autowired
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
 
-    // TRUNCATE로 테이블마다 id가 1부터 다시 시작해도 값이 우연히 같아지지 않게 다른 회원의 기록을 먼저 둔다.
-    // 질문 2개·답변 1개가 있어 이 테스트의 질문 PK는 순번 + 2다(순번 대신 PK로 찾는 실수가 드러난다). 면접 6개를 먼저 두어
-    // 면접 id는 질문 순번(1~6)보다 크고, 출제하지 않는 문제 2개로 문제 id와 system_design_interview id도 어긋나게 한다.
+    // 질문 PK가 순번과, 면접 id가 질문 순번(1~6)과 우연히 같아지지 않게 다른 회원의 기록을 먼저 둔다.
     @BeforeEach
     void setUpOtherMemberRecords() {
-        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("기록이 있는 회원").build());
-        SystemDesignProblem retiredProblem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
-                .state(SystemDesignProblemState.INACTIVE)
-                .build());
-        problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
-                .state(SystemDesignProblemState.INACTIVE)
-                .build());
-        Interview otherInterview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
-                .member(otherMember)
-                .build());
-        SystemDesignInterview otherSystemDesignInterview = systemDesignInterviewRepository.save(
-                SystemDesignInterviewFixtureBuilder.builder()
-                        .interview(otherInterview)
-                        .problem(retiredProblem)
-                        .stage(SystemDesignStage.HIGH_LEVEL)
-                        .build());
-        for (int order = 1; order <= 2; order++) {
-            SystemDesignProblemQuestion retiredQuestion = problemQuestionRepository.save(
-                    SystemDesignProblemQuestionFixtureBuilder.builder()
-                            .problem(retiredProblem)
-                            .questionOrder(order)
-                            .stage(SystemDesignStage.HIGH_LEVEL)
-                            .build());
-            SystemDesignQuestion question = questionRepository.save(SystemDesignQuestionFixtureBuilder.builder()
-                    .systemDesignInterview(otherSystemDesignInterview)
-                    .problemQuestion(retiredQuestion)
-                    .build());
-            if (order == 1) {
-                answerRepository.save(SystemDesignAnswerFixtureBuilder.builder().question(question).build());
-            }
-        }
-        // 테스트가 기본값(OPERATING_SYSTEM, 순번 1)으로 루트 질문을 또 저장해도 (카테고리, 순번) 유니크와 겹치지 않게 한다.
-        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder()
-                .category(Category.NETWORK)
-                .build());
-        for (int i = 0; i < 5; i++) {
-            interviewRepository.save(InterviewFixtureBuilder.builder()
-                    .member(otherMember)
-                    .rootQuestion(rootQuestion)
-                    .build());
-        }
+        interviewTestSupport.saveOtherMemberRecords();
     }
 
     @Test
     void 답변을_저장하면_토큰을_1개_차감한다() {
         // given
         Member member = saveMemberWithTokens(6);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 1);
 
         // when
@@ -222,7 +168,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 차감할_때_토큰이_모자라면_답변과_다음_질문이_롤백된다() {
         // given
         Member member = saveMemberWithTokens(0);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
         SystemDesignDiagram diagramBefore = readSystemDesignInterview(systemDesignInterview).getCurrentDiagram();
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
 
@@ -246,7 +192,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 마지막_답변에_쓸_토큰이_모자라면_면접을_끝내지_않고_회원_점수도_더하지_않는다() {
         // given
         Member member = saveMemberWithTokens(0, 100);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(A, A, A, A, A));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(A, A, A, A, A));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
 
         // when & then
@@ -273,7 +220,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 토큰_구매_승인_중에_마지막_답변을_차감해도_면접을_끝낸다() throws InterruptedException {
         // given
         Member member = saveMemberWithTokens(20);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, B, B, B, B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, B, B, B));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
         CountDownLatch confirmStarted = new CountDownLatch(1);
         CountDownLatch confirmReleased = new CountDownLatch(1);
@@ -322,7 +270,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 세_번째_답변을_저장하면_단계가_DEEP_DIVE이고_다음_질문은_4번이다() {
         // given
         Member member = saveMemberWithTokens(6);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 3);
 
         // when
@@ -350,7 +299,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 다음_질문은_LLM_문장을_쓰고_null이면_기준_질문을_쓴다() {
         // given
         Member member = saveMemberWithTokens(6);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
 
         // when
         answerService.saveAnswer(prepare(systemDesignInterview, member, 1),
@@ -371,7 +320,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 여섯_번째_답변이면_면접이_끝나고_단계는_DEEP_DIVE로_남는다() {
         // given
         Member member = saveMemberWithTokens(1);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, B, C, A, B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, C, A, B));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
 
         // when
@@ -398,7 +348,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 끝나면_interview가_FINISHED이고_finished_at과_등급_점수_합과_종합_피드백이_저장된다() {
         // given
         Member member = saveMemberWithTokens(1);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, B, C, A, B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, C, A, B));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
 
         // when
@@ -419,7 +370,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 끝나면_평가_포인트_결과와_리포트_점수가_저장된다() {
         // given
         Member member = saveMemberWithTokens(1);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, B, C, A, B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, C, A, B));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
         Map<String, Boolean> verdicts = new LinkedHashMap<>();
         verdicts.put("READ_PATH_CACHE", true);
@@ -448,7 +400,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 끝나면_회원_점수에_등급_점수_합을_더한다() {
         // given
         Member member = saveMemberWithTokens(1, 100);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(A, A, B, B, C));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(A, A, B, B, C));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
 
         // when
@@ -476,7 +429,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
                         .problem(problemTestSupport.saveProblem())
                         .stage(SystemDesignStage.REQUIREMENTS)
                         .build());
-        SystemDesignInterview finishedInDeepDive = saveInterviewWithAnswers(member, List.of(A, A, A, A, A, A));
+        SystemDesignInterview finishedInDeepDive = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(A, A, A, A, A, A));
 
         // when & then
         assertAll(
@@ -514,7 +468,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 질문_순번이_null이거나_다르면_409다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
 
         // when & then
         assertAll(
@@ -541,7 +495,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 저장_직전에_이미_답이_있으면_실패한다() {
         // given
         Member member = saveMemberWithTokens(6);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 1);
         answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
                 .question(readQuestion(systemDesignInterview, 1))
@@ -565,7 +519,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 저장_직전에_면접이_끝났으면_마지막_답변을_저장하지_않는다() {
         // given
         Member member = saveMemberWithTokens(6, 100);
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(A, A, A, A, A));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(A, A, A, A, A));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
         answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
                 .question(readQuestion(systemDesignInterview, MAX_QUESTION_COUNT))
@@ -593,7 +548,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 채점_입력에는_역질문과_이전_대화와_이번_답변과_다음_기준_질문이_들어간다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A));
         saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", List.of("DAILY_CREATION_VOLUME"));
         saveRequirementQuestion(systemDesignInterview, 2, "통계도 필요한가요?", List.of("CLICK_STATISTICS"));
 
@@ -636,7 +592,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 마지막_질문의_채점_입력에는_확인한_요구사항_code가_중복_없이_들어간다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A, C, B, D));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C, B, D));
         saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", List.of("DAILY_CREATION_VOLUME"));
         saveRequirementQuestion(systemDesignInterview, 2, "조회는 얼마나 되고 하루 몇 개인가요?",
                 List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"));
@@ -671,7 +628,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 답변이_있으면_Redis_값과_상관없이_COMPLETED다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
         Long interviewId = systemDesignInterview.getInterview().getId();
         stateStore.markFailed(interviewId, 1);
 
@@ -687,7 +644,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 답변이_없고_LLM_PENDING이면_LLM_PENDING이다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
         Long interviewId = systemDesignInterview.getInterview().getId();
         stateStore.markPending(interviewId, 1);
 
@@ -702,7 +659,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 답변이_없고_상태가_없으면_LLM_FAILED다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
@@ -725,7 +682,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 답변이_없는데_Redis가_COMPLETED면_LLM_PENDING이다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of());
         Long interviewId = systemDesignInterview.getInterview().getId();
         stateStore.markCompleted(interviewId, 1);
 
@@ -740,7 +697,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 지난_질문을_조회하면_그_답변을_처리한_결과를_준다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A, C));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C));
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
@@ -761,7 +719,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 세_번째_답변의_결과는_DEEP_DIVE와_4번_질문이다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A, C));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C));
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
@@ -776,7 +735,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 마지막_답변의_결과는_FINISHED이고_다음_질문이_null이다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B, A, C, B, D, F));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C, B, D, F));
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
@@ -792,7 +752,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 아직_없는_질문은_404다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when & then
@@ -815,7 +775,7 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     void 질문_순번이_null이면_404다() {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        SystemDesignInterview systemDesignInterview = saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
 
         // when & then
         assertThatThrownBy(() -> answerService.findAnswerResult(systemDesignInterview.getInterview().getId(),
@@ -850,49 +810,6 @@ class SystemDesignAnswerServiceTest extends BaseTest {
             metByPointCode.put(points.get(index).code(), index < metCount);
         }
         return metByPointCode;
-    }
-
-    /**
-     * 앞의 질문 ranks.size()개에 답이 저장된 면접. 6개 모두 답했으면 끝난 면접이고, 아니면 그다음 질문이 현재 질문이다.
-     * 1번 질문은 기준 질문 그대로이고 2번부터는 "다듬은 n번 질문이에요."다. 답변은 "n번 답변이에요."다.
-     */
-    private SystemDesignInterview saveInterviewWithAnswers(Member member, List<AnswerRank> ranks) {
-        int answeredCount = ranks.size();
-        boolean finished = answeredCount == MAX_QUESTION_COUNT;
-        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
-                .member(member)
-                .interviewState(finished ? InterviewState.FINISHED : InterviewState.IN_PROGRESS)
-                .build());
-        SystemDesignInterview systemDesignInterview = systemDesignInterviewRepository.save(
-                SystemDesignInterviewFixtureBuilder.builder()
-                        .interview(interview)
-                        .problem(problemTestSupport.saveProblem())
-                        .stage(finished ? SystemDesignStage.DEEP_DIVE
-                                : SystemDesignStage.ofQuestionOrder(answeredCount + 1))
-                        .build());
-        int questionCount = finished ? MAX_QUESTION_COUNT : answeredCount + 1;
-        for (int order = 1; order <= questionCount; order++) {
-            SystemDesignQuestion question = saveQuestion(systemDesignInterview, order);
-            if (order <= answeredCount) {
-                answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
-                        .question(question)
-                        .content(order + "번 답변이에요.")
-                        .answerRank(ranks.get(order - 1))
-                        .build());
-            }
-        }
-        return systemDesignInterview;
-    }
-
-    private SystemDesignQuestion saveQuestion(SystemDesignInterview systemDesignInterview, int questionOrder) {
-        SystemDesignProblemQuestion problemQuestion = problemQuestionRepository.findByProblemAndQuestionOrder(
-                systemDesignInterview.getProblem(), questionOrder).orElseThrow();
-        String content = questionOrder == 1 ? problemQuestion.getContent() : "다듬은 " + questionOrder + "번 질문이에요.";
-        return questionRepository.save(SystemDesignQuestionFixtureBuilder.builder()
-                .systemDesignInterview(systemDesignInterview)
-                .problemQuestion(problemQuestion)
-                .content(content)
-                .build());
     }
 
     private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
