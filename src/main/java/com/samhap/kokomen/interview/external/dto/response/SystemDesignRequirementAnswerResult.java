@@ -8,7 +8,10 @@ import java.util.List;
  * @param askedRequirementCodes YES로 판정하고 서버가 검증한 숨은 요구사항 code(문제 순서)
  * @param answer                엔티티를 되돌린 LLM 답 원문. 최종 답은 서비스가 SystemDesignRequirementAnswerComposer로 정한다
  */
-public record SystemDesignRequirementAnswerResult(List<String> askedRequirementCodes, String answer) {
+public record SystemDesignRequirementAnswerResult(
+        List<String> askedRequirementCodes,
+        String answer
+) {
 
     public SystemDesignRequirementAnswerResult {
         askedRequirementCodes = List.copyOf(askedRequirementCodes);

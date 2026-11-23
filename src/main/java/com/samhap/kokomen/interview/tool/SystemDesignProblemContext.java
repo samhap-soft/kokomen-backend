@@ -43,9 +43,16 @@ public record SystemDesignProblemContext(
     /**
      * 숨은 요구사항. answer는 면접관이 답할 때 근거로 삼는 정해 둔 사실이다.
      */
-    public record Requirement(String code, String name, String answer) {
+    public record Requirement(
+            String code,
+            String name,
+            String answer
+    ) {
     }
 
-    public record EvaluationPoint(String code, String description) {
+    public record EvaluationPoint(
+            String code,
+            String description
+    ) {
     }
 }

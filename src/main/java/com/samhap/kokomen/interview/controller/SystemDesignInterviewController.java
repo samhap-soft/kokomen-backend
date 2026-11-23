@@ -8,6 +8,8 @@ import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.interview.service.SystemDesignInterviewFacadeService;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,6 +44,17 @@ public class SystemDesignInterviewController {
     ) {
         return ResponseEntity.ok(
                 systemDesignInterviewFacadeService.findInterview(parseInterviewId(interviewId), memberAuth));
+    }
+
+    // 요구사항 단계에서 숨은 요구사항을 묻는다. 토큰을 쓰지 않고 면접마다 5개까지다.
+    @PostMapping("/{interviewId}/requirement-questions")
+    public ResponseEntity<SystemDesignRequirementAnswerResponse> askRequirementQuestion(
+            @Authentication MemberAuth memberAuth,
+            @PathVariable String interviewId,
+            @RequestBody SystemDesignRequirementQuestionRequest request
+    ) {
+        return ResponseEntity.ok(systemDesignInterviewFacadeService.askRequirementQuestion(
+                parseInterviewId(interviewId), request, memberAuth));
     }
 
     // 요청 본문은 받지 않는다. 역질문을 하나도 하지 않았어도 끝낼 수 있다.
