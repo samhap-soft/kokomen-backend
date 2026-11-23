@@ -8,16 +8,19 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignEvaluationResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewType;
+import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignAnswer;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationPoint;
@@ -29,6 +32,8 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.dto.SystemDesignInterviewListItem;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import jakarta.persistence.EntityManager;
@@ -61,7 +66,11 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
     @Autowired
     private SystemDesignEvaluationPointRepository evaluationPointRepository;
     @Autowired
+    private SystemDesignProblemRepository problemRepository;
+    @Autowired
     private InterviewRepository interviewRepository;
+    @Autowired
+    private RootQuestionRepository rootQuestionRepository;
     @Autowired
     private MemberRepository memberRepository;
     @Autowired
@@ -223,6 +232,66 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
         assertThatThrownBy(() -> systemDesignInterviewRepository.save(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_system_design_interview_interview_id");
+    }
+
+    @Test
+    void 면접_id_목록으로_문제_제목과_답변_수를_한_번에_읽는다() {
+        // given
+        SystemDesignInterview answered = saveSystemDesignInterview(SystemDesignStage.HIGH_LEVEL);
+        SystemDesignQuestion first = saveQuestion(answered, 1);
+        SystemDesignQuestion second = saveQuestion(answered, 2);
+        saveQuestion(answered, 3);
+        answerRepository.save(SystemDesignAnswerFixtureBuilder.builder().question(first).build());
+        answerRepository.save(SystemDesignAnswerFixtureBuilder.builder().question(second).build());
+        // 첫 질문에 아직 답하지 않은 면접과 요구사항 단계라 질문이 없는 면접은 모두 0이다.
+        SystemDesignInterview unanswered = saveSystemDesignInterview(SystemDesignStage.HIGH_LEVEL);
+        saveQuestion(unanswered, 1);
+        SystemDesignProblem chatProblem = problemRepository.save(SystemDesignProblemFixtureBuilder.builder()
+                .title("채팅 서비스를 설계해 보세요")
+                .build());
+        SystemDesignInterview started = systemDesignInterviewRepository.save(
+                SystemDesignInterviewFixtureBuilder.builder()
+                        .interview(saveInterview())
+                        .problem(chatProblem)
+                        .build());
+        SystemDesignInterview otherInterview = saveSystemDesignInterview(SystemDesignStage.HIGH_LEVEL);
+        answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
+                .question(saveQuestion(otherInterview, 1))
+                .build());
+
+        // when
+        List<SystemDesignInterviewListItem> items = systemDesignInterviewRepository.findListItemsByInterviewIdIn(
+                List.of(answered.getInterview().getId(), unanswered.getInterview().getId(),
+                        started.getInterview().getId()));
+
+        // then
+        assertThat(items).containsExactlyInAnyOrder(
+                new SystemDesignInterviewListItem(answered.getInterview().getId(),
+                        SystemDesignProblemTestSupport.TITLE, 2L),
+                new SystemDesignInterviewListItem(unanswered.getInterview().getId(),
+                        SystemDesignProblemTestSupport.TITLE, 0L),
+                new SystemDesignInterviewListItem(started.getInterview().getId(), "채팅 서비스를 설계해 보세요", 0L));
+    }
+
+    @Test
+    void 시스템_설계가_아닌_id는_결과에_없다() {
+        // given
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview categoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+
+        // when
+        List<SystemDesignInterviewListItem> items = systemDesignInterviewRepository.findListItemsByInterviewIdIn(
+                List.of(categoryInterview.getId(), systemDesignInterview.getInterview().getId()));
+
+        // then
+        assertThat(items)
+                .extracting(SystemDesignInterviewListItem::interviewId)
+                .containsExactly(systemDesignInterview.getInterview().getId());
     }
 
     @Test

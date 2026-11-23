@@ -24,8 +24,9 @@ public record InterviewSummaryResponse(
         Boolean hasTempAnswerMemo
 ) {
     public InterviewSummaryResponse(
-            Interview interview, InterviewState interviewState, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked,
-            Integer submittedAnswerMemoCount, Boolean hasTempAnswerMemo) {
+            Interview interview, String displayQuestion, InterviewState interviewState, Integer curAnswerCount,
+            Long viewCount, Boolean interviewAlreadyLiked, Integer submittedAnswerMemoCount,
+            Boolean hasTempAnswerMemo) {
         this(
                 interview.getId(),
                 interview.getInterviewType(),
@@ -33,7 +34,7 @@ public record InterviewSummaryResponse(
                 interview.getInterviewMode(),
                 interview.getDisplayCategory(),
                 interview.getCreatedAt(),
-                interview.getDisplayQuestion(),
+                displayQuestion,
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
                 interview.getTotalScore(),
@@ -46,16 +47,22 @@ public record InterviewSummaryResponse(
     }
 
     public static InterviewSummaryResponse createOfOtherMemberForAuthorized(
-            Interview interview, Long viewCount, Boolean interviewAlreadyLiked, Integer submittedAnswerMemoCount) {
-        return new InterviewSummaryResponse(interview, null, null, viewCount, interviewAlreadyLiked, submittedAnswerMemoCount, null);
+            Interview interview, String displayQuestion, Long viewCount, Boolean interviewAlreadyLiked,
+            Integer submittedAnswerMemoCount) {
+        return new InterviewSummaryResponse(interview, displayQuestion, null, null, viewCount, interviewAlreadyLiked,
+                submittedAnswerMemoCount, null);
     }
 
-    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(Interview interview, Long viewCount, Integer submittedAnswerMemoCount) {
-        return new InterviewSummaryResponse(interview, null, null, viewCount, false, submittedAnswerMemoCount, null);
+    public static InterviewSummaryResponse createOfOtherMemberForUnauthorized(
+            Interview interview, String displayQuestion, Long viewCount, Integer submittedAnswerMemoCount) {
+        return new InterviewSummaryResponse(interview, displayQuestion, null, null, viewCount, false,
+                submittedAnswerMemoCount, null);
     }
 
-    public static InterviewSummaryResponse createMine(Interview interview, Integer curAnswerCount, Long viewCount, Boolean interviewAlreadyLiked,
-                                                      Integer submittedAnswerMemoCount, Boolean hasTempAnswerMemo) {
+    public static InterviewSummaryResponse createMine(Interview interview, String displayQuestion,
+                                                      Integer curAnswerCount, Long viewCount,
+                                                      Boolean interviewAlreadyLiked, Integer submittedAnswerMemoCount,
+                                                      Boolean hasTempAnswerMemo) {
         if (interview.isInProgress()) {
             return new InterviewSummaryResponse(
                     interview.getId(),
@@ -64,7 +71,7 @@ public record InterviewSummaryResponse(
                     interview.getInterviewMode(),
                     interview.getDisplayCategory(),
                     interview.getCreatedAt(),
-                    interview.getDisplayQuestion(),
+                    displayQuestion,
                     interview.getMaxQuestionCount(),
                     curAnswerCount,
                     null,
@@ -82,7 +89,7 @@ public record InterviewSummaryResponse(
                 interview.getInterviewMode(),
                 interview.getDisplayCategory(),
                 interview.getCreatedAt(),
-                interview.getDisplayQuestion(),
+                displayQuestion,
                 interview.getMaxQuestionCount(),
                 curAnswerCount,
                 interview.getTotalScore(),
@@ -93,4 +100,4 @@ public record InterviewSummaryResponse(
                 hasTempAnswerMemo
         );
     }
-} 
+}
