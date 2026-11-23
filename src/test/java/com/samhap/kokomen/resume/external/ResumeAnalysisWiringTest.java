@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
+import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisBedrockRequestFactory;
 import com.samhap.kokomen.resume.external.dto.ResumeAnalysisQuestionResult;
@@ -57,8 +58,13 @@ class ResumeAnalysisWiringTest {
     @BeforeEach
     void setUp() {
         bedrockRuntimeClient = mock(BedrockRuntimeClient.class);
-        BedrockConverseProperties properties = new BedrockConverseProperties(
-                "test-model-id", 2048, 4096, 1024, QUESTION_MAX_TOKENS, EVALUATION_MAX_TOKENS, 0.2f, 0.7f, 0.5f);
+        BedrockConverseProperties properties = BedrockConversePropertiesFixture.builder()
+                .modelId("test-model-id")
+                .resumeQuestionMaxTokens(QUESTION_MAX_TOKENS)
+                .resumeEvaluationMaxTokens(EVALUATION_MAX_TOKENS)
+                .evaluationTemperature(0.2f)
+                .generationTemperature(0.7f)
+                .build();
         BedrockConverseClient converseClient = new BedrockConverseClient(
                 bedrockRuntimeClient, properties, objectMapper());
         evaluationBedrockClient = new ResumeAnalysisEvaluationBedrockClient(converseClient, properties);
