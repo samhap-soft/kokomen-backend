@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignCanonicalPromptFile;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignHiddenRequirementFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
@@ -11,8 +12,6 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignHiddenRequir
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,13 +22,12 @@ class SystemDesignRequirementPromptTest {
     private static final String URL_SHORTENER_SYSTEM_PROMPT = "prompts/system-design-l1-url-shortener.txt";
 
     // 정본 파일은 모델이 받는 system 블록의 글자 그대로다. 조각이나 시드 문구를 바꾸면 정본 파일도 함께 고친다.
-    // system은 끝에 줄바꿈을 붙이지 않는다. 편집기가 정본 파일 끝에 붙이는 줄바꿈과 CRLF 체크아웃은 비교에서 걷어 낸다.
     @Test
     void L1_system_프롬프트는_URL_단축기_문제로_정본_파일과_같다() throws IOException {
         String system = SystemDesignSystemMessages.requirementAnswer(SystemDesignProblemContextFixture.urlShortener());
 
         assertAll(
-                () -> assertThat(system).isEqualTo(readCanonical(URL_SHORTENER_SYSTEM_PROMPT)),
+                () -> assertThat(system).isEqualTo(SystemDesignCanonicalPromptFile.read(URL_SHORTENER_SYSTEM_PROMPT)),
                 () -> assertThat(system).doesNotEndWith("\n")
         );
     }
@@ -63,7 +61,8 @@ class SystemDesignRequirementPromptTest {
         // then
         assertAll(
                 () -> assertThat(secondSystem).isEqualTo(firstSystem),
-                () -> assertThat(firstSystem).isEqualTo(readCanonical(URL_SHORTENER_SYSTEM_PROMPT)),
+                () -> assertThat(firstSystem)
+                        .isEqualTo(SystemDesignCanonicalPromptFile.read(URL_SHORTENER_SYSTEM_PROMPT)),
                 () -> assertThat(secondSystem).doesNotContain(first.currentQuestion(), second.currentQuestion())
         );
     }
@@ -166,14 +165,5 @@ class SystemDesignRequirementPromptTest {
                     .build());
         }
         return hiddenRequirements;
-    }
-
-    // CRLF는 LF로 바꾸고 끝 줄바꿈 하나는 지운 뒤 비교한다.
-    private static String readCanonical(String path) throws IOException {
-        try (InputStream input = SystemDesignRequirementPromptTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertThat(input).as("테스트 리소스 %s", path).isNotNull();
-            String content = new String(input.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
-            return content.endsWith("\n") ? content.substring(0, content.length() - 1) : content;
-        }
     }
 }
