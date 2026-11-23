@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service;
 
 import com.samhap.kokomen.global.dto.MemberAuth;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignInterviewService;
 import lombok.RequiredArgsConstructor;
@@ -18,5 +19,9 @@ public class SystemDesignInterviewFacadeService {
     // 기존 시작 API처럼 진행 락을 잡지 않는다.
     public SystemDesignInterviewStartResponse startInterview(MemberAuth memberAuth) {
         return systemDesignInterviewService.start(memberAuth.memberId());
+    }
+
+    public SystemDesignInterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
+        return systemDesignInterviewService.findInterview(interviewId, memberAuth.memberId());
     }
 }

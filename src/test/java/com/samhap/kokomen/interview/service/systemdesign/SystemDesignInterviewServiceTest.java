@@ -2,16 +2,21 @@ package com.samhap.kokomen.interview.service.systemdesign;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
+import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignEvaluationPointFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
@@ -19,14 +24,21 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignEvaluationPointRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignQuestionAndAnswerResponse;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
@@ -54,6 +66,10 @@ class SystemDesignInterviewServiceTest extends BaseTest {
     private SystemDesignEvaluationPointRepository evaluationPointRepository;
     @Autowired
     private SystemDesignInterviewRepository systemDesignInterviewRepository;
+    @Autowired
+    private SystemDesignQuestionRepository questionRepository;
+    @Autowired
+    private SystemDesignAnswerRepository answerRepository;
     @Autowired
     private InterviewRepository interviewRepository;
     @Autowired
@@ -220,6 +236,59 @@ class SystemDesignInterviewServiceTest extends BaseTest {
         );
     }
 
+    @Test
+    void 끝난_면접은_현재_질문이_null이고_단계는_DEEP_DIVE다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        SystemDesignInterview systemDesignInterview = systemDesignInterviewRepository.save(
+                SystemDesignInterviewFixtureBuilder.builder()
+                        .interview(interview)
+                        .problem(problemTestSupport.saveProblem())
+                        .stage(SystemDesignStage.DEEP_DIVE)
+                        .currentDiagram(SystemDesignDiagramFixture.withCache())
+                        .reportScore(73)
+                        .build());
+        for (int order = 1; order <= 6; order++) {
+            SystemDesignQuestion question = saveQuestion(systemDesignInterview, order);
+            answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
+                    .question(question)
+                    .content(order + "번 답변이에요.")
+                    .build());
+        }
+
+        // when
+        SystemDesignInterviewResponse response = systemDesignInterviewService.findInterview(interview.getId(),
+                member.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(response.interviewState()).isEqualTo(InterviewState.FINISHED),
+                () -> assertThat(response.stage()).isEqualTo(SystemDesignStage.DEEP_DIVE),
+                () -> assertThat(response.curQuestionId()).isNull(),
+                () -> assertThat(response.curQuestion()).isNull(),
+                () -> assertThat(response.curQuestionCount()).isEqualTo(6),
+                () -> assertThat(response.prevQuestionsAndAnswers())
+                        .extracting(SystemDesignQuestionAndAnswerResponse::questionId,
+                                SystemDesignQuestionAndAnswerResponse::stage,
+                                SystemDesignQuestionAndAnswerResponse::answer)
+                        .containsExactly(
+                                tuple(1, SystemDesignStage.HIGH_LEVEL, "1번 답변이에요."),
+                                tuple(2, SystemDesignStage.HIGH_LEVEL, "2번 답변이에요."),
+                                tuple(3, SystemDesignStage.HIGH_LEVEL, "3번 답변이에요."),
+                                tuple(4, SystemDesignStage.DEEP_DIVE, "4번 답변이에요."),
+                                tuple(5, SystemDesignStage.DEEP_DIVE, "5번 답변이에요."),
+                                tuple(6, SystemDesignStage.DEEP_DIVE, "6번 답변이에요.")),
+                () -> assertThat(response.diagram().blocks())
+                        .extracting(SystemDesignDiagramResponse.Block::id)
+                        .containsExactly("client", "lb", "api", "cache", "db")
+        );
+    }
+
     private Member saveMemberWithTokens(int freeTokenCount, int paidTokenCount) {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -253,6 +322,16 @@ class SystemDesignInterviewServiceTest extends BaseTest {
                 .problem(problem)
                 .questionOrder(questionOrder)
                 .stage(stage)
+                .build());
+    }
+
+    private SystemDesignQuestion saveQuestion(SystemDesignInterview systemDesignInterview, int questionOrder) {
+        SystemDesignProblemQuestion problemQuestion = problemQuestionRepository.findByProblemAndQuestionOrder(
+                systemDesignInterview.getProblem(), questionOrder).orElseThrow();
+        return questionRepository.save(SystemDesignQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .problemQuestion(problemQuestion)
+                .content(questionOrder + "번 질문이에요.")
                 .build());
     }
 
