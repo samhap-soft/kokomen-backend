@@ -25,6 +25,10 @@ import com.samhap.kokomen.global.fixture.interview.InterviewLikeFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
@@ -32,19 +36,31 @@ import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.Question;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.RootQuestionType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryResponses;
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.RootQuestionReferenceAnswer;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -74,6 +90,18 @@ class InterviewServiceTest extends BaseTest {
     private AnswerLikeRepository answerLikeRepository;
     @Autowired
     private AnswerMemoRepository answerMemoRepository;
+    @Autowired
+    private SystemDesignInterviewRepository systemDesignInterviewRepository;
+    @Autowired
+    private SystemDesignQuestionRepository systemDesignQuestionRepository;
+    @Autowired
+    private SystemDesignAnswerRepository systemDesignAnswerRepository;
+    @Autowired
+    private SystemDesignProblemQuestionRepository systemDesignProblemQuestionRepository;
+    @Autowired
+    private SystemDesignProblemTestSupport systemDesignProblemTestSupport;
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     void 좋아요를_누르지_않은_인터뷰에_대해_좋아요를_취소하면_예외가_발생한다() {
@@ -967,5 +995,297 @@ class InterviewServiceTest extends BaseTest {
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("존재하지 않는 인터뷰입니다.")
         );
+    }
+
+    @Test
+    void 내_면접_목록의_시스템_설계_행은_문제_제목과_저장된_답변_수를_보인다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign().member(member).build());
+        saveSystemDesignInterview(interview, 3, 2);
+
+        // when
+        List<InterviewSummaryResponse> responses = interviewService.findMyInterviews(new MemberAuth(member.getId()),
+                null, PageRequest.of(0, 10, Sort.by(Direction.DESC, "id")));
+
+        // then
+        assertThat(responses)
+                .extracting(InterviewSummaryResponse::interviewId, InterviewSummaryResponse::rootQuestion,
+                        InterviewSummaryResponse::curAnswerCount)
+                .containsExactly(tuple(interview.getId(), SystemDesignProblemTestSupport.TITLE, 2));
+    }
+
+    @Test
+    void 다른_회원_면접_목록의_시스템_설계_행은_문제_제목을_보인다() {
+        // given
+        Member readerMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member targetMember = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(targetMember)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        saveSystemDesignInterview(interview, 6, 6);
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        InterviewSummaryResponses authenticated = interviewService.findOtherMemberInterviews(targetMember.getId(),
+                new MemberAuth(readerMember.getId()), pageRequest);
+        InterviewSummaryResponses unauthenticated = interviewService.findOtherMemberInterviews(targetMember.getId(),
+                MemberAuth.notAuthenticated(), pageRequest);
+
+        // then
+        assertAll(
+                () -> assertThat(authenticated.interviewSummaries())
+                        .extracting(InterviewSummaryResponse::interviewId, InterviewSummaryResponse::rootQuestion,
+                                InterviewSummaryResponse::curAnswerCount)
+                        .containsExactly(tuple(interview.getId(), SystemDesignProblemTestSupport.TITLE, null)),
+                () -> assertThat(unauthenticated.interviewSummaries())
+                        .extracting(InterviewSummaryResponse::interviewId, InterviewSummaryResponse::rootQuestion,
+                                InterviewSummaryResponse::curAnswerCount)
+                        .containsExactly(tuple(interview.getId(), SystemDesignProblemTestSupport.TITLE, null))
+        );
+    }
+
+    @Test
+    void 기존_면접_행의_표시_질문과_답변_수는_그대로다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(10)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        for (int i = 0; i < 3; i++) {
+            questionRepository.save(QuestionFixtureBuilder.builder().interview(finishedInterview).build());
+        }
+        Interview inProgressInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).build());
+        questionRepository.save(QuestionFixtureBuilder.builder().interview(inProgressInterview).build());
+        // 같은 페이지에 시스템 설계 행이 있어 시스템 설계 조회가 나가도 기존 행의 값은 바뀌지 않는다.
+        Interview systemDesignInterview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        saveSystemDesignInterview(systemDesignInterview, 6, 6);
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        List<InterviewSummaryResponse> mine = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                pageRequest);
+        InterviewSummaryResponses ofOtherMember = interviewService.findOtherMemberInterviews(member.getId(),
+                MemberAuth.notAuthenticated(), pageRequest);
+
+        // then
+        assertAll(
+                () -> assertThat(mine)
+                        .filteredOn(summary -> summary.interviewType() == InterviewType.CATEGORY_BASED)
+                        .extracting(InterviewSummaryResponse::interviewId, InterviewSummaryResponse::rootQuestion,
+                                InterviewSummaryResponse::curAnswerCount)
+                        .containsExactly(
+                                tuple(inProgressInterview.getId(), rootQuestion.getContent(), 1),
+                                tuple(finishedInterview.getId(), rootQuestion.getContent(), 3)),
+                () -> assertThat(ofOtherMember.interviewSummaries())
+                        .filteredOn(summary -> summary.interviewType() == InterviewType.CATEGORY_BASED)
+                        .extracting(InterviewSummaryResponse::interviewId, InterviewSummaryResponse::rootQuestion,
+                                InterviewSummaryResponse::curAnswerCount)
+                        .containsExactly(tuple(finishedInterview.getId(), rootQuestion.getContent(), null))
+        );
+    }
+
+    @Test
+    void 시스템_설계_행이_없는_시스템_설계_면접은_기본_문구와_답변_수_0을_보인다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        // interview 행만 있고 system_design_interview 행은 없다.
+        interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(0)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        List<InterviewSummaryResponse> mine = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                pageRequest);
+        InterviewSummaryResponses ofOtherMember = interviewService.findOtherMemberInterviews(member.getId(),
+                MemberAuth.notAuthenticated(), pageRequest);
+
+        // then
+        assertAll(
+                () -> assertThat(mine)
+                        .extracting(InterviewSummaryResponse::rootQuestion, InterviewSummaryResponse::curAnswerCount)
+                        .containsExactly(tuple("시스템 설계 면접", 0)),
+                () -> assertThat(ofOtherMember.interviewSummaries())
+                        .extracting(InterviewSummaryResponse::rootQuestion)
+                        .containsExactly("시스템 설계 면접")
+        );
+    }
+
+    @Test
+    void 끝난_시스템_설계_행의_score는_리포트_점수가_아니라_등급_점수_합이다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                .member(member)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        systemDesignInterviewRepository.save(SystemDesignInterviewFixtureBuilder.builder()
+                .interview(interview)
+                .problem(systemDesignProblemTestSupport.saveProblem())
+                .stage(SystemDesignStage.DEEP_DIVE)
+                .reportScore(73)
+                .build());
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        List<InterviewSummaryResponse> mine = interviewService.findMyInterviews(new MemberAuth(member.getId()), null,
+                pageRequest);
+        InterviewSummaryResponses ofOtherMember = interviewService.findOtherMemberInterviews(member.getId(),
+                MemberAuth.notAuthenticated(), pageRequest);
+
+        // then
+        assertAll(
+                () -> assertThat(mine).extracting(InterviewSummaryResponse::score).containsExactly(30),
+                () -> assertThat(ofOtherMember.interviewSummaries())
+                        .extracting(InterviewSummaryResponse::score)
+                        .containsExactly(30)
+        );
+    }
+
+    @Test
+    void 회원_목록에_시스템_설계_행이_여러_개여도_시스템_설계_조회는_한_번만_나간다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        for (int i = 0; i < 3; i++) {
+            Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                    .member(member)
+                    .interviewState(InterviewState.FINISHED)
+                    .totalScore(30)
+                    .finishedAt(LocalDateTime.now())
+                    .build());
+            saveSystemDesignInterview(interview, 6, 6);
+        }
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        long systemDesignSelectCount = countSystemDesignSelects(() -> interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), pageRequest));
+
+        // then
+        assertThat(systemDesignSelectCount).isOne();
+    }
+
+    @Test
+    void 내_목록에_시스템_설계_행이_여러_개여도_시스템_설계_조회는_한_번만_나간다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Interview inProgressInterview = interviewRepository.save(
+                InterviewFixtureBuilder.systemDesign().member(member).build());
+        saveSystemDesignInterview(inProgressInterview, 3, 2);
+        for (int i = 0; i < 2; i++) {
+            Interview finishedInterview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
+                    .member(member)
+                    .interviewState(InterviewState.FINISHED)
+                    .totalScore(30)
+                    .finishedAt(LocalDateTime.now())
+                    .build());
+            saveSystemDesignInterview(finishedInterview, 6, 6);
+        }
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        long systemDesignSelectCount = countSystemDesignSelects(() -> interviewService.findMyInterviews(
+                new MemberAuth(member.getId()), null, pageRequest));
+
+        // then
+        assertThat(systemDesignSelectCount).isOne();
+    }
+
+    @Test
+    void 시스템_설계_행이_없는_페이지는_시스템_설계_조회를_하지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(10)
+                .finishedAt(LocalDateTime.now())
+                .build());
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Direction.DESC, "id"));
+
+        // when
+        long myListSelectCount = countSystemDesignSelects(() -> interviewService.findMyInterviews(
+                new MemberAuth(member.getId()), null, pageRequest));
+        long memberListSelectCount = countSystemDesignSelects(() -> interviewService.findOtherMemberInterviews(
+                member.getId(), MemberAuth.notAuthenticated(), pageRequest));
+
+        // then
+        assertAll(
+                () -> assertThat(myListSelectCount).isZero(),
+                () -> assertThat(memberListSelectCount).isZero()
+        );
+    }
+
+    // 기준 질문 1~questionCount번을 내고 그중 앞에서부터 answerCount개에 답한 system_design_interview 행을 저장한다.
+    private void saveSystemDesignInterview(Interview interview, int questionCount, int answerCount) {
+        SystemDesignProblem problem = systemDesignProblemTestSupport.saveProblem();
+        SystemDesignInterview systemDesignInterview = systemDesignInterviewRepository.save(
+                SystemDesignInterviewFixtureBuilder.builder()
+                        .interview(interview)
+                        .problem(problem)
+                        .stage(questionCount == 0 ? SystemDesignStage.REQUIREMENTS
+                                : SystemDesignStage.ofQuestionOrder(questionCount))
+                        .build());
+        for (int questionOrder = 1; questionOrder <= questionCount; questionOrder++) {
+            SystemDesignQuestion question = systemDesignQuestionRepository.save(
+                    SystemDesignQuestionFixtureBuilder.builder()
+                            .systemDesignInterview(systemDesignInterview)
+                            .problemQuestion(systemDesignProblemQuestionRepository
+                                    .findByProblemAndQuestionOrder(problem, questionOrder).orElseThrow())
+                            .build());
+            if (questionOrder <= answerCount) {
+                systemDesignAnswerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
+                        .question(question)
+                        .build());
+            }
+        }
+    }
+
+    // 시스템 설계 테이블을 읽은 SELECT 수. JPQL은 쿼리 문자열로, 파생 쿼리는 SQL 문자열로, 연관 지연 로딩은 엔티티 fetch로 센다.
+    // 통계는 이 테스트 동안에만 켜고 끈다. 운영·테스트 설정은 바꾸지 않는다.
+    private long countSystemDesignSelects(Runnable action) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        statistics.setStatisticsEnabled(true);
+        try {
+            action.run();
+        } finally {
+            statistics.setStatisticsEnabled(false);
+        }
+        long queryCount = Arrays.stream(statistics.getQueries())
+                .filter(query -> query.contains("SystemDesign") || query.contains("system_design"))
+                .mapToLong(query -> statistics.getQueryStatistics(query).getExecutionCount())
+                .sum();
+        long fetchCount = Arrays.stream(statistics.getEntityNames())
+                .filter(entityName -> entityName.contains("SystemDesign"))
+                .mapToLong(entityName -> statistics.getEntityStatistics(entityName).getFetchCount())
+                .sum();
+        statistics.clear();
+        return queryCount + fetchCount;
     }
 }

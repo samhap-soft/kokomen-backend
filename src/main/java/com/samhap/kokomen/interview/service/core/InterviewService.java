@@ -23,6 +23,8 @@ import com.samhap.kokomen.interview.external.dto.response.InterviewSummaryRespon
 import com.samhap.kokomen.interview.repository.InterviewLikeRepository;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.QuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.dto.SystemDesignInterviewListItem;
 import com.samhap.kokomen.interview.service.social.InterviewViewCountService;
 import com.samhap.kokomen.interview.service.question.QuestionService;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
@@ -38,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -58,6 +61,7 @@ public class InterviewService {
     private final InterviewLikeRepository interviewLikeRepository;
     private final AnswerLikeRepository answerLikeRepository;
     private final AnswerMemoRepository answerMemoRepository;
+    private final SystemDesignInterviewRepository systemDesignInterviewRepository;
     private final InterviewViewCountService interviewViewCountService;
     private final QuestionService questionService;
 
@@ -111,18 +115,29 @@ public class InterviewService {
                 .toList();
         Set<Long> likedInterviewIds = interviewLikeRepository.findLikedInterviewIds(member.getId(),
                 finishedInterviewIds);
+        Map<Long, SystemDesignInterviewListItem> systemDesignListItems = findSystemDesignListItems(interviews);
 
         return interviews.stream()
                 .map(interview ->
-                        InterviewSummaryResponse.createMine(interview, countCurAnswers(interview),
+                        InterviewSummaryResponse.createMine(interview,
+                                resolveDisplayQuestion(interview, systemDesignListItems),
+                                countCurAnswers(interview, systemDesignListItems),
                                 interviewViewCountService.findViewCount(interview),
                                 likedInterviewIds.contains(interview.getId()), countSubmittedAnswerMemos(interview),
                                 hasTempAnswerMemo(interview)))
                 .toList();
     }
 
-    private int countCurAnswers(Interview interview) {
-        // TODO: 시스템 설계 답변 저장 구현 시 - question 행을 쓰지 않는 타입이라 지금은 0이다. 전용 답변 수로 바꾼다.
+    private int countCurAnswers(Interview interview,
+                                Map<Long, SystemDesignInterviewListItem> systemDesignListItems) {
+        if (interview.isSystemDesign()) {
+            SystemDesignInterviewListItem listItem = systemDesignListItems.get(interview.getId());
+            if (listItem == null) {
+                return 0;
+            }
+            return Math.toIntExact(listItem.answerCount());
+        }
+        // question 행을 쓰지 않는 타입은 아래 계산이 0이나 -1이 된다.
         if (!interview.getInterviewType().isTailQuestionFlow()) {
             return 0;
         }
@@ -153,6 +168,11 @@ public class InterviewService {
         long totalPageCount = calculateTotalPageCount(interviewee, pageable);
 
         List<Interview> finishedInterviews = findInterviews(interviewee, InterviewState.FINISHED, pageable);
+        Map<Long, SystemDesignInterviewListItem> systemDesignListItems = findSystemDesignListItems(
+                finishedInterviews);
+        Map<Long, String> displayQuestions = finishedInterviews.stream()
+                .collect(Collectors.toMap(Interview::getId,
+                        interview -> resolveDisplayQuestion(interview, systemDesignListItems)));
         Map<Long, Long> viewCounts = finishedInterviews.stream()
                 .collect(Collectors.toMap(Interview::getId, interviewViewCountService::findViewCount));
         Map<Long, Integer> submittedAnswerMemoCounts = finishedInterviews.stream()
@@ -164,11 +184,11 @@ public class InterviewService {
                     finishedInterviewIds);
 
             return InterviewSummaryResponses.createOfOtherMemberForAuthorized(interviewee.getNickname(),
-                    totalMemberCount, intervieweeRank, finishedInterviews,
+                    totalMemberCount, intervieweeRank, finishedInterviews, displayQuestions,
                     likedInterviewIds, viewCounts, submittedAnswerMemoCounts, totalPageCount);
         }
         return InterviewSummaryResponses.createOfOtherMemberForUnAuthorized(interviewee.getNickname(), totalMemberCount,
-                intervieweeRank, finishedInterviews,
+                intervieweeRank, finishedInterviews, displayQuestions,
                 viewCounts, submittedAnswerMemoCounts, totalPageCount);
     }
 
@@ -189,6 +209,29 @@ public class InterviewService {
             return interviewRepository.findByMember(member, pageable);
         }
         return interviewRepository.findByMemberAndInterviewState(member, state, pageable);
+    }
+
+    // 페이지의 시스템 설계 행 제목·답변 수를 한 번에 읽는다. 시스템 설계 행이 없는 페이지는 조회하지 않는다.
+    private Map<Long, SystemDesignInterviewListItem> findSystemDesignListItems(List<Interview> interviews) {
+        List<Long> systemDesignInterviewIds = interviews.stream()
+                .filter(Interview::isSystemDesign)
+                .map(Interview::getId)
+                .toList();
+        if (systemDesignInterviewIds.isEmpty()) {
+            return Map.of();
+        }
+        return systemDesignInterviewRepository.findListItemsByInterviewIdIn(systemDesignInterviewIds).stream()
+                .collect(Collectors.toMap(SystemDesignInterviewListItem::interviewId, Function.identity()));
+    }
+
+    // system_design_interview 행이 없는 시스템 설계 면접은 맵에 없어 기본 문구를 쓴다.
+    private String resolveDisplayQuestion(Interview interview,
+                                          Map<Long, SystemDesignInterviewListItem> systemDesignListItems) {
+        SystemDesignInterviewListItem listItem = systemDesignListItems.get(interview.getId());
+        if (listItem == null) {
+            return interview.getDisplayQuestion();
+        }
+        return listItem.problemTitle();
     }
 
     private int countSubmittedAndPublicAnswerMemos(Interview interview) {
