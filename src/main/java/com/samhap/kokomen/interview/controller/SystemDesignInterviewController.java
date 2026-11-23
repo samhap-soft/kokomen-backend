@@ -6,6 +6,8 @@ import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.interview.service.SystemDesignInterviewFacadeService;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerRequest;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
@@ -67,12 +69,44 @@ public class SystemDesignInterviewController {
                 systemDesignInterviewFacadeService.completeRequirements(parseInterviewId(interviewId), memberAuth));
     }
 
+    // 채점은 워커가 하고 결과는 답변 결과 조회로 폴링한다. 토큰은 답변이 저장된 뒤에 차감한다.
+    @PostMapping("/{interviewId}/questions/{questionId}/answers")
+    public ResponseEntity<Void> submitAnswer(
+            @Authentication MemberAuth memberAuth,
+            @PathVariable String interviewId,
+            @PathVariable String questionId,
+            @RequestBody SystemDesignAnswerRequest request
+    ) {
+        systemDesignInterviewFacadeService.submitAnswer(parseInterviewId(interviewId), parseQuestionOrder(questionId),
+                request, memberAuth);
+        return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("/{interviewId}/questions/{questionId}")
+    public ResponseEntity<SystemDesignAnswerResultResponse> findAnswerResult(
+            @Authentication MemberAuth memberAuth,
+            @PathVariable String interviewId,
+            @PathVariable String questionId
+    ) {
+        return ResponseEntity.ok(systemDesignInterviewFacadeService.findAnswerResult(parseInterviewId(interviewId),
+                parseQuestionOrder(questionId), memberAuth));
+    }
+
     // 면접을 가리키지 못하는 경로 값(숫자가 아님, 빈 값, long 범위 밖)은 잘못된 입력(400)이 아니라 없는 면접(404)으로 답한다.
     private static Long parseInterviewId(String interviewId) {
         try {
             return Long.parseLong(interviewId.trim());
         } catch (NumberFormatException e) {
             throw new NotFoundException(INTERVIEW_NOT_FOUND.getMessage());
+        }
+    }
+
+    // 질문 순번으로 바꾸지 못하는 경로 값은 null로 넘긴다. 답변 제출은 지금 질문이 아니라고(409), 결과 조회는 없는 질문이라고(404) 답한다.
+    private static Integer parseQuestionOrder(String questionId) {
+        try {
+            return Integer.parseInt(questionId.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 }
