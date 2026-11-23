@@ -12,6 +12,7 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.answer.AnswerFixtureBuilder;
+import com.samhap.kokomen.global.fixture.async.CallerRunsTaskExecutor;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.QuestionFixtureBuilder;
@@ -43,7 +44,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 class InterviewProceedBedrockFlowAsyncServiceTest extends BaseTest {
 
@@ -221,13 +221,5 @@ class InterviewProceedBedrockFlowAsyncServiceTest extends BaseTest {
 
     private int readFreeTokenCount(Member member) {
         return tokenRepository.findByMemberIdAndType(member.getId(), TokenType.FREE).orElseThrow().getTokenCount();
-    }
-
-    private static class CallerRunsTaskExecutor extends ThreadPoolTaskExecutor {
-
-        @Override
-        public void execute(Runnable task) {
-            task.run();
-        }
     }
 }
