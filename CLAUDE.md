@@ -86,6 +86,7 @@ interview/service/
 ├── resume/     # ResumeBasedInterviewService, ResumeContentService
 ├── social/     # InterviewLikeService, InterviewViewCountService
 ├── infra/      # InterviewSchedulerService, InterviewProceedBedrockFlowAsyncService
+├── systemdesign/       # System design interview services (non-facade)
 └── dto/
 ```
 

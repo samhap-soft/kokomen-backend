@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.domain;
 import com.samhap.kokomen.global.domain.BaseEntity;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.member.domain.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -142,6 +143,14 @@ public class Interview extends BaseEntity {
                                      ClientIp clientIp) {
         return new Interview(null, null, rootQuestion, maxQuestionCount, InterviewState.IN_PROGRESS, interviewMode,
                 InterviewType.CATEGORY_BASED, null, null, 0L, 0L, null, clientIp.address());
+    }
+
+    /**
+     * 루트 질문 없이 시작하는 시스템 설계 면접. 문제·단계·다이어그램은 system_design_interview 행이 갖는다.
+     */
+    public static Interview forSystemDesign(Member member) {
+        return new Interview(null, member, null, SystemDesignInterview.MAX_QUESTION_COUNT, InterviewState.IN_PROGRESS,
+                InterviewMode.TEXT, InterviewType.SYSTEM_DESIGN, null, null, 0L, 0L, null, null);
     }
 
     private void validateMaxQuestionCount(Integer maxQuestionCount) {

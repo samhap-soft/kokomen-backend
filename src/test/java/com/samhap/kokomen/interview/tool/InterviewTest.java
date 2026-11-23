@@ -7,8 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.InterviewState;
+import com.samhap.kokomen.interview.domain.InterviewType;
+import com.samhap.kokomen.member.domain.Member;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -63,6 +67,32 @@ class InterviewTest {
                 () -> assertThat(interview.isSystemDesign()).isTrue(),
                 () -> assertThat(interview.getDisplayCategory()).isEqualTo("시스템 설계"),
                 () -> assertThat(interview.getDisplayQuestion()).isEqualTo("시스템 설계 면접")
+        );
+    }
+
+    @Test
+    void 시스템_설계_면접은_루트_질문_없이_텍스트_6문항으로_만든다() {
+        // given
+        Member member = MemberFixtureBuilder.builder().id(1L).build();
+
+        // when
+        Interview interview = Interview.forSystemDesign(member);
+
+        // then
+        assertAll(
+                () -> assertThat(interview.getMember()).isSameAs(member),
+                () -> assertThat(interview.getRootQuestion()).isNull(),
+                () -> assertThat(interview.getGeneratedQuestion()).isNull(),
+                () -> assertThat(interview.getGuestIp()).isNull(),
+                () -> assertThat(interview.getInterviewType()).isEqualTo(InterviewType.SYSTEM_DESIGN),
+                () -> assertThat(interview.getInterviewMode()).isEqualTo(InterviewMode.TEXT),
+                () -> assertThat(interview.getMaxQuestionCount()).isEqualTo(6),
+                () -> assertThat(interview.getInterviewState()).isEqualTo(InterviewState.IN_PROGRESS),
+                () -> assertThat(interview.getTotalFeedback()).isNull(),
+                () -> assertThat(interview.getTotalScore()).isNull(),
+                () -> assertThat(interview.getLikeCount()).isZero(),
+                () -> assertThat(interview.getViewCount()).isZero(),
+                () -> assertThat(interview.getFinishedAt()).isNull()
         );
     }
 }
