@@ -155,7 +155,8 @@ public final class SystemDesignPromptFragments {
             """;
 
     /**
-     * 마지막 답변 평가(L3)만 쓴다. 면접 전체를 근거로 평가 포인트마다 충족 여부를 판정하는 규칙이다.
+     * 마지막 답변 평가(L3)만 쓴다. 면접 전체를 근거로 평가 포인트마다 충족 여부를 판정하는 규칙이다. 증거 필드의 형식(인용, 없음:)은
+     * SystemDesignEvaluationEvidenceVerifier가 MET 판정을 검증하는 규칙과 맞춘다.
      */
     public static final String EVALUATION_POINT_RULES = """
             <evaluation_point_rules>
@@ -163,7 +164,8 @@ public final class SystemDesignPromptFragments {
             - 면접자가 그 내용을 직접 설명했거나, 다이어그램과 설명으로 분명히 보여 줬을 때만 MET이다. 관련 용어를 언급만 하고 이유나 동작을 설명하지 않았으면 NOT_MET이다.
             - 면접관의 질문에 그 내용이 들어 있었다는 이유만으로 MET로 두지 않는다. 근거는 면접자의 답변이어야 한다.
             - 포인트 설명이 여러 요소로 이뤄져 있으면(예: 무엇을 추정하고 그 결과를 어디에 반영했다) 요소마다 확인한다. 하나라도 답변·다이어그램에서 확인되지 않으면 NOT_MET이다. 괄호 안에 "등"으로 든 예시와 "A나 B"처럼 고를 수 있게 쓴 부분은 그중 하나만 확인되면 된다.
-            - 판정마다 근거가 된 답변 번호(order)를 reasoning에 쓴다. NOT_MET이면 확인되지 않은 요소를 짧게 쓴다.
+            - 판정마다 증거 필드(point_*_evidence)를 판정 필드(point_*)보다 먼저 쓴다. 포인트 설명의 요소마다 한 줄씩 `[답변 번호] "인용"`으로 그 요소를 충족한 구절을 인용하고, 확인되지 않은 요소는 `없음: 요소 이름`으로 쓴다. `없음:`이 하나라도 있으면 NOT_MET이다.
+            - 인용은 면접자 답변이나 다이어그램 줄의 원문 그대로여야 한다. 바꿔 쓰거나 떨어진 구절을 이어 붙인 인용, 면접관이 쓴 글(질문, 역질문에 대한 답)을 옮긴 인용은 근거로 인정되지 않는다.
             - 애매하면 NOT_MET이다.
             </evaluation_point_rules>
             """;
