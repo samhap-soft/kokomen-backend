@@ -12,14 +12,19 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ConflictException;
 import com.samhap.kokomen.global.exception.NotFoundException;
+import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
+import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
+import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
@@ -38,6 +43,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationRe
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
+import com.samhap.kokomen.interview.external.SystemDesignAnswerBedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluation;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -84,6 +90,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
+import software.amazon.awssdk.core.document.Document;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseOutput;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 class SystemDesignAnswerServiceTest extends BaseTest {
 
@@ -128,6 +144,8 @@ class SystemDesignAnswerServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // 질문 PK가 순번과, 면접 id가 질문 순번(1~6)과 우연히 같아지지 않게 다른 회원의 기록을 먼저 둔다.
     @BeforeEach
@@ -444,6 +462,56 @@ class SystemDesignAnswerServiceTest extends BaseTest {
                         tuple("REDIRECT_STATUS_TRADEOFF", false)),
                 // 100 × (0.5 × 3/5 + 0.5 × (0.75 + 0.75 + 0.5 + 1.0 + 0.75 + 0.5) / 6) = 65.4 → 65
                 () -> assertThat(readSystemDesignInterview(systemDesignInterview).getReportScore()).isEqualTo(65)
+        );
+    }
+
+    // MET 판정은 마지막 답변 채점 클라이언트가 증거로 검증해 내린 뒤 저장한다. BaseTest의 클라이언트는 목이라, 이 면접으로 준비한
+    // 채점 입력(DB에서 읽은 1~5번 답변 포함)을 SDK만 목으로 둔 실제 클라이언트에 넣는다.
+    @Test
+    void 끝나면_서버가_증거로_내린_판정이_평가_포인트_결과와_리포트_점수에_반영된다() {
+        // given
+        Member member = saveMemberWithTokens(1);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, C, A, B));
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
+        Map<String, Document> endInput = new LinkedHashMap<>();
+        endInput.put("reasoning", Document.fromString("마지막 답변 채점 근거와 종합 평가 정리"));
+        endInput.put("rank", Document.fromString("C"));
+        endInput.put("feedback", Document.fromString("C 등급 피드백이에요."));
+        endInput.put("strengths", Document.fromString("조회 경로를 캐시로 줄였어요."));
+        endInput.put("improvements", Document.fromString("장애 대응을 더 구체적으로 설명해 보세요."));
+        endInput.put("learning_direction", Document.fromString("장애 전환 방식을 비교해 보세요."));
+        // 6번 답변 원문 인용 → MET 유지
+        endInput.put("point_read_path_cache_evidence", Document.fromString("[6] \"API 서버 앞에 Redis 캐시를 두고\""));
+        endInput.put("point_read_path_cache", Document.fromString("MET"));
+        // 저장된 2번 답변 원문 인용 → MET 유지
+        endInput.put("point_key_generation_collision_evidence", Document.fromString("[2] \"2번 답변이에요\""));
+        endInput.put("point_key_generation_collision", Document.fromString("MET"));
+        // 어느 답변에도 없는 인용 → NOT_MET으로 내림
+        endInput.put("point_storage_estimation_evidence", Document.fromString("[3] \"보관 기간으로 저장 용량을 추정해요\""));
+        endInput.put("point_storage_estimation", Document.fromString("MET"));
+        // 확인되지 않은 요소 → NOT_MET으로 내림
+        endInput.put("point_redirect_availability_evidence", Document.fromString("없음: 장애 전환"));
+        endInput.put("point_redirect_availability", Document.fromString("MET"));
+        // NOT_MET은 증거가 근거가 돼도 올리지 않음
+        endInput.put("point_redirect_status_tradeoff_evidence", Document.fromString("[6] \"캐시에 없을 때만 DB를 읽어요\""));
+        endInput.put("point_redirect_status_tradeoff", Document.fromString("NOT_MET"));
+        SystemDesignAnswerBedrockClient endClient = realAnswerBedrockClient(endInput);
+
+        // when
+        answerService.saveLastAnswer(draft, endClient.evaluateEnd(draft.endCommand()));
+
+        // then
+        assertAll(
+                () -> assertThat(readEvaluationResults(systemDesignInterview)).containsExactly(
+                        tuple("READ_PATH_CACHE", true),
+                        tuple("KEY_GENERATION_COLLISION", true),
+                        tuple("STORAGE_ESTIMATION", false),
+                        tuple("REDIRECT_AVAILABILITY", false),
+                        tuple("REDIRECT_STATUS_TRADEOFF", false)),
+                // LLM 판정대로면 4/5 충족으로 75점이다.
+                // 100 × (0.5 × 2/5 + 0.5 × (0.75 + 0.75 + 0.5 + 1.0 + 0.75 + 0.5) / 6) = 55.4 → 55
+                () -> assertThat(readSystemDesignInterview(systemDesignInterview).getReportScore()).isEqualTo(55)
         );
     }
 
@@ -857,6 +925,27 @@ class SystemDesignAnswerServiceTest extends BaseTest {
 
     private static SystemDesignAnswerEvaluation answerEvaluation(AnswerRank rank, String nextQuestion) {
         return new SystemDesignAnswerEvaluation(rank, rank + " 등급 피드백이에요.", nextQuestion);
+    }
+
+    // SDK 클라이언트만 목으로 두고 마지막 답변 평가 도구 호출 하나를 돌려주는 실제 채점 클라이언트
+    private SystemDesignAnswerBedrockClient realAnswerBedrockClient(Map<String, Document> endInput) {
+        BedrockRuntimeClient bedrockRuntimeClient = mock(BedrockRuntimeClient.class);
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(ConverseResponse.builder()
+                .stopReason(StopReason.TOOL_USE)
+                .output(ConverseOutput.builder()
+                        .message(Message.builder()
+                                .role(ConversationRole.ASSISTANT)
+                                .content(ContentBlock.fromToolUse(ToolUseBlock.builder()
+                                        .toolUseId("tool-use-1")
+                                        .name("submit_system_design_end")
+                                        .input(Document.fromMap(endInput))
+                                        .build()))
+                                .build())
+                        .build())
+                .build());
+        BedrockConverseProperties properties = BedrockConversePropertiesFixture.create();
+        return new SystemDesignAnswerBedrockClient(
+                new BedrockConverseClient(bedrockRuntimeClient, properties, objectMapper), properties);
     }
 
     private static SystemDesignEndEvaluation endEvaluation(AnswerRank rank, Map<String, Boolean> metByPointCode) {

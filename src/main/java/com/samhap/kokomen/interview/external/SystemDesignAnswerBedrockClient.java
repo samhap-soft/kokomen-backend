@@ -15,6 +15,8 @@ import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluat
 import com.samhap.kokomen.interview.external.dto.response.TotalFeedbackResponse;
 import com.samhap.kokomen.interview.tool.SystemDesignAnswerCommand;
 import com.samhap.kokomen.interview.tool.SystemDesignEndCommand;
+import com.samhap.kokomen.interview.tool.SystemDesignEvaluationEvidenceVerifier;
+import com.samhap.kokomen.interview.tool.SystemDesignEvaluationEvidenceVerifier.VerifiedVerdict;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
 import com.samhap.kokomen.interview.tool.SystemDesignToolSchemas;
 import com.samhap.kokomen.interview.tool.SystemDesignUserMessages;
@@ -34,7 +36,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
  * 답변 평가(L2, 1~5번째 답변)와 마지막 답변 평가·리포트(L3, 6번째 답변). 비동기 워커에서 부른다.
  * {@code converse}부터 응답 검증까지를 감싸, SDK 예외(소켓 타임아웃, 재시도를 다 쓴 스로틀링, Bedrock 서버 오류 등)와 검증 실패를 모두
  * {@link ExternalApiException}으로 올린다. 실패는 아무것도 저장하지 않고 면접자가 다시 내게 하려는 것이다.
- * 다음 질문만 실패가 아니라 폴백이다(null을 주고 서비스가 기준 질문을 쓴다).
+ * 다음 질문만 실패가 아니라 폴백이다(null을 주고 서비스가 기준 질문을 쓴다). 평가 포인트의 MET 판정은 증거가 근거가 되지 않으면
+ * 실패가 아니라 NOT_MET으로 내린다({@link SystemDesignEvaluationEvidenceVerifier}).
  */
 @Slf4j
 @ExecutionTimer
@@ -93,7 +96,7 @@ public class SystemDesignAnswerBedrockClient {
 
     /**
      * @throws ExternalApiException 전송 실패, stopReason이 tool_use가 아님(maxTokens 잘림 포함), rank가 A~F가 아님, feedback이 빔,
-     *                              종합 피드백 세 필드가 모두 빔, 평가 포인트 판정 필드 누락·잘못된 값
+     *                              종합 피드백 세 필드가 모두 빔, 평가 포인트 증거 필드 누락·문자열 아님, 판정 필드 누락·잘못된 값
      */
     public SystemDesignEndEvaluation evaluateEnd(SystemDesignEndCommand command) {
         return call(SystemDesignCallType.END, command.interviewId(), END_CALL_FAILED_MESSAGE,
@@ -102,17 +105,16 @@ public class SystemDesignAnswerBedrockClient {
 
     private SystemDesignEndEvaluation requestEnd(SystemDesignEndCommand command) {
         int maxTokens = properties.systemDesignEndMaxTokens();
-        List<EvaluationPoint> points = command.problem().evaluationPoints();
         ConverseResponse response = converseClient.converse(
                 SystemDesignBedrockRequestFactory.createEndSystem(command.problem()),
                 SystemDesignBedrockRequestFactory.createEndMessages(command),
-                SystemDesignBedrockRequestFactory.createEndToolConfig(points),
+                SystemDesignBedrockRequestFactory.createEndToolConfig(command.problem().evaluationPoints()),
                 maxTokens,
                 properties.evaluationTemperature());
         JsonNode toolInput = readToolInput(SystemDesignCallType.END, command.interviewId(), maxTokens, response,
                 SystemDesignToolSchemas.END_TOOL_NAME);
         return new SystemDesignEndEvaluation(readRank(toolInput), readFeedback(toolInput), readTotalFeedback(toolInput),
-                readPointVerdicts(points, toolInput));
+                readPointVerdicts(command, toolInput));
     }
 
     // 기존 면접의 종합 피드백과 같은 규칙으로 세 필드를 잇는다. 비면 실패이고, interview.total_feedback 한도를 넘으면 자른다.
@@ -128,22 +130,43 @@ public class SystemDesignAnswerBedrockClient {
     }
 
     /**
-     * 평가 포인트마다 판정 필드가 문자열 MET/NOT_MET(대소문자 구분)인지 본다. 하나라도 없거나 다른 값이면 응답 전체를 실패로 본다.
-     * 빠진 판정을 NOT_MET으로 조용히 받으면 리포트가 영구히 낮게 굳기 때문이다. 모르는 필드는 무시한다.
+     * 평가 포인트마다 증거 필드가 문자열이고 판정 필드가 문자열 MET/NOT_MET(대소문자 구분)인지 본다. 하나라도 없거나 다르면 응답 전체를
+     * 실패로 본다. 빠진 판정을 NOT_MET으로 조용히 받으면 리포트가 영구히 낮게 굳기 때문이다. 모르는 필드는 무시한다.
+     * 모든 포인트를 읽은 뒤 MET 판정을 증거로 검증한다. 증거가 근거가 되지 않으면 실패가 아니라 NOT_MET으로 내리고, 내린 포인트마다
+     * WARN 한 줄을 남긴다. 실패한 응답에는 그 WARN을 남기지 않고, 로그에는 증거 원문 대신 내린 이유만 쓴다.
      */
-    private static Map<String, Boolean> readPointVerdicts(List<EvaluationPoint> points, JsonNode toolInput) {
+    private static Map<String, Boolean> readPointVerdicts(SystemDesignEndCommand command, JsonNode toolInput) {
+        List<PointOutput> outputs = command.problem().evaluationPoints().stream()
+                .map(point -> readPointOutput(point, toolInput))
+                .toList();
+        SystemDesignEvaluationEvidenceVerifier verifier = SystemDesignEvaluationEvidenceVerifier.of(command);
         Map<String, Boolean> metByPointCode = new LinkedHashMap<>();
-        for (EvaluationPoint point : points) {
-            String fieldName = SystemDesignToolSchemas.pointFieldName(point.code());
-            String verdict = rawTextOrNull(toolInput, fieldName);
-            if (!SystemDesignToolSchemas.POINT_MET.equals(verdict)
-                    && !SystemDesignToolSchemas.POINT_NOT_MET.equals(verdict)) {
-                throw new ExternalApiException("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName
-                        + ", value=" + received(toolInput, fieldName));
+        for (PointOutput output : outputs) {
+            VerifiedVerdict verdict = verifier.verify(output.met(), output.evidence());
+            if (verdict.isDowngraded()) {
+                log.warn("시스템 설계 평가 포인트 판정을 NOT_MET으로 내립니다. interviewId: {}, code: {}, reason: {}",
+                        command.interviewId(), output.code(), verdict.downgradeReason());
             }
-            metByPointCode.put(point.code(), SystemDesignToolSchemas.POINT_MET.equals(verdict));
+            metByPointCode.put(output.code(), verdict.met());
         }
         return metByPointCode;
+    }
+
+    private static PointOutput readPointOutput(EvaluationPoint point, JsonNode toolInput) {
+        String evidenceFieldName = SystemDesignToolSchemas.pointEvidenceFieldName(point.code());
+        String evidence = rawTextOrNull(toolInput, evidenceFieldName);
+        if (evidence == null) {
+            throw new ExternalApiException("시스템 설계 평가 포인트 증거 필드가 없거나 문자열이 아닙니다. field="
+                    + evidenceFieldName + ", value=" + received(toolInput, evidenceFieldName));
+        }
+        String fieldName = SystemDesignToolSchemas.pointFieldName(point.code());
+        String verdict = rawTextOrNull(toolInput, fieldName);
+        if (!SystemDesignToolSchemas.POINT_MET.equals(verdict)
+                && !SystemDesignToolSchemas.POINT_NOT_MET.equals(verdict)) {
+            throw new ExternalApiException("시스템 설계 평가 포인트 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName
+                    + ", value=" + received(toolInput, fieldName));
+        }
+        return new PointOutput(point.code(), SystemDesignToolSchemas.POINT_MET.equals(verdict), evidence);
     }
 
     private <T> T call(SystemDesignCallType callType, Long interviewId, String failureMessage, Supplier<T> request) {
@@ -212,5 +235,15 @@ public class SystemDesignAnswerBedrockClient {
             return null;
         }
         return value.textValue();
+    }
+
+    /**
+     * 검증하기 전의 평가 포인트 출력. met은 LLM 판정이고, evidence는 엔티티를 되돌리기 전의 증거 필드 값이다.
+     */
+    private record PointOutput(
+            String code,
+            boolean met,
+            String evidence
+    ) {
     }
 }
