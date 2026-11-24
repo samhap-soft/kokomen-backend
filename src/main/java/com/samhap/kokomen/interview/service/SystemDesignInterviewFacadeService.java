@@ -14,6 +14,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerR
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignPublicReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
@@ -135,5 +136,10 @@ public class SystemDesignInterviewFacadeService {
     // 진행 락을 잡지 않는다. 끝난 면접의 저장된 값만 읽는다.
     public SystemDesignReportResponse findReport(Long interviewId, MemberAuth memberAuth) {
         return systemDesignReportService.findReport(interviewId, memberAuth.memberId());
+    }
+
+    // 진행 락을 잡지 않고 요청한 회원을 넘기지 않는다. 로그인 여부와 상관없이 같은 공개 리포트를 준다.
+    public SystemDesignPublicReportResponse findPublicReport(Long interviewId) {
+        return systemDesignReportService.findPublicReport(interviewId);
     }
 }

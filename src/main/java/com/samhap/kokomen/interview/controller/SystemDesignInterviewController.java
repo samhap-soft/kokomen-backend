@@ -10,6 +10,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerR
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignPublicReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
@@ -101,6 +102,17 @@ public class SystemDesignInterviewController {
     ) {
         return ResponseEntity.ok(
                 systemDesignInterviewFacadeService.findReport(parseInterviewId(interviewId), memberAuth));
+    }
+
+    // 다른 회원 목록에서 여는 끝난 면접의 공개 리포트. 시스템 설계 API 중 이것만 로그인하지 않아도 되고, 누가 보든 같은 응답이다.
+    // memberAuth는 지금 쓰지 않지만 기존 다른 회원 결과(/api/v1/interviews/{interviewId}/result)와 같은 모양으로 두어
+    // 조회수·좋아요를 더할 때 쓴다.
+    @GetMapping("/{interviewId}/result")
+    public ResponseEntity<SystemDesignPublicReportResponse> findPublicReport(
+            @Authentication(required = false) MemberAuth memberAuth,
+            @PathVariable String interviewId
+    ) {
+        return ResponseEntity.ok(systemDesignInterviewFacadeService.findPublicReport(parseInterviewId(interviewId)));
     }
 
     // 면접을 가리키지 못하는 경로 값(숫자가 아님, 빈 값, long 범위 밖)은 잘못된 입력(400)이 아니라 없는 면접(404)으로 답한다.

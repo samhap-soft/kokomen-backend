@@ -141,7 +141,7 @@ class SystemDesignAnswerBedrockClientTest {
     }
 
     @Test
-    void L3_요청은_maxTokens_2560을_쓴다() {
+    void L3_요청은_maxTokens_3200을_쓴다() {
         // given
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
                 .willReturn(toolUseResponse(END_TOOL_NAME, endInput("MET", "MET", "MET", "MET", "MET")));
@@ -155,7 +155,7 @@ class SystemDesignAnswerBedrockClientTest {
         List<SystemContentBlock> system = request.system();
         assertAll(
                 () -> assertThat(request.modelId()).isEqualTo("us.anthropic.claude-sonnet-4-6"),
-                () -> assertThat(request.inferenceConfig().maxTokens()).isEqualTo(2560),
+                () -> assertThat(request.inferenceConfig().maxTokens()).isEqualTo(3200),
                 () -> assertThat(request.inferenceConfig().temperature()).isEqualTo(0.2f),
                 () -> assertThat(request.toolConfig().tools()).hasSize(1),
                 () -> assertThat(request.toolConfig().tools().get(0).toolSpec().name()).isEqualTo(END_TOOL_NAME),
@@ -582,7 +582,7 @@ class SystemDesignAnswerBedrockClientTest {
     void MAX_TOKENS_잘림은_ExternalApiException() {
         // given
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
-                .willReturn(maxTokensResponse(2_048), maxTokensResponse(2_560));
+                .willReturn(maxTokensResponse(2_048), maxTokensResponse(3_200));
 
         // when & then
         assertAll(
@@ -596,7 +596,7 @@ class SystemDesignAnswerBedrockClientTest {
                         .extracting(ILoggingEvent::getFormattedMessage)
                         .satisfiesExactly(
                                 message -> assertThat(message).contains("ANSWER", "interviewId: 41", "maxTokens: 2048"),
-                                message -> assertThat(message).contains("END", "interviewId: 41", "maxTokens: 2560")),
+                                message -> assertThat(message).contains("END", "interviewId: 41", "maxTokens: 3200")),
                 () -> assertFailureLogged("ANSWER", "END")
         );
     }

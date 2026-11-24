@@ -16,8 +16,11 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestion
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignEvaluationPointResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignFeedbackResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignPublicReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionResponse;
+import com.samhap.kokomen.member.domain.Member;
+import com.samhap.kokomen.member.repository.MemberRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,6 +44,7 @@ public class SystemDesignReportService {
     private final SystemDesignRequirementQuestionRepository requirementQuestionRepository;
     private final SystemDesignQuestionRepository questionRepository;
     private final SystemDesignAnswerRepository answerRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 소유자(404·403) → 끝난 면접(409) 순서로 본다. OSIV가 꺼져 있어 응답 조립도 이 읽기 트랜잭션 안에서 끝낸다.
@@ -54,7 +58,22 @@ public class SystemDesignReportService {
     }
 
     /**
-     * 끝난 면접의 저장된 값으로 리포트를 조립한다. 회원 점수는 면접자에게서 읽으므로 요청한 회원과 상관없이 같은 리포트가 나온다.
+     * 다른 회원 목록에서 여는 공개 리포트. 소유자를 보지 않으므로 로그인 여부나 요청한 회원과 상관없이 같은 응답이다. 없는 면접(404) →
+     * 끝난 면접(409) 순서로 본다. 조회수·좋아요는 다루지 않는다. 순위와 전체 회원 수는 기존 다른 회원 결과와 같은 계산이고, 시스템 설계는
+     * 회원만 시작하므로 면접자가 늘 있다.
+     */
+    @Transactional(readOnly = true)
+    public SystemDesignPublicReportResponse findPublicReport(Long interviewId) {
+        SystemDesignInterview systemDesignInterview = systemDesignInterviewService.readInterview(interviewId);
+        systemDesignInterview.validateReportReady();
+        Member interviewee = systemDesignInterview.getInterview().getMember();
+        return SystemDesignPublicReportResponse.of(createReport(systemDesignInterview), interviewee.getNickname(),
+                memberRepository.count(), memberRepository.findRankByScore(interviewee.getScore()));
+    }
+
+    /**
+     * 끝난 면접의 저장된 값으로 리포트를 조립한다. 리포트와 공개 리포트가 함께 쓴다. 회원 점수는 면접자에게서 읽으므로 요청한 회원과 상관없이
+     * 같은 리포트가 나온다.
      * 평가 포인트·판정·숨은 요구사항·역질문·질문·답변을 목록마다 한 번씩 읽어 메모리에서 짝짓는다(원소마다 다시 읽지 않는다).
      */
     private SystemDesignReportResponse createReport(SystemDesignInterview systemDesignInterview) {

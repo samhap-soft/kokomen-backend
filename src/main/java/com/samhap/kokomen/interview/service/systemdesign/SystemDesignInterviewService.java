@@ -126,12 +126,21 @@ public class SystemDesignInterviewService {
      */
     @Transactional(readOnly = true)
     public SystemDesignInterview readOwnedInterview(Long interviewId, Long memberId) {
-        SystemDesignInterview systemDesignInterview = systemDesignInterviewRepository.findByInterviewId(interviewId)
-                .orElseThrow(() -> new NotFoundException(INTERVIEW_NOT_FOUND.getMessage()));
+        SystemDesignInterview systemDesignInterview = readInterview(interviewId);
         if (!systemDesignInterview.getInterview().isInterviewee(memberId)) {
             throw new ForbiddenException(NOT_OWNER.getMessage());
         }
         return systemDesignInterview;
+    }
+
+    /**
+     * 시스템 설계 면접을 소유자 확인 없이 읽는다(공개 리포트). system_design_interview 행이 없는 면접 id(기존 면접·비회원 체험 면접 포함)는
+     * 404다.
+     */
+    @Transactional(readOnly = true)
+    public SystemDesignInterview readInterview(Long interviewId) {
+        return systemDesignInterviewRepository.findByInterviewId(interviewId)
+                .orElseThrow(() -> new NotFoundException(INTERVIEW_NOT_FOUND.getMessage()));
     }
 
     // 면접·역질문·질문·답변을 한 트랜잭션(한 스냅샷)에서 읽어, 요구사항 정리 완료나 답변 저장이 그 사이에 커밋돼도
