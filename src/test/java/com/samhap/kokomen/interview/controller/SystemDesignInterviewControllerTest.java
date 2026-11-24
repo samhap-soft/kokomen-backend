@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseControllerTest;
+import com.samhap.kokomen.global.annotation.Authentication;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
@@ -74,6 +75,7 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestion
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerCompletedResponse;
+import com.samhap.kokomen.interview.service.social.InterviewViewCountService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignProceedStateStore;
@@ -83,6 +85,7 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,6 +103,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -108,6 +112,7 @@ import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.restdocs.payload.RequestFieldsSnippet;
 import org.springframework.restdocs.payload.ResponseFieldsSnippet;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
@@ -121,6 +126,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     private static final String ANSWER_RESULT_URL =
             "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}";
     private static final String REPORT_URL = "/api/v1/interviews/system-design/{interviewId}/report";
+    private static final String PUBLIC_REPORT_URL = "/api/v1/interviews/system-design/{interviewId}/result";
     private static final String DEFAULT_REQUIREMENT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
     private static final String REQUIREMENT_QUESTION_JSON = """
             {
@@ -2046,6 +2052,235 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
     }
 
+    @Test
+    void 로그인하지_않고_공개_리포트를_조회한다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        memberRepository.save(MemberFixtureBuilder.builder().nickname("점수가 더 높은 회원").score(200).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder()
+                .nickname("시스템 설계 면접자")
+                .score(150)
+                .build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(interviewee,
+                List.of(List.of("DAILY_CREATION_VOLUME"), List.of("READ_WRITE_RATIO", "RETENTION_PERIOD"), List.of()));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+        Interview interview = systemDesignInterview.getInterview();
+        long memberCount = memberRepository.count();
+
+        // when
+        MvcResult result = mockMvc.perform(get(PUBLIC_REPORT_URL, interview.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interview_id").value(interview.getId()))
+                .andExpect(jsonPath("$.topic.title").value(SystemDesignProblemTestSupport.TITLE))
+                .andExpect(jsonPath("$.difficulty").value("BASIC"))
+                .andExpect(jsonPath("$.total_score").value(65))
+                .andExpect(jsonPath("$.total_feedback").value(interview.getTotalFeedback()))
+                .andExpect(jsonPath("$.evaluation_points[*].is_met", contains(true, true, false, true, false)))
+                .andExpect(jsonPath("$.missed_requirements", contains("단축 키 길이", "클릭 통계")))
+                .andExpect(jsonPath("$.requirement_questions", hasSize(3)))
+                .andExpect(jsonPath("$.requirement_questions[0].answer")
+                        .value("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."))
+                .andExpect(jsonPath("$.feedbacks[0].question_id").value(1))
+                .andExpect(jsonPath("$.feedbacks[*].answer_rank", contains("B", "B", "C", "A", "B", "C")))
+                .andExpect(jsonPath("$.interviewee_nickname").value("시스템 설계 면접자"))
+                .andExpect(jsonPath("$.total_member_count").value(memberCount))
+                .andExpect(jsonPath("$.interviewee_rank").value(2))
+                .andExpect(jsonPath("$.user_cur_score").doesNotExist())
+                .andExpect(jsonPath("$.user_prev_score").doesNotExist())
+                .andExpect(jsonPath("$.user_cur_rank").doesNotExist())
+                .andExpect(jsonPath("$.user_prev_rank").doesNotExist())
+                .andExpect(jsonPath("$.interview_view_count").doesNotExist())
+                .andExpect(jsonPath("$.interview_like_count").doesNotExist())
+                .andExpect(jsonPath("$.interview_already_liked").doesNotExist())
+                .andDo(document("system-design-interview-find-public-report",
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        publicReportResponseFields()
+                ))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.get("final_diagram")).isEqualTo(readJson(SystemDesignDiagramFixture.withCache())),
+                () -> assertThat(redisService.get(
+                        InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId(), String.class))
+                        .isEmpty()
+        );
+    }
+
+    // 공개 리포트는 소유자를 보지 않는다. 다른 회원의 면접이어도 403이 아니고, 로그인하지 않았을 때와 같은 응답이다.
+    @Test
+    void 다른_회원도_공개_리포트를_조회한다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().nickname("면접자").score(80).build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(interviewee,
+                List.of(List.of("DAILY_CREATION_VOLUME")));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(otherMember);
+        JsonNode anonymousBody = readBody(mockMvc.perform(get(PUBLIC_REPORT_URL, interviewId))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        // when
+        MvcResult result = mockMvc.perform(get(PUBLIC_REPORT_URL, interviewId)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interviewee_nickname").value("면접자"))
+                .andReturn();
+
+        // then
+        assertThat(readBody(result)).isEqualTo(anonymousBody);
+    }
+
+    @Test
+    void 면접자_본인도_같은_공개_리포트를_받는다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().nickname("면접자").score(80).build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(interviewee,
+                List.of(List.of("DAILY_CREATION_VOLUME")));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(interviewee);
+        JsonNode anonymousBody = readBody(mockMvc.perform(get(PUBLIC_REPORT_URL, interviewId))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        // when
+        MvcResult result = mockMvc.perform(get(PUBLIC_REPORT_URL, interviewId)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_cur_score").doesNotExist())
+                .andExpect(jsonPath("$.user_prev_score").doesNotExist())
+                .andReturn();
+
+        // then
+        assertThat(readBody(result)).isEqualTo(anonymousBody);
+    }
+
+    @Test
+    void 진행_중인_면접의_공개_리포트는_409() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview designing = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B, A, C));
+        SystemDesignInterview requirements = saveSystemDesignInterview(member, problemTestSupport.saveProblem(),
+                SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(PUBLIC_REPORT_URL, designing.getInterview().getId()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."))
+                .andDo(document("system-design-interview-find-public-report-not-finished",
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message").description("면접이 아직 끝나지 않았을 때의 오류 문구")
+                        )
+                ));
+        mockMvc.perform(get(PUBLIC_REPORT_URL, requirements.getInterview().getId()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."));
+        mockMvc.perform(get(PUBLIC_REPORT_URL, designing.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."));
+    }
+
+    // 시스템 설계가 아닌 면접은 끝났더라도 공개 리포트가 없는 면접이다. long 범위를 넘는 id도 숫자가 아닌 id와 같다.
+    @Test
+    void 공개_리포트는_없는_면접_숫자가_아닌_id_기존_면접_id면_404() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview finishedCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        Interview inProgressCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+
+        // when & then
+        mockMvc.perform(get(PUBLIC_REPORT_URL, finishedCategoryInterview.getId() + 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."))
+                .andDo(document("system-design-interview-find-public-report-not-found",
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("없는 면접, 숫자가 아닌 ID, 시스템 설계가 아닌 면접(비회원 체험 면접 포함)일 때의 "
+                                                + "오류 문구")
+                        )
+                ));
+        for (String interviewId : List.of("not-a-number", "99999999999999999999",
+                String.valueOf(finishedCategoryInterview.getId()),
+                String.valueOf(inProgressCategoryInterview.getId()))) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/result"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        }
+    }
+
+    // 시스템 설계는 회원만 시작하므로 비회원 시스템 설계 면접은 없다. 기존 결과 조회처럼 400으로 거절하지 않고 없는 면접(404)이다.
+    @Test
+    void 공개_리포트는_비회원_체험_면접_id면_404() throws Exception {
+        // given
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview guestInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(null)
+                .guestIp("203.0.113.7")
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+
+        // when & then
+        mockMvc.perform(get(PUBLIC_REPORT_URL, guestInterview.getId())
+                        .header("X-Forwarded-For", "203.0.113.7")
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+    }
+
+    // 시스템 설계 API 중 로그인 없이 열리는 것은 공개 리포트 하나다. 나머지는 @Authentication(required = true)라 리졸버가 401을 준다.
+    @Test
+    void 로그인_없이_열리는_시스템_설계_API는_공개_리포트뿐이다() {
+        // given
+        List<Method> handlers = Arrays.stream(SystemDesignInterviewController.class.getDeclaredMethods())
+                .filter(method -> AnnotatedElementUtils.hasAnnotation(method, RequestMapping.class))
+                .toList();
+
+        // when
+        List<String> publicHandlers = handlers.stream()
+                .filter(method -> Arrays.stream(method.getParameters())
+                        .map(parameter -> parameter.getAnnotation(Authentication.class))
+                        .noneMatch(authentication -> authentication != null && authentication.required()))
+                .map(Method::getName)
+                .toList();
+
+        // then
+        assertAll(
+                () -> assertThat(handlers).hasSize(8),
+                () -> assertThat(publicHandlers).containsExactly("findPublicReport")
+        );
+    }
+
     // 면접 조회 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
     private static ResponseFieldsSnippet interviewResponseFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
@@ -2123,8 +2358,28 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         );
     }
 
-    // 리포트 응답의 모든 필드. 비어 있을 수 있는 역질문 배열의 원소 필드는 optional이다. 순위 필드는 없다.
+    // 리포트 응답의 모든 필드. 순위 필드는 없다.
     private static ResponseFieldsSnippet reportResponseFields() {
+        List<FieldDescriptor> fields = reportContentFields();
+        fields.add(fieldWithPath("user_cur_score").description("면접자의 지금 회원 점수(랭킹 점수). 다른 면접을 마치면 바뀐다"));
+        fields.add(fieldWithPath("user_prev_score")
+                .description("user_cur_score에서 이번 면접의 등급 점수 합(A 20, B 10, C 0, D -10, F -20)을 뺀 값"));
+        return responseFields(fields);
+    }
+
+    // 공개 리포트 응답의 모든 필드. 리포트 필드에서 소유자 점수 둘(user_cur_score, user_prev_score)을 빼고 면접자 값 셋을 더했다.
+    // 조회수·좋아요 필드는 없다.
+    private static ResponseFieldsSnippet publicReportResponseFields() {
+        List<FieldDescriptor> fields = reportContentFields();
+        fields.add(fieldWithPath("interviewee_nickname").description("면접자 닉네임"));
+        fields.add(fieldWithPath("total_member_count").description("전체 회원 수"));
+        fields.add(fieldWithPath("interviewee_rank")
+                .description("면접자의 지금 회원 점수(랭킹 점수) 순위. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다"));
+        return responseFields(fields);
+    }
+
+    // 리포트와 공개 리포트가 함께 쓰는 필드. 비어 있을 수 있는 역질문 배열의 원소 필드는 optional이다.
+    private static List<FieldDescriptor> reportContentFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
                 fieldWithPath("interview_id").description("시스템 설계 면접 ID"),
                 fieldWithPath("topic").description("문제"),
@@ -2158,10 +2413,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         fields.add(fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"));
         fields.add(fieldWithPath("final_diagram").description("마지막 답변의 다이어그램"));
         fields.addAll(diagramFields("final_diagram."));
-        fields.add(fieldWithPath("user_cur_score").description("면접자의 지금 회원 점수(랭킹 점수). 다른 면접을 마치면 바뀐다"));
-        fields.add(fieldWithPath("user_prev_score")
-                .description("user_cur_score에서 이번 면접의 등급 점수 합(A 20, B 10, C 0, D -10, F -20)을 뺀 값"));
-        return responseFields(fields);
+        return fields;
     }
 
     // 답변 제출 요청의 모든 필드. 배열이 비어 있을 수 있어 원소 필드는 optional이다.

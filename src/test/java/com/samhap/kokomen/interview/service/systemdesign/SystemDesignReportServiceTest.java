@@ -52,14 +52,18 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirem
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignEvaluationPointResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignFeedbackResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignPublicReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignTopicResponse;
+import com.samhap.kokomen.interview.service.social.InterviewViewCountService;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import jakarta.persistence.EntityManagerFactory;
+import java.lang.reflect.RecordComponent;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -416,6 +420,139 @@ class SystemDesignReportServiceTest extends BaseTest {
         assertThat(report.feedbacks())
                 .extracting(SystemDesignFeedbackResponse::questionId)
                 .containsExactly(1, 2, 3, 4, 5);
+    }
+
+    // 공개 리포트의 필드는 리포트 필드에서 소유자 점수 둘을 빼고(null로 두지 않고 필드가 없다) 면접자 값 셋을 더한 것이다. 이름·순서·값이 같다.
+    @Test
+    void 공개_리포트는_E7과_같은_내용에_면접자_값을_더한다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().nickname("공개 리포트 면접자").score(150).build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME"),
+                List.of("READ_WRITE_RATIO", "RETENTION_PERIOD"),
+                List.of()));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+        Long interviewId = systemDesignInterview.getInterview().getId();
+
+        // when
+        SystemDesignReportResponse report = reportService.findReport(interviewId, member.getId());
+        SystemDesignPublicReportResponse publicReport = reportService.findPublicReport(interviewId);
+
+        // then
+        List<String> ownerOnlyFields = List.of("userCurScore", "userPrevScore");
+        List<String> expectedFields = new ArrayList<>(recordComponentNames(SystemDesignReportResponse.class));
+        assertThat(expectedFields).containsAll(ownerOnlyFields);
+        expectedFields.removeAll(ownerOnlyFields);
+        expectedFields.addAll(List.of("intervieweeNickname", "totalMemberCount", "intervieweeRank"));
+        assertAll(
+                () -> assertThat(recordComponentNames(SystemDesignPublicReportResponse.class))
+                        .containsExactlyElementsOf(expectedFields),
+                () -> assertThat(publicReport)
+                        .extracting(SystemDesignPublicReportResponse::interviewId,
+                                SystemDesignPublicReportResponse::topic,
+                                SystemDesignPublicReportResponse::difficulty,
+                                SystemDesignPublicReportResponse::totalScore,
+                                SystemDesignPublicReportResponse::totalFeedback,
+                                SystemDesignPublicReportResponse::difficultyComment,
+                                SystemDesignPublicReportResponse::evaluationPoints,
+                                SystemDesignPublicReportResponse::missedRequirements,
+                                SystemDesignPublicReportResponse::requirementQuestions,
+                                SystemDesignPublicReportResponse::feedbacks,
+                                SystemDesignPublicReportResponse::finalDiagram)
+                        .containsExactly(report.interviewId(), report.topic(), report.difficulty(), report.totalScore(),
+                                report.totalFeedback(), report.difficultyComment(), report.evaluationPoints(),
+                                report.missedRequirements(), report.requirementQuestions(), report.feedbacks(),
+                                report.finalDiagram()),
+                () -> assertThat(publicReport.totalScore()).isEqualTo(65),
+                () -> assertThat(publicReport.missedRequirements()).containsExactly("단축 키 길이", "클릭 통계"),
+                () -> assertThat(publicReport.requirementQuestions()).hasSize(3),
+                () -> assertThat(publicReport.feedbacks()).hasSize(SystemDesignInterview.MAX_QUESTION_COUNT),
+                () -> assertThat(publicReport.intervieweeNickname()).isEqualTo("공개 리포트 면접자")
+        );
+    }
+
+    // 기존 다른 회원 결과(/result)와 같이 면접자의 지금 점수로 순위를 구하고(동점은 같은 순위) 전체 회원을 센다.
+    // 이번 면접의 등급 점수 합(50)이나 리포트 점수(65)로 순위를 구하면 2위가 아니라 4위가 된다.
+    @Test
+    void 면접자_순위와_전체_회원_수는_기존_결과와_같은_계산이다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        long recordMemberCount = memberRepository.count();
+        memberRepository.save(MemberFixtureBuilder.builder().nickname("150점 회원").score(150).build());
+        memberRepository.save(MemberFixtureBuilder.builder().nickname("100점 회원").score(100).build());
+        memberRepository.save(MemberFixtureBuilder.builder().nickname("50점 회원").score(50).build());
+        Member interviewee = memberRepository.save(MemberFixtureBuilder.builder().nickname("면접자").score(100).build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(interviewee,
+                List.of());
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+
+        // when
+        SystemDesignPublicReportResponse report = reportService.findPublicReport(
+                systemDesignInterview.getInterview().getId());
+
+        // then
+        assertAll(
+                () -> assertThat(recordMemberCount).as("다른 회원 기록의 회원(점수 0)").isPositive(),
+                () -> assertThat(report.intervieweeNickname()).isEqualTo("면접자"),
+                () -> assertThat(report.intervieweeRank()).isEqualTo(2L),
+                () -> assertThat(report.totalMemberCount()).isEqualTo(recordMemberCount + 4)
+        );
+    }
+
+    // 조회수·좋아요는 공개 리포트에서 다루지 않는다. 여러 번 조회해도 면접의 조회수가 그대로이고 조회수 키(잠금 키 포함)가 생기지 않는다.
+    @Test
+    void 공개_리포트를_조회해도_조회수가_오르지_않는다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+        Interview interview = systemDesignInterview.getInterview();
+
+        // when
+        reportService.findPublicReport(interview.getId());
+        reportService.findPublicReport(interview.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(interviewRepository.findById(interview.getId()).orElseThrow().getViewCount())
+                        .isEqualTo(interview.getViewCount()),
+                () -> assertThat(redisTemplate.keys(InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*"))
+                        .isEmpty(),
+                () -> assertThat(redisTemplate.keys(
+                        InterviewViewCountService.INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + "*")).isEmpty()
+        );
+    }
+
+    // 공개 리포트는 리포트와 같은 조립에 전체 회원 수와 면접자 순위 쿼리 두 개만 더한다.
+    @Test
+    void 공개_리포트는_리포트보다_회원_수와_순위_두_쿼리만_더_읽는다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME"),
+                List.of("READ_WRITE_RATIO", "RETENTION_PERIOD"),
+                List.of()));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+
+        // when
+        long reportSelectCount = countSystemDesignSelects(() -> reportService.findReport(interviewId, member.getId()));
+        long publicReportSelectCount = countSystemDesignSelects(() -> reportService.findPublicReport(interviewId));
+        long reportStatementCount = countStatements(() -> reportService.findReport(interviewId, member.getId()));
+        long publicReportStatementCount = countStatements(() -> reportService.findPublicReport(interviewId));
+
+        // then
+        assertAll(
+                () -> assertThat(publicReportSelectCount).isEqualTo(reportSelectCount),
+                () -> assertThat(publicReportStatementCount).isEqualTo(reportStatementCount + 2)
+        );
+    }
+
+    private static List<String> recordComponentNames(Class<? extends Record> recordType) {
+        return Arrays.stream(recordType.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList();
     }
 
     private static String urlShortenerPointDescription(int index) {
