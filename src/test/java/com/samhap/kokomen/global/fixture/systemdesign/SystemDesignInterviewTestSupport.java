@@ -177,7 +177,9 @@ public class SystemDesignInterviewTestSupport {
     /**
      * 리포트 테스트용 다른 회원의 기록. {@link #saveOtherMemberRecords()}에 더해 다른 회원의 끝난 면접(리포트 데이터까지, 단축 키 길이와
      * 클릭 통계를 물었다), 그 회원의 기존 면접 {@value #REPORT_PADDING_INTERVIEW_COUNT}개, 출제하지 않는 문제의 평가 포인트
-     * {@value #REPORT_PADDING_POINT_COUNT}개를 둔다. 다른 면접의 역질문·답변·판정이 리포트에 섞이면 드러난다.
+     * {@value #REPORT_PADDING_POINT_COUNT}개를 둔다. 다른 회원의 끝난 면접은 다른 문제를 풀었으므로, 면접을 가리지 않고 읽은 역질문·답변이
+     * 리포트에 섞이면 드러나지만 같은 문제를 푼 면접의 판정이 섞이는 것은 드러나지 않는다. 그 경우는 같은 문제로 끝난 면접 둘을
+     * {@link #saveFinishedInterview(Member, SystemDesignProblem, List, List, List)}로 저장해 확인한다.
      * 뒤에 저장하는 회원과 {@link #saveFinishedInterview} 면접의 id는 회원 < 문제 < 질문 PK < 면접 < 평가 포인트 순으로 서로 겹치지
      * 않는다. 아무 기록 없이 시작하는 테스트와 SystemDesignInterviewControllerTest의 @BeforeEach 기록 위에서 모두 그렇다.
      */
@@ -256,10 +258,23 @@ public class SystemDesignInterviewTestSupport {
      */
     public SystemDesignInterview saveFinishedInterview(Member member, List<List<String>> askedRequirementCodes,
                                                        List<AnswerRank> ranks) {
-        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        return saveFinishedInterview(member, problemTestSupport.saveProblem(), askedRequirementCodes, ranks,
+                FINISHED_MET_BY_POINT);
+    }
+
+    /**
+     * 이미 있는 URL 단축기 문제로 {@link #saveFinishedInterview(Member, List)}처럼 저장한다. 같은 문제를 푼 면접끼리는 평가 포인트 행을
+     * 함께 쓴다.
+     *
+     * @param problem    {@link SystemDesignProblemTestSupport#saveProblem()}으로 저장한 문제
+     * @param metByPoint 문제의 평가 포인트 순서로 마지막 답변 채점이 낸 판정
+     */
+    public SystemDesignInterview saveFinishedInterview(Member member, SystemDesignProblem problem,
+                                                       List<List<String>> askedRequirementCodes,
+                                                       List<AnswerRank> ranks, List<Boolean> metByPoint) {
         List<SystemDesignEvaluationPoint> points =
                 evaluationPointRepository.findByProblemOrderByDisplayOrderAsc(problem);
-        int metCount = Math.toIntExact(FINISHED_MET_BY_POINT.stream().filter(Boolean::booleanValue).count());
+        int metCount = Math.toIntExact(metByPoint.stream().filter(Boolean::booleanValue).count());
         Interview interview = interviewRepository.save(InterviewFixtureBuilder.systemDesign()
                 .member(member)
                 .interviewState(InterviewState.FINISHED)
@@ -296,7 +311,7 @@ public class SystemDesignInterviewTestSupport {
             evaluationResultRepository.save(SystemDesignEvaluationResultFixtureBuilder.builder()
                     .systemDesignInterview(systemDesignInterview)
                     .evaluationPoint(points.get(index))
-                    .met(FINISHED_MET_BY_POINT.get(index))
+                    .met(metByPoint.get(index))
                     .build());
         }
         return systemDesignInterview;

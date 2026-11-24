@@ -113,7 +113,31 @@ class SystemDesignRequirementQuestionTest {
         );
     }
 
+    // 면접자가 확인한 요구사항이다. 마지막 답변 채점의 확인 여부와 리포트의 놓친 요구사항이 이 값을 함께 쓴다.
+    @Test
+    void 물은_요구사항_code는_모든_역질문의_합집합이고_처음_물은_순서다() {
+        // given
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                requirementQuestion(1, List.of("RETENTION_PERIOD")),
+                requirementQuestion(2, List.of("DAILY_CREATION_VOLUME", "RETENTION_PERIOD")),
+                requirementQuestion(3, List.of()));
+
+        // when & then
+        assertAll(
+                () -> assertThat(SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions))
+                        .containsExactly("RETENTION_PERIOD", "DAILY_CREATION_VOLUME"),
+                () -> assertThat(SystemDesignRequirementQuestion.collectAskedRequirementCodes(List.of())).isEmpty()
+        );
+    }
+
     private static SystemDesignRequirementQuestion requirementQuestion(int questionOrder) {
         return SystemDesignRequirementQuestionFixtureBuilder.builder().questionOrder(questionOrder).build();
+    }
+
+    private static SystemDesignRequirementQuestion requirementQuestion(int questionOrder, List<String> askedCodes) {
+        return SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .questionOrder(questionOrder)
+                .askedRequirementCodes(askedCodes)
+                .build();
     }
 }

@@ -106,4 +106,16 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
             throw new BadRequestException(REQUIREMENT_QUESTION_LIMIT.getMessage());
         }
     }
+
+    /**
+     * 면접자가 확인한 숨은 요구사항: 모든 역질문에서 물은 요구사항 code의 합집합(처음 물은 순서, 중복 없음). 마지막 답변 채점의 확인 여부와
+     * 리포트의 놓친 요구사항(이 합집합에 없는 요구사항)이 이 한 정의를 함께 쓴다.
+     */
+    public static List<String> collectAskedRequirementCodes(
+            List<SystemDesignRequirementQuestion> requirementQuestions) {
+        return requirementQuestions.stream()
+                .flatMap(requirementQuestion -> requirementQuestion.getAskedRequirementCodes().stream())
+                .distinct()
+                .toList();
+    }
 }

@@ -20,7 +20,6 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportR
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -95,12 +94,10 @@ public class SystemDesignReportService {
         return met;
     }
 
-    // 모든 역질문에서 물은 요구사항 code의 합집합에 없는 숨은 요구사항의 이름(문제의 순서). 역질문이 없으면 모두 놓친 것이다.
+    // 확인한 요구사항(모든 역질문에서 물은 요구사항 code의 합집합)에 없는 숨은 요구사항의 이름(문제의 순서). 역질문이 없으면 모두다.
     private List<String> findMissedRequirementNames(SystemDesignProblem problem,
                                                     List<SystemDesignRequirementQuestion> requirementQuestions) {
-        Set<String> askedCodes = requirementQuestions.stream()
-                .flatMap(requirementQuestion -> requirementQuestion.getAskedRequirementCodes().stream())
-                .collect(Collectors.toSet());
+        List<String> askedCodes = SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions);
         return hiddenRequirementRepository.findByProblemOrderByDisplayOrderAsc(problem).stream()
                 .filter(requirement -> !askedCodes.contains(requirement.getCode()))
                 .map(SystemDesignHiddenRequirement::getName)

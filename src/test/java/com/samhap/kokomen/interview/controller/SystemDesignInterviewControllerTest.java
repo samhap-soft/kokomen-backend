@@ -1945,13 +1945,28 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."));
     }
 
+    // 시스템 설계가 아닌 면접은 누구의 것이든(본인·다른 회원·비회원 체험) 소유자를 보기 전에 없는 면접이다.
     @Test
     void 없는_면접과_기존_면접_id는_404() throws Exception {
         // given
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
         RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
         Interview finishedCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
                 .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        Interview otherMemberCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        Interview guestInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(null)
+                .guestIp("203.0.113.7")
                 .rootQuestion(rootQuestion)
                 .interviewState(InterviewState.FINISHED)
                 .totalScore(30)
@@ -1960,7 +1975,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
         // when & then
         for (String interviewId : List.of(String.valueOf(finishedCategoryInterview.getId() + 999L), "not-a-number",
-                String.valueOf(finishedCategoryInterview.getId()))) {
+                String.valueOf(finishedCategoryInterview.getId()), String.valueOf(otherMemberCategoryInterview.getId()),
+                String.valueOf(guestInterview.getId()))) {
             mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/report")
                             .header("Cookie", "JSESSIONID=" + session.getId())
                             .session(session)
@@ -1968,6 +1984,33 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
         }
+    }
+
+    // 모두 확인했으면 빈 배열이다. 키는 빠지지 않는다.
+    @Test
+    void 모든_요구사항을_물었으면_놓친_요구사항은_빈_배열이다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"),
+                List.of("RETENTION_PERIOD", "SHORT_KEY_LENGTH", "CLICK_STATISTICS")));
+        MockHttpSession session = loginSession(member);
+
+        // when
+        MvcResult result = mockMvc.perform(get(REPORT_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.missed_requirements", empty()))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.has("missed_requirements")).isTrue(),
+                () -> assertThat(body.get("missed_requirements").isArray()).isTrue()
+        );
     }
 
     // 소유자를 끝났는지보다 먼저 본다. 다른 회원의 면접이면 진행 중이어도 409가 아니라 403이다.

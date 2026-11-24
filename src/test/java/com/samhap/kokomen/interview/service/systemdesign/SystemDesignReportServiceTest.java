@@ -209,6 +209,68 @@ class SystemDesignReportServiceTest extends BaseTest {
     }
 
     @Test
+    void 모든_요구사항을_물었으면_놓친_요구사항이_없다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"),
+                List.of("RETENTION_PERIOD", "SHORT_KEY_LENGTH", "CLICK_STATISTICS")));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+
+        // when
+        SystemDesignReportResponse report = reportService.findReport(systemDesignInterview.getInterview().getId(),
+                member.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(report.requirementQuestions()).hasSize(2),
+                () -> assertThat(report.missedRequirements()).isEmpty()
+        );
+    }
+
+    // 운영에서는 여러 면접이 같은 문제(같은 평가 포인트 행)를 푼다. 판정과 역질문은 그 면접의 것만 읽어야 한다.
+    @Test
+    void 같은_문제를_푼_다른_회원의_판정과_역질문은_리포트에_섞이지_않는다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member,
+                List.of(List.of("DAILY_CREATION_VOLUME")));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("같은 문제를 푼 회원").build());
+        SystemDesignInterview otherInterview = interviewTestSupport.saveFinishedInterview(otherMember,
+                systemDesignInterview.getProblem(),
+                List.of(List.of("READ_WRITE_RATIO", "RETENTION_PERIOD", "SHORT_KEY_LENGTH", "CLICK_STATISTICS")),
+                List.of(A, A, A, A, A, A), List.of(false, false, true, false, true));
+
+        // when
+        SystemDesignReportResponse report = reportService.findReport(systemDesignInterview.getInterview().getId(),
+                member.getId());
+        SystemDesignReportResponse otherReport = reportService.findReport(otherInterview.getInterview().getId(),
+                otherMember.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(report.evaluationPoints())
+                        .extracting(SystemDesignEvaluationPointResponse::isMet)
+                        .containsExactly(true, true, false, true, false),
+                () -> assertThat(report.missedRequirements())
+                        .containsExactly("조회와 생성 비율", "보관 기간", "단축 키 길이", "클릭 통계"),
+                () -> assertThat(report.feedbacks())
+                        .extracting(SystemDesignFeedbackResponse::answerRank)
+                        .containsExactly(B, B, C, A, B, C),
+                () -> assertThat(otherReport.evaluationPoints())
+                        .extracting(SystemDesignEvaluationPointResponse::isMet)
+                        .containsExactly(false, false, true, false, true),
+                () -> assertThat(otherReport.missedRequirements()).containsExactly("하루 생성량"),
+                () -> assertThat(otherReport.feedbacks())
+                        .extracting(SystemDesignFeedbackResponse::answerRank)
+                        .containsExactly(A, A, A, A, A, A)
+        );
+    }
+
+    @Test
     void 평가_포인트와_피드백은_정해진_순서다() {
         // given
         interviewTestSupport.saveOtherMemberReportRecords();
@@ -291,7 +353,8 @@ class SystemDesignReportServiceTest extends BaseTest {
         );
     }
 
-    // 면접(문제 포함)·평가 포인트·판정·숨은 요구사항·역질문·질문·답변을 한 번씩 읽는다. 목록 원소마다 다시 읽으면(N+1) 수가 늘어난다.
+    // 면접(문제 포함)·평가 포인트·판정·숨은 요구사항·역질문·질문·답변을 한 번씩 읽고 면접자를 한 번 읽는다. 목록 원소마다 다시 읽으면
+    // (지연 로딩, 파생 쿼리, findById 모두) 수가 늘어난다.
     @Test
     void 리포트는_시스템_설계_테이블을_한_번씩만_읽는다() {
         // given
@@ -301,36 +364,46 @@ class SystemDesignReportServiceTest extends BaseTest {
                 List.of("DAILY_CREATION_VOLUME"),
                 List.of("READ_WRITE_RATIO", "RETENTION_PERIOD"),
                 List.of()));
+        Runnable findReport = () -> reportService.findReport(systemDesignInterview.getInterview().getId(),
+                member.getId());
 
         // when
-        long systemDesignSelectCount = countSystemDesignSelects(() -> reportService.findReport(
-                systemDesignInterview.getInterview().getId(), member.getId()));
+        long systemDesignSelectCount = countSystemDesignSelects(findReport);
+        long statementCount = countStatements(findReport);
 
         // then
-        assertThat(systemDesignSelectCount).isEqualTo(7);
+        assertAll(
+                () -> assertThat(systemDesignSelectCount).isEqualTo(7),
+                () -> assertThat(statementCount).isEqualTo(8)
+        );
     }
 
     // 끝난 면접은 평가 포인트마다 판정이 있다. 빠진 판정을 충족하지 않음으로 지어내지 않고 실패한다.
     @Test
     void 평가_포인트_판정이_빠졌으면_리포트를_만들지_않는다() {
         // given
+        interviewTestSupport.saveOtherMemberReportRecords();
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
         evaluationResultRepository.delete(
                 evaluationResultRepository.findBySystemDesignInterview(systemDesignInterview).get(0));
 
         // when & then
         assertThatThrownBy(() -> reportService.findReport(systemDesignInterview.getInterview().getId(),
                 member.getId()))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("평가 포인트 판정이 없습니다");
     }
 
     // 면접 조회와 같이 답이 저장된 질문만 보여 준다.
     @Test
     void 끝난_면접의_마지막_질문에_답이_없으면_답이_있는_질문만_피드백으로_준다() {
         // given
+        interviewTestSupport.saveOtherMemberReportRecords();
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
         SystemDesignQuestion lastQuestion = questionRepository
                 .findBySystemDesignInterviewAndQuestionOrder(systemDesignInterview, 6).orElseThrow();
         answerRepository.delete(answerRepository.findByQuestion(lastQuestion).orElseThrow());
@@ -450,5 +523,25 @@ class SystemDesignReportServiceTest extends BaseTest {
                 .sum();
         statistics.clear();
         return queryCount + fetchCount;
+    }
+
+    // action이 준비한 JDBC 문장 수. findById(em.find)처럼 쿼리 통계에 남지 않는 조회도 센다. 통계는 SessionFactory 전체 값이라 그사이
+    // 다른 스레드(5분마다 도는 스케줄러 등)가 낸 문장이 섞일 수 있어 두 번 재고 작은 값을 쓴다. 섞이면 수가 늘기만 한다.
+    private long countStatements(Runnable action) {
+        return Math.min(countStatementsOnce(action), countStatementsOnce(action));
+    }
+
+    private long countStatementsOnce(Runnable action) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        statistics.setStatisticsEnabled(true);
+        try {
+            action.run();
+        } finally {
+            statistics.setStatisticsEnabled(false);
+        }
+        long statementCount = statistics.getPrepareStatementCount();
+        statistics.clear();
+        return statementCount;
     }
 }
