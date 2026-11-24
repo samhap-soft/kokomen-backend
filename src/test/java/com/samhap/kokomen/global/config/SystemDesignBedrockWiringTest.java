@@ -98,7 +98,7 @@ class SystemDesignBedrockWiringTest {
     }
 
     // 답변 채점은 워커 스레드에서 부르므로 요청 스레드를 잡지 않아 공용 converse 빈(@Primary)을 쓴다. 전용 빈을 쓰면 apiCall 25초가
-    // 마지막 답변 평가(상한까지 쓰면 생성만 약 41초)를 끊고, 연결 8개를 역질문과 나눠 쓰게 된다.
+    // 출력이 긴 마지막 답변 평가(상한까지 쓰면 생성에만 25초를 훌쩍 넘는다)를 끊고, 연결 8개를 역질문과 나눠 쓰게 된다.
     @Test
     void 답변_클라이언트는_공용_converse_클라이언트를_주입받는다() {
         contextRunner.run(context -> assertThat(ReflectionTestUtils.getField(

@@ -395,7 +395,7 @@ include::{snippetsDir}/resume-analysis-interview-start-voice-mode/curl-request.a
 == 시스템 설계 면접
 
 공개 리포트를 뺀 모든 API는 로그인한 회원만 쓸 수 있다(로그인하지 않으면 401). 경로의 면접 ID가 숫자가 아니거나, 없는 면접이거나, 시스템 설계가
-아닌 면접이면 404 `면접을 찾을 수 없어요.`, 다른 회원의 면접이면 403 `본인의 면접만 볼 수 있어요.`다(공개 리포트는 로그인하지 않아도 되고 403이
+아닌 면접이면 404 `면접을 찾을 수 없어요.`, 다른 회원의 면접이면 403 ``본인의 면접만 볼 수 있어요.``다(공개 리포트는 로그인하지 않아도 되고 403이
 없다). 오류 본문은 `{"message": ...}`이고 문구를 그대로 보여 주면 된다.
 
 === 시스템 설계 면접 시작
@@ -713,16 +713,16 @@ include::{snippetsDir}/system-design-interview-find-report-not-finished/response
 
 === 공개 리포트
 
-다른 회원의 면접 목록(`GET /api/v1/interviews?member_id=`)에서 시스템 설계 면접(`interview_type`이 `SYSTEM_DESIGN`)을 누르면 여는 화면이다.
+다른 회원의 면접 목록(`GET /api/v1/interviews?member_id=`)에서 시스템 설계 면접(``interview_type``이 `SYSTEM_DESIGN`)을 누르면 여는 화면이다.
 기존 면접의 `GET /api/v1/interviews/{interviewId}/result` 대신 이 API를 부른다. 로그인하지 않아도 되고, 로그인 여부나 면접자 본인 여부와 상관없이
 같은 응답이다(다른 회원에게도 403을 주지 않는다). 검사 순서는 없는 면접(404) → 끝난 면접(409)이다.
 
-* 필드는 리포트에서 `user_cur_score`, `user_prev_score`를 뺀 나머지 모두이고, 이름·값·순서가 리포트와 같다. 여기에 `interviewee_nickname`,
-  `total_member_count`, `interviewee_rank`를 더했다. 세 값은 기존 면접의 다른 회원 결과와 이름·계산이 같다.
-* `interviewee_rank`는 면접자의 지금 회원 점수(랭킹 점수) 순위다. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다.
+* 필드는 리포트에서 `user_cur_score`, ``user_prev_score``를 뺀 나머지 모두이고, 이름·값·순서가 리포트와 같다. 여기에 `interviewee_nickname`,
+  `total_member_count`, ``interviewee_rank``를 더했다. 세 값은 기존 면접의 다른 회원 결과와 이름·계산이 같다.
+* ``interviewee_rank``는 면접자의 지금 회원 점수(랭킹 점수) 순위다. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다.
 * 조회수와 좋아요는 없다. `interview_view_count`, `interview_like_count`, `interview_already_liked` 필드가 없고, 조회해도 조회수가 오르지 않는다.
 * 역질문의 면접관 답(`requirement_questions[].answer`)과 답변별 피드백이 그대로 보인다.
-* 비회원 체험 면접을 포함해 시스템 설계가 아닌 면접의 ID는 404 `면접을 찾을 수 없어요.`다.
+* 비회원 체험 면접을 포함해 시스템 설계가 아닌 면접의 ID는 404 ``면접을 찾을 수 없어요.``다.
 
 include::{snippetsDir}/system-design-interview-find-public-report/http-request.adoc[]
 include::{snippetsDir}/system-design-interview-find-public-report/path-parameters.adoc[]

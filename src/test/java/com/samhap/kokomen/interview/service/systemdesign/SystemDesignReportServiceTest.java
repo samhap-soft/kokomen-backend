@@ -500,7 +500,8 @@ class SystemDesignReportServiceTest extends BaseTest {
         );
     }
 
-    // 조회수·좋아요는 공개 리포트에서 다루지 않는다. 여러 번 조회해도 면접의 조회수가 그대로이고 조회수 키(잠금 키 포함)가 생기지 않는다.
+    // 조회수·좋아요는 공개 리포트에서 다루지 않는다. 여러 번 조회해도 면접의 조회수가 그대로이고 조회수 키와 이 면접의 조회수 잠금 키
+    // (IP별)가 생기지 않는다. 잠금 키는 이 면접 id로 좁힌다. 조회수 동기화 스케줄러의 잠금 키도 같은 접두사를 쓴다.
     @Test
     void 공개_리포트를_조회해도_조회수가_오르지_않는다() {
         // given
@@ -520,7 +521,8 @@ class SystemDesignReportServiceTest extends BaseTest {
                 () -> assertThat(redisTemplate.keys(InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + "*"))
                         .isEmpty(),
                 () -> assertThat(redisTemplate.keys(
-                        InterviewViewCountService.INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + "*")).isEmpty()
+                        InterviewViewCountService.INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + interview.getId() + ":*"))
+                        .isEmpty()
         );
     }
 

@@ -2101,12 +2101,10 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andReturn();
 
         // then
-        JsonNode body = readBody(result);
         assertAll(
-                () -> assertThat(body.get("final_diagram")).isEqualTo(readJson(SystemDesignDiagramFixture.withCache())),
-                () -> assertThat(redisService.get(
-                        InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + interview.getId(), String.class))
-                        .isEmpty()
+                () -> assertThat(readBody(result).get("final_diagram"))
+                        .isEqualTo(readJson(SystemDesignDiagramFixture.withCache())),
+                () -> assertNoViewCountKeys(interview.getId())
         );
     }
 
@@ -2135,7 +2133,10 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andReturn();
 
         // then
-        assertThat(readBody(result)).isEqualTo(anonymousBody);
+        assertAll(
+                () -> assertThat(readBody(result)).isEqualTo(anonymousBody),
+                () -> assertNoViewCountKeys(interviewId)
+        );
     }
 
     @Test
@@ -2162,7 +2163,10 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andReturn();
 
         // then
-        assertThat(readBody(result)).isEqualTo(anonymousBody);
+        assertAll(
+                () -> assertThat(readBody(result)).isEqualTo(anonymousBody),
+                () -> assertNoViewCountKeys(interviewId)
+        );
     }
 
     @Test
@@ -2519,6 +2523,16 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         return IntStream.rangeClosed(1, count)
                 .mapToObj(index -> connection("connection-" + index, "block-1", "block-2"))
                 .toList();
+    }
+
+    // 공개 리포트는 조회수를 다루지 않는다. 기존 다른 회원 결과가 만드는 조회수 키와 이 면접의 IP별 조회수 잠금 키가 없어야 한다.
+    private void assertNoViewCountKeys(Long interviewId) {
+        String viewCountKey = InterviewViewCountService.INTERVIEW_VIEW_COUNT_KEY_PREFIX + interviewId;
+        String lockKeyPattern = InterviewViewCountService.INTERVIEW_VIEW_COUNT_LOCK_KEY_PREFIX + interviewId + ":*";
+        assertAll(
+                () -> assertThat(redisService.get(viewCountKey, String.class)).isEmpty(),
+                () -> assertThat(redisTemplate.keys(lockKeyPattern)).isEmpty()
+        );
     }
 
     private void awaitLockReleased(Member member) {
