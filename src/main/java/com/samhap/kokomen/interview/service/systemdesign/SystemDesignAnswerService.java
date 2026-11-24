@@ -114,7 +114,7 @@ public class SystemDesignAnswerService {
         if (isLastQuestion(question)) {
             SystemDesignEndCommand endCommand = new SystemDesignEndCommand(interviewId, problemContext,
                     requirementTurns, previousTurns, currentTurn, diagram,
-                    collectConfirmedRequirementCodes(requirementQuestions));
+                    SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions));
             return new SystemDesignAnswerDraft(interviewId, memberId, question.getQuestionOrder(), content, diagram,
                     null, endCommand);
         }
@@ -125,15 +125,6 @@ public class SystemDesignAnswerService {
                         nextBaseQuestion.getContent()));
         return new SystemDesignAnswerDraft(interviewId, memberId, question.getQuestionOrder(), content, diagram,
                 answerCommand, null);
-    }
-
-    // 면접자가 확인한 숨은 요구사항: 모든 역질문에서 물은 요구사항 code의 합집합(처음 나온 순서)
-    private static List<String> collectConfirmedRequirementCodes(
-            List<SystemDesignRequirementQuestion> requirementQuestions) {
-        return requirementQuestions.stream()
-                .flatMap(requirementQuestion -> requirementQuestion.getAskedRequirementCodes().stream())
-                .distinct()
-                .toList();
     }
 
     /**

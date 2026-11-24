@@ -120,6 +120,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
             "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}/answers";
     private static final String ANSWER_RESULT_URL =
             "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}";
+    private static final String REPORT_URL = "/api/v1/interviews/system-design/{interviewId}/report";
     private static final String DEFAULT_REQUIREMENT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
     private static final String REQUIREMENT_QUESTION_JSON = """
             {
@@ -1840,6 +1841,211 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         }
     }
 
+    @Test
+    void 끝난_면접의_리포트를_조회한다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().score(150).build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME"),
+                List.of("READ_WRITE_RATIO", "RETENTION_PERIOD"),
+                List.of()));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+        Interview interview = systemDesignInterview.getInterview();
+        MockHttpSession session = loginSession(member);
+
+        // when
+        MvcResult result = mockMvc.perform(get(REPORT_URL, interview.getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interview_id").value(interview.getId()))
+                .andExpect(jsonPath("$.topic.title").value(SystemDesignProblemTestSupport.TITLE))
+                .andExpect(jsonPath("$.topic.description").value(SystemDesignProblemTestSupport.DESCRIPTION))
+                .andExpect(jsonPath("$.difficulty").value("BASIC"))
+                .andExpect(jsonPath("$.total_score").value(65))
+                .andExpect(jsonPath("$.total_feedback").value(interview.getTotalFeedback()))
+                .andExpect(jsonPath("$.difficulty_comment").value(SystemDesignProblemTestSupport.DIFFICULTY_COMMENT))
+                .andExpect(jsonPath("$.evaluation_points", hasSize(5)))
+                .andExpect(jsonPath("$.evaluation_points[0].is_met").value(true))
+                .andExpect(jsonPath("$.evaluation_points[*].is_met", contains(true, true, false, true, false)))
+                .andExpect(jsonPath("$.evaluation_points[0].met").doesNotExist())
+                .andExpect(jsonPath("$.missed_requirements", contains("단축 키 길이", "클릭 통계")))
+                .andExpect(jsonPath("$.requirement_questions", hasSize(3)))
+                .andExpect(jsonPath("$.requirement_questions[0].question").value("하루 생성량에 대해 알려 주세요."))
+                .andExpect(jsonPath("$.requirement_questions[0].answer")
+                        .value("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."))
+                .andExpect(jsonPath("$.feedbacks[0].question_id").value(1))
+                .andExpect(jsonPath("$.feedbacks[*].question_id", contains(1, 2, 3, 4, 5, 6)))
+                .andExpect(jsonPath("$.feedbacks[*].stage", contains("HIGH_LEVEL", "HIGH_LEVEL", "HIGH_LEVEL",
+                        "DEEP_DIVE", "DEEP_DIVE", "DEEP_DIVE")))
+                .andExpect(jsonPath("$.feedbacks[*].answer_rank", contains("B", "B", "C", "A", "B", "C")))
+                .andExpect(jsonPath("$.feedbacks[0].answer_feedback").isString())
+                .andExpect(jsonPath("$.final_diagram.connections[1].label").doesNotExist())
+                .andExpect(jsonPath("$.user_cur_score").value(150))
+                .andExpect(jsonPath("$.user_prev_score").value(100))
+                .andExpect(jsonPath("$.user_cur_rank").doesNotExist())
+                .andExpect(jsonPath("$.user_prev_rank").doesNotExist())
+                .andDo(document("system-design-interview-find-report",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        reportResponseFields()
+                ))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.get("evaluation_points").get(0).get("is_met").isBoolean()).isTrue(),
+                () -> assertThat(body.get("feedbacks").get(0).get("diagram"))
+                        .isEqualTo(readJson(SystemDesignDiagramFixture.urlShortenerStarter())),
+                () -> assertThat(body.get("feedbacks").get(5).get("diagram"))
+                        .isEqualTo(readJson(SystemDesignDiagramFixture.withCache())),
+                () -> assertThat(body.get("final_diagram")).isEqualTo(readJson(SystemDesignDiagramFixture.withCache()))
+        );
+    }
+
+    @Test
+    void 끝나지_않은_면접은_409() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview designing = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B, A, C));
+        SystemDesignInterview requirements = saveSystemDesignInterview(member, problemTestSupport.saveProblem(),
+                SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(REPORT_URL, designing.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."))
+                .andDo(document("system-design-interview-find-report-not-finished",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message").description("면접이 아직 끝나지 않았을 때의 오류 문구")
+                        )
+                ));
+        mockMvc.perform(get(REPORT_URL, requirements.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("면접이 끝나야 리포트를 볼 수 있어요."));
+    }
+
+    // 시스템 설계가 아닌 면접은 누구의 것이든(본인·다른 회원·비회원 체험) 소유자를 보기 전에 없는 면접이다.
+    @Test
+    void 없는_면접과_기존_면접_id는_404() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview finishedCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        Interview otherMemberCategoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(otherMember)
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        Interview guestInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(null)
+                .guestIp("203.0.113.7")
+                .rootQuestion(rootQuestion)
+                .interviewState(InterviewState.FINISHED)
+                .totalScore(30)
+                .build());
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        for (String interviewId : List.of(String.valueOf(finishedCategoryInterview.getId() + 999L), "not-a-number",
+                String.valueOf(finishedCategoryInterview.getId()), String.valueOf(otherMemberCategoryInterview.getId()),
+                String.valueOf(guestInterview.getId()))) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/report")
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        }
+    }
+
+    // 모두 확인했으면 빈 배열이다. 키는 빠지지 않는다.
+    @Test
+    void 모든_요구사항을_물었으면_놓친_요구사항은_빈_배열이다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"),
+                List.of("RETENTION_PERIOD", "SHORT_KEY_LENGTH", "CLICK_STATISTICS")));
+        MockHttpSession session = loginSession(member);
+
+        // when
+        MvcResult result = mockMvc.perform(get(REPORT_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.missed_requirements", empty()))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.has("missed_requirements")).isTrue(),
+                () -> assertThat(body.get("missed_requirements").isArray()).isTrue()
+        );
+    }
+
+    // 소유자를 끝났는지보다 먼저 본다. 다른 회원의 면접이면 진행 중이어도 409가 아니라 403이다.
+    @Test
+    void 리포트는_다른_회원의_면접이면_403() throws Exception {
+        // given
+        Member owner = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignInterview finished = interviewTestSupport.saveFinishedInterview(owner, List.of());
+        SystemDesignInterview inProgress = interviewTestSupport.saveInterviewWithAnswers(owner, List.of(B));
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        for (SystemDesignInterview systemDesignInterview : List.of(finished, inProgress)) {
+            mockMvc.perform(get(REPORT_URL, systemDesignInterview.getInterview().getId())
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").value("본인의 면접만 볼 수 있어요."));
+        }
+    }
+
+    @Test
+    void 리포트는_로그인하지_않으면_401() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+
+        // when & then
+        mockMvc.perform(get(REPORT_URL, systemDesignInterview.getInterview().getId()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
+    }
+
     // 면접 조회 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
     private static ResponseFieldsSnippet interviewResponseFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
@@ -1915,6 +2121,47 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 fieldWithPath(prefix + "connections[].label").type(JsonFieldType.STRING).optional()
                         .description("연결 이름. 없으면 키가 없다")
         );
+    }
+
+    // 리포트 응답의 모든 필드. 비어 있을 수 있는 역질문 배열의 원소 필드는 optional이다. 순위 필드는 없다.
+    private static ResponseFieldsSnippet reportResponseFields() {
+        List<FieldDescriptor> fields = new ArrayList<>(List.of(
+                fieldWithPath("interview_id").description("시스템 설계 면접 ID"),
+                fieldWithPath("topic").description("문제"),
+                fieldWithPath("topic.title").description("문제 제목"),
+                fieldWithPath("topic.description").description("문제 설명"),
+                fieldWithPath("difficulty").description("문제 난이도. 지금은 BASIC뿐"),
+                fieldWithPath("total_score").description("리포트 점수 (0~100). 평가 포인트 충족률과 답변 6개의 등급 평균"
+                        + "(A 1.0, B 0.75, C 0.5, D 0.25, F 0)을 반씩 반영해 반올림한다. 회원 점수(랭킹)에 더하는 점수와 다르다"),
+                fieldWithPath("total_feedback").description("마지막 답변 채점이 낸 종합 피드백(강점·보완점·학습 방향을 이은 문장)"),
+                fieldWithPath("difficulty_comment").description("문제의 난이도 기준 코멘트"),
+                fieldWithPath("evaluation_points").description("평가 포인트. 문제에 정한 순서"),
+                fieldWithPath("evaluation_points[].description").description("평가 포인트"),
+                fieldWithPath("evaluation_points[].is_met").description("마지막 답변 채점이 판정한 충족 여부"),
+                fieldWithPath("missed_requirements").type(JsonFieldType.ARRAY)
+                        .description("요구사항 역질문으로 확인하지 않은 숨은 요구사항의 이름. 문제에 정한 순서이고, 역질문을 하지 않았으면 "
+                                + "모두 들어간다. 모두 확인했으면 빈 배열"),
+                fieldWithPath("requirement_questions").description("요구사항 역질문과 면접관 답. 물은 순서. 역질문을 하지 않았으면 빈 배열"),
+                fieldWithPath("requirement_questions[].question").type(JsonFieldType.STRING).optional()
+                        .description("역질문"),
+                fieldWithPath("requirement_questions[].answer").type(JsonFieldType.STRING).optional()
+                        .description("면접관 답"),
+                fieldWithPath("feedbacks").description("설계 질문별 답변과 피드백. 질문 순번 순서"),
+                fieldWithPath("feedbacks[].question_id").description("질문 순번 (1~6)"),
+                fieldWithPath("feedbacks[].stage").description("그 질문의 단계 (HIGH_LEVEL, DEEP_DIVE)"),
+                fieldWithPath("feedbacks[].question").description("질문 문장"),
+                fieldWithPath("feedbacks[].answer").description("답변"),
+                fieldWithPath("feedbacks[].diagram").description("그 답변과 함께 낸 다이어그램")
+        ));
+        fields.addAll(diagramFields("feedbacks[].diagram."));
+        fields.add(fieldWithPath("feedbacks[].answer_rank").description("답변 등급 (A, B, C, D, F)"));
+        fields.add(fieldWithPath("feedbacks[].answer_feedback").description("답변 피드백"));
+        fields.add(fieldWithPath("final_diagram").description("마지막 답변의 다이어그램"));
+        fields.addAll(diagramFields("final_diagram."));
+        fields.add(fieldWithPath("user_cur_score").description("면접자의 지금 회원 점수(랭킹 점수). 다른 면접을 마치면 바뀐다"));
+        fields.add(fieldWithPath("user_prev_score")
+                .description("user_cur_score에서 이번 면접의 등급 점수 합(A 20, B 10, C 0, D -10, F -20)을 뺀 값"));
+        return responseFields(fields);
     }
 
     // 답변 제출 요청의 모든 필드. 배열이 비어 있을 수 있어 원소 필드는 optional이다.

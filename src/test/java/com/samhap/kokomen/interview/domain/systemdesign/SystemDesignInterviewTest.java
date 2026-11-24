@@ -192,6 +192,21 @@ class SystemDesignInterviewTest {
         );
     }
 
+    @Test
+    void 끝나지_않은_면접의_리포트는_409로_거절한다() {
+        // given
+        SystemDesignInterview inProgress = interviewAt(SystemDesignStage.DEEP_DIVE);
+        SystemDesignInterview finished = finishedInterviewAt(SystemDesignStage.DEEP_DIVE);
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(inProgress::validateReportReady)
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("면접이 끝나야 리포트를 볼 수 있어요."),
+                () -> assertThatCode(finished::validateReportReady).doesNotThrowAnyException()
+        );
+    }
+
     private static SystemDesignInterview interviewAt(SystemDesignStage stage) {
         return SystemDesignInterviewFixtureBuilder.builder()
                 .stage(stage)

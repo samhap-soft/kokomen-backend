@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.domain.systemdesign;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.ALREADY_DESIGN_STAGE;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.INTERVIEW_FINISHED;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.NOT_CURRENT_QUESTION;
+import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.REPORT_NOT_READY;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.REQUIREMENTS_NOT_COMPLETED;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.REQUIREMENT_STAGE_OVER;
 
@@ -171,6 +172,16 @@ public class SystemDesignInterview extends BaseEntity {
         if (reportScore < MIN_REPORT_SCORE || reportScore > MAX_REPORT_SCORE) {
             throw new IllegalArgumentException(
                     "리포트 점수는 %d~%d이어야 합니다: %d".formatted(MIN_REPORT_SCORE, MAX_REPORT_SCORE, reportScore));
+        }
+    }
+
+    /**
+     * 리포트는 면접이 끝난 뒤에만 볼 수 있다. 마지막 답변을 저장하는 트랜잭션이 리포트 데이터(평가 포인트 판정, 리포트 점수, 종합 피드백)를
+     * 함께 저장하고 면접을 끝내므로, 끝난 면접에는 리포트 데이터가 모두 있다.
+     */
+    public void validateReportReady() {
+        if (interview.isInProgress()) {
+            throw new ConflictException(REPORT_NOT_READY.getMessage());
         }
     }
 }

@@ -10,6 +10,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerR
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
@@ -90,6 +91,16 @@ public class SystemDesignInterviewController {
     ) {
         return ResponseEntity.ok(systemDesignInterviewFacadeService.findAnswerResult(parseInterviewId(interviewId),
                 parseQuestionOrder(questionId), memberAuth));
+    }
+
+    // 끝난 면접의 리포트. 마지막 답변을 채점할 때 함께 저장한 값을 조립하므로 기다리지 않는다.
+    @GetMapping("/{interviewId}/report")
+    public ResponseEntity<SystemDesignReportResponse> findReport(
+            @Authentication MemberAuth memberAuth,
+            @PathVariable String interviewId
+    ) {
+        return ResponseEntity.ok(
+                systemDesignInterviewFacadeService.findReport(parseInterviewId(interviewId), memberAuth));
     }
 
     // 면접을 가리키지 못하는 경로 값(숫자가 아님, 빈 값, long 범위 밖)은 잘못된 입력(400)이 아니라 없는 면접(404)으로 답한다.
