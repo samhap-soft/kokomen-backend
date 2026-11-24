@@ -118,8 +118,8 @@ class SystemDesignToolSchemasTest {
     // 증거 필드의 설명은 평가 포인트마다 같다.
     private static final String EVIDENCE_DESCRIPTION = "이 평가 포인트 설명의 요소마다 한 줄씩: "
             + "`[답변 번호] \"답변이나 다이어그램 줄의 원문 그대로 짧은 인용\"`. 확인되지 않은 요소는 `없음: 요소 이름`. 300자 이내.";
-    // URL 단축기 문제로 그린 마지막 답변 평가 도구의 평가 포인트 판정 필드. 고정 필드 뒤에 문제의 평가 포인트 순서로 붙고, 포인트마다
-    // 증거 필드가 판정 필드 바로 앞에 온다(END_FIELD_ORDER).
+    // URL 단축기 문제로 그린 마지막 답변 평가 도구의 평가 포인트 판정 필드. feedback 뒤, 종합 평가 세 필드 앞에 문제의 평가 포인트
+    // 순서로 붙고, 포인트마다 증거 필드가 판정 필드 바로 앞에 온다(END_FIELD_ORDER).
     private static final String URL_SHORTENER_POINT_FIELDS = """
             {
               "point_read_path_cache": {
@@ -152,13 +152,13 @@ class SystemDesignToolSchemasTest {
     private static final List<String> URL_SHORTENER_EVIDENCE_FIELDS = List.of("point_read_path_cache_evidence",
             "point_key_generation_collision_evidence", "point_storage_estimation_evidence",
             "point_redirect_availability_evidence", "point_redirect_status_tradeoff_evidence");
-    private static final List<String> END_FIELD_ORDER = List.of("reasoning", "rank", "feedback", "strengths",
-            "improvements", "learning_direction",
+    private static final List<String> END_FIELD_ORDER = List.of("reasoning", "rank", "feedback",
             "point_read_path_cache_evidence", "point_read_path_cache",
             "point_key_generation_collision_evidence", "point_key_generation_collision",
             "point_storage_estimation_evidence", "point_storage_estimation",
             "point_redirect_availability_evidence", "point_redirect_availability",
-            "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff");
+            "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff",
+            "strengths", "improvements", "learning_direction");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -312,9 +312,9 @@ class SystemDesignToolSchemasTest {
         assertAll(
                 () -> assertThat(answer.requiredFields()).isEqualTo(answer.fields()),
                 () -> assertThat(end.fields()).extracting(ToolField::name).containsExactly("reasoning", "rank",
-                        "feedback", "strengths", "improvements", "learning_direction",
-                        "point_burst_absorption_evidence", "point_burst_absorption",
-                        "point_duplicate_issue_evidence", "point_duplicate_issue"),
+                        "feedback", "point_burst_absorption_evidence", "point_burst_absorption",
+                        "point_duplicate_issue_evidence", "point_duplicate_issue", "strengths", "improvements",
+                        "learning_direction"),
                 () -> assertThat(end.requiredFields()).isEqualTo(end.fields())
         );
     }

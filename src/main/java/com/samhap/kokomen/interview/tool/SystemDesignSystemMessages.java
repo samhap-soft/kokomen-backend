@@ -62,11 +62,11 @@ public final class SystemDesignSystemMessages {
             - reasoning : last_answer_analysis(가장 최근 답변의 rubric 항목별 점수와 근거)와 종합 평가 정리를 합쳐 400자 이내로 쓴다. 평가 포인트별 근거는 reasoning이 아니라 point_*_evidence에 쓴다. 사용자에게 노출되지 않는다.
             - rank : 가장 최근 답변에 대한 rank. A/B/C/D/F 중 한 글자. 면접 전체가 아니라 가장 최근 답변만 기준으로 한다.
             - feedback : 가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank를 따른다.
+            - point_*_evidence : 평가 포인트마다 판정보다 먼저 쓰는 근거. evaluation_point_rules의 형식으로 300자 이내로 쓴다. 사용자에게 노출되지 않는다.
+            - point_* : 평가 포인트마다 바로 앞의 증거와 evaluation_point_rules에 따라 MET 또는 NOT_MET.
             - strengths : 이번 면접에서 드러난 설계 강점 1-2문장.
             - improvements : 보완할 설계 영역 1-2문장. 확인하지 않은 요구사항이 설계에 영향을 줬다면 짚는다.
             - learning_direction : 이번 면접의 약점에 근거한 구체적인 다음 학습 주제 1-2문장(예: "요청이 몰릴 때 큐로 부하를 흡수하는 방식과 바로 처리하는 방식을 비교해 보는 연습"). "더 공부하라" 같은 일반론은 쓰지 않는다.
-            - point_*_evidence : 평가 포인트마다 판정보다 먼저 쓰는 근거. evaluation_point_rules의 형식으로 300자 이내로 쓴다. 사용자에게 노출되지 않는다.
-            - point_* : 평가 포인트마다 바로 앞의 증거와 evaluation_point_rules에 따라 MET 또는 NOT_MET.
             strengths, improvements, learning_direction은 서버가 한 단락으로 이어 붙이므로 각 항목을 독립된 한두 문장의 존댓말로 쓰고, 인사·점수·rank는 언급하지 않는다.
             </output>
             """;

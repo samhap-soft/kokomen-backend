@@ -14,13 +14,13 @@ import java.util.stream.Stream;
  *
  * <p>MET을 내리는 경우(이 순서로 본다):
  * <ol>
- *     <li>확인되지 않은 요소 표시({@code 없음:})가 있다</li>
+ *     <li>인용 밖에 확인되지 않은 요소 표시({@code 없음:})가 있다. 원문을 옮긴 인용 안의 {@code 없음:}은 표시가 아니다</li>
  *     <li>근거가 되는 큰따옴표 인용이 없다. 다듬은 뒤 {@value #MIN_QUOTE_LENGTH}자 미만인 인용은 어느 답변에나 들어 있을 만해
  *     근거로 치지 않는다</li>
  *     <li>근거가 되는 인용 하나라도 이번 면접의 면접자 답변(1~6번)이나 마지막 다이어그램을 그린 줄 어디에도 없다</li>
  * </ol>
- * 인용과 출처는 같은 규칙으로 다듬어 부분 문자열로 비교한다. NFKC로 전각·호환 문자를 맞추고 소문자로 바꾼 뒤 공백·줄바꿈, 따옴표,
- * 문장부호(. , ! ? … · 등)를 지운다. 인용 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 떨어진 구절을 이어 붙인
+ * 인용과 출처는 같은 규칙으로 다듬어 부분 문자열로 비교한다. NFKC로 전각·호환 문자를 맞추고 소문자로 바꾼 뒤 공백·줄바꿈, 보이지
+ * 않는 글자, 따옴표, 문장부호(. , ! ? … · 등)를 지운다. 인용 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 떨어진 구절을 이어 붙인
  * 인용은 근거가 아니다. 면접관의 질문과 역질문 기록은 면접자의 설계 근거가 아니어서 출처에 넣지 않는다.
  * 인용이 그 요소를 실제로 충족하는지(뜻)는 보지 않는다. 그 판단은 LLM 판정에 남는다.
  */
@@ -31,9 +31,10 @@ public final class SystemDesignEvaluationEvidenceVerifier {
     private static final Pattern MISSING_ELEMENT = Pattern.compile("없음\\s*:");
     // 곧은 큰따옴표와 둥근 큰따옴표를 짝짓는 순서대로 묶는다. 전각 큰따옴표는 NFKC가 곧은 큰따옴표로 바꾼다.
     private static final Pattern QUOTE = Pattern.compile("[\"“”]([^\"“”]*)[\"“”]");
-    // 공백 문자(유니코드 공백, 줄바꿈, 폭 없는 공백), 따옴표, 문장부호
+    // 공백 문자(유니코드 공백·줄바꿈), 보이지 않는 글자(서식 문자, 이모지 변이 선택자), 따옴표, 문장부호.
+    // NFKC 뒤에 지우므로 가운뎃점으로 쓰는 ㆍ(U+318D)는 NFKC가 바꾼 U+119E로 적는다.
     private static final Pattern IGNORED = Pattern.compile(
-            "[\\s\\p{Z}\\x{85}\\x{200B}-\\x{200D}\\x{FEFF}\"'“”‘’`.,!?…⋯·ㆍ‧・。、]");
+            "[\\s\\p{Z}\\p{Cf}\\x{85}\\x{FE00}-\\x{FE0F}\"'“”‘’`.,!?…⋯·\\x{119E}‧・。、]");
 
     private final List<String> normalizedSources;
 
@@ -69,7 +70,7 @@ public final class SystemDesignEvaluationEvidenceVerifier {
     }
 
     private DowngradeReason findDowngradeReason(String evidence) {
-        if (MISSING_ELEMENT.matcher(evidence).find()) {
+        if (MISSING_ELEMENT.matcher(QUOTE.matcher(evidence).replaceAll(" ")).find()) {
             return DowngradeReason.MISSING_ELEMENT;
         }
         List<String> quotes = findQuotes(evidence);
@@ -122,6 +123,6 @@ public final class SystemDesignEvaluationEvidenceVerifier {
         // 근거가 되는 큰따옴표 인용이 없다
         NO_QUOTE,
         // 이번 면접의 답변·다이어그램에 없는 인용이 있다
-        UNMATCHED_QUOTE
+        UNMATCHED_QUOTE,
     }
 }

@@ -163,12 +163,12 @@ class SystemDesignAnswerBedrockClientTest {
                 () -> assertThat(request.toolConfig().tools().get(0).toolSpec().name()).isEqualTo(END_TOOL_NAME),
                 () -> assertThat(request.toolConfig().toolChoice().tool().name()).isEqualTo(END_TOOL_NAME),
                 () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("reasoning", "rank", "feedback",
-                        "strengths", "improvements", "learning_direction",
                         "point_read_path_cache_evidence", "point_read_path_cache",
                         "point_key_generation_collision_evidence", "point_key_generation_collision",
                         "point_storage_estimation_evidence", "point_storage_estimation",
                         "point_redirect_availability_evidence", "point_redirect_availability",
-                        "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff"),
+                        "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff",
+                        "strengths", "improvements", "learning_direction"),
                 () -> assertThat(system).hasSize(2),
                 () -> assertThat(system.get(0).text()).isEqualTo(SystemDesignSystemMessages.end(command.problem())),
                 () -> assertThat(system.get(1).cachePoint()).isNotNull(),
@@ -502,14 +502,17 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
-    // 증거가 근거가 되지 않는 MET은 실패가 아니라 NOT_MET으로 내린다. 내린 포인트마다 WARN 한 줄(인용 원문 없이 이유만)을 남기고,
-    // 원래 NOT_MET인 포인트는 증거에 없음이 있어도 남기지 않는다.
+    // 증거가 근거가 되지 않는 MET은 실패가 아니라 NOT_MET으로 내린다. 내린 포인트마다 WARN 한 줄(인용 원문 없이 이유만)을 남긴다.
+    // 원래 NOT_MET인 포인트는 증거에 없음이 있거나 증거가 빈 문자열이어도 그대로 두고 WARN을 남기지 않는다.
     @Test
-    void MET이어도_증거가_근거가_되지_않으면_NOT_MET으로_내리고_WARN_한_줄을_남긴다() {
+    void MET이어도_증거가_근거가_되지_않으면_NOT_MET으로_내리고_내린_포인트마다_WARN_한_줄을_남긴다() {
         // given
-        Map<String, Document> input = endInput("MET", "MET", "MET", "NOT_MET", "MET");
+        Map<String, Document> input = endInput("MET", "MET", "MET", "NOT_MET", "NOT_MET");
+        input.put("point_read_path_cache_evidence", Document.fromString("[6] \"만료와 차단을 되돌릴 수 있게\"\n"
+                + "없음: 조회가 많다는 근거"));
         input.put("point_storage_estimation_evidence", Document.fromString("[3] \"건당 500바이트로 잡아 수십 GB입니다\""));
         input.put("point_redirect_availability_evidence", Document.fromString("없음: 장애 전환"));
+        input.put("point_redirect_status_tradeoff_evidence", Document.fromString(""));
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
                 .willReturn(toolUseResponse(END_TOOL_NAME, input));
 
@@ -519,16 +522,21 @@ class SystemDesignAnswerBedrockClientTest {
         // then
         assertAll(
                 () -> assertThat(evaluation.metByPointCode()).containsExactly(
-                        entry("READ_PATH_CACHE", true),
+                        entry("READ_PATH_CACHE", false),
                         entry("KEY_GENERATION_COLLISION", true),
                         entry("STORAGE_ESTIMATION", false),
                         entry("REDIRECT_AVAILABILITY", false),
-                        entry("REDIRECT_STATUS_TRADEOFF", true)),
+                        entry("REDIRECT_STATUS_TRADEOFF", false)),
                 () -> assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.WARN)
                         .extracting(ILoggingEvent::getFormattedMessage)
-                        .satisfiesExactly(message -> assertThat(message)
-                                .contains("interviewId: 41", "code: STORAGE_ESTIMATION", "reason: UNMATCHED_QUOTE")
-                                .doesNotContain("500바이트"))
+                        .satisfiesExactly(
+                                message -> assertThat(message)
+                                        .contains("interviewId: 41", "code: READ_PATH_CACHE", "reason: MISSING_ELEMENT")
+                                        .doesNotContain("만료와 차단"),
+                                message -> assertThat(message)
+                                        .contains("interviewId: 41", "code: STORAGE_ESTIMATION",
+                                                "reason: UNMATCHED_QUOTE")
+                                        .doesNotContain("500바이트"))
         );
     }
 
