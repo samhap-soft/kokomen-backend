@@ -682,6 +682,34 @@ include::{snippetsDir}/system-design-interview-answer-result-not-found/http-requ
 include::{snippetsDir}/system-design-interview-answer-result-not-found/http-response.adoc[]
 include::{snippetsDir}/system-design-interview-answer-result-not-found/response-fields.adoc[]
 
+=== 리포트
+
+면접이 끝난 뒤(`interview_state`가 `FINISHED`) 리포트를 조회한다. 6번째 답변을 채점할 때 리포트에 쓰는 값을 함께 저장하므로,
+그 답변의 결과 조회가 `COMPLETED`면 기다리지 않고 바로 조회할 수 있다. 검사 순서는 소유자(404·403) → 끝난 면접(409)이다.
+
+* `total_score`는 리포트 점수(0~100)다. 평가 포인트 충족률과 답변 6개의 등급 평균(A 1.0, B 0.75, C 0.5, D 0.25, F 0)을 반씩
+  반영해 반올림한다. 회원 점수(랭킹)에 더하는 점수와 다르다.
+* `evaluation_points`는 문제에 정한 평가 포인트 순서이고, `is_met`은 마지막 답변 채점이 판정한 충족 여부다.
+* `missed_requirements`는 요구사항 역질문으로 확인하지 않은 숨은 요구사항의 이름이다(문제에 정한 순서). 역질문을 하지 않았으면 모두
+  들어가고, 모두 확인했으면 빈 배열이다.
+* `requirement_questions`는 물은 순서, `feedbacks`는 질문 순번 순서다. `feedbacks[].question_id`는 질문 순번(1~6)이다.
+* `final_diagram`은 마지막 답변과 함께 낸 다이어그램이다.
+* `user_cur_score`는 면접자의 지금 회원 점수(랭킹 점수)이고, `user_prev_score`는 거기서 이번 면접의 등급 점수 합을 뺀 값이다(기존 면접
+  결과와 같은 계산). 다른 면접을 마치면 `user_cur_score`가 바뀐다. 순위 필드는 없다.
+
+include::{snippetsDir}/system-design-interview-find-report/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-find-report/request-headers.adoc[]
+include::{snippetsDir}/system-design-interview-find-report/path-parameters.adoc[]
+include::{snippetsDir}/system-design-interview-find-report/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-find-report/response-fields.adoc[]
+include::{snippetsDir}/system-design-interview-find-report/curl-request.adoc[]
+
+==== 리포트 조회 예외 - 끝나지 않은 면접
+
+include::{snippetsDir}/system-design-interview-find-report-not-finished/http-request.adoc[]
+include::{snippetsDir}/system-design-interview-find-report-not-finished/http-response.adoc[]
+include::{snippetsDir}/system-design-interview-find-report-not-finished/response-fields.adoc[]
+
 == 답변
 
 === 답변 좋아요 요청

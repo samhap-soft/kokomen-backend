@@ -14,6 +14,7 @@ import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerR
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignReportResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
@@ -23,6 +24,7 @@ import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerServi
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignInterviewService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignProceedLock;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignReportService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService.RequirementQuestionDraft;
 import com.samhap.kokomen.token.service.TokenFacadeService;
@@ -43,6 +45,7 @@ public class SystemDesignInterviewFacadeService {
     private final SystemDesignRequirementBedrockClient systemDesignRequirementBedrockClient;
     private final SystemDesignAnswerService systemDesignAnswerService;
     private final SystemDesignAnswerAsyncService systemDesignAnswerAsyncService;
+    private final SystemDesignReportService systemDesignReportService;
     private final TokenFacadeService tokenFacadeService;
 
     // 기존 시작 API처럼 진행 락을 잡지 않는다.
@@ -127,5 +130,10 @@ public class SystemDesignInterviewFacadeService {
     public SystemDesignAnswerResultResponse findAnswerResult(Long interviewId, Integer questionOrder,
                                                              MemberAuth memberAuth) {
         return systemDesignAnswerService.findAnswerResult(interviewId, memberAuth.memberId(), questionOrder);
+    }
+
+    // 진행 락을 잡지 않는다. 끝난 면접의 저장된 값만 읽는다.
+    public SystemDesignReportResponse findReport(Long interviewId, MemberAuth memberAuth) {
+        return systemDesignReportService.findReport(interviewId, memberAuth.memberId());
     }
 }
