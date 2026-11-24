@@ -53,7 +53,9 @@ aws:
     feedback-temperature: 0.5
     system-design-requirement-max-tokens: 1024
     system-design-answer-max-tokens: 2048
-    system-design-end-max-tokens: 2560
+    # 마지막 답변 평가(L3) 출력 상한. 실측 최대(약 2,400토큰)에 1.3배 여유를 두었고, 약 62 tok/s로 끝까지 써도 약 52초라
+    # 6번째 답변 결과 폴링 한도(90초) 안이다.
+    system-design-end-max-tokens: 3200
 management:
   metrics:
     distribution:

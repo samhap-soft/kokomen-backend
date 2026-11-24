@@ -54,7 +54,7 @@ public final class BedrockConversePropertiesFixture {
         private float feedbackTemperature = 0.5f;
         private int systemDesignRequirementMaxTokens = 1024;
         private int systemDesignAnswerMaxTokens = 2048;
-        private int systemDesignEndMaxTokens = 2560;
+        private int systemDesignEndMaxTokens = 3200;
 
         private Builder() {
         }
