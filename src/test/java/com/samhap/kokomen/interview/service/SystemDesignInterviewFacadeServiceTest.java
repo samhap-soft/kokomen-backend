@@ -1,14 +1,18 @@
 package com.samhap.kokomen.interview.service;
 
+import static com.samhap.kokomen.answer.domain.AnswerRank.A;
+import static com.samhap.kokomen.answer.domain.AnswerRank.B;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.samhap.kokomen.category.domain.Category;
@@ -22,32 +26,48 @@ import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewTestSupport;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
+import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
+import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
+import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerCompletedResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerRequest;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramRequest;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignInterviewService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignProceedStateStore;
+import com.samhap.kokomen.interview.tool.InterviewProceedState;
+import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
@@ -56,7 +76,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,12 +88,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.client.codec.Codec;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
     private static final String ROOT_QUESTION_METRIC_NAME = "root_question_interview_count";
+    private static final String ANSWER_CONTENT = "API 서버 앞에 Redis 캐시를 두고, 캐시에 없을 때만 DB를 읽어요.";
 
     @Autowired
     private SystemDesignInterviewFacadeService systemDesignInterviewFacadeService;
@@ -79,6 +103,12 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     private SystemDesignInterviewService systemDesignInterviewService;
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
+    @Autowired
+    private SystemDesignInterviewTestSupport interviewTestSupport;
+    @Autowired
+    private SystemDesignProceedStateStore stateStore;
+    @Autowired
+    private SystemDesignAnswerRepository answerRepository;
     @Autowired
     private SystemDesignInterviewRepository systemDesignInterviewRepository;
     @Autowired
@@ -505,6 +535,468 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                         .extracting(SystemDesignRequirementQuestion::getContent)
                         .doesNotContain("다섯 번째 역질문")
         );
+    }
+
+    // 끝난 면접에 빈 답변을 토큰 0개로 내도 끝남 문구가 나와야 상태를 입력·토큰보다 먼저 본 것이다.
+    // 응답을 받지 못한 6번째 답변을 다시 보내면, 마지막 토큰을 썼더라도 토큰 부족이 아니라 끝남을 알려야 한다.
+    @Test
+    void 상태_검사는_입력_검사와_토큰_검증보다_먼저다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(0);
+        SystemDesignInterview finishedInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, B, B, B, B));
+        SystemDesignAnswerRequest emptyAnswer = new SystemDesignAnswerRequest("  ", null);
+
+        // when & then
+        assertThatThrownBy(() -> submitAnswer(finishedInterview, member, 6, emptyAnswer))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("이미 끝난 면접이에요.");
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateEnd(any())
+        );
+    }
+
+    @Test
+    void 입력_검사는_토큰_검증보다_먼저다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1,
+                        new SystemDesignAnswerRequest("가".repeat(3_001), diagramRequest())))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("답변은 1~3,000자로 적어 주세요."),
+                () -> assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1,
+                        new SystemDesignAnswerRequest(ANSWER_CONTENT, null)))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("다이어그램 형식이 맞지 않아요."),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    // 다른 요청이 락을 쥐고 있어도 토큰 문구가 나와야 토큰을 락보다 먼저 본 것이다.
+    @Test
+    void 토큰이_없으면_400이고_락을_잡지_않는다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+
+        // when & then
+        assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1, validRequest()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any()),
+                () -> assertThat(stateStore.find(interviewIdOf(systemDesignInterview), 1)).isEmpty()
+        );
+    }
+
+    @Test
+    void 다른_요청이_진행_락을_쥐고_있으면_409이고_답변은_저장되지_않는다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+
+        // when & then
+        assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1, validRequest()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요.");
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any()),
+                () -> assertThat(stateStore.find(interviewIdOf(systemDesignInterview), 1)).isEmpty(),
+                () -> assertThat(readAnswerCount(systemDesignInterview)).isZero(),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
+        );
+    }
+
+    // 202를 받기 전에 다시 보내거나 채점 중에 다시 내는 경우다. 두 번째 제출은 락에서 막히고 답변은 하나만 저장된다.
+    @Test
+    void 채점_중에_같은_질문을_다시_내면_409다() throws InterruptedException {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        CountDownLatch gradingStarted = new CountDownLatch(1);
+        CountDownLatch gradingReleased = new CountDownLatch(1);
+        willAnswer(invocation -> {
+            gradingStarted.countDown();
+            gradingReleased.await(10, TimeUnit.SECONDS);
+            return answerEvaluation();
+        }).given(systemDesignAnswerBedrockClient).evaluateAnswer(any());
+        try {
+            submitAnswer(systemDesignInterview, member, 1, validRequest());
+            assertThat(gradingStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when & then
+            assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1, validRequest()))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessage("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요.");
+        } finally {
+            gradingReleased.countDown();
+            awaitLockReleased(member);
+        }
+        assertAll(
+                () -> assertThat(findAnswerResult(systemDesignInterview, member, 1).proceedState())
+                        .isEqualTo(InterviewProceedState.COMPLETED),
+                () -> assertThat(readAnswerCount(systemDesignInterview)).isEqualTo(1),
+                () -> assertThat(readTokenCount(member)).isEqualTo(5),
+                () -> verify(systemDesignAnswerBedrockClient, times(1)).evaluateAnswer(any())
+        );
+    }
+
+    @Test
+    void 처리가_끝난_뒤_같은_질문을_다시_내면_지금_질문이_아니에요다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(answerEvaluation());
+        submitAnswer(systemDesignInterview, member, 1, validRequest());
+        awaitCompleted(systemDesignInterview, member, 1);
+
+        // when & then
+        assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1, validRequest()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("지금 질문이 아니에요.");
+        assertAll(
+                () -> assertThat(readAnswerCount(systemDesignInterview)).isEqualTo(1),
+                () -> assertThat(readTokenCount(member)).isEqualTo(5),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    // 사전 검사와 락 획득 사이에 다른 요청이 같은 질문의 답을 저장하면 락 안의 준비가 409로 실패한다. 이때도 락을 풀어야 한다.
+    @Test
+    void 락_안_준비에서_실패하면_락을_푼다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        AtomicBoolean answeredBeforeLock = new AtomicBoolean();
+        willAnswer(invocation -> {
+            if (answeredBeforeLock.compareAndSet(false, true)) {
+                answerRepository.save(SystemDesignAnswerFixtureBuilder.builder()
+                        .question(readQuestion(systemDesignInterview, 1))
+                        .content("다른 요청이 먼저 저장한 답변이에요.")
+                        .build());
+            }
+            return invocation.callRealMethod();
+        }).given(redissonClient).getBucket(lockKeyOf(member), StringCodec.INSTANCE);
+
+        // when & then
+        assertThatThrownBy(() -> submitAnswer(systemDesignInterview, member, 1, validRequest()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("지금 질문이 아니에요.");
+        assertAll(
+                () -> assertThat(answeredBeforeLock).isTrue(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any()),
+                () -> assertThat(stateStore.find(interviewIdOf(systemDesignInterview), 1)).isEmpty(),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
+        );
+    }
+
+    // 시작할 때 6개 보유만 확인하고, 저장에 성공한 답변마다 1개씩 차감해 끝까지 답하면 0개가 남는다.
+    @Test
+    void 토큰_6개로_시작해_6문항을_모두_답하면_0개가_남는다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        problemTestSupport.saveProblem();
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(answerEvaluation());
+        given(systemDesignAnswerBedrockClient.evaluateEnd(any())).willReturn(endEvaluation());
+        MemberAuth memberAuth = new MemberAuth(member.getId());
+        Long interviewId = systemDesignInterviewFacadeService.startInterview(memberAuth).interviewId();
+        systemDesignInterviewFacadeService.completeRequirements(interviewId, memberAuth);
+        List<Integer> tokenCounts = new ArrayList<>();
+
+        // when
+        for (int order = 1; order <= 6; order++) {
+            systemDesignInterviewFacadeService.submitAnswer(interviewId, order, validRequest(), memberAuth);
+            int questionOrder = order;
+            await().atMost(Duration.ofSeconds(5)).until(() -> systemDesignInterviewFacadeService
+                    .findAnswerResult(interviewId, questionOrder, memberAuth).proceedState()
+                    == InterviewProceedState.COMPLETED);
+            awaitLockReleased(member);
+            tokenCounts.add(readTokenCount(member));
+        }
+
+        // then
+        SystemDesignInterviewResponse interview = systemDesignInterviewFacadeService.findInterview(interviewId,
+                memberAuth);
+        assertAll(
+                () -> assertThat(tokenCounts).containsExactly(5, 4, 3, 2, 1, 0),
+                () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero(),
+                () -> assertThat(interview.interviewState()).isEqualTo(InterviewState.FINISHED),
+                () -> assertThat(interview.curQuestionCount()).isEqualTo(6),
+                () -> assertThat(interview.curQuestionId()).isNull(),
+                () -> assertThat(interview.curAnswerProceedState()).isNull(),
+                () -> assertThat(systemDesignInterviewFacadeService.findAnswerResult(interviewId, 6, memberAuth))
+                        .isEqualTo(new SystemDesignAnswerCompletedResponse(InterviewProceedState.COMPLETED,
+                                InterviewState.FINISHED, SystemDesignStage.DEEP_DIVE, A, null, null)),
+                () -> verify(systemDesignAnswerBedrockClient, times(5)).evaluateAnswer(any()),
+                () -> verify(systemDesignAnswerBedrockClient, times(1)).evaluateEnd(any())
+        );
+    }
+
+    @Test
+    void LLM_FAILED_뒤_같은_질문에_다시_내면_실패한_제출은_차감하지_않고_저장된_답만_1개_차감한다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any()))
+                .willThrow(new ExternalApiException("시스템 설계 답변 평가 호출에 실패했습니다."))
+                .willReturn(answerEvaluation());
+
+        // when
+        submitAnswer(systemDesignInterview, member, 1, validRequest());
+        await().atMost(Duration.ofSeconds(5)).until(() -> stateStore.find(interviewIdOf(systemDesignInterview), 1)
+                .filter(state -> state == InterviewProceedState.LLM_FAILED)
+                .isPresent());
+        awaitLockReleased(member);
+        int tokenCountAfterFailure = readTokenCount(member);
+        SystemDesignAnswerResultResponse failedResult = findAnswerResult(systemDesignInterview, member, 1);
+        submitAnswer(systemDesignInterview, member, 1, validRequest());
+        awaitCompleted(systemDesignInterview, member, 1);
+
+        // then
+        assertAll(
+                () -> assertThat(failedResult.proceedState()).isEqualTo(InterviewProceedState.LLM_FAILED),
+                () -> assertThat(tokenCountAfterFailure).isEqualTo(6),
+                () -> assertThat(readTokenCount(member)).isEqualTo(5),
+                () -> assertThat(readAnswerCount(systemDesignInterview)).isEqualTo(1)
+        );
+    }
+
+    // 채점을 기다리는 동안 새로고침해도 E2는 진행 락을 기다리지 않고 같은 현재 질문과 채점 중 상태를 준다.
+    @Test
+    void 채점_중이면_현재_답변_상태가_LLM_PENDING이다() throws InterruptedException {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        CountDownLatch gradingStarted = new CountDownLatch(1);
+        CountDownLatch gradingReleased = new CountDownLatch(1);
+        willAnswer(invocation -> {
+            gradingStarted.countDown();
+            gradingReleased.await(10, TimeUnit.SECONDS);
+            return answerEvaluation();
+        }).given(systemDesignAnswerBedrockClient).evaluateAnswer(any());
+        SystemDesignInterviewResponse response;
+        try {
+            submitAnswer(systemDesignInterview, member, 2, validRequest());
+            assertThat(gradingStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when
+            response = findInterview(systemDesignInterview, member);
+            assertThat(redisService.get(lockKeyOf(member), String.class)).isPresent();
+        } finally {
+            gradingReleased.countDown();
+            awaitLockReleased(member);
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(response.curQuestionId()).isEqualTo(2),
+                () -> assertThat(response.curQuestionCount()).isEqualTo(1),
+                () -> assertThat(response.curAnswerProceedState()).isEqualTo("LLM_PENDING")
+        );
+    }
+
+    @Test
+    void 채점이_실패했으면_LLM_FAILED다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        stateStore.markFailed(interviewIdOf(systemDesignInterview), 2);
+        // 다른 질문의 상태는 보지 않는다.
+        stateStore.markPending(interviewIdOf(systemDesignInterview), 1);
+
+        // when
+        SystemDesignInterviewResponse response = findInterview(systemDesignInterview, member);
+
+        // then
+        assertThat(response.curAnswerProceedState()).isEqualTo("LLM_FAILED");
+    }
+
+    @Test
+    void 제출하지_않았으면_NONE이다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+
+        // when
+        SystemDesignInterviewResponse response = findInterview(systemDesignInterview, member);
+
+        // then
+        assertAll(
+                () -> assertThat(response.curQuestionId()).isEqualTo(2),
+                () -> assertThat(response.curAnswerProceedState()).isEqualTo("NONE")
+        );
+    }
+
+    @Test
+    void 요구사항_단계와_끝난_뒤에는_키가_없다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview requirementsStage = saveSystemDesignInterview(member, problemTestSupport.saveProblem(),
+                SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview finishedInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, B, B, B, B));
+        stateStore.markPending(interviewIdOf(requirementsStage), 1);
+        stateStore.markCompleted(interviewIdOf(finishedInterview), 6);
+
+        // when
+        SystemDesignInterviewResponse requirementsResponse = findInterview(requirementsStage, member);
+        SystemDesignInterviewResponse finishedResponse = findInterview(finishedInterview, member);
+
+        // then
+        assertAll(
+                () -> assertThat(requirementsResponse.curQuestionId()).isNull(),
+                () -> assertThat(requirementsResponse.curAnswerProceedState()).isNull(),
+                () -> assertThat(finishedResponse.curQuestionId()).isNull(),
+                () -> assertThat(finishedResponse.curAnswerProceedState()).isNull()
+        );
+    }
+
+    // 현재 질문을 DB에서 정한 뒤 Redis를 읽기 전에 워커가 끝나면 COMPLETED가 보인다. 프론트가 폴링으로 결과를 받게 채점 중으로 보낸다.
+    @Test
+    void Redis가_COMPLETED면_LLM_PENDING으로_보낸다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        stateStore.markCompleted(interviewIdOf(systemDesignInterview), 2);
+
+        // when
+        SystemDesignInterviewResponse response = findInterview(systemDesignInterview, member);
+
+        // then
+        assertThat(response.curAnswerProceedState()).isEqualTo("LLM_PENDING");
+    }
+
+    @Test
+    void Redis_조회가_실패하면_현재_답변_상태는_NONE이다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        stateStore.markPending(interviewIdOf(systemDesignInterview), 2);
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(anyString(), any(Codec.class));
+
+        // when
+        SystemDesignInterviewResponse response = findInterview(systemDesignInterview, member);
+
+        // then
+        assertAll(
+                () -> assertThat(response.curQuestionId()).isEqualTo(2),
+                () -> assertThat(response.curAnswerProceedState()).isEqualTo("NONE")
+        );
+    }
+
+    private void submitAnswer(SystemDesignInterview systemDesignInterview, Member member, Integer questionOrder,
+                              SystemDesignAnswerRequest request) {
+        systemDesignInterviewFacadeService.submitAnswer(interviewIdOf(systemDesignInterview), questionOrder, request,
+                new MemberAuth(member.getId()));
+    }
+
+    private SystemDesignAnswerResultResponse findAnswerResult(SystemDesignInterview systemDesignInterview,
+                                                              Member member, Integer questionOrder) {
+        return systemDesignInterviewFacadeService.findAnswerResult(interviewIdOf(systemDesignInterview),
+                questionOrder, new MemberAuth(member.getId()));
+    }
+
+    private SystemDesignInterviewResponse findInterview(SystemDesignInterview systemDesignInterview, Member member) {
+        return systemDesignInterviewFacadeService.findInterview(interviewIdOf(systemDesignInterview),
+                new MemberAuth(member.getId()));
+    }
+
+    // 워커가 저장을 커밋하면 폴링이 COMPLETED가 된다. 워커는 그 뒤에 락을 푸므로 락이 풀릴 때까지 기다려 다음 요청·테스트와 겹치지 않게 한다.
+    private void awaitCompleted(SystemDesignInterview systemDesignInterview, Member member, int questionOrder) {
+        await().atMost(Duration.ofSeconds(5)).until(() -> findAnswerResult(systemDesignInterview, member,
+                questionOrder).proceedState() == InterviewProceedState.COMPLETED);
+        awaitLockReleased(member);
+    }
+
+    private void awaitLockReleased(Member member) {
+        await().atMost(Duration.ofSeconds(5))
+                .until(() -> redisService.get(lockKeyOf(member), String.class).isEmpty());
+    }
+
+    private static SystemDesignAnswerRequest validRequest() {
+        return new SystemDesignAnswerRequest(ANSWER_CONTENT, diagramRequest());
+    }
+
+    private static SystemDesignDiagramRequest diagramRequest() {
+        return new SystemDesignDiagramRequest(
+                List.of(new SystemDesignDiagramRequest.Block("client", "CLIENT", "Client", List.of(),
+                                new SystemDesignDiagramRequest.Position(0.0, 80.0)),
+                        new SystemDesignDiagramRequest.Block("api", "API_SERVER", "API 서버",
+                                List.of(new SystemDesignDiagramRequest.Prop("개수", "3")),
+                                new SystemDesignDiagramRequest.Position(260.0, 80.0))),
+                List.of(new SystemDesignDiagramRequest.Connection("c1", "client", "api", "HTTPS")));
+    }
+
+    private static SystemDesignAnswerEvaluation answerEvaluation() {
+        return new SystemDesignAnswerEvaluation(B, "조회 경로에 캐시를 둔 근거가 분명해요.", null);
+    }
+
+    private static SystemDesignEndEvaluation endEvaluation() {
+        Map<String, Boolean> metByPointCode = new LinkedHashMap<>();
+        for (EvaluationPoint point : SystemDesignProblemContextFixture.URL_SHORTENER_EVALUATION_POINTS) {
+            metByPointCode.put(point.code(), true);
+        }
+        return new SystemDesignEndEvaluation(A, "301과 302를 근거와 함께 비교했어요.", "강점: 근거가 분명해요.", metByPointCode);
+    }
+
+    private static Long interviewIdOf(SystemDesignInterview systemDesignInterview) {
+        return systemDesignInterview.getInterview().getId();
+    }
+
+    private SystemDesignQuestion readQuestion(SystemDesignInterview systemDesignInterview, int questionOrder) {
+        return questionRepository.findBySystemDesignInterviewAndQuestionOrder(systemDesignInterview, questionOrder)
+                .orElseThrow();
+    }
+
+    private int readAnswerCount(SystemDesignInterview systemDesignInterview) {
+        return answerRepository.findByQuestionIn(
+                questionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview)).size();
+    }
+
+    private int readTokenCount(Member member) {
+        return readTokenCount(member, TokenType.FREE);
+    }
+
+    private int readTokenCount(Member member, TokenType type) {
+        return tokenRepository.findByMemberIdAndType(member.getId(), type).orElseThrow().getTokenCount();
     }
 
     private SystemDesignRequirementAnswerResponse askRequirementQuestion(SystemDesignInterview systemDesignInterview,

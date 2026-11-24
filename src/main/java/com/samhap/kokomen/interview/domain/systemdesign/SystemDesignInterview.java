@@ -24,6 +24,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -110,19 +113,38 @@ public class SystemDesignInterview extends BaseEntity {
     }
 
     /**
+     * 지금 답할 질문. 진행 중인 면접에서 답이 없는 마지막 질문이다. 요구사항 단계에는 질문이 없고, 끝난 면접에는 마지막 질문에
+     * 답이 없더라도 없다.
+     *
+     * @param questions           이 면접의 설계 질문(순번 순서)
+     * @param answeredQuestionIds 답이 저장된 질문의 PK
+     */
+    public Optional<SystemDesignQuestion> findCurrentQuestion(List<SystemDesignQuestion> questions,
+                                                              Set<Long> answeredQuestionIds) {
+        if (!interview.isInProgress() || questions.isEmpty()) {
+            return Optional.empty();
+        }
+        SystemDesignQuestion lastQuestion = questions.get(questions.size() - 1);
+        if (answeredQuestionIds.contains(lastQuestion.getId())) {
+            return Optional.empty();
+        }
+        return Optional.of(lastQuestion);
+    }
+
+    /**
      * 끝난 면접 → 요구사항 단계 → 질문 순번 순서로 보고 처음 어긴 것을 409로 알린다.
      *
      * @param questionOrder 요청이 답하려는 질문 순번. 경로 값을 숫자로 바꾸지 못했으면 null이다
-     * @param currentOrder  지금 답할 질문(답이 없는 마지막 질문)의 순번
+     * @param currentOrder  지금 답할 질문({@link #findCurrentQuestion})의 순번. 없으면 null이고, 어떤 순번이든 지금 질문이 아니다
      */
-    public void validateAnswerable(Integer questionOrder, int currentOrder) {
+    public void validateAnswerable(Integer questionOrder, Integer currentOrder) {
         if (!interview.isInProgress()) {
             throw new ConflictException(INTERVIEW_FINISHED.getMessage());
         }
         if (stage == SystemDesignStage.REQUIREMENTS) {
             throw new ConflictException(REQUIREMENTS_NOT_COMPLETED.getMessage());
         }
-        if (questionOrder == null || questionOrder != currentOrder) {
+        if (questionOrder == null || !questionOrder.equals(currentOrder)) {
             throw new ConflictException(NOT_CURRENT_QUESTION.getMessage());
         }
     }

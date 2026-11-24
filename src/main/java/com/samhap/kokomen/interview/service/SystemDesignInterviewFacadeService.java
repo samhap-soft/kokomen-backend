@@ -4,18 +4,28 @@ import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignError
 
 import com.samhap.kokomen.global.dto.MemberAuth;
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import com.samhap.kokomen.interview.domain.InterviewMode;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignAnswer;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClient;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerRequest;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerResultResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignInterviewStartResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementQuestionRequest;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementsCompleteResponse;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerAsyncService;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerService;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerService.SystemDesignAnswerDraft;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignInterviewService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignProceedLock;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService.RequirementQuestionDraft;
+import com.samhap.kokomen.token.service.TokenFacadeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -31,12 +41,16 @@ public class SystemDesignInterviewFacadeService {
     private final SystemDesignProceedLock systemDesignProceedLock;
     private final SystemDesignLlmBulkhead systemDesignLlmBulkhead;
     private final SystemDesignRequirementBedrockClient systemDesignRequirementBedrockClient;
+    private final SystemDesignAnswerService systemDesignAnswerService;
+    private final SystemDesignAnswerAsyncService systemDesignAnswerAsyncService;
+    private final TokenFacadeService tokenFacadeService;
 
     // 기존 시작 API처럼 진행 락을 잡지 않는다.
     public SystemDesignInterviewStartResponse startInterview(MemberAuth memberAuth) {
         return systemDesignInterviewService.start(memberAuth.memberId());
     }
 
+    // 진행 락을 잡지 않는다. 채점 중에 새로고침해도 같은 현재 질문과 채점 상태(cur_answer_proceed_state)를 바로 준다.
     public SystemDesignInterviewResponse findInterview(Long interviewId, MemberAuth memberAuth) {
         return systemDesignInterviewService.findInterview(interviewId, memberAuth.memberId());
     }
@@ -81,5 +95,37 @@ public class SystemDesignInterviewFacadeService {
         } finally {
             systemDesignProceedLock.release(memberId, lockValue);
         }
+    }
+
+    /**
+     * 사전 검사(소유자 → 끝난 면접 → 요구사항 단계 → 질문 순번) → 답변 길이 → 다이어그램 → 토큰 1개 보유 → 진행 락 → 락 안에서 준비 →
+     * 워커 제출 순서다. 상태를 입력과 토큰보다 먼저 봐서, 응답을 받지 못한 마지막 답변을 다시 보내면 마지막 토큰을 썼더라도
+     * 토큰 부족이 아니라 끝난 면접으로 알린다. 다만 차감(REQUIRES_NEW)은 답변 저장이 커밋되기 직전에 따로 커밋되므로, 그 사이(수 ms)에
+     * 다시 보낸 요청은 토큰 부족(400)을 받을 수 있다. 락 안의 준비가 실패하면 여기서 락을 풀고, 워커에 넘긴 뒤에는 워커가 푼다.
+     * 토큰은 워커가 답변 저장에 성공한 뒤에 차감한다.
+     */
+    public void submitAnswer(Long interviewId, Integer questionOrder, SystemDesignAnswerRequest request,
+                             MemberAuth memberAuth) {
+        Long memberId = memberAuth.memberId();
+        int currentOrder = systemDesignAnswerService.precheck(interviewId, memberId, questionOrder);
+        String content = SystemDesignAnswer.normalizeContent(request.answer());
+        SystemDesignDiagram diagram = SystemDesignDiagram.from(request.diagramInput());
+        tokenFacadeService.validateEnoughTokens(memberId, InterviewMode.TEXT.calculateRequiredTokenCountToAnswer(
+                currentOrder < SystemDesignInterview.MAX_QUESTION_COUNT));
+        String lockValue = systemDesignProceedLock.acquire(memberId);
+        SystemDesignAnswerDraft draft;
+        try {
+            draft = systemDesignAnswerService.prepare(interviewId, memberId, questionOrder, content, diagram);
+        } catch (RuntimeException e) {
+            systemDesignProceedLock.release(memberId, lockValue);
+            throw e;
+        }
+        systemDesignAnswerAsyncService.submit(draft, lockValue);
+    }
+
+    // 진행 락을 잡지 않는다. 채점 중에도 결과를 물을 수 있어야 한다.
+    public SystemDesignAnswerResultResponse findAnswerResult(Long interviewId, Integer questionOrder,
+                                                             MemberAuth memberAuth) {
+        return systemDesignAnswerService.findAnswerResult(interviewId, memberAuth.memberId(), questionOrder);
     }
 }

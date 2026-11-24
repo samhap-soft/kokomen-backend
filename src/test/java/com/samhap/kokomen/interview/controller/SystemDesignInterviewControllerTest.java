@@ -1,7 +1,11 @@
 package com.samhap.kokomen.interview.controller;
 
+import static com.samhap.kokomen.answer.domain.AnswerRank.A;
+import static com.samhap.kokomen.answer.domain.AnswerRank.B;
+import static com.samhap.kokomen.answer.domain.AnswerRank.C;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
@@ -21,6 +25,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.requestF
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,6 +41,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignAnswerFixtureB
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignHiddenRequirementFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
@@ -44,6 +50,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQue
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.domain.Interview;
+import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
@@ -54,6 +61,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
+import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -65,7 +73,11 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemR
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerCompletedResponse;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignAnswerService;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignLlmBulkhead;
+import com.samhap.kokomen.interview.service.systemdesign.SystemDesignProceedStateStore;
+import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerCommand;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -73,12 +85,17 @@ import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -88,6 +105,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.restdocs.payload.RequestFieldsSnippet;
 import org.springframework.restdocs.payload.ResponseFieldsSnippet;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -98,15 +116,43 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
             "/api/v1/interviews/system-design/{interviewId}/requirements/complete";
     private static final String REQUIREMENT_QUESTIONS_URL =
             "/api/v1/interviews/system-design/{interviewId}/requirement-questions";
+    private static final String SUBMIT_ANSWER_URL =
+            "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}/answers";
+    private static final String ANSWER_RESULT_URL =
+            "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}";
     private static final String DEFAULT_REQUIREMENT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
     private static final String REQUIREMENT_QUESTION_JSON = """
             {
               "question": "하루에 단축 URL이 몇 개나 만들어지나요?"
             }
             """;
+    // 블록 3개(속성 있는 블록 포함)와 연결 2개(이름 없는 연결 포함)를 그린 답변
+    private static final String SUBMIT_ANSWER_JSON = """
+            {
+              "answer": "단축 키는 DB 자동 증가 값을 Base62로 바꿔 만들어요. 값이 겹치지 않으니 키 충돌이 없어요.",
+              "diagram": {
+                "blocks": [
+                  {"id": "client", "kind": "CLIENT", "label": "Client", "props": [], "position": {"x": 0, "y": 80}},
+                  {"id": "api", "kind": "API_SERVER", "label": "API 서버", "props": [{"key": "개수", "value": "3"}],
+                   "position": {"x": 260, "y": 80}},
+                  {"id": "db", "kind": "DB", "label": "MySQL", "props": [], "position": {"x": 520, "y": 80}}
+                ],
+                "connections": [
+                  {"id": "c1", "source": "client", "target": "api", "label": "HTTPS"},
+                  {"id": "c2", "source": "api", "target": "db"}
+                ]
+              }
+            }
+            """;
 
     @Autowired
     private SystemDesignProblemTestSupport problemTestSupport;
+    @Autowired
+    private SystemDesignInterviewTestSupport interviewTestSupport;
+    @Autowired
+    private SystemDesignAnswerService answerService;
+    @Autowired
+    private SystemDesignProceedStateStore stateStore;
     @Autowired
     private SystemDesignInterviewRepository systemDesignInterviewRepository;
     @Autowired
@@ -291,6 +337,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.diagram.blocks[*].id", contains("client", "api", "db")))
                 .andExpect(jsonPath("$.diagram.connections[0].label").value("HTTPS"))
                 .andExpect(jsonPath("$.diagram.connections[1].label").doesNotExist())
+                .andExpect(jsonPath("$.cur_answer_proceed_state").doesNotExist())
                 .andDo(document("system-design-interview-find-requirements",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -356,6 +403,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.prev_questions_and_answers[0].answer").value("API 서버 앞에 캐시를 두어 DB 조회를 줄여요."))
                 .andExpect(jsonPath("$.diagram.connections[1].label").doesNotExist())
                 .andExpect(jsonPath("$.diagram.connections[3].label").value(""))
+                .andExpect(jsonPath("$.cur_answer_proceed_state").value("NONE"))
                 .andDo(document("system-design-interview-find-in-progress",
                         requestHeaders(
                                 headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
@@ -1100,6 +1148,698 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS);
     }
 
+    @Test
+    void 설계_답변을_제출한다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(new SystemDesignAnswerEvaluation(B,
+                "단축 키를 만드는 방식과 충돌 처리가 분명해요.", "방금 설명한 키 생성기가 내려가면 어떻게 되나요?"));
+        MockHttpSession session = loginSession(member);
+
+        // when
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 2)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isAccepted())
+                .andExpect(content().string(""))
+                .andDo(document("system-design-interview-submit-answer",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID"),
+                                parameterWithName("questionId").description("답하는 질문의 순번 (1~6). 지금 질문이어야 한다")
+                        ),
+                        submitAnswerRequestFields()
+                ));
+
+        // then
+        awaitLockReleased(member);
+        assertAll(
+                () -> assertThat(answerService.findAnswerResult(interviewId, member.getId(), 2))
+                        .isEqualTo(new SystemDesignAnswerCompletedResponse(InterviewProceedState.COMPLETED,
+                                InterviewState.IN_PROGRESS, SystemDesignStage.HIGH_LEVEL, B, 3,
+                                "방금 설명한 키 생성기가 내려가면 어떻게 되나요?")),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(5)
+        );
+    }
+
+    @Test
+    void 요구사항_단계에서_답하면_409() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("요구사항 정리를 먼저 끝내 주세요."))
+                .andDo(document("system-design-interview-submit-answer-requirements-stage",
+                        responseFields(
+                                fieldWithPath("message").description("요구사항 단계에서 답변을 냈을 때의 오류 문구")
+                        )
+                ));
+        verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any());
+    }
+
+    // 질문 ID는 면접 안 순번이다. 숫자가 아니거나 지난 질문이거나 질문 PK를 보내면 지금 질문이 아니다.
+    @Test
+    void 현재_질문이_아니면_409() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        Long currentQuestionPk = questionRepository.findBySystemDesignInterviewAndQuestionOrder(
+                systemDesignInterview, 2).orElseThrow().getId();
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("지금 질문이 아니에요."))
+                .andDo(document("system-design-interview-submit-answer-not-current-question",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("지금 질문이 아닌 순번(지난 질문, 숫자가 아닌 값 포함)에 답했을 때의 오류 문구")
+                        )
+                ));
+        for (String questionId : List.of("not-a-number", "99999999999", "-1", "3", String.valueOf(currentQuestionPk))) {
+            mockMvc.perform(post("/api/v1/interviews/system-design/" + interviewId + "/questions/" + questionId
+                            + "/answers")
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(SUBMIT_ANSWER_JSON)
+                    )
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message").value("지금 질문이 아니에요."));
+        }
+        verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any());
+    }
+
+    @Test
+    void 끝난_면접에_답하면_409() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(0, 0);
+        SystemDesignInterview finishedInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, B, B, B, B, B));
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, finishedInterview.getInterview().getId(), 6)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 끝난 면접이에요."))
+                .andDo(document("system-design-interview-submit-answer-finished",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("끝난 면접에 답변을 냈을 때의 오류 문구. 토큰이 없어도 이 문구가 먼저다")
+                        )
+                ));
+    }
+
+    // 다이어그램 규칙마다 처음 어긴 규칙 하나의 문구로 400이다. 답변·토큰·락보다 먼저 막혀 채점하지 않는다.
+    @Test
+    void 다이어그램_규칙을_어기면_규칙마다_정해진_문구로_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(member);
+        Map<String, Object> diagramWithUnknownKind = diagram(List.of(block("client", "CLIENT"), block("api", "SERVER")),
+                List.of());
+        Map<String, Object> blockWithoutPosition = block("client", "CLIENT");
+        blockWithoutPosition.remove("position");
+        Map<String, Object> diagramWithoutPosition = diagram(List.of(blockWithoutPosition), List.of());
+        Map<String, Object> answerWithoutDiagram = new LinkedHashMap<>();
+        answerWithoutDiagram.put("answer", "API 서버 앞에 캐시를 둬요.");
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(answerJson(diagramWithUnknownKind))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("블록 종류를 알 수 없어요."))
+                .andDo(document("system-design-interview-submit-answer-invalid-diagram",
+                        responseFields(
+                                fieldWithPath("message").description("처음 어긴 다이어그램 규칙의 오류 문구")
+                        )
+                ));
+        Map<String, String> expectedMessageByBody = new LinkedHashMap<>();
+        expectedMessageByBody.put(objectMapper.writeValueAsString(answerWithoutDiagram), "다이어그램 형식이 맞지 않아요.");
+        expectedMessageByBody.put(answerJson(diagram(Collections.singletonList(null), List.of())),
+                "다이어그램 형식이 맞지 않아요.");
+        expectedMessageByBody.put(answerJson(diagram(blocks(31), List.of())), "블록은 30개까지 그릴 수 있어요.");
+        expectedMessageByBody.put(answerJson(diagram(blocks(2), connections(61))), "연결은 60개까지 그릴 수 있어요.");
+        expectedMessageByBody.put(answerJson(diagram(List.of(block("client", "CLIENT")),
+                List.of(connection("c1", "client", "cache")))), "연결이 없는 블록을 가리켜요.");
+        expectedMessageByBody.put(answerJson(diagram(List.of(block("client", "CLIENT")),
+                List.of(connection("c1", "client", "client")))), "블록을 자기 자신과 연결할 수 없어요.");
+        expectedMessageByBody.put(answerJson(diagramWithoutPosition), "블록 위치가 올바르지 않아요.");
+        for (Map.Entry<String, String> entry : expectedMessageByBody.entrySet()) {
+            mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(entry.getKey())
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(entry.getValue()));
+        }
+        assertAll(
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any()),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6)
+        );
+    }
+
+    @Test
+    void 다이어그램_JSON_타입이_틀리면_전역_400_문구다() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"answer": "API 서버 앞에 캐시를 둬요.", "diagram": {"blocks": {}, "connections": []}}
+                                """)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("잘못된 요청 형식입니다. JSON 형식을 확인해주세요."));
+    }
+
+    // 에디터가 붙이는 값처럼 모르는 필드가 섞여 와도 받아서 버리고, 다이어그램 타입의 필드만 저장·응답한다.
+    @Test
+    void 모르는_필드는_버리고_정규화한_다이어그램을_저장한다() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(
+                new SystemDesignAnswerEvaluation(B, "조회 경로에 캐시를 둔 근거가 분명해요.", null));
+        MockHttpSession session = loginSession(member);
+
+        // when
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "answer": "API 서버 앞에 캐시를 둬요.",
+                                  "draft_id": "local-17",
+                                  "diagram": {
+                                    "zoom": 1.5,
+                                    "blocks": [
+                                      {"id": "client", "kind": "CLIENT", "label": "Client", "selected": true,
+                                       "props": [{"key": "개수", "value": "1", "color": "red"}],
+                                       "position": {"x": 0, "y": 80, "z": 3}, "style": {"width": 120}},
+                                      {"id": "api", "kind": "API_SERVER", "label": "API 서버", "props": [],
+                                       "position": {"x": 260.5, "y": -40}}
+                                    ],
+                                    "connections": [
+                                      {"id": "c1", "source": "client", "target": "api", "animated": true}
+                                    ]
+                                  }
+                                }
+                                """)
+                )
+                .andExpect(status().isAccepted());
+        awaitLockReleased(member);
+
+        // then
+        MockHttpSession refreshedSession = loginSession(member);
+        MvcResult result = mockMvc.perform(get(INTERVIEW_URL, interviewId)
+                        .header("Cookie", "JSESSIONID=" + refreshedSession.getId())
+                        .session(refreshedSession)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cur_question_count").value(1))
+                .andReturn();
+        assertThat(readBody(result).get("diagram")).isEqualTo(objectMapper.readTree("""
+                {"blocks":[{"id":"client","kind":"CLIENT","label":"Client","props":[{"key":"개수","value":"1"}],\
+                "position":{"x":0.0,"y":80.0}},{"id":"api","kind":"API_SERVER","label":"API 서버","props":[],\
+                "position":{"x":260.5,"y":-40.0}}],"connections":[{"id":"c1","source":"client","target":"api"}]}
+                """));
+    }
+
+    @Test
+    void 답변이_비었거나_3000자를_넘으면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(answerJson(" \n ", minimalDiagram()))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("답변은 1~3,000자로 적어 주세요."))
+                .andDo(document("system-design-interview-submit-answer-invalid-length",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("답변이 없거나, 앞뒤 공백을 지운 뒤 비었거나, 3,000자를 넘을 때의 오류 문구")
+                        )
+                ));
+        for (String answer : Arrays.asList(null, "", "가".repeat(3_001))) {
+            mockMvc.perform(post(SUBMIT_ANSWER_URL, interviewId, 1)
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(answerJson(answer, minimalDiagram()))
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("답변은 1~3,000자로 적어 주세요."));
+        }
+        verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any());
+    }
+
+    @Test
+    void 답변_제출은_토큰이_없으면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(0, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("토큰 갯수가 부족합니다."))
+                .andDo(document("system-design-interview-submit-answer-not-enough-tokens",
+                        responseFields(
+                                fieldWithPath("message").description("FREE와 PAID 토큰을 합쳐 1개도 없을 때의 오류 문구")
+                        )
+                ));
+        assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty();
+    }
+
+    @Test
+    void 답변_제출은_다른_요청이_진행_락을_쥐고_있으면_409() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요."))
+                .andDo(document("system-design-interview-submit-answer-locked",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("채점 중인 답변을 다시 냈거나 같은 회원의 다른 진행 요청을 처리하고 있을 때의 오류 문구")
+                        )
+                ));
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any())
+        );
+    }
+
+    @Test
+    void 답변_제출은_없는_면접이면_404() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview categoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        for (String interviewId : List.of(String.valueOf(categoryInterview.getId() + 999L), "not-a-number",
+                String.valueOf(categoryInterview.getId()))) {
+            mockMvc.perform(post("/api/v1/interviews/system-design/" + interviewId + "/questions/1/answers")
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(SUBMIT_ANSWER_JSON)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        }
+    }
+
+    @Test
+    void 답변_제출은_다른_회원의_면접이면_403() throws Exception {
+        // given
+        Member owner = saveMemberWithTokens(6, 0);
+        Member otherMember = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(owner,
+                List.of());
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("본인의 면접만 볼 수 있어요."));
+        verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any());
+    }
+
+    @Test
+    void 답변_제출은_로그인하지_않으면_401() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of());
+
+        // when & then
+        mockMvc.perform(post(SUBMIT_ANSWER_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SUBMIT_ANSWER_JSON)
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
+    }
+
+    // 채점 중에 새로고침하면 진행 락이 잡혀 있어도 면접 조회는 락을 기다리지 않고 200으로 같은 현재 질문과 채점 중 상태를 준다.
+    @Test
+    void 채점_중에_새로고침해도_면접_조회는_200이고_LLM_PENDING이다() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        redisService.acquireLockWithValue(lockKeyOf(member), "grading-worker", Duration.ofMinutes(5));
+        stateStore.markPending(interviewId, 2);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(INTERVIEW_URL, interviewId)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cur_question_id").value(2))
+                .andExpect(jsonPath("$.cur_question_count").value(1))
+                .andExpect(jsonPath("$.cur_answer_proceed_state").value("LLM_PENDING"));
+        assertThat(redisService.get(lockKeyOf(member), String.class)).contains("grading-worker");
+    }
+
+    @Test
+    void 채점_중이면_LLM_PENDING() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        stateStore.markPending(interviewId, 2);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, interviewId, 2)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proceed_state").value("LLM_PENDING"))
+                .andDo(document("system-design-interview-answer-result-pending",
+                        requestHeaders(
+                                headerWithName("Cookie").description("로그인 세션을 위한 JSESSIONID 쿠키")
+                        ),
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID"),
+                                parameterWithName("questionId").description("답변을 낸 질문의 순번 (1~6)")
+                        ),
+                        responseFields(
+                                fieldWithPath("proceed_state").description("LLM_PENDING: 채점 중. 1초 뒤 다시 조회한다")
+                        )
+                ));
+    }
+
+    @Test
+    void 채점이_실패했으면_LLM_FAILED() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        stateStore.markFailed(interviewId, 2);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, interviewId, 2)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proceed_state").value("LLM_FAILED"))
+                .andDo(document("system-design-interview-answer-result-failed",
+                        responseFields(
+                                fieldWithPath("proceed_state").description(
+                                        "LLM_FAILED: 채점에 실패했거나 제출 기록이 없다(5분이 지난 경우 포함). 답변이 저장되지 않았고 "
+                                                + "토큰도 차감되지 않았으니 같은 질문에 다시 내면 된다")
+                        )
+                ));
+    }
+
+    @Test
+    void 채점이_끝나면_결과와_다음_질문을_준다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        // 답변이 저장돼 있으면 Redis 값과 상관없이 완료다.
+        stateStore.markFailed(interviewId, 3);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, interviewId, 3)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proceed_state").value("COMPLETED"))
+                .andExpect(jsonPath("$.interview_state").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.stage").value("DEEP_DIVE"))
+                .andExpect(jsonPath("$.cur_answer_rank").value("C"))
+                .andExpect(jsonPath("$.next_question_id").value(4))
+                .andExpect(jsonPath("$.next_question").value("다듬은 4번 질문이에요."))
+                .andDo(document("system-design-interview-answer-result-completed",
+                        responseFields(answerResultCompletedFields())
+                ));
+        // 지난 질문을 다시 조회해도 그 답변을 처리한 결과(그때의 다음 질문과 단계)를 준다.
+        mockMvc.perform(get(ANSWER_RESULT_URL, interviewId, 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("HIGH_LEVEL"))
+                .andExpect(jsonPath("$.cur_answer_rank").value("B"))
+                .andExpect(jsonPath("$.next_question_id").value(2))
+                .andExpect(jsonPath("$.next_question").value("다듬은 2번 질문이에요."));
+    }
+
+    @Test
+    void 마지막_답변이면_FINISHED와_null_다음_질문을_준다() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B, A, C, B, B, A));
+        MockHttpSession session = loginSession(member);
+
+        // when
+        MvcResult result = mockMvc.perform(get(ANSWER_RESULT_URL, systemDesignInterview.getInterview().getId(), 6)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proceed_state").value("COMPLETED"))
+                .andExpect(jsonPath("$.interview_state").value("FINISHED"))
+                .andExpect(jsonPath("$.stage").value("DEEP_DIVE"))
+                .andExpect(jsonPath("$.cur_answer_rank").value("A"))
+                .andExpect(jsonPath("$.next_question_id").value(nullValue()))
+                .andExpect(jsonPath("$.next_question").value(nullValue()))
+                .andDo(document("system-design-interview-answer-result-finished",
+                        responseFields(answerResultCompletedFields())
+                ))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.has("next_question_id")).isTrue(),
+                () -> assertThat(body.get("next_question_id").isNull()).isTrue(),
+                () -> assertThat(body.has("next_question")).isTrue(),
+                () -> assertThat(body.get("next_question").isNull()).isTrue()
+        );
+    }
+
+    @Test
+    void 없는_질문은_404() throws Exception {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, interviewId, 3)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("질문을 찾을 수 없어요."))
+                .andDo(document("system-design-interview-answer-result-not-found",
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("그 순번의 질문이 아직 없을 때(숫자가 아닌 값 포함)의 오류 문구")
+                        )
+                ));
+        for (String questionId : List.of("not-a-number", "0", "7")) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/questions/" + questionId)
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("질문을 찾을 수 없어요."));
+        }
+    }
+
+    // 질문 ID가 숫자가 아니면 경로 값 오류라 소유자·면접 검사보다 먼저 없는 질문(404)으로 답한다.
+    @Test
+    void 숫자가_아닌_질문_ID로_폴링하면_소유자_검사보다_먼저_404() throws Exception {
+        // given
+        Member owner = saveMemberWithTokens(6, 0);
+        Member otherMember = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(owner,
+                List.of(B));
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        for (Long requestedInterviewId : List.of(interviewId, interviewId + 999L)) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + requestedInterviewId + "/questions/abc")
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("질문을 찾을 수 없어요."));
+        }
+    }
+
+    @Test
+    void 폴링은_로그인하지_않으면_401() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, systemDesignInterview.getInterview().getId(), 1))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다"));
+    }
+
+    @Test
+    void 다른_회원의_면접을_폴링하면_403() throws Exception {
+        // given
+        Member owner = saveMemberWithTokens(6, 0);
+        Member otherMember = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(owner,
+                List.of(B));
+        MockHttpSession session = loginSession(otherMember);
+
+        // when & then
+        mockMvc.perform(get(ANSWER_RESULT_URL, systemDesignInterview.getInterview().getId(), 1)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("본인의 면접만 볼 수 있어요."));
+    }
+
+    @Test
+    void 없는_면접이나_기존_면접_id로_폴링하면_404() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        RootQuestion rootQuestion = rootQuestionRepository.save(RootQuestionFixtureBuilder.builder().build());
+        Interview categoryInterview = interviewRepository.save(InterviewFixtureBuilder.builder()
+                .member(member)
+                .rootQuestion(rootQuestion)
+                .build());
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        for (String interviewId : List.of(String.valueOf(categoryInterview.getId() + 999L), "not-a-number",
+                String.valueOf(categoryInterview.getId()))) {
+            mockMvc.perform(get("/api/v1/interviews/system-design/" + interviewId + "/questions/1")
+                            .header("Cookie", "JSESSIONID=" + session.getId())
+                            .session(session)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("면접을 찾을 수 없어요."));
+        }
+    }
+
     // 면접 조회 응답의 모든 필드. 비어 있을 수 있는 배열의 원소 필드와 null이 오는 필드는 optional이다.
     private static ResponseFieldsSnippet interviewResponseFields() {
         List<FieldDescriptor> fields = new ArrayList<>(List.of(
@@ -1139,6 +1879,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         fields.add(fieldWithPath("diagram")
                 .description("현재 다이어그램. 마지막으로 저장된 답변의 다이어그램이고, 답변 전에는 문제의 시작 다이어그램(없으면 빈 다이어그램)"));
         fields.addAll(diagramFields("diagram."));
+        fields.add(fieldWithPath("cur_answer_proceed_state").type(JsonFieldType.STRING).optional()
+                .description("현재 질문에 낸 답변의 채점 상태 (NONE: 내지 않았거나 기록이 사라짐, LLM_PENDING: 채점 중, "
+                        + "LLM_FAILED: 채점 실패라 같은 질문에 다시 낼 수 있음). 현재 질문이 없는 요구사항 단계와 면접이 끝난 뒤에는 키가 없다"));
         return responseFields(fields);
     }
 
@@ -1172,6 +1915,116 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 fieldWithPath(prefix + "connections[].label").type(JsonFieldType.STRING).optional()
                         .description("연결 이름. 없으면 키가 없다")
         );
+    }
+
+    // 답변 제출 요청의 모든 필드. 배열이 비어 있을 수 있어 원소 필드는 optional이다.
+    private static RequestFieldsSnippet submitAnswerRequestFields() {
+        return requestFields(
+                fieldWithPath("answer").description("답변. 앞뒤 공백을 지운 뒤 1~3,000자이고 지운 값을 저장한다"),
+                fieldWithPath("diagram").description("답변과 함께 내는 현재 다이어그램 전체. 모르는 필드는 버린다"),
+                fieldWithPath("diagram.blocks").type(JsonFieldType.ARRAY).description("블록 목록 (30개까지)"),
+                fieldWithPath("diagram.blocks[].id").type(JsonFieldType.STRING).optional()
+                        .description("블록 id. 1~64자이고 블록끼리 겹치지 않는다"),
+                fieldWithPath("diagram.blocks[].kind").type(JsonFieldType.STRING).optional()
+                        .description("블록 종류 (CLIENT, LOAD_BALANCER, API_SERVER, DB, CACHE, QUEUE, STORAGE, CDN, "
+                                + "CUSTOM). 대소문자를 구분한다"),
+                fieldWithPath("diagram.blocks[].label").type(JsonFieldType.STRING).optional()
+                        .description("블록 이름 (1~50자)"),
+                fieldWithPath("diagram.blocks[].props").type(JsonFieldType.ARRAY).optional()
+                        .description("블록 속성 목록 (10개까지). 생략하지 않고 없으면 빈 배열로 보낸다"),
+                fieldWithPath("diagram.blocks[].props[].key").type(JsonFieldType.STRING).optional()
+                        .description("속성 이름 (30자까지)"),
+                fieldWithPath("diagram.blocks[].props[].value").type(JsonFieldType.STRING).optional()
+                        .description("속성 값 (100자까지)"),
+                fieldWithPath("diagram.blocks[].position").type(JsonFieldType.OBJECT).optional()
+                        .description("화면 위치. 채점에는 쓰지 않는다"),
+                fieldWithPath("diagram.blocks[].position.x").type(JsonFieldType.NUMBER).optional()
+                        .description("x 좌표 (유한한 숫자)"),
+                fieldWithPath("diagram.blocks[].position.y").type(JsonFieldType.NUMBER).optional()
+                        .description("y 좌표 (유한한 숫자)"),
+                fieldWithPath("diagram.connections").type(JsonFieldType.ARRAY).description("연결 목록 (60개까지)"),
+                fieldWithPath("diagram.connections[].id").type(JsonFieldType.STRING).optional()
+                        .description("연결 id. 1~64자이고 연결끼리 겹치지 않는다(블록 id와는 겹쳐도 된다)"),
+                fieldWithPath("diagram.connections[].source").type(JsonFieldType.STRING).optional()
+                        .description("출발 블록 id. 같은 다이어그램의 블록이어야 한다"),
+                fieldWithPath("diagram.connections[].target").type(JsonFieldType.STRING).optional()
+                        .description("도착 블록 id. 같은 다이어그램의 블록이고 출발 블록과 달라야 한다"),
+                fieldWithPath("diagram.connections[].label").type(JsonFieldType.STRING).optional()
+                        .description("연결 이름 (30자까지). 없어도 된다")
+        );
+    }
+
+    // 채점이 끝난 답변 결과의 모든 필드. 마지막 답변이면 next_question_id와 next_question이 null이다(키는 있다).
+    private static List<FieldDescriptor> answerResultCompletedFields() {
+        return List.of(
+                fieldWithPath("proceed_state").description("COMPLETED: 답변이 저장됐다. 토큰 1개가 차감됐다"),
+                fieldWithPath("interview_state")
+                        .description("이 답변을 처리한 뒤의 면접 상태. 6번째 답변이면 FINISHED, 아니면 IN_PROGRESS"),
+                fieldWithPath("stage").description("다음 질문의 단계 (HIGH_LEVEL, DEEP_DIVE). 6번째 답변이면 DEEP_DIVE"),
+                fieldWithPath("cur_answer_rank").description("이 답변의 등급 (A, B, C, D, F)"),
+                fieldWithPath("next_question_id").type(JsonFieldType.NUMBER).optional()
+                        .description("다음 질문의 순번. 6번째 답변이면 null"),
+                fieldWithPath("next_question").type(JsonFieldType.STRING).optional()
+                        .description("다음 질문 문장. 6번째 답변이면 null")
+        );
+    }
+
+    private String answerJson(Map<String, Object> diagram) throws Exception {
+        return answerJson("API 서버 앞에 캐시를 둬요.", diagram);
+    }
+
+    private String answerJson(String answer, Map<String, Object> diagram) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("answer", answer);
+        body.put("diagram", diagram);
+        return objectMapper.writeValueAsString(body);
+    }
+
+    private static Map<String, Object> minimalDiagram() {
+        return diagram(List.of(block("client", "CLIENT")), List.of());
+    }
+
+    private static Map<String, Object> diagram(List<?> blocks, List<?> connections) {
+        Map<String, Object> diagram = new LinkedHashMap<>();
+        diagram.put("blocks", blocks);
+        diagram.put("connections", connections);
+        return diagram;
+    }
+
+    private static Map<String, Object> block(String id, String kind) {
+        Map<String, Object> block = new LinkedHashMap<>();
+        block.put("id", id);
+        block.put("kind", kind);
+        block.put("label", "블록 " + id);
+        block.put("props", List.of());
+        block.put("position", Map.of("x", 0, "y", 0));
+        return block;
+    }
+
+    private static List<Map<String, Object>> blocks(int count) {
+        return IntStream.rangeClosed(1, count)
+                .mapToObj(index -> block("block-" + index, "API_SERVER"))
+                .toList();
+    }
+
+    private static Map<String, Object> connection(String id, String source, String target) {
+        Map<String, Object> connection = new LinkedHashMap<>();
+        connection.put("id", id);
+        connection.put("source", source);
+        connection.put("target", target);
+        return connection;
+    }
+
+    // blocks(2)의 두 블록을 오가는 연결
+    private static List<Map<String, Object>> connections(int count) {
+        return IntStream.rangeClosed(1, count)
+                .mapToObj(index -> connection("connection-" + index, "block-1", "block-2"))
+                .toList();
+    }
+
+    private void awaitLockReleased(Member member) {
+        await().atMost(Duration.ofSeconds(5))
+                .until(() -> redisService.get(lockKeyOf(member), String.class).isEmpty());
     }
 
     // currentDiagram이 null이면 문제의 시작 다이어그램(없으면 빈 다이어그램)으로 둔다.
