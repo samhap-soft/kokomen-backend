@@ -12,8 +12,8 @@ import java.util.Locale;
 
 /**
  * 시스템 설계 면접 LLM 도구 스키마와 필드 이름의 한곳. system 프롬프트의 목록 줄, 도구 스키마, 응답 파서가 모두 이 이름을 쓴다.
- * 판정 필드(역질문 답의 requirement_*, 마지막 답변 평가의 point_*)는 문제의 행마다 하나씩이라 호출마다 만든다. 기존 렌더러가 평평한
- * string·string enum 필드만 그리기 때문이다.
+ * 판정 필드(역질문 답의 requirement_*, 마지막 답변 평가의 point_*와 그 증거 필드 point_*_evidence)는 문제의 행마다 하나씩이라
+ * 호출마다 만든다. 기존 렌더러가 평평한 string·string enum 필드만 그리기 때문이다.
  */
 public final class SystemDesignToolSchemas {
 
@@ -35,6 +35,7 @@ public final class SystemDesignToolSchemas {
 
     private static final String REQUIREMENT_FIELD_PREFIX = "requirement_";
     private static final String POINT_FIELD_PREFIX = "point_";
+    private static final String POINT_EVIDENCE_FIELD_SUFFIX = "_evidence";
     private static final List<String> REQUIREMENT_VERDICTS = List.of(REQUIREMENT_ASKED, REQUIREMENT_NOT_ASKED);
     private static final List<String> POINT_VERDICTS = List.of(POINT_MET, POINT_NOT_MET);
     private static final List<String> RANKS = Arrays.stream(AnswerRank.values())
@@ -42,6 +43,8 @@ public final class SystemDesignToolSchemas {
             .toList();
     private static final String RANK_DESCRIPTION = "가장 최근 답변에 대한 평가 등급. " + String.join(", ", RANKS) + " 중 한 글자.";
     private static final String FEEDBACK_DESCRIPTION = "가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank 규칙을 따른다.";
+    private static final String POINT_EVIDENCE_DESCRIPTION = "이 평가 포인트 설명의 요소마다 한 줄씩: "
+            + "`[답변 번호] \"답변이나 다이어그램 줄의 원문 그대로 짧은 인용\"`. 확인되지 않은 요소는 `없음: 요소 이름`. 300자 이내.";
 
     private SystemDesignToolSchemas() {
     }
@@ -58,6 +61,14 @@ public final class SystemDesignToolSchemas {
      */
     public static String pointFieldName(String code) {
         return POINT_FIELD_PREFIX + code.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 평가 포인트 증거 필드 이름. 판정 필드 이름 뒤에 _evidence를 붙인다. code가 _EVIDENCE로 끝나면 다른 포인트의 판정 필드와 이름이
+     * 같아지므로 시드에 그런 code를 두지 않는다. V57 시드는 SystemDesignSeedScriptTest가 확인하고, 새 시드도 같은 규칙을 지킨다.
+     */
+    public static String pointEvidenceFieldName(String code) {
+        return pointFieldName(code) + POINT_EVIDENCE_FIELD_SUFFIX;
     }
 
     /**
@@ -92,23 +103,24 @@ public final class SystemDesignToolSchemas {
     }
 
     /**
-     * 마지막 답변 평가와 리포트(L3). 고정 필드(reasoning → rank → feedback → strengths → improvements → learning_direction) 뒤에
-     * 평가 포인트마다 MET/NOT_MET 판정 필드를 문제 순서로 붙인다. 판정 필드의 설명은 평가 포인트 문장이다. 모두 required다.
+     * 마지막 답변 평가와 리포트(L3). rank → feedback 뒤에 평가 포인트마다 증거 필드와 MET/NOT_MET 판정 필드를 문제 순서로 붙이고,
+     * 그 뒤에 종합 평가(strengths → improvements → learning_direction)를 둔다. 근거를 먼저 쓰고 판정하게 증거 필드를 판정 필드 바로
+     * 앞에 두고, 판정에 맞춰 종합 평가를 쓰게 평가 포인트를 종합 평가 앞에 둔다. 판정 필드의 설명은 평가 포인트 문장이다. 모두
+     * required다. 출력을 줄이려고 reasoning은 두지 않는다. 평가 포인트별 근거는 증거 필드에 쓰고, 마지막 답변의 항목 점수는 rank를
+     * 정하기 전에 속으로 매겨 근거를 증거 필드와 feedback에 반영하게 한다(system 프롬프트의 채점 근거).
      */
     public static ToolSchema end(List<EvaluationPoint> points) {
         List<ToolField> fields = new ArrayList<>(List.of(
-                ToolField.required(REASONING_FIELD,
-                        "가장 최근 답변의 평가 근거(last_answer_analysis), 평가 포인트별 판정 근거, 종합 평가 정리. 1000자 이내. "
-                                + "사용자에게 노출되지 않는다."),
                 ToolField.requiredEnum(RANK_FIELD, RANK_DESCRIPTION, RANKS),
-                ToolField.required(FEEDBACK_FIELD, FEEDBACK_DESCRIPTION),
-                ToolField.required(STRENGTHS_FIELD, "이번 면접에서 드러난 설계 강점 1-2문장."),
-                ToolField.required(IMPROVEMENTS_FIELD, "보완할 설계 영역 1-2문장. 확인하지 않은 요구사항이 설계에 영향을 줬다면 짚는다."),
-                ToolField.required(LEARNING_DIRECTION_FIELD,
-                        "이번 면접의 약점에 근거한 구체적인 다음 학습 주제 1-2문장. 일반론은 쓰지 않는다.")));
+                ToolField.required(FEEDBACK_FIELD, FEEDBACK_DESCRIPTION)));
         for (EvaluationPoint point : points) {
+            fields.add(ToolField.required(pointEvidenceFieldName(point.code()), POINT_EVIDENCE_DESCRIPTION));
             fields.add(ToolField.requiredEnum(pointFieldName(point.code()), point.description(), POINT_VERDICTS));
         }
+        fields.add(ToolField.required(STRENGTHS_FIELD, "이번 면접에서 드러난 설계 강점 1-2문장."));
+        fields.add(ToolField.required(IMPROVEMENTS_FIELD, "보완할 설계 영역 1-2문장. 확인하지 않은 요구사항이 설계에 영향을 줬다면 짚는다."));
+        fields.add(ToolField.required(LEARNING_DIRECTION_FIELD,
+                "이번 면접의 약점에 근거한 구체적인 다음 학습 주제 1-2문장. 일반론은 쓰지 않는다."));
         return new ToolSchema(END_TOOL_NAME,
                 "시스템 설계 면접 마지막 답변의 rank와 피드백, 평가 포인트별 충족 여부, 종합 평가를 제출한다.", fields);
     }

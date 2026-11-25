@@ -78,6 +78,8 @@ class SystemDesignAnswerBedrockClientTest {
     private static final String NEXT_QUESTION = "앞에서 두신 카운터를 서버 여러 대가 함께 쓰면 같은 키를 받지 않게 하려면 어떻게 하나요?";
     private static final List<String> POINT_FIELDS = List.of("point_read_path_cache", "point_key_generation_collision",
             "point_storage_estimation", "point_redirect_availability", "point_redirect_status_tradeoff");
+    // endCommand()의 6번 답변 원문을 그대로 인용한 증거. 서버 검증을 통과해 MET 판정이 그대로 남는다.
+    private static final String GROUNDED_EVIDENCE = "[6] \"만료와 차단을 되돌릴 수 있게 302를 씁니다\"";
 
     private BedrockRuntimeClient bedrockRuntimeClient;
     private SystemDesignAnswerBedrockClient client;
@@ -160,10 +162,13 @@ class SystemDesignAnswerBedrockClientTest {
                 () -> assertThat(request.toolConfig().tools()).hasSize(1),
                 () -> assertThat(request.toolConfig().tools().get(0).toolSpec().name()).isEqualTo(END_TOOL_NAME),
                 () -> assertThat(request.toolConfig().toolChoice().tool().name()).isEqualTo(END_TOOL_NAME),
-                () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("reasoning", "rank", "feedback",
-                        "strengths", "improvements", "learning_direction", "point_read_path_cache",
-                        "point_key_generation_collision", "point_storage_estimation", "point_redirect_availability",
-                        "point_redirect_status_tradeoff"),
+                () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("rank", "feedback",
+                        "point_read_path_cache_evidence", "point_read_path_cache",
+                        "point_key_generation_collision_evidence", "point_key_generation_collision",
+                        "point_storage_estimation_evidence", "point_storage_estimation",
+                        "point_redirect_availability_evidence", "point_redirect_availability",
+                        "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff",
+                        "strengths", "improvements", "learning_direction"),
                 () -> assertThat(system).hasSize(2),
                 () -> assertThat(system.get(0).text()).isEqualTo(SystemDesignSystemMessages.end(command.problem())),
                 () -> assertThat(system.get(1).cachePoint()).isNotNull(),
@@ -474,12 +479,92 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
+    // 빠진 증거를 근거 없음으로 조용히 받지 않고 판정 필드가 빠졌을 때처럼 응답 전체를 실패로 본다. 판정이 NOT_MET이어도 같다.
+    @Test
+    void 증거_필드가_없거나_문자열이_아니면_ExternalApiException() {
+        // given
+        Map<String, Document> withoutEvidence = endInput("MET", "MET", "MET", "MET", "MET");
+        withoutEvidence.remove("point_storage_estimation_evidence");
+        Map<String, Document> numberEvidence = endInput("MET", "MET", "MET", "MET", "MET");
+        numberEvidence.put("point_read_path_cache_evidence", Document.fromNumber(1));
+        Map<String, Document> nullEvidence = endInput("NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET");
+        nullEvidence.put("point_redirect_status_tradeoff_evidence", Document.fromNull());
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
+                toolUseResponse(END_TOOL_NAME, withoutEvidence),
+                toolUseResponse(END_TOOL_NAME, numberEvidence),
+                toolUseResponse(END_TOOL_NAME, nullEvidence));
+
+        // when & then
+        assertAll(
+                () -> assertEvidenceInvalid("point_storage_estimation_evidence", "없음"),
+                () -> assertEvidenceInvalid("point_read_path_cache_evidence", "1"),
+                () -> assertEvidenceInvalid("point_redirect_status_tradeoff_evidence", "null")
+        );
+    }
+
+    // 증거가 근거가 되지 않는 MET은 실패가 아니라 NOT_MET으로 내린다. 내린 포인트마다 WARN 한 줄(인용 원문 없이 이유만)을 남긴다.
+    // 원래 NOT_MET인 포인트는 증거에 없음이 있거나 증거가 빈 문자열이어도 그대로 두고 WARN을 남기지 않는다.
+    @Test
+    void MET이어도_증거가_근거가_되지_않으면_NOT_MET으로_내리고_내린_포인트마다_WARN_한_줄을_남긴다() {
+        // given
+        Map<String, Document> input = endInput("MET", "MET", "MET", "NOT_MET", "NOT_MET");
+        input.put("point_read_path_cache_evidence", Document.fromString("[6] \"만료와 차단을 되돌릴 수 있게\"\n"
+                + "없음: 조회가 많다는 근거"));
+        input.put("point_storage_estimation_evidence", Document.fromString("[3] \"건당 500바이트로 잡아 수십 GB입니다\""));
+        input.put("point_redirect_availability_evidence", Document.fromString("없음: 장애 전환"));
+        input.put("point_redirect_status_tradeoff_evidence", Document.fromString(""));
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
+                .willReturn(toolUseResponse(END_TOOL_NAME, input));
+
+        // when
+        SystemDesignEndEvaluation evaluation = client.evaluateEnd(endCommand());
+
+        // then
+        assertAll(
+                () -> assertThat(evaluation.metByPointCode()).containsExactly(
+                        entry("READ_PATH_CACHE", false),
+                        entry("KEY_GENERATION_COLLISION", true),
+                        entry("STORAGE_ESTIMATION", false),
+                        entry("REDIRECT_AVAILABILITY", false),
+                        entry("REDIRECT_STATUS_TRADEOFF", false)),
+                () -> assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.WARN)
+                        .extracting(ILoggingEvent::getFormattedMessage)
+                        .satisfiesExactly(
+                                message -> assertThat(message)
+                                        .contains("interviewId: 41", "code: READ_PATH_CACHE", "reason: MISSING_ELEMENT")
+                                        .doesNotContain("만료와 차단"),
+                                message -> assertThat(message)
+                                        .contains("interviewId: 41", "code: STORAGE_ESTIMATION",
+                                                "reason: UNMATCHED_QUOTE")
+                                        .doesNotContain("500바이트"))
+        );
+    }
+
+    // 판정을 내렸다는 WARN은 저장할 응답에만 남긴다. 다른 포인트의 필드가 잘못돼 응답 전체가 실패하면 남기지 않는다.
+    @Test
+    void 응답이_실패하면_판정을_내렸다는_WARN을_남기지_않는다() {
+        // given
+        Map<String, Document> input = endInput("MET", "MET", "MET", "MET", "MET");
+        input.put("point_read_path_cache_evidence", Document.fromString("없음: 캐시 근거"));
+        input.remove("point_redirect_status_tradeoff");
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
+                .willReturn(toolUseResponse(END_TOOL_NAME, input));
+
+        // when & then
+        assertAll(
+                () -> assertPointInvalid("point_redirect_status_tradeoff", "없음"),
+                () -> assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.WARN).isEmpty()
+        );
+    }
+
+    // 스키마에 없는 필드는 읽지 않는다. 마지막 답변 평가(L3) 도구에는 reasoning이 없어, 모델이 그래도 보내면 모르는 필드로 버린다.
     @Test
     void 모르는_필드는_무시한다() {
         // given
         Map<String, Document> answerInput = answerInput("D", FEEDBACK, NEXT_QUESTION);
         answerInput.put("next_question_draft", Document.fromString("다른 질문"));
         Map<String, Document> endInput = endInput("NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET");
+        endInput.put("reasoning", Document.fromString("L3 도구에는 없는 필드"));
         endInput.put("point_unknown", Document.fromString("MAYBE"));
         endInput.put("requirement_daily_creation_volume", Document.fromString("YES"));
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
@@ -711,6 +796,13 @@ class SystemDesignAnswerBedrockClientTest {
                         + ", value=" + received);
     }
 
+    private void assertEvidenceInvalid(String fieldName, String received) {
+        assertThatThrownBy(() -> client.evaluateEnd(endCommand()))
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessage("시스템 설계 평가 포인트 증거 필드가 없거나 문자열이 아닙니다. field=" + fieldName
+                        + ", value=" + received);
+    }
+
     private void assertFailureLogged(String... callTypes) {
         assertThat(callLogs.list).filteredOn(event -> event.getLevel() == Level.WARN)
                 .extracting(ILoggingEvent::getFormattedMessage)
@@ -771,16 +863,17 @@ class SystemDesignAnswerBedrockClientTest {
         return input;
     }
 
-    // 평가 포인트 판정은 문제 순서(POINT_FIELDS)다. 나머지 필드는 성공하는 값으로 채운다.
+    // 평가 포인트 판정은 문제 순서(POINT_FIELDS)다. 포인트마다 근거가 되는 증거를 판정 앞에 넣고, 나머지 필드는 성공하는 값으로
+    // 채운다.
     private static Map<String, Document> endInput(String... pointVerdicts) {
         Map<String, Document> input = new LinkedHashMap<>();
-        input.put("reasoning", Document.fromString("마지막 답변 채점 근거와 평가 포인트 판정 근거"));
         input.put("rank", Document.fromString("A"));
         input.put("feedback", Document.fromString(FEEDBACK));
         input.put("strengths", Document.fromString("읽기 경로에 캐시를 둔 근거가 분명했어요."));
         input.put("improvements", Document.fromString("저장 용량을 수치로 추정해 보세요."));
         input.put("learning_direction", Document.fromString("301과 302의 차이를 비교해 보세요."));
         for (int index = 0; index < POINT_FIELDS.size(); index++) {
+            input.put(POINT_FIELDS.get(index) + "_evidence", Document.fromString(GROUNDED_EVIDENCE));
             input.put(POINT_FIELDS.get(index), Document.fromString(pointVerdicts[index]));
         }
         return input;

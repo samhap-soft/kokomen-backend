@@ -247,6 +247,17 @@ class SystemDesignSeedScriptTest {
                         .allSatisfy(code -> assertThat(code).matches(CODE_FORMAT)));
     }
 
+    // 평가 포인트마다 증거 필드(point_{code 소문자}_evidence)가 판정 필드 앞에 붙는다. code가 _EVIDENCE로 끝나면 그 판정 필드가
+    // 다른 포인트의 증거 필드와 이름이 같아진다(X_EVIDENCE의 판정 필드 = X의 증거 필드).
+    @Test
+    void 평가_포인트_code는_EVIDENCE로_끝나지_않는다() {
+        Map<String, List<String>> pointCodes = readEvaluationPointColumn("code");
+
+        assertThat(pointCodes).containsOnlyKeys(PROBLEM_CODES)
+                .allSatisfy((problemCode, codes) -> assertThat(codes).as(problemCode)
+                        .allSatisfy(code -> assertThat(code).doesNotEndWith("_EVIDENCE")));
+    }
+
     @Test
     void 시작_다이어그램은_다이어그램_규칙을_통과한다() {
         Map<String, String> starterDiagrams = new LinkedHashMap<>();

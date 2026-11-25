@@ -115,7 +115,11 @@ class SystemDesignToolSchemasTest {
               }
             }
             """;
-    // URL 단축기 문제로 그린 마지막 답변 평가 도구의 평가 포인트 필드. 고정 필드 뒤에 문제의 평가 포인트 순서로 붙는다.
+    // 증거 필드의 설명은 평가 포인트마다 같다.
+    private static final String EVIDENCE_DESCRIPTION = "이 평가 포인트 설명의 요소마다 한 줄씩: "
+            + "`[답변 번호] \"답변이나 다이어그램 줄의 원문 그대로 짧은 인용\"`. 확인되지 않은 요소는 `없음: 요소 이름`. 300자 이내.";
+    // URL 단축기 문제로 그린 마지막 답변 평가 도구의 평가 포인트 판정 필드. feedback 뒤, 종합 평가 세 필드 앞에 문제의 평가 포인트
+    // 순서로 붙고, 포인트마다 증거 필드가 판정 필드 바로 앞에 온다(END_FIELD_ORDER).
     private static final String URL_SHORTENER_POINT_FIELDS = """
             {
               "point_read_path_cache": {
@@ -145,9 +149,16 @@ class SystemDesignToolSchemasTest {
               }
             }
             """;
-    private static final List<String> END_FIELD_ORDER = List.of("reasoning", "rank", "feedback", "strengths",
-            "improvements", "learning_direction", "point_read_path_cache", "point_key_generation_collision",
-            "point_storage_estimation", "point_redirect_availability", "point_redirect_status_tradeoff");
+    private static final List<String> URL_SHORTENER_EVIDENCE_FIELDS = List.of("point_read_path_cache_evidence",
+            "point_key_generation_collision_evidence", "point_storage_estimation_evidence",
+            "point_redirect_availability_evidence", "point_redirect_status_tradeoff_evidence");
+    private static final List<String> END_FIELD_ORDER = List.of("rank", "feedback",
+            "point_read_path_cache_evidence", "point_read_path_cache",
+            "point_key_generation_collision_evidence", "point_key_generation_collision",
+            "point_storage_estimation_evidence", "point_storage_estimation",
+            "point_redirect_availability_evidence", "point_redirect_availability",
+            "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff",
+            "strengths", "improvements", "learning_direction");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -238,7 +249,7 @@ class SystemDesignToolSchemasTest {
     }
 
     @Test
-    void end_도구는_평가_포인트마다_MET_NOT_MET_필드를_만든다() throws Exception {
+    void end_도구는_평가_포인트마다_증거_필드와_MET_NOT_MET_판정_필드를_만든다() throws Exception {
         // given
         List<EvaluationPoint> points = SystemDesignProblemContextFixture.URL_SHORTENER_EVALUATION_POINTS;
 
@@ -256,8 +267,15 @@ class SystemDesignToolSchemasTest {
                         .containsExactlyElementsOf(END_FIELD_ORDER),
                 () -> assertThat(fieldNames(expectedPointFields)).allSatisfy(field ->
                         assertThat(properties.get(field)).isEqualTo(expectedPointFields.get(field))),
+                () -> assertThat(URL_SHORTENER_EVIDENCE_FIELDS).allSatisfy(field -> assertAll(
+                        () -> assertThat(properties.at("/" + field + "/type").asText()).isEqualTo("string"),
+                        () -> assertThat(properties.at("/" + field + "/description").asText())
+                                .isEqualTo(EVIDENCE_DESCRIPTION),
+                        () -> assertThat(properties.get(field).has("enum")).isFalse()
+                )),
                 () -> assertThat(textValues(properties.at("/rank/enum"))).containsExactly("A", "B", "C", "D", "F"),
-                () -> assertThat(List.of("reasoning", "feedback", "strengths", "improvements", "learning_direction"))
+                () -> assertThat(properties.has("reasoning")).isFalse(),
+                () -> assertThat(List.of("feedback", "strengths", "improvements", "learning_direction"))
                         .allSatisfy(field -> assertAll(
                                 () -> assertThat(properties.at("/" + field + "/type").asText()).isEqualTo("string"),
                                 () -> assertThat(properties.at("/" + field + "/description").asText()).isNotBlank(),
@@ -268,17 +286,18 @@ class SystemDesignToolSchemasTest {
         );
     }
 
-    // reasoning 글자 수 한도가 출력 길이를 묶는다. 답변 평가(L2)는 30초 폴링 안에 끝나야 해 더 짧다.
+    // reasoning 글자 수 한도가 출력 길이를 묶는다. 마지막 답변 평가(L3)는 출력을 줄이려고 reasoning을 두지 않고 rank부터 쓴다.
+    // 평가 포인트별 근거는 증거 필드에, 마지막 답변의 항목 점수 근거는 증거 필드와 feedback에 반영한다.
     @Test
-    void reasoning_설명에_700자와_1000자_한도가_있다() {
+    void 답변_도구_reasoning에는_700자_한도가_있고_end_도구에는_reasoning이_없다() {
         ToolSchema answer = SystemDesignToolSchemas.answer();
         ToolSchema end = SystemDesignToolSchemas.end(SystemDesignProblemContextFixture.URL_SHORTENER_EVALUATION_POINTS);
 
         assertAll(
                 () -> assertThat(answer.fields().get(0).name()).isEqualTo("reasoning"),
                 () -> assertThat(answer.fields().get(0).description()).contains("700자 이내"),
-                () -> assertThat(end.fields().get(0).name()).isEqualTo("reasoning"),
-                () -> assertThat(end.fields().get(0).description()).contains("1000자 이내")
+                () -> assertThat(end.fields()).extracting(ToolField::name).doesNotContain("reasoning"),
+                () -> assertThat(end.fields().get(0).name()).isEqualTo("rank")
         );
     }
 
@@ -291,16 +310,17 @@ class SystemDesignToolSchemasTest {
 
         assertAll(
                 () -> assertThat(answer.requiredFields()).isEqualTo(answer.fields()),
-                () -> assertThat(end.fields()).extracting(ToolField::name).containsExactly("reasoning", "rank",
-                        "feedback", "strengths", "improvements", "learning_direction", "point_burst_absorption",
-                        "point_duplicate_issue"),
+                () -> assertThat(end.fields()).extracting(ToolField::name).containsExactly("rank", "feedback",
+                        "point_burst_absorption_evidence", "point_burst_absorption",
+                        "point_duplicate_issue_evidence", "point_duplicate_issue", "strengths", "improvements",
+                        "learning_direction"),
                 () -> assertThat(end.requiredFields()).isEqualTo(end.fields())
         );
     }
 
     // 기본 로캘이 터키어여도 I가 점 없는 ı로 바뀌지 않아야 응답 파서가 같은 필드 이름을 찾는다.
     @Test
-    void 평가_포인트_필드_이름은_code를_소문자로_바꿔_point_를_붙인다() {
+    void 평가_포인트_판정_필드와_증거_필드_이름은_code를_소문자로_바꿔_만든다() {
         Locale defaultLocale = Locale.getDefault();
         try {
             Locale.setDefault(Locale.forLanguageTag("tr-TR"));
@@ -308,7 +328,9 @@ class SystemDesignToolSchemasTest {
             assertAll(
                     () -> assertThat(SystemDesignToolSchemas.pointFieldName("KEY_GENERATION_COLLISION"))
                             .isEqualTo("point_key_generation_collision"),
-                    () -> assertThat(SystemDesignToolSchemas.pointFieldName("P2P_LIMIT")).isEqualTo("point_p2p_limit")
+                    () -> assertThat(SystemDesignToolSchemas.pointFieldName("P2P_LIMIT")).isEqualTo("point_p2p_limit"),
+                    () -> assertThat(SystemDesignToolSchemas.pointEvidenceFieldName("KEY_GENERATION_COLLISION"))
+                            .isEqualTo("point_key_generation_collision_evidence")
             );
         } finally {
             Locale.setDefault(defaultLocale);
