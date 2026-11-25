@@ -15,13 +15,16 @@ import java.util.stream.Stream;
  * <p>MET을 내리는 경우(이 순서로 본다):
  * <ol>
  *     <li>인용 밖에 확인되지 않은 요소 표시({@code 없음:})가 있다. 원문을 옮긴 인용 안의 {@code 없음:}은 표시가 아니다</li>
- *     <li>근거가 되는 큰따옴표 인용이 없다. 다듬은 뒤 {@value #MIN_QUOTE_LENGTH}자 미만인 인용은 어느 답변에나 들어 있을 만해
- *     근거로 치지 않는다</li>
- *     <li>근거가 되는 인용 하나라도 이번 면접의 면접자 답변(1~6번)이나 마지막 다이어그램을 그린 줄 어디에도 없다</li>
+ *     <li>근거가 되는 큰따옴표 인용이 없다. 다듬은 뒤 {@value #MIN_QUOTE_LENGTH}자 미만인 인용(조각)은 어느 답변에나 들어 있을
+ *     만해 근거로 치지 않는다</li>
+ *     <li>근거가 되는 인용(조각) 하나라도 이번 면접의 면접자 답변(1~6번)이나 마지막 다이어그램을 그린 줄 어디에도 없다</li>
  * </ol>
- * 인용과 출처는 같은 규칙으로 다듬어 부분 문자열로 비교한다. NFKC로 전각·호환 문자를 맞추고 소문자로 바꾼 뒤 공백·줄바꿈, 보이지
- * 않는 글자, 따옴표, 문장부호(. , ! ? … · 등)를 지운다. 인용 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 떨어진 구절을 이어 붙인
- * 인용은 근거가 아니다. 면접관의 질문과 역질문 기록은 면접자의 설계 근거가 아니어서 출처에 넣지 않는다.
+ * 인용 안의 말줄임표(…, 마침표 세 개 이상, ⋯)는 떨어진 구절 사이의 경계로 보고, 인용을 말줄임표에서 나눈 조각마다 비교한다.
+ * 말줄임표 없는 인용은 조각 하나다. 조각과 출처는 같은 규칙으로 다듬어 부분 문자열로 비교한다. NFKC로 전각·호환 문자를 맞추고
+ * 소문자로 바꾼 뒤 공백·줄바꿈, 보이지 않는 글자, 따옴표, 문장부호(. , ! ? · 등)를 지운다. 조각은 다듬기 전에 나눈다. 다듬으면
+ * 말줄임표가 지워져 떨어진 구절이 붙기 때문이다. 조각 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 말줄임표 없이
+ * 떨어진 구절을 이어 붙인 인용은 근거가 아니다. 조각끼리는 서로 다른 출처에 있어도 된다. 면접관의 질문과 역질문 기록은 면접자의
+ * 설계 근거가 아니어서 출처에 넣지 않는다.
  * 인용이 그 요소를 실제로 충족하는지(뜻)는 보지 않는다. 그 판단은 LLM 판정에 남는다.
  */
 public final class SystemDesignEvaluationEvidenceVerifier {
@@ -31,6 +34,9 @@ public final class SystemDesignEvaluationEvidenceVerifier {
     private static final Pattern MISSING_ELEMENT = Pattern.compile("없음\\s*:");
     // 곧은 큰따옴표와 둥근 큰따옴표를 짝짓는 순서대로 묶는다. 전각 큰따옴표는 NFKC가 곧은 큰따옴표로 바꾼다.
     private static final Pattern QUOTE = Pattern.compile("[\"“”]([^\"“”]*)[\"“”]");
+    // 인용 안의 말줄임표. NFKC가 …(U+2026)를 마침표 세 개로 바꾸므로 마침표 세 개 이상으로 찾는다. NFKC가 바꾸지 않는 ⋯(U+22EF)와
+    // NFKC 전의 …도 함께 본다.
+    private static final Pattern ELLIPSIS = Pattern.compile("\\.{3,}|[…⋯]+");
     // 공백 문자(유니코드 공백·줄바꿈), 보이지 않는 글자(서식 문자, 이모지 변이 선택자), 따옴표, 문장부호.
     // NFKC 뒤에 지우므로 가운뎃점으로 쓰는 ㆍ(U+318D)는 NFKC가 바꾼 U+119E로 적는다.
     private static final Pattern IGNORED = Pattern.compile(
@@ -73,32 +79,34 @@ public final class SystemDesignEvaluationEvidenceVerifier {
         if (MISSING_ELEMENT.matcher(QUOTE.matcher(evidence).replaceAll(" ")).find()) {
             return DowngradeReason.MISSING_ELEMENT;
         }
-        List<String> quotes = findQuotes(evidence);
-        if (quotes.isEmpty()) {
+        List<String> fragments = findQuoteFragments(evidence);
+        if (fragments.isEmpty()) {
             return DowngradeReason.NO_QUOTE;
         }
-        if (!quotes.stream().allMatch(this::isInSources)) {
+        if (!fragments.stream().allMatch(this::isInSources)) {
             return DowngradeReason.UNMATCHED_QUOTE;
         }
         return null;
     }
 
-    // 큰따옴표로 묶은 구간을 다듬어 모은다. 다듬은 뒤 짧은 인용은 뺀다.
-    private static List<String> findQuotes(String evidence) {
+    // 큰따옴표로 묶은 구간을 말줄임표에서 나눈 뒤 조각마다 다듬어 모은다. 다듬은 뒤 짧은 조각은 뺀다.
+    private static List<String> findQuoteFragments(String evidence) {
         Matcher matcher = QUOTE.matcher(evidence);
-        List<String> quotes = new ArrayList<>();
+        List<String> fragments = new ArrayList<>();
         while (matcher.find()) {
-            String quote = normalize(matcher.group(1));
-            if (quote.codePointCount(0, quote.length()) >= MIN_QUOTE_LENGTH) {
-                quotes.add(quote);
+            for (String fragment : ELLIPSIS.split(matcher.group(1))) {
+                String normalized = normalize(fragment);
+                if (normalized.codePointCount(0, normalized.length()) >= MIN_QUOTE_LENGTH) {
+                    fragments.add(normalized);
+                }
             }
         }
-        return quotes;
+        return fragments;
     }
 
-    private boolean isInSources(String quote) {
+    private boolean isInSources(String fragment) {
         return normalizedSources.stream()
-                .anyMatch(source -> source.contains(quote));
+                .anyMatch(source -> source.contains(fragment));
     }
 
     private static String normalize(String text) {
@@ -120,9 +128,9 @@ public final class SystemDesignEvaluationEvidenceVerifier {
     public enum DowngradeReason {
         // 확인되지 않은 요소 표시(없음:)가 있다
         MISSING_ELEMENT,
-        // 근거가 되는 큰따옴표 인용이 없다
+        // 근거가 되는 큰따옴표 인용(조각)이 없다
         NO_QUOTE,
-        // 이번 면접의 답변·다이어그램에 없는 인용이 있다
+        // 이번 면접의 답변·다이어그램에 없는 인용(조각)이 있다
         UNMATCHED_QUOTE,
     }
 }

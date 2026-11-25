@@ -200,6 +200,67 @@ class SystemDesignEvaluationEvidenceVerifierTest {
         );
     }
 
+    // 모델은 떨어진 구절을 말줄임표(…, 마침표 세 개 이상, ⋯)로 이어 인용하곤 한다. 말줄임표를 인용 안의 경계로 보고 조각마다
+    // 비교한다. 말줄임표 앞뒤 공백, 이어 쓴 말줄임표, 앞뒤 끝의 말줄임표는 상관없다.
+    @Test
+    void 말줄임표로_이은_인용은_조각마다_원문에_있으면_인정한다() {
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[2] \"DB 자동 증가 값을 Base62로 바꿔…키 충돌이 없어요\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[2] \"DB 자동 증가 값을 Base62로 바꿔...키 충돌이 없어요\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[2] \"…DB 자동 증가 값을 …… 단축 키를 만들어요 ..... 키 충돌이 없어요…\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[3] \"한 건을 500바이트로 잡으면⋯MySQL 테이블에 둬요\""))
+                        .isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 조각마다 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있으면 된다. 조각끼리 같은 출처일 필요는 없다.
+    @Test
+    void 말줄임표_조각은_서로_다른_답변이나_다이어그램_줄에_있어도_된다() {
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[1] \"API 서버가 받아 단축 키를 만들고…API 서버 앞에 Redis 캐시를 두고\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[4] \"Redis 캐시를 두고 … cache: Redis 캐시 ⚡ [CACHE]\""))
+                        .isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 조각 하나라도 원문에 없으면(바꿔 쓴 조각, 면접관 질문에서 옮긴 조각) 인용 하나가 원문에 없는 것과 같다.
+    @Test
+    void 말줄임표_조각_하나라도_원문에_없으면_NOT_MET으로_내린다() {
+        VerifiedVerdict downgraded = new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE);
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[2] \"DB 자동 증가 값을 Base62로 바꿔…해시 충돌이 나면 다시 만들어요\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[5] \"DB를 복제해 두고…이미 보낸 링크는 어떻게 되나요\""))
+                        .isEqualTo(downgraded)
+        );
+    }
+
+    // 다듬은 뒤 4자 미만인 조각은 짧은 인용처럼 근거로도 실패로도 치지 않는다. 원문에 없는 짧은 조각이 있어도 나머지 조각으로 본다.
+    @Test
+    void 말줄임표로_나눈_4자_미만_조각은_무시한다() {
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"301로 응답해…줄여요\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"301로 응답해…안 써요\"")).isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 조각이 모두 4자 미만이면 그 인용은 근거가 되는 인용이 아니다. 짧은 조각을 여러 개 이어도 근거가 되지 않는다.
+    @Test
+    void 말줄임표로_나눈_조각이_모두_4자_미만이면_근거_인용이_아니다() {
+        VerifiedVerdict noQuote = new VerifiedVerdict(false, DowngradeReason.NO_QUOTE);
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"301…302\"")).isEqualTo(noQuote),
+                () -> assertThat(verifier.verify(true, "[4] \"캐시를…두지…않아요\"")).isEqualTo(noQuote),
+                () -> assertThat(verifier.verify(true, "[6] \"301…302\" [6] \"301로 응답해\"")).isEqualTo(KEPT_MET)
+        );
+    }
+
     // 근거는 면접자의 설계 답변이어야 한다. 면접관의 질문과 역질문 기록(면접자가 물은 역질문, 그때 돌려준 면접관 답)은 출처가 아니다.
     @Test
     void 면접관_질문이나_역질문_기록을_인용하면_NOT_MET으로_내린다() {
