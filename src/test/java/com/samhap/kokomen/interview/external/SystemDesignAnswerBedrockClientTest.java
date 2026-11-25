@@ -162,7 +162,7 @@ class SystemDesignAnswerBedrockClientTest {
                 () -> assertThat(request.toolConfig().tools()).hasSize(1),
                 () -> assertThat(request.toolConfig().tools().get(0).toolSpec().name()).isEqualTo(END_TOOL_NAME),
                 () -> assertThat(request.toolConfig().toolChoice().tool().name()).isEqualTo(END_TOOL_NAME),
-                () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("reasoning", "rank", "feedback",
+                () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("rank", "feedback",
                         "point_read_path_cache_evidence", "point_read_path_cache",
                         "point_key_generation_collision_evidence", "point_key_generation_collision",
                         "point_storage_estimation_evidence", "point_storage_estimation",
@@ -557,12 +557,14 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
+    // 스키마에 없는 필드는 읽지 않는다. 마지막 답변 평가(L3) 도구에는 reasoning이 없어, 모델이 그래도 보내면 모르는 필드로 버린다.
     @Test
     void 모르는_필드는_무시한다() {
         // given
         Map<String, Document> answerInput = answerInput("D", FEEDBACK, NEXT_QUESTION);
         answerInput.put("next_question_draft", Document.fromString("다른 질문"));
         Map<String, Document> endInput = endInput("NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET", "NOT_MET");
+        endInput.put("reasoning", Document.fromString("L3 도구에는 없는 필드"));
         endInput.put("point_unknown", Document.fromString("MAYBE"));
         endInput.put("requirement_daily_creation_volume", Document.fromString("YES"));
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
@@ -865,7 +867,6 @@ class SystemDesignAnswerBedrockClientTest {
     // 채운다.
     private static Map<String, Document> endInput(String... pointVerdicts) {
         Map<String, Document> input = new LinkedHashMap<>();
-        input.put("reasoning", Document.fromString("마지막 답변 채점 근거와 종합 평가 정리"));
         input.put("rank", Document.fromString("A"));
         input.put("feedback", Document.fromString(FEEDBACK));
         input.put("strengths", Document.fromString("읽기 경로에 캐시를 둔 근거가 분명했어요."));

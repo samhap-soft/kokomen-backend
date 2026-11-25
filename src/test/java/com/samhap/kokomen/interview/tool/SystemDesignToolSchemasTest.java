@@ -152,7 +152,7 @@ class SystemDesignToolSchemasTest {
     private static final List<String> URL_SHORTENER_EVIDENCE_FIELDS = List.of("point_read_path_cache_evidence",
             "point_key_generation_collision_evidence", "point_storage_estimation_evidence",
             "point_redirect_availability_evidence", "point_redirect_status_tradeoff_evidence");
-    private static final List<String> END_FIELD_ORDER = List.of("reasoning", "rank", "feedback",
+    private static final List<String> END_FIELD_ORDER = List.of("rank", "feedback",
             "point_read_path_cache_evidence", "point_read_path_cache",
             "point_key_generation_collision_evidence", "point_key_generation_collision",
             "point_storage_estimation_evidence", "point_storage_estimation",
@@ -274,7 +274,8 @@ class SystemDesignToolSchemasTest {
                         () -> assertThat(properties.get(field).has("enum")).isFalse()
                 )),
                 () -> assertThat(textValues(properties.at("/rank/enum"))).containsExactly("A", "B", "C", "D", "F"),
-                () -> assertThat(List.of("reasoning", "feedback", "strengths", "improvements", "learning_direction"))
+                () -> assertThat(properties.has("reasoning")).isFalse(),
+                () -> assertThat(List.of("feedback", "strengths", "improvements", "learning_direction"))
                         .allSatisfy(field -> assertAll(
                                 () -> assertThat(properties.at("/" + field + "/type").asText()).isEqualTo("string"),
                                 () -> assertThat(properties.at("/" + field + "/description").asText()).isNotBlank(),
@@ -285,20 +286,18 @@ class SystemDesignToolSchemasTest {
         );
     }
 
-    // reasoning 글자 수 한도가 출력 길이를 묶는다. 마지막 답변 평가(L3)는 평가 포인트별 근거를 증거 필드에 쓰므로 reasoning에서
-    // 뺐고, 그만큼 한도를 줄였다.
+    // reasoning 글자 수 한도가 출력 길이를 묶는다. 마지막 답변 평가(L3)는 출력을 줄이려고 reasoning을 두지 않고 rank부터 쓴다.
+    // 평가 포인트별 근거는 증거 필드에, 마지막 답변의 항목 점수 근거는 증거 필드와 feedback에 반영한다.
     @Test
-    void reasoning_설명에_700자와_400자_한도가_있다() {
+    void 답변_도구_reasoning에는_700자_한도가_있고_end_도구에는_reasoning이_없다() {
         ToolSchema answer = SystemDesignToolSchemas.answer();
         ToolSchema end = SystemDesignToolSchemas.end(SystemDesignProblemContextFixture.URL_SHORTENER_EVALUATION_POINTS);
 
         assertAll(
                 () -> assertThat(answer.fields().get(0).name()).isEqualTo("reasoning"),
                 () -> assertThat(answer.fields().get(0).description()).contains("700자 이내"),
-                () -> assertThat(end.fields().get(0))
-                        .extracting(ToolField::name, ToolField::description)
-                        .containsExactly("reasoning", "가장 최근 답변의 항목별 점수 근거와 종합 평가 정리. 400자 이내. "
-                                + "사용자에게 노출되지 않는다.")
+                () -> assertThat(end.fields()).extracting(ToolField::name).doesNotContain("reasoning"),
+                () -> assertThat(end.fields().get(0).name()).isEqualTo("rank")
         );
     }
 
@@ -311,8 +310,8 @@ class SystemDesignToolSchemasTest {
 
         assertAll(
                 () -> assertThat(answer.requiredFields()).isEqualTo(answer.fields()),
-                () -> assertThat(end.fields()).extracting(ToolField::name).containsExactly("reasoning", "rank",
-                        "feedback", "point_burst_absorption_evidence", "point_burst_absorption",
+                () -> assertThat(end.fields()).extracting(ToolField::name).containsExactly("rank", "feedback",
+                        "point_burst_absorption_evidence", "point_burst_absorption",
                         "point_duplicate_issue_evidence", "point_duplicate_issue", "strengths", "improvements",
                         "learning_direction"),
                 () -> assertThat(end.requiredFields()).isEqualTo(end.fields())

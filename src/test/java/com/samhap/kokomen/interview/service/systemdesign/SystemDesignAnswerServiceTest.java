@@ -475,7 +475,6 @@ class SystemDesignAnswerServiceTest extends BaseTest {
                 List.of(B, B, C, A, B));
         SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, MAX_QUESTION_COUNT);
         Map<String, Document> endInput = new LinkedHashMap<>();
-        endInput.put("reasoning", Document.fromString("마지막 답변 채점 근거와 종합 평가 정리"));
         endInput.put("rank", Document.fromString("C"));
         endInput.put("feedback", Document.fromString("C 등급 피드백이에요."));
         endInput.put("strengths", Document.fromString("조회 경로를 캐시로 줄였어요."));

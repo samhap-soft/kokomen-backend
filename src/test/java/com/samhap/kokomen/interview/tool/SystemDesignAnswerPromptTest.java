@@ -58,6 +58,22 @@ class SystemDesignAnswerPromptTest {
         );
     }
 
+    // 마지막 답변 평가(L3) 도구에는 reasoning이 없다. L3 system은 reasoning에 쓰라고 하지 않고, 항목 점수는 rank를 정하기 전에
+    // 속으로 매겨 근거를 증거 필드와 feedback에 반영하게 한다. 답변 평가(L2)는 그대로 reasoning에 인용한다.
+    @Test
+    void L3_system_프롬프트는_reasoning을_언급하지_않고_L2만_reasoning에_채점_근거를_쓰게_한다() {
+        String answerSystem = SystemDesignSystemMessages.answer(SystemDesignProblemContextFixture.urlShortener());
+        String endSystem = SystemDesignSystemMessages.end(SystemDesignProblemContextFixture.urlShortener());
+
+        assertAll(
+                () -> assertThat(endSystem).doesNotContain("reasoning"),
+                () -> assertThat(endSystem).contains("- rank를 정하기 전에 항목 점수를 속으로 매기고, "
+                        + "근거는 평가 포인트 증거 필드와 feedback에 반영한다."),
+                () -> assertThat(answerSystem).contains("- reasoning에는 항목 점수마다 근거가 된 답변 원문",
+                        "- reasoning이나 feedback에서 질문 범위 안의 결함")
+        );
+    }
+
     // 채점은 면접자가 확인한 요구사항(user 메시지의 역질문 기록)만 기준으로 한다. 문제 문맥에는 숨은 요구사항의 답이 들어 있으므로,
     // 그 답과 답에만 나오는 숫자 표현이 채점 system으로 새지 않는지 본다.
     @Test

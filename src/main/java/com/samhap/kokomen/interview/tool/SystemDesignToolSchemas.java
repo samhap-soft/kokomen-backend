@@ -103,15 +103,14 @@ public final class SystemDesignToolSchemas {
     }
 
     /**
-     * 마지막 답변 평가와 리포트(L3). reasoning → rank → feedback 뒤에 평가 포인트마다 증거 필드와 MET/NOT_MET 판정 필드를 문제
-     * 순서로 붙이고, 그 뒤에 종합 평가(strengths → improvements → learning_direction)를 둔다. 근거를 먼저 쓰고 판정하게 증거 필드를
-     * 판정 필드 바로 앞에 두고, 판정에 맞춰 종합 평가를 쓰게 평가 포인트를 종합 평가 앞에 둔다. 판정 필드의 설명은 평가 포인트
-     * 문장이다. 모두 required다. 평가 포인트별 근거는 증거 필드에 쓰므로 reasoning에서 빼고 한도를 줄였다.
+     * 마지막 답변 평가와 리포트(L3). rank → feedback 뒤에 평가 포인트마다 증거 필드와 MET/NOT_MET 판정 필드를 문제 순서로 붙이고,
+     * 그 뒤에 종합 평가(strengths → improvements → learning_direction)를 둔다. 근거를 먼저 쓰고 판정하게 증거 필드를 판정 필드 바로
+     * 앞에 두고, 판정에 맞춰 종합 평가를 쓰게 평가 포인트를 종합 평가 앞에 둔다. 판정 필드의 설명은 평가 포인트 문장이다. 모두
+     * required다. 출력을 줄이려고 reasoning은 두지 않는다. 평가 포인트별 근거는 증거 필드에 쓰고, 마지막 답변의 항목 점수는 rank를
+     * 정하기 전에 속으로 매겨 근거를 증거 필드와 feedback에 반영하게 한다(system 프롬프트의 채점 근거).
      */
     public static ToolSchema end(List<EvaluationPoint> points) {
         List<ToolField> fields = new ArrayList<>(List.of(
-                ToolField.required(REASONING_FIELD,
-                        "가장 최근 답변의 항목별 점수 근거와 종합 평가 정리. 400자 이내. 사용자에게 노출되지 않는다."),
                 ToolField.requiredEnum(RANK_FIELD, RANK_DESCRIPTION, RANKS),
                 ToolField.required(FEEDBACK_FIELD, FEEDBACK_DESCRIPTION)));
         for (EvaluationPoint point : points) {

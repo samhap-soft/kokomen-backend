@@ -77,10 +77,14 @@ public final class SystemDesignPromptFragments {
             </difficulty_standard>
             """;
 
+    // 채점 기준표에서 채점 근거를 어디에 쓰는지 채울 자리
+    public static final String SCORING_BASIS_PLACEHOLDER = "{scoring_basis}";
+
     /**
-     * L2·L3. 가장 최근 질문이 요구한 범위를 6점 만점으로 채점한다.
+     * L2·L3. 가장 최근 질문이 요구한 범위를 6점 만점으로 채점한다. 채점 근거를 어디에 쓰는지만 호출마다 달라
+     * {@link #SCORING_BASIS_PLACEHOLDER} 자리에 {@link #ANSWER_SCORING_BASIS}(L2)나 {@link #END_SCORING_BASIS}(L3)를 채운다.
      */
-    public static final String RUBRIC = """
+    public static final String RUBRIC_TEMPLATE = """
             <rubric total_points="6">
             채점은 가장 최근 질문이 실제로 요구한 범위를 기준으로 한다. 질문이 묻지 않은 영역이 답변에 없다는 이유로 감점하지 않는다.
             - 요구사항 연결 (0-2점)
@@ -102,10 +106,24 @@ public final class SystemDesignPromptFragments {
               - 0점: 다이어그램이 답변과 어긋나거나, 이번 답변에서 설명한 핵심 구성 요소가 다이어그램에 없다
               - 주의: 구조를 바꿀 필요가 없는 질문(장애 시 동작, 정책 판단 등)이면 기존 다이어그램과 모순되지 않는 것으로 1점을 준다.
             채점 근거
-            - reasoning에는 항목 점수마다 근거가 된 답변 원문(다이어그램 항목은 다이어그램 줄)을 짧게(20자 안팎) 큰따옴표로 인용하고, 근거가 없으면 "근거 없음"이라고 쓴다. 답변에 없는 내용을 근거로 들지 않는다.
-            - reasoning이나 feedback에서 질문 범위 안의 결함(틀린 주장, 빠진 핵심 단계, 동작하지 않는 처리 순서)을 짚은 항목에는 만점을 주지 않는다. 질문이 묻지 않은 확장 제안은 결함이 아니다.
+            {scoring_basis}
             </rubric>
             """;
+
+    /**
+     * 답변 평가(L2)의 채점 근거. 항목 점수마다 근거가 된 원문을 reasoning에 인용한다.
+     */
+    public static final String ANSWER_SCORING_BASIS = """
+            - reasoning에는 항목 점수마다 근거가 된 답변 원문(다이어그램 항목은 다이어그램 줄)을 짧게(20자 안팎) 큰따옴표로 인용하고, 근거가 없으면 "근거 없음"이라고 쓴다. 답변에 없는 내용을 근거로 들지 않는다.
+            - reasoning이나 feedback에서 질문 범위 안의 결함(틀린 주장, 빠진 핵심 단계, 동작하지 않는 처리 순서)을 짚은 항목에는 만점을 주지 않는다. 질문이 묻지 않은 확장 제안은 결함이 아니다.""";
+
+    /**
+     * 마지막 답변 평가(L3)의 채점 근거. 출력을 줄이려고 L3 도구에는 reasoning이 없어, 항목 점수는 rank를 정하기 전에 속으로 매기고
+     * 근거는 평가 포인트 증거 필드와 feedback에 반영한다.
+     */
+    public static final String END_SCORING_BASIS = """
+            - rank를 정하기 전에 항목 점수를 속으로 매기고, 근거는 평가 포인트 증거 필드와 feedback에 반영한다. 답변에 없는 내용을 근거로 들지 않는다.
+            - feedback에서 질문 범위 안의 결함(틀린 주장, 빠진 핵심 단계, 동작하지 않는 처리 순서)을 짚은 항목에는 만점을 주지 않는다. 질문이 묻지 않은 확장 제안은 결함이 아니다.""";
 
     /**
      * L2·L3. 채점 예시는 시드 문제와 겹치지 않는 주제(알림 발송)로 써서 시드의 숨은 요구사항 수치가 프롬프트로 새지 않게 한다.

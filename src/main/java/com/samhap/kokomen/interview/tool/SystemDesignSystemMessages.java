@@ -59,7 +59,6 @@ public final class SystemDesignSystemMessages {
     private static final String END_OUTPUT = """
             <output>
             제공된 도구를 호출해 아래 필드를 모두 제출하라.
-            - reasoning : last_answer_analysis(가장 최근 답변의 rubric 항목별 점수와 근거)와 종합 평가 정리를 합쳐 400자 이내로 쓴다. 평가 포인트별 근거는 reasoning이 아니라 point_*_evidence에 쓴다. 사용자에게 노출되지 않는다.
             - rank : 가장 최근 답변에 대한 rank. A/B/C/D/F 중 한 글자. 면접 전체가 아니라 가장 최근 답변만 기준으로 한다.
             - feedback : 가장 최근 답변에 대한 3-4문장 피드백. feedback_tone_by_rank를 따른다.
             - point_*_evidence : 평가 포인트마다 판정보다 먼저 쓰는 근거. evaluation_point_rules의 형식으로 300자 이내로 쓴다. 사용자에게 노출되지 않는다.
@@ -110,7 +109,7 @@ public final class SystemDesignSystemMessages {
                 SystemDesignPromptFragments.GROUNDING_RULE,
                 SystemDesignPromptFragments.DIAGRAM_READING_GUIDE,
                 difficultyStandard(problem),
-                SystemDesignPromptFragments.RUBRIC,
+                rubric(SystemDesignPromptFragments.ANSWER_SCORING_BASIS),
                 InterviewPromptFragments.CALIBRATION_NOTE,
                 SystemDesignPromptFragments.RUBRIC_EXAMPLES,
                 InterviewPromptFragments.RANK_MAPPING,
@@ -122,8 +121,9 @@ public final class SystemDesignSystemMessages {
     }
 
     /**
-     * 마지막 답변 평가와 리포트(L3). 답변 평가(L2)와 같은 조각에서 task·output이 바뀌고, 다음 질문 규칙 대신 평가 포인트 규칙과
-     * 평가 포인트 목록이 들어간다. 숨은 요구사항은 넣지 않는다.
+     * 마지막 답변 평가와 리포트(L3). 답변 평가(L2)와 같은 조각에서 task·output과 채점 근거 줄이 바뀌고, 다음 질문 규칙 대신 평가 포인트
+     * 규칙과 평가 포인트 목록이 들어간다. L3 도구에는 reasoning이 없어 채점 근거는 증거 필드와 feedback에 반영하게 한다. 숨은 요구사항은
+     * 넣지 않는다.
      */
     public static String end(SystemDesignProblemContext problem) {
         return joinBlocks(
@@ -133,7 +133,7 @@ public final class SystemDesignSystemMessages {
                 SystemDesignPromptFragments.GROUNDING_RULE,
                 SystemDesignPromptFragments.DIAGRAM_READING_GUIDE,
                 difficultyStandard(problem),
-                SystemDesignPromptFragments.RUBRIC,
+                rubric(SystemDesignPromptFragments.END_SCORING_BASIS),
                 InterviewPromptFragments.CALIBRATION_NOTE,
                 SystemDesignPromptFragments.RUBRIC_EXAMPLES,
                 InterviewPromptFragments.RANK_MAPPING,
@@ -152,6 +152,11 @@ public final class SystemDesignSystemMessages {
         return points.stream()
                 .map(point -> "- " + SystemDesignToolSchemas.pointFieldName(point.code()) + " | " + point.description())
                 .collect(Collectors.joining(LINE_SEPARATOR));
+    }
+
+    private static String rubric(String scoringBasis) {
+        return SystemDesignPromptFragments.RUBRIC_TEMPLATE.replace(
+                SystemDesignPromptFragments.SCORING_BASIS_PLACEHOLDER, scoringBasis);
     }
 
     private static String difficultyStandard(SystemDesignProblemContext problem) {
