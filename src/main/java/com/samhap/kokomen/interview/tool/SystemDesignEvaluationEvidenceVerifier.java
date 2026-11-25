@@ -17,7 +17,7 @@ import java.util.stream.Stream;
  * <ol>
  *     <li>인용 밖에 확인되지 않은 요소 표시({@code 없음:})가 있다. 원문을 옮긴 인용 안의 {@code 없음:}은 표시가 아니다</li>
  *     <li>근거가 되는 큰따옴표 인용이 없다. 다듬은 뒤 {@value #MIN_QUOTE_LENGTH}자 미만인 인용(조각)은 어느 답변에나 들어 있을
- *     만해 근거로 치지 않는다</li>
+ *     만해 근거로 치지 않는다. 그런 조각은 원문에 없어도 내리지 않는다(따로 쓴 짧은 인용과 같다)</li>
  *     <li>근거가 되는 인용(조각) 하나라도 이번 면접의 면접자 답변(1~6번)이나 마지막 다이어그램을 그린 줄 어디에도 없다</li>
  * </ol>
  * 인용 안의 말줄임표(…, 마침표 세 개 이상, ⋯)는 떨어진 구절 사이의 경계로 보고, 인용을 말줄임표에서 나눈 조각마다 비교한다.
@@ -25,8 +25,9 @@ import java.util.stream.Stream;
  * 소문자로 바꾼 뒤 공백·줄바꿈, 보이지 않는 글자, 따옴표, 문장부호(. , ! ? · 등)를 지운다. 조각은 다듬기 전에 나눈다. 다듬으면
  * 말줄임표가 지워져 떨어진 구절이 붙기 때문이다. 조각 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 말줄임표 없이
  * 떨어진 구절을 이어 붙인 인용은 근거가 아니다. 조각끼리는 서로 다른 출처에 있어도 된다. 다이어그램 블록 줄은 연속된 일부가 아니어도,
- * 그 줄에서 속성 몇 개를 통째로 빼고 괄호를 다시 닫은 인용이면 그 줄에 있는 것으로 본다({@link BlockLine}). 면접관의 질문과 역질문
- * 기록은 면접자의 설계 근거가 아니어서 출처에 넣지 않는다.
+ * 그 줄에서 속성 몇 개를 통째로 빼고 괄호를 다시 닫은 인용이면 그 줄에 있는 것으로 본다({@link BlockLine}). 이 블록 줄 규칙은 나누기
+ * 전의 인용 전체에 먼저 적용한다. 뺀 속성 자리를 말줄임표로 표시하거나 속성 값에 말줄임표가 든 블록 줄 인용은 나누면 여는 괄호와
+ * 닫는 괄호가 다른 조각으로 갈라지기 때문이다. 면접관의 질문과 역질문 기록은 면접자의 설계 근거가 아니어서 출처에 넣지 않는다.
  * 인용이 그 요소를 실제로 충족하는지(뜻)는 보지 않는다. 그 판단은 LLM 판정에 남는다.
  */
 public final class SystemDesignEvaluationEvidenceVerifier {
@@ -97,14 +98,20 @@ public final class SystemDesignEvaluationEvidenceVerifier {
         return null;
     }
 
-    // 큰따옴표로 묶은 구간을 말줄임표에서 나눈 뒤 조각마다 다듬어 모은다. 다듬은 뒤 짧은 조각은 뺀다.
-    private static List<String> findQuoteFragments(String evidence) {
+    // 큰따옴표로 묶은 구간을 말줄임표에서 나눈 뒤 조각마다 다듬어 모은다. 다듬은 뒤 짧은 조각은 뺀다. 인용 전체를 다듬은 값(말줄임표가
+    // 지워진 값)이 블록 줄에서 속성을 통째로 뺀 모양이면 나누지 않고 그 값을 조각 하나로 둔다.
+    private List<String> findQuoteFragments(String evidence) {
         Matcher matcher = QUOTE.matcher(evidence);
         List<String> fragments = new ArrayList<>();
         while (matcher.find()) {
+            String whole = normalize(matcher.group(1));
+            if (isLongEnough(whole) && matchesBlockLineWithPropsLeftOut(whole)) {
+                fragments.add(whole);
+                continue;
+            }
             for (String fragment : ELLIPSIS.split(matcher.group(1))) {
                 String normalized = normalize(fragment);
-                if (normalized.codePointCount(0, normalized.length()) >= MIN_QUOTE_LENGTH) {
+                if (isLongEnough(normalized)) {
                     fragments.add(normalized);
                 }
             }
@@ -112,9 +119,17 @@ public final class SystemDesignEvaluationEvidenceVerifier {
         return fragments;
     }
 
+    private static boolean isLongEnough(String normalized) {
+        return normalized.codePointCount(0, normalized.length()) >= MIN_QUOTE_LENGTH;
+    }
+
     private boolean isInSources(String fragment) {
         return normalizedSources.stream().anyMatch(source -> source.contains(fragment))
-                || blockLines.stream().anyMatch(blockLine -> blockLine.matchesWithPropsLeftOut(fragment));
+                || matchesBlockLineWithPropsLeftOut(fragment);
+    }
+
+    private boolean matchesBlockLineWithPropsLeftOut(String fragment) {
+        return blockLines.stream().anyMatch(blockLine -> blockLine.matchesWithPropsLeftOut(fragment));
     }
 
     private static String normalize(String text) {
@@ -142,7 +157,8 @@ public final class SystemDesignEvaluationEvidenceVerifier {
         /**
          * 모델은 속성이 많은 블록 줄에서 요소에 맞는 속성만 남기고 괄호를 다시 닫아 인용하곤 한다. 다듬은 조각이 이 줄에서 속성 몇 개를
          * 통째로 뺀 것인지 본다. 괄호 앞은 앞부분의 끝부분(비어도 된다)이어야 하고, 괄호 안은 남긴 속성 하나 이상을 원래 순서대로 그대로
-         * 이은 것이어야 한다. 속성의 일부만 남기거나, 순서를 바꾸거나, 다른 블록의 속성을 넣으면 아니다.
+         * 이은 것이어야 한다. 속성의 일부만 남기거나, 순서를 바꾸거나, 다른 블록의 속성을 넣으면 아니다. 다듬으면 말줄임표가 지워지므로
+         * 뺀 속성 자리를 말줄임표로 표시한 인용 전체도 같은 모양으로 본다.
          */
         private boolean matchesWithPropsLeftOut(String fragment) {
             if (!fragment.endsWith(")")) {

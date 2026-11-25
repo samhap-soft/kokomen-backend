@@ -190,7 +190,7 @@ class SystemDesignEvaluationEvidenceVerifierTest {
     }
 
     // 모델은 속성이 많은 블록 줄에서 요소에 맞는 속성만 남기고 괄호를 다시 닫아 인용하곤 한다. 줄에서 속성을 통째로 빼기만 한
-    // 인용이면 인정한다. 속성 값 안의 쉼표·괄호는 상관없고, 괄호 앞은 블록 줄 앞부분의 끝부분이면 된다.
+    // 인용이면 인정한다. 속성 값 안의 쉼표·괄호와 블록 이름 안의 괄호는 상관없고, 괄호 앞은 블록 줄 앞부분의 끝부분이면 된다.
     @Test
     void 다이어그램_블록_줄에서_속성을_통째로_빼고_괄호를_닫은_인용을_인정한다() {
         SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
@@ -204,12 +204,16 @@ class SystemDesignEvaluationEvidenceVerifierTest {
                         .isEqualTo(KEPT_MET),
                 () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 워커 [CUSTOM] (개수: 2, 실패 시: 수동 재처리)\""))
                         .isEqualTo(KEPT_MET),
-                () -> assertThat(verifier.verify(true, "[6] \"(실패 시: 수동 재처리)\"")).isEqualTo(KEPT_MET)
+                () -> assertThat(verifier.verify(true, "[6] \"(실패 시: 수동 재처리)\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true,
+                        "[6] \"registry: 연결 레지스트리 (Redis) [CACHE] (갱신: 30초마다 하트비트)\"")).isEqualTo(KEPT_MET)
         );
     }
 
     // 남긴 속성은 그 블록의 속성을 이름과 값까지 그대로, 원래 순서대로 써야 한다. 값을 바꾸거나 일부만 남기거나, 다른 블록의 속성을
-    // 넣거나, 순서를 바꾸거나, 괄호 앞의 블록 이름을 바꾸거나, 속성을 하나도 남기지 않은 인용은 원문이 아니다.
+    // 넣거나, 순서를 바꾸거나, 괄호 앞의 블록 이름을 바꾸거나, 속성을 하나도 남기지 않은 인용은 원문이 아니다. 괄호 앞은 블록 줄
+    // 앞부분의 끝부분이어야 해서 종류([CUSTOM])나 이름 뒷부분을 빼면 아니고, 괄호를 닫지 않거나 닫은 뒤 글을 잇거나 속성 이름을 빼도
+    // 아니다.
     @Test
     void 다이어그램_블록_줄에서_남긴_속성이_그_블록_속성_그대로가_아니면_인정하지_않는다() {
         SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
@@ -225,7 +229,88 @@ class SystemDesignEvaluationEvidenceVerifierTest {
                         .isEqualTo(downgraded),
                 () -> assertThat(verifier.verify(true, "[6] \"worker: 이미지 변환 워커 [CUSTOM] (개수: 2)\""))
                         .isEqualTo(downgraded),
-                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] ()\"")).isEqualTo(downgraded)
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] ()\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker (개수: 2)\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 (개수: 2)\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 (실패 시: 수동 재처리)\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (개수: 2, 실패 시: 수동 재처리 등\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (개수: 2, 실패 시: 수동 재처리)로 둬요\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (수동 재처리)\"")).isEqualTo(downgraded)
+        );
+    }
+
+    // 모델은 뺀 속성 자리를 말줄임표로 표시하기도 하고, 면접자가 속성 값에 말줄임표를 직접 쓰기도 한다. 말줄임표에서 먼저 나누면
+    // 여는 괄호와 닫는 괄호가 다른 조각으로 갈라지므로, 말줄임표를 지운 인용 전체가 속성을 통째로 뺀 모양이면 그 줄에 있는 것으로 본다.
+    @Test
+    void 다이어그램_블록_줄에서_뺀_속성_자리에_말줄임표가_있어도_속성을_통째로_뺀_인용이면_인정한다() {
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 워커 [CUSTOM] (…, 작은 사진: 가로 320px)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 워커 [CUSTOM] (작은 사진: 가로 320px, …)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (… 작은 사진: 가로 320px)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true,
+                        "[6] \"storage: S3 사진 저장소 [STORAGE] (조회용: 작은·큰 사진만 (원본 제외) …)\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"retry: 재시도 워커 [CUSTOM] (재시도: 1초... 2초... 4초 뒤 DLQ)\""))
+                        .isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 말줄임표를 지운 인용 전체가 속성을 통째로 뺀 모양이 아니면 지금처럼 말줄임표에서 나눈 조각마다 본다. 값을 바꾸거나 순서를 바꾼
+    // 블록 줄 인용은 말줄임표가 있어도 원문이 아니다.
+    @Test
+    void 다이어그램_블록_줄_인용에_말줄임표가_있어도_속성을_바꾸면_인정하지_않는다() {
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
+        VerifiedVerdict downgraded = new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE);
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (… 작은 사진: 가로 999px)\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 워커 [CUSTOM] (실패 시: 수동 재처리, …, 개수: 2)\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"retry: 재시도 워커 [CUSTOM] (재시도: 1초… 4초 뒤 DLQ)\""))
+                        .isEqualTo(downgraded)
+        );
+    }
+
+    // 블록 줄 규칙에 맞는 인용도 다듬은 뒤 4자 미만이면 짧은 인용과 같다. 이름과 값이 빈 속성은 다듬으면 콜론 하나만 남는다.
+    @Test
+    void 블록_줄_규칙에_맞아도_다듬은_뒤_4자_미만인_인용은_근거가_아니다() {
+        SystemDesignDiagram diagram = SystemDesignDiagram.from(new Input(
+                List.of(new InputBlock("cfg", "CUSTOM", "설정 서버",
+                        List.of(new InputProp("", ""), new InputProp("개수", "2")), 0.0, 0.0)),
+                List.of()));
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(diagram, "설정은 서버 두 대에 둬요.");
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[1] \"(: )\""))
+                        .isEqualTo(new VerifiedVerdict(false, DowngradeReason.NO_QUOTE)),
+                () -> assertThat(verifier.verify(true, "[1] \"cfg: 설정 서버 [CUSTOM] (개수: 2)\"")).isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 블록 줄을 앞부분과 속성으로 나눠 볼 때도 출처 줄처럼 엔티티를 원래 문자로 되돌린다. 속성이 둘 이상이라 줄의 연속된 일부가 아닌
+    // 인용이다. 원래 문자로 옮긴 인용과 엔티티 그대로 옮긴 인용을 모두 인정한다.
+    @Test
+    void 다이어그램_블록_줄에서_속성을_뺀_인용도_엔티티를_원래_문자로_되돌려_비교한다() {
+        SystemDesignDiagram diagram = SystemDesignDiagram.from(new Input(
+                List.of(new InputBlock("api", "API_SERVER", "API & 워커",
+                        List.of(new InputProp("큐", "<Kafka>"), new InputProp("개수", "2")), 0.0, 0.0)),
+                List.of()));
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(diagram, "API 서버가 DB에 써요.");
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[1] \"api: API & 워커 [API_SERVER] (개수: 2)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[1] \"API &amp; 워커 [API_SERVER] (개수: 2)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[1] \"(큐: <Kafka>)\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[1] \"(큐: &lt;Kafka&gt;)\"")).isEqualTo(KEPT_MET)
         );
     }
 
@@ -269,6 +354,17 @@ class SystemDesignEvaluationEvidenceVerifierTest {
                 () -> assertThat(verifier.verify(true, "[2] \"…DB 자동 증가 값을 …… 단축 키를 만들어요 ..... 키 충돌이 없어요…\""))
                         .isEqualTo(KEPT_MET),
                 () -> assertThat(verifier.verify(true, "[3] \"한 건을 500바이트로 잡으면⋯MySQL 테이블에 둬요\""))
+                        .isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 마침표 두 개는 말줄임표가 아니다. 다른 문장부호처럼 지우므로 떨어진 구절을 마침표 두 개로 이은 인용은 이어 붙인 인용이다.
+    @Test
+    void 마침표_두_개로_이은_인용은_말줄임표로_나누지_않는다() {
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[2] \"DB 자동 증가 값을 Base62로 바꿔..키 충돌이 없어요\""))
+                        .isEqualTo(new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE)),
+                () -> assertThat(verifier.verify(true, "[2] \"DB 자동 증가 값을 Base62로 바꿔...키 충돌이 없어요\""))
                         .isEqualTo(KEPT_MET)
         );
     }
@@ -360,9 +456,11 @@ class SystemDesignEvaluationEvidenceVerifierTest {
         assertThat(verifier.verify(true, "[4] \"TTL은 1일 &amp; LRU로 둬요\"")).isEqualTo(KEPT_MET);
     }
 
-    // 속성 값에 쉼표·괄호가 든 블록과 속성이 세 개인 블록. 블록 줄은 아래와 같다.
+    // 속성 값에 쉼표·괄호·말줄임표가 든 블록, 속성이 세 개인 블록, 이름에 괄호가 든 블록. 블록 줄은 아래와 같다.
     // "- storage: S3 사진 저장소 [STORAGE] (저장 대상: 원본, 작은 사진, 큰 사진, 조회용: 작은·큰 사진만 (원본 제외))"
     // "- worker: 변환 워커 [CUSTOM] (개수: 2, 작은 사진: 가로 320px, 실패 시: 수동 재처리)"
+    // "- registry: 연결 레지스트리 (Redis) [CACHE] (TTL: 60초, 갱신: 30초마다 하트비트, 키: 사용자 ID → 서버 ID)"
+    // "- retry: 재시도 워커 [CUSTOM] (대기열: 발급 실패, 재시도: 1초... 2초... 4초 뒤 DLQ)"
     private static SystemDesignDiagram propsDiagram() {
         return SystemDesignDiagram.from(new Input(
                 List.of(new InputBlock("storage", "STORAGE", "S3 사진 저장소",
@@ -370,7 +468,13 @@ class SystemDesignEvaluationEvidenceVerifierTest {
                                         new InputProp("조회용", "작은·큰 사진만 (원본 제외)")), 0.0, 0.0),
                         new InputBlock("worker", "CUSTOM", "변환 워커",
                                 List.of(new InputProp("개수", "2"), new InputProp("작은 사진", "가로 320px"),
-                                        new InputProp("실패 시", "수동 재처리")), 100.0, 0.0)),
+                                        new InputProp("실패 시", "수동 재처리")), 100.0, 0.0),
+                        new InputBlock("registry", "CACHE", "연결 레지스트리 (Redis)",
+                                List.of(new InputProp("TTL", "60초"), new InputProp("갱신", "30초마다 하트비트"),
+                                        new InputProp("키", "사용자 ID → 서버 ID")), 200.0, 0.0),
+                        new InputBlock("retry", "CUSTOM", "재시도 워커",
+                                List.of(new InputProp("대기열", "발급 실패"),
+                                        new InputProp("재시도", "1초... 2초... 4초 뒤 DLQ")), 300.0, 0.0)),
                 List.of(new InputConnection("c1", "worker", "storage", "변환본 저장"))));
     }
 
