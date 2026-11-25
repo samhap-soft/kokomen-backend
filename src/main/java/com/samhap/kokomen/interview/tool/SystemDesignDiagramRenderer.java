@@ -3,6 +3,7 @@ package com.samhap.kokomen.interview.tool;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.Block;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.Connection;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.Prop;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,13 +49,27 @@ public final class SystemDesignDiagramRenderer {
 
     // - {id}: {이름} [{종류}] ({속성 이름}: {값}, {속성 이름}: {값}). 속성이 없으면 괄호를 쓰지 않는다.
     private static String blockLine(Block block) {
-        String line = "- " + text(block.id()) + ": " + text(block.label()) + " [" + block.kind().name() + "]";
+        String line = blockHead(block);
         if (block.props().isEmpty()) {
             return line;
         }
         return line + block.props().stream()
-                .map(prop -> text(prop.key()) + ": " + text(prop.value()))
+                .map(SystemDesignDiagramRenderer::propText)
                 .collect(Collectors.joining(", ", " (", ")"));
+    }
+
+    /**
+     * 블록 줄에서 속성 괄호 앞부분({@code - {id}: {이름} [{종류}]}). 증거 검증기가 블록 줄을 앞부분과 속성으로 나눠 볼 때 쓴다.
+     */
+    static String blockHead(Block block) {
+        return "- " + text(block.id()) + ": " + text(block.label()) + " [" + block.kind().name() + "]";
+    }
+
+    /**
+     * 블록 줄의 속성 하나({@code {속성 이름}: {값}}). 블록 줄은 속성을 ", "로 이어 괄호로 묶는다.
+     */
+    static String propText(Prop prop) {
+        return text(prop.key()) + ": " + text(prop.value());
     }
 
     // - {출발} → {도착} : {이름}. 이름이 없거나 공백뿐이면 " : {이름}"을 쓰지 않는다.

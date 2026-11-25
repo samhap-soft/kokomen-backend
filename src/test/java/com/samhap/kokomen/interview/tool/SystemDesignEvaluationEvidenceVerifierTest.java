@@ -172,6 +172,63 @@ class SystemDesignEvaluationEvidenceVerifierTest {
         assertThat(verifier.verify(true, evidence)).isEqualTo(KEPT_MET);
     }
 
+    // 다이어그램 줄은 다듬은 뒤 그 줄의 연속된 일부면 인용으로 인정한다. 줄 전체, 블록 id나 이름만, 줄 가운데 일부, 이름 없는 연결도
+    // 된다. 다듬은 뒤 4자 미만(lb, db 같은 짧은 id)은 짧은 인용과 같다.
+    @Test
+    void 다이어그램_줄의_연속된_일부는_블록_id나_이름만이어도_인정한다() {
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"- cache: Redis 캐시 ⚡ [CACHE] (TTL: 1일, 정책: LRU)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"cache\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"Redis 캐시 ⚡\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"로드 밸런서\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"[CACHE] (TTL: 1일\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"api → cache\"")).isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"lb\""))
+                        .isEqualTo(new VerifiedVerdict(false, DowngradeReason.NO_QUOTE))
+        );
+    }
+
+    // 모델은 속성이 많은 블록 줄에서 요소에 맞는 속성만 남기고 괄호를 다시 닫아 인용하곤 한다. 줄에서 속성을 통째로 빼기만 한
+    // 인용이면 인정한다. 속성 값 안의 쉼표·괄호는 상관없고, 괄호 앞은 블록 줄 앞부분의 끝부분이면 된다.
+    @Test
+    void 다이어그램_블록_줄에서_속성을_통째로_빼고_괄호를_닫은_인용을_인정한다() {
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"storage: S3 사진 저장소 [STORAGE] (저장 대상: 원본, 작은 사진, 큰 사진)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"storage: S3 사진 저장소 [STORAGE] (조회용: 작은·큰 사진만 (원본 제외))\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"S3 사진 저장소 [STORAGE] (조회용: 작은·큰 사진만 (원본 제외))\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"- worker: 변환 워커 [CUSTOM] (개수: 2, 실패 시: 수동 재처리)\""))
+                        .isEqualTo(KEPT_MET),
+                () -> assertThat(verifier.verify(true, "[6] \"(실패 시: 수동 재처리)\"")).isEqualTo(KEPT_MET)
+        );
+    }
+
+    // 남긴 속성은 그 블록의 속성을 이름과 값까지 그대로, 원래 순서대로 써야 한다. 값을 바꾸거나 일부만 남기거나, 다른 블록의 속성을
+    // 넣거나, 순서를 바꾸거나, 괄호 앞의 블록 이름을 바꾸거나, 속성을 하나도 남기지 않은 인용은 원문이 아니다.
+    @Test
+    void 다이어그램_블록_줄에서_남긴_속성이_그_블록_속성_그대로가_아니면_인정하지_않는다() {
+        SystemDesignEvaluationEvidenceVerifier verifier = verifierOf(propsDiagram(), "사진은 S3에 올려요.");
+        VerifiedVerdict downgraded = new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE);
+
+        assertAll(
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (개수: 3)\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (작은 사진: 가로 320)\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (조회용: 작은·큰 사진만 (원본 제외))\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] (실패 시: 수동 재처리, 개수: 2)\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 이미지 변환 워커 [CUSTOM] (개수: 2)\""))
+                        .isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[6] \"worker: 변환 워커 [CUSTOM] ()\"")).isEqualTo(downgraded)
+        );
+    }
+
     // 렌더러는 user 메시지에 넣으려고 다이어그램의 &, <, >를 엔티티로 바꾼다. 출처는 원래 문자로 되돌려 쓰므로, 모델이 원래 문자로
     // 옮긴 인용과 엔티티 그대로 옮긴 인용을 모두 인정한다.
     @Test
@@ -301,6 +358,20 @@ class SystemDesignEvaluationEvidenceVerifierTest {
     @Test
     void 엔티티로_적은_인용도_원래_문자로_되돌려_비교한다() {
         assertThat(verifier.verify(true, "[4] \"TTL은 1일 &amp; LRU로 둬요\"")).isEqualTo(KEPT_MET);
+    }
+
+    // 속성 값에 쉼표·괄호가 든 블록과 속성이 세 개인 블록. 블록 줄은 아래와 같다.
+    // "- storage: S3 사진 저장소 [STORAGE] (저장 대상: 원본, 작은 사진, 큰 사진, 조회용: 작은·큰 사진만 (원본 제외))"
+    // "- worker: 변환 워커 [CUSTOM] (개수: 2, 작은 사진: 가로 320px, 실패 시: 수동 재처리)"
+    private static SystemDesignDiagram propsDiagram() {
+        return SystemDesignDiagram.from(new Input(
+                List.of(new InputBlock("storage", "STORAGE", "S3 사진 저장소",
+                                List.of(new InputProp("저장 대상", "원본, 작은 사진, 큰 사진"),
+                                        new InputProp("조회용", "작은·큰 사진만 (원본 제외)")), 0.0, 0.0),
+                        new InputBlock("worker", "CUSTOM", "변환 워커",
+                                List.of(new InputProp("개수", "2"), new InputProp("작은 사진", "가로 320px"),
+                                        new InputProp("실패 시", "수동 재처리")), 100.0, 0.0)),
+                List.of(new InputConnection("c1", "worker", "storage", "변환본 저장"))));
     }
 
     // 답변 하나와 시작 다이어그램만 출처로 둔 검증기

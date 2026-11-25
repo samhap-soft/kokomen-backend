@@ -1,5 +1,6 @@
 package com.samhap.kokomen.interview.tool;
 
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.Block;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +24,9 @@ import java.util.stream.Stream;
  * 말줄임표 없는 인용은 조각 하나다. 조각과 출처는 같은 규칙으로 다듬어 부분 문자열로 비교한다. NFKC로 전각·호환 문자를 맞추고
  * 소문자로 바꾼 뒤 공백·줄바꿈, 보이지 않는 글자, 따옴표, 문장부호(. , ! ? · 등)를 지운다. 조각은 다듬기 전에 나눈다. 다듬으면
  * 말줄임표가 지워져 떨어진 구절이 붙기 때문이다. 조각 하나는 출처 하나(답변 하나, 다이어그램 한 줄) 안에 있어야 해서, 말줄임표 없이
- * 떨어진 구절을 이어 붙인 인용은 근거가 아니다. 조각끼리는 서로 다른 출처에 있어도 된다. 면접관의 질문과 역질문 기록은 면접자의
- * 설계 근거가 아니어서 출처에 넣지 않는다.
+ * 떨어진 구절을 이어 붙인 인용은 근거가 아니다. 조각끼리는 서로 다른 출처에 있어도 된다. 다이어그램 블록 줄은 연속된 일부가 아니어도,
+ * 그 줄에서 속성 몇 개를 통째로 빼고 괄호를 다시 닫은 인용이면 그 줄에 있는 것으로 본다({@link BlockLine}). 면접관의 질문과 역질문
+ * 기록은 면접자의 설계 근거가 아니어서 출처에 넣지 않는다.
  * 인용이 그 요소를 실제로 충족하는지(뜻)는 보지 않는다. 그 판단은 LLM 판정에 남는다.
  */
 public final class SystemDesignEvaluationEvidenceVerifier {
@@ -43,9 +45,11 @@ public final class SystemDesignEvaluationEvidenceVerifier {
             "[\\s\\p{Z}\\p{Cf}\\x{85}\\x{FE00}-\\x{FE0F}\"'“”‘’`.,!?…⋯·\\x{119E}‧・。、]");
 
     private final List<String> normalizedSources;
+    private final List<BlockLine> blockLines;
 
-    private SystemDesignEvaluationEvidenceVerifier(List<String> normalizedSources) {
+    private SystemDesignEvaluationEvidenceVerifier(List<String> normalizedSources, List<BlockLine> blockLines) {
         this.normalizedSources = normalizedSources;
+        this.blockLines = blockLines;
     }
 
     /**
@@ -57,9 +61,13 @@ public final class SystemDesignEvaluationEvidenceVerifier {
                 .map(SystemDesignAnswerTurn::answer);
         Stream<String> diagramLines = SystemDesignUserMessages.unescape(
                 SystemDesignDiagramRenderer.render(command.currentDiagram())).lines();
+        List<BlockLine> blockLines = command.currentDiagram().blocks().stream()
+                .filter(block -> !block.props().isEmpty())
+                .map(BlockLine::from)
+                .toList();
         return new SystemDesignEvaluationEvidenceVerifier(Stream.concat(answers, diagramLines)
                 .map(SystemDesignEvaluationEvidenceVerifier::normalize)
-                .toList());
+                .toList(), blockLines);
     }
 
     /**
@@ -105,13 +113,61 @@ public final class SystemDesignEvaluationEvidenceVerifier {
     }
 
     private boolean isInSources(String fragment) {
-        return normalizedSources.stream()
-                .anyMatch(source -> source.contains(fragment));
+        return normalizedSources.stream().anyMatch(source -> source.contains(fragment))
+                || blockLines.stream().anyMatch(blockLine -> blockLine.matchesWithPropsLeftOut(fragment));
     }
 
     private static String normalize(String text) {
         String compatible = Normalizer.normalize(text, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
         return IGNORED.matcher(compatible).replaceAll("");
+    }
+
+    /**
+     * 속성이 있는 다이어그램 블록 줄을 다듬은 앞부분({@code - id: 이름 [종류]})과 속성({@code 이름: 값})들로 나눈 것. 다듬으면 공백과
+     * 쉼표가 지워지므로 다듬은 블록 줄은 앞부분 + "(" + 속성들을 이은 것 + ")"이다. 렌더러와 같은 글자로 나누고 출처 줄처럼 엔티티를
+     * 되돌려 다듬는다.
+     */
+    private record BlockLine(String head, List<String> props) {
+
+        private static BlockLine from(Block block) {
+            return new BlockLine(normalizeRendered(SystemDesignDiagramRenderer.blockHead(block)), block.props().stream()
+                    .map(prop -> normalizeRendered(SystemDesignDiagramRenderer.propText(prop)))
+                    .toList());
+        }
+
+        private static String normalizeRendered(String rendered) {
+            return normalize(SystemDesignUserMessages.unescape(rendered));
+        }
+
+        /**
+         * 모델은 속성이 많은 블록 줄에서 요소에 맞는 속성만 남기고 괄호를 다시 닫아 인용하곤 한다. 다듬은 조각이 이 줄에서 속성 몇 개를
+         * 통째로 뺀 것인지 본다. 괄호 앞은 앞부분의 끝부분(비어도 된다)이어야 하고, 괄호 안은 남긴 속성 하나 이상을 원래 순서대로 그대로
+         * 이은 것이어야 한다. 속성의 일부만 남기거나, 순서를 바꾸거나, 다른 블록의 속성을 넣으면 아니다.
+         */
+        private boolean matchesWithPropsLeftOut(String fragment) {
+            if (!fragment.endsWith(")")) {
+                return false;
+            }
+            for (int open = fragment.indexOf('('); open >= 0; open = fragment.indexOf('(', open + 1)) {
+                if (head.endsWith(fragment.substring(0, open))
+                        && isPropSequence(fragment.substring(open + 1, fragment.length() - 1), 0)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // text가 from번째부터의 속성 중 하나 이상을 원래 순서대로 그대로 이은 것인지 본다. 속성은 블록마다 10개 이하다.
+        private boolean isPropSequence(String text, int from) {
+            for (int index = from; index < props.size(); index++) {
+                String prop = props.get(index);
+                if (text.startsWith(prop) && (text.length() == prop.length()
+                        || isPropSequence(text.substring(prop.length()), index + 1))) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**
