@@ -783,13 +783,19 @@ include::{snippetsDir}/system-design-interview-answer-result-not-found/response-
 
 * ``total_score``는 리포트 점수(0~100)다. 평가 포인트 충족률과 답변 6개의 등급 평균(A 1.0, B 0.75, C 0.5, D 0.25, F 0)을 반씩
   반영해 반올림한다. 회원 점수(랭킹)에 더하는 점수와 다르다.
-* ``evaluation_points``는 문제에 정한 평가 포인트 순서이고, ``is_met``은 마지막 답변 채점이 판정한 충족 여부다.
+* ``evaluation_points``는 문제에 정한 평가 포인트 순서이고, ``is_met``은 마지막 답변 채점이 판정한 충족 여부다. 충족 판정의 근거 인용이
+  면접자의 답변이나 마지막 다이어그램에서 확인되지 않으면 서버가 ``false``로 내린다.
+* 알려진 한계: 서버가 내린 판정은 이미 쓴 피드백 문장(``feedbacks[].answer_feedback``, ``total_feedback``)에 반영되지 않는다. 그래서
+  같은 리포트에서 ``is_met``이 ``false``인 항목을 피드백 문장이 칭찬할 수 있다. 판정은 LLM 채점이라 근거가 약한 충족 판정이 남거나,
+  맞는 충족 판정이 인용 형식 때문에 내려가는 경우도 드물게 있다.
 * ``missed_requirements``는 요구사항 역질문으로 확인하지 않은 숨은 요구사항의 이름이다(문제에 정한 순서). 역질문을 하지 않았으면 모두
   들어가고, 모두 확인했으면 빈 배열이다.
 * ``requirement_questions``는 물은 순서, ``feedbacks``는 질문 순번 순서다. ``feedbacks[].question_id``는 질문 순번(1~6)이다.
 * ``final_diagram``은 마지막 답변과 함께 낸 다이어그램이다.
 * ``user_cur_score``는 면접자의 지금 회원 점수(랭킹 점수)이고, ``user_prev_score``는 거기서 이번 면접의 등급 점수 합을 뺀 값이다(기존 면접
-  결과와 같은 계산). 다른 면접을 마치면 ``user_cur_score``가 바뀐다. 순위 필드는 없다.
+  결과와 같은 계산). 조회할 때의 회원 점수로 계산하므로 다른 면접을 마치면 두 값이 함께 바뀐다. 회원 점수는 0 아래로 내려가지 않아서,
+  등급 점수 합이 음수라 점수가 0에서 멈췄으면 ``user_prev_score``가 실제 이전 점수와 다르다(예: 10점에서 -60을 받아 0점이 되면 60으로
+  나온다). 순위 필드는 없다.
 
 include::{snippetsDir}/system-design-interview-find-report/http-request.adoc[]
 include::{snippetsDir}/system-design-interview-find-report/request-headers.adoc[]
@@ -813,6 +819,9 @@ include::{snippetsDir}/system-design-interview-find-report-not-finished/response
 * 필드는 리포트에서 `user_cur_score`, ``user_prev_score``를 뺀 나머지 모두이고, 이름·값·순서가 리포트와 같다. 여기에 `interviewee_nickname`,
   `total_member_count`, ``interviewee_rank``를 더했다. 세 값은 기존 면접의 다른 회원 결과와 이름·계산이 같다.
 * ``interviewee_rank``는 면접자의 지금 회원 점수(랭킹 점수) 순위다. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다.
+* 탈퇴한 회원의 면접도 열린다. 탈퇴하면 닉네임이 지워져 ``interviewee_nickname`` 키가 없고, 점수가 0이 되어 ``interviewee_rank``도
+  0점의 순위다.
+* 평가 포인트 판정과 피드백 문장의 알려진 한계는 리포트와 같다.
 * 조회수와 좋아요는 없다. `interview_view_count`, `interview_like_count`, `interview_already_liked` 필드가 없고, 조회해도 조회수가 오르지 않는다.
 * 역질문의 면접관 답(`requirement_questions[].answer`)과 답변별 피드백이 그대로 보인다.
 * 비회원 체험 면접을 포함해 시스템 설계가 아닌 면접의 ID는 404 ``면접을 찾을 수 없어요.``다.

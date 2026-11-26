@@ -2376,7 +2376,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     // 조회수·좋아요 필드는 없다.
     private static ResponseFieldsSnippet publicReportResponseFields() {
         List<FieldDescriptor> fields = reportContentFields();
-        fields.add(fieldWithPath("interviewee_nickname").description("면접자 닉네임"));
+        fields.add(fieldWithPath("interviewee_nickname").type(JsonFieldType.STRING).optional()
+                .description("면접자 닉네임. 탈퇴한 회원이면 없음"));
         fields.add(fieldWithPath("total_member_count").description("전체 회원 수"));
         fields.add(fieldWithPath("interviewee_rank")
                 .description("면접자의 지금 회원 점수(랭킹 점수) 순위. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다"));
