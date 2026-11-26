@@ -70,6 +70,15 @@ class DbJsonColumnCharacterizationTest {
                         .hasMessage("List<String> 역직렬화 실패"),
                 () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("\"a\""))
                         .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("List<String> 역직렬화 실패"),
+                () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("[[\"a\",\"b\"]]"))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("List<String> 역직렬화 실패"),
+                () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("[\"a\",[\"b\"],\"c\"]"))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("List<String> 역직렬화 실패"),
+                () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("[[]]"))
+                        .isInstanceOf(IllegalStateException.class)
                         .hasMessage("List<String> 역직렬화 실패")
         );
     }
@@ -101,6 +110,9 @@ class DbJsonColumnCharacterizationTest {
                         .isInstanceOf(IllegalStateException.class)
                         .hasMessage(PREP_STAGE_LIST_READ_FAILED),
                 () -> assertThatThrownBy(() -> enumListConverter.convertToEntityAttribute("\"BEGINNER\""))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage(PREP_STAGE_LIST_READ_FAILED),
+                () -> assertThatThrownBy(() -> enumListConverter.convertToEntityAttribute("[[\"BEGINNER\"]]"))
                         .isInstanceOf(IllegalStateException.class)
                         .hasMessage(PREP_STAGE_LIST_READ_FAILED)
         );

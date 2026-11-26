@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
@@ -125,6 +126,34 @@ class BedrockToolInputJsonCharacterizationTest extends BaseTest {
                 () -> assertThatThrownBy(() -> evaluationOf("problem_solving_reason", Document.fromString("한 줄")))
                         .isInstanceOf(ExternalApiException.class)
                         .hasMessage("Bedrock toolUse 파싱 실패: toolName=" + TOOL_NAME)
+        );
+    }
+
+    @Test
+    void 문자열_목록_필드에_중첩_배열이_오면_뒤의_필드를_버리지_않고_도구_이름을_담은_ExternalApiException이다() {
+        Map<String, Document> input = new LinkedHashMap<>();
+        input.put("problem_solving_reason", Document.fromList(List.of(
+                Document.fromList(List.of(Document.fromString("근거 1"), Document.fromString("근거 2"))))));
+        input.put("problem_solving_score", Document.fromNumber(85));
+        input.put("total_feedback", Document.fromString("종합"));
+
+        assertThatThrownBy(() -> converseClient.parseToolInput(toolUse(document(input)),
+                ResumeAnalysisEvaluationFlatResponse.class))
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessage("Bedrock toolUse 파싱 실패: toolName=" + TOOL_NAME);
+    }
+
+    @Test
+    void 주입받는_매퍼는_문자열_목록_속성에_중첩_배열이_오면_읽지_못한다() {
+        assertAll(
+                () -> assertThatThrownBy(() -> objectMapper.readValue(
+                        "{\"problem_solving_reason\":[[\"근거\"]],\"total_feedback\":\"종합\"}",
+                        ResumeAnalysisEvaluationFlatResponse.class))
+                        .isInstanceOf(MismatchedInputException.class),
+                () -> assertThatThrownBy(() -> objectMapper.readValue(
+                        "{\"problem_solving_reason\":[\"근거\",[\"더\"]],\"total_feedback\":\"종합\"}",
+                        ResumeAnalysisEvaluationFlatResponse.class))
+                        .isInstanceOf(MismatchedInputException.class)
         );
     }
 
