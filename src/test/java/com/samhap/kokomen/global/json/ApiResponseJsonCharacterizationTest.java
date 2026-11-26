@@ -2,7 +2,6 @@ package com.samhap.kokomen.global.json;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentPageResponse;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentResponse;
 import com.samhap.kokomen.admin.service.dto.AdminPaymentResultResponse;
@@ -51,6 +50,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.mock.http.MockHttpOutputMessage;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 대표 API 응답을 주입받는 매퍼(MVC가 응답을 쓰는 매퍼, SessionAndJsonWiringTest)로 직렬화한 문자열을 그대로 고정한다.

@@ -1,6 +1,5 @@
 package com.samhap.kokomen.global.exception;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.samhap.kokomen.global.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 @Slf4j
 @RestControllerAdvice
@@ -100,7 +100,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         String message = "잘못된 요청 형식입니다. JSON 형식을 확인해주세요.";
         if (e.getCause() instanceof InvalidFormatException invalidFormatException) {
-            String fieldName = invalidFormatException.getPath().get(0).getFieldName();
+            String fieldName = invalidFormatException.getPath().get(0).getPropertyName();
             String invalidValue = String.valueOf(invalidFormatException.getValue());
             message = String.format(
                     "JSON 파싱 오류: '%s' 필드에 유효하지 않은 값이 전달되었습니다. (전달된 값: '%s')",

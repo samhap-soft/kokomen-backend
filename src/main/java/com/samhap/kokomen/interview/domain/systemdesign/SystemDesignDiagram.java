@@ -17,17 +17,17 @@ import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignError
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.DIAGRAM_TOO_MANY_PROPS;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.samhap.kokomen.global.exception.BadRequestException;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 시스템 설계 다이어그램. 검사를 마친 값만 담는 불변 값 객체다.
@@ -52,10 +52,11 @@ public final class SystemDesignDiagram {
     private static final int MIN_ID_LENGTH = 1;
     private static final int MIN_BLOCK_LABEL_LENGTH = 1;
     // 전역 Jackson처럼 모르는 필드는 버리고, 저장할 때는 null인 연결 label을 키째 쓰지 않는다.
-    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+    private static final ObjectMapper OBJECT_MAPPER = Jackson2CompatibleJsonMapper.builder()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .changeDefaultPropertyInclusion(inclusion ->
+                    JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .build();
     private static final SystemDesignDiagram EMPTY = new SystemDesignDiagram(List.of(), List.of());
 
@@ -159,7 +160,7 @@ public final class SystemDesignDiagram {
         DiagramJson diagramJson;
         try {
             diagramJson = OBJECT_MAPPER.readValue(json, DiagramJson.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new BadRequestException(DIAGRAM_FORMAT.getMessage(), e);
         }
         if (diagramJson == null) {
@@ -184,7 +185,7 @@ public final class SystemDesignDiagram {
     public String toJson() {
         try {
             return OBJECT_MAPPER.writeValueAsString(DiagramJson.from(this));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("시스템 설계 다이어그램을 JSON으로 바꾸지 못했습니다.", e);
         }
     }

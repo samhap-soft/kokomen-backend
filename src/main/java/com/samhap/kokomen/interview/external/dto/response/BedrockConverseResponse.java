@@ -1,9 +1,9 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import software.amazon.awssdk.core.document.Document;
+import tools.jackson.databind.ObjectMapper;
 
 public record BedrockConverseResponse(
         Document toolInput

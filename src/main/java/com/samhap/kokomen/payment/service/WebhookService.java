@@ -1,7 +1,5 @@
 package com.samhap.kokomen.payment.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.payment.domain.PaymentState;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
@@ -19,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -107,7 +107,7 @@ public class WebhookService {
     private PurchaseMetadata parseMetadata(String metadataJson) {
         try {
             return objectMapper.readValue(metadataJson, PurchaseMetadata.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("메타데이터 파싱 실패: {}", metadataJson, e);
             throw new InternalServerErrorException("메타데이터 파싱에 실패했습니다.", e);
         }

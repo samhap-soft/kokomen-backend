@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.external;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
@@ -32,6 +31,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
+import tools.jackson.databind.JsonNode;
 
 /**
  * 답변 평가(L2, 1~5번째 답변)와 마지막 답변 평가·리포트(L3, 6번째 답변). 비동기 워커에서 부른다.
@@ -240,10 +240,10 @@ public class SystemDesignAnswerBedrockClient {
 
     private static String rawTextOrNull(JsonNode toolInput, String fieldName) {
         JsonNode value = toolInput == null ? null : toolInput.get(fieldName);
-        if (value == null || !value.isTextual()) {
+        if (value == null || !value.isString()) {
             return null;
         }
-        return value.textValue();
+        return value.stringValue();
     }
 
     /**

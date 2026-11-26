@@ -1,17 +1,17 @@
 package com.samhap.kokomen.auth.external;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.auth.external.dto.GoogleTokenResponse;
 import com.samhap.kokomen.auth.external.dto.GoogleUserInfoResponse;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExecutionTimer
 @Component
@@ -23,15 +23,15 @@ public class GoogleOAuthClient {
 
     public GoogleOAuthClient(
             RestClient.Builder builder,
-            ObjectMapper objectMapper,
+            JsonMapper jsonMapper,
             @Value("${oauth.google.client-id}") String clientId,
             @Value("${oauth.google.client-secret}") String clientSecret
     ) {
         this.restClient = builder
                 .configureMessageConverters(converters -> converters
-                        // Boot 4는 빌더에 Jackson 3 변환기를 기본으로 넣는다. withJsonConverter로 JSON 변환기 자리를 Jackson 2로 바꿔야
-                        // 우리 DTO가 기대하는 매퍼 설정과 Jackson 2 어노테이션이 적용된다(ExternalClientJsonMappingTest).
-                        .withJsonConverter(new MappingJackson2HttpMessageConverter(objectMapper)))
+                        // JSON 변환기 자리를 주입받은 앱 매퍼(SNAKE_CASE, Jackson 2와 같게 맞춘 설정)로 고정한다.
+                        // 빌더가 기본으로 넣는 변환기의 매퍼 설정에 기대지 않는다(ExternalClientJsonMappingTest).
+                        .withJsonConverter(new JacksonJsonHttpMessageConverter(jsonMapper)))
                 .build();
         this.clientId = clientId;
         this.clientSecret = clientSecret;

@@ -3,7 +3,6 @@ package com.samhap.kokomen.global.json;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.interview.domain.InterviewMode;
@@ -23,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 요청 본문을 주입받는 매퍼(MVC가 요청을 읽는 매퍼)로 읽은 값을 고정한다. HTTP 상태와 본문은 HttpJsonCharacterizationTest가 본다.

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.persistence.StringListJsonConverter;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
@@ -14,6 +13,7 @@ import com.samhap.kokomen.member.domain.survey.PrepStageListJsonConverter;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 /**
  * DB JSON 컬럼(문자열 목록, enum 목록, 시스템 설계 다이어그램)에 지금 저장하는 문자열과, 이미 저장된 여러 모양의 행을 읽은 결과를 고정한다.

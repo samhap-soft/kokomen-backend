@@ -8,8 +8,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentResponseFixtureBuilder;
@@ -47,6 +45,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 class WebhookServiceTest extends BaseTest {
 
@@ -75,7 +75,7 @@ class WebhookServiceTest extends BaseTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void 결제완료_웹훅_수신시_토큰이_지급된다() throws JsonProcessingException {
+    void 결제완료_웹훅_수신시_토큰이_지급된다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder().memberId(memberId).type(TokenType.PAID).tokenCount(0).build());
@@ -112,7 +112,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void CONNECTION_TIMEOUT_상태에서_결제완료_웹훅_수신시_토큰이_지급된다() throws JsonProcessingException {
+    void CONNECTION_TIMEOUT_상태에서_결제완료_웹훅_수신시_토큰이_지급된다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder().memberId(memberId).type(TokenType.PAID).tokenCount(0).build());
@@ -142,7 +142,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void NEED_APPROVE_상태에서_결제완료_웹훅_수신시_토큰이_지급된다() throws JsonProcessingException {
+    void NEED_APPROVE_상태에서_결제완료_웹훅_수신시_토큰이_지급된다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder().memberId(memberId).type(TokenType.PAID).tokenCount(0).build());
@@ -177,7 +177,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void 이미_완료된_결제에_웹훅이_오면_무시한다() throws JsonProcessingException {
+    void 이미_완료된_결제에_웹훅이_오면_무시한다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder().memberId(memberId).type(TokenType.PAID).tokenCount(5).build());
@@ -248,7 +248,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void 결제완료_웹훅으로_완료된_결제에는_결제_결과가_저장된다() throws JsonProcessingException {
+    void 결제완료_웹훅으로_완료된_결제에는_결제_결과가_저장된다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -276,7 +276,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void 결제완료_웹훅으로_완료된_결제를_환불하면_결제가_취소되고_결제_결과에_취소_정보가_반영된다() throws JsonProcessingException {
+    void 결제완료_웹훅으로_완료된_결제를_환불하면_결제가_취소되고_결제_결과에_취소_정보가_반영된다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -318,7 +318,7 @@ class WebhookServiceTest extends BaseTest {
 
     @Test
     void 결제완료_웹훅으로_완료된_결제를_같은_paymentKey로_다시_구매_요청해도_토큰은_한_번만_지급된다()
-            throws JsonProcessingException {
+            throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -347,7 +347,7 @@ class WebhookServiceTest extends BaseTest {
     }
 
     @Test
-    void 결제_결과가_이미_있는_결제에_결제완료_웹훅이_오면_결제_결과를_중복_저장하지_않는다() throws JsonProcessingException {
+    void 결제_결과가_이미_있는_결제에_결제완료_웹훅이_오면_결제_결과를_중복_저장하지_않는다() throws JacksonException {
         Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
         Long memberId = member.getId();
         tokenRepository.save(TokenFixtureBuilder.builder()
@@ -386,7 +386,7 @@ class WebhookServiceTest extends BaseTest {
 
     // 승인 요청이 읽기 타임아웃으로 끝나 결과 행 없이 NEED_CANCEL로 남은 결제
     private TosspaymentsPayment saveNeedCancelPayment(Long memberId, String paymentKey, String orderId)
-            throws JsonProcessingException {
+            throws JacksonException {
         TokenProduct product = TokenProduct.TOKEN_10;
         String metadata = objectMapper.writeValueAsString(
                 new PurchaseMetadata(product.name(), product.getTokenCount(), product.getUnitPrice()));

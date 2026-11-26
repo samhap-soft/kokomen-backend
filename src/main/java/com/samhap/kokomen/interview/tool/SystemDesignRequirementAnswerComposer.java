@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.tool;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
@@ -12,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
 
 /**
  * 역질문 답(L1) 출력에서 물은 요구사항과 최종 답을 정한다. 도구 스키마의 required·enum은 모델에 대한 지시일 뿐이라 서버가 다시 검사한다.
@@ -50,10 +50,10 @@ public final class SystemDesignRequirementAnswerComposer {
 
     private static String readVerdict(JsonNode toolInput, String fieldName) {
         JsonNode value = toolInput == null ? null : toolInput.get(fieldName);
-        if (value == null || !value.isTextual() || !isVerdict(value.textValue())) {
+        if (value == null || !value.isString() || !isVerdict(value.stringValue())) {
             throw new ExternalApiException("시스템 설계 역질문 판정 필드가 없거나 값이 잘못됐습니다. field=" + fieldName);
         }
-        return value.textValue();
+        return value.stringValue();
     }
 
     private static boolean isVerdict(String value) {

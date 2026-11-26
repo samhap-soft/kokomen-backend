@@ -1,6 +1,6 @@
 package com.samhap.kokomen.interview.external.dto.response;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 public interface LlmResponse {
 

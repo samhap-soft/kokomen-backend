@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
@@ -14,7 +13,7 @@ import java.net.SocketTimeoutException;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +37,7 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeServiceClientConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ServiceUnavailableException;
 import software.amazon.awssdk.utils.AttributeMap;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 시스템 설계 역질문 답(요청 스레드에서 부르는 동기 호출)과 답변 채점(비동기 워커에서 부르는 L2·L3)이 공용 빈(소켓 60초, apiCall 타임아웃
@@ -49,7 +49,7 @@ class SystemDesignBedrockWiringTest {
     private static final BedrockConverseProperties PROPERTIES = BedrockConversePropertiesFixture.create();
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(Jackson2AutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
             .withBean(SystemDesignRequirementBedrockClient.class)

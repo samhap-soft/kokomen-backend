@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.external;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.samhap.kokomen.global.annotation.ExecutionTimer;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
@@ -20,6 +19,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
+import tools.jackson.databind.JsonNode;
 
 /**
  * 요구사항 역질문 답(L1). 요청 스레드에서 동기로 부르므로 짧은 타임아웃의 전용 converse 빈을 쓴다.
@@ -88,10 +88,10 @@ public class SystemDesignRequirementBedrockClient {
     // 답이 없거나 문자열이 아니면 빈 답으로 본다. 빈 답은 서비스가 시드 답으로 바꾼다.
     private static String answerOrEmpty(JsonNode toolInput) {
         JsonNode answer = toolInput == null ? null : toolInput.get(SystemDesignToolSchemas.ANSWER_FIELD);
-        if (answer == null || !answer.isTextual()) {
+        if (answer == null || !answer.isString()) {
             return "";
         }
-        return answer.textValue();
+        return answer.stringValue();
     }
 
     private static void logFailure(SystemDesignRequirementAnswerCommand command, long startedAt, Exception failure) {

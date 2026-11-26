@@ -1,7 +1,5 @@
 package com.samhap.kokomen.token.dto;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.InternalServerErrorException;
 import com.samhap.kokomen.payment.domain.ServiceType;
@@ -11,6 +9,8 @@ import com.samhap.kokomen.token.domain.TokenPurchase;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 public record TokenPurchaseRequest(
         @NotBlank(message = "payment_key는 비어있거나 공백일 수 없습니다.")
@@ -37,7 +37,7 @@ public record TokenPurchaseRequest(
         String metadataJson;
         try {
             metadataJson = objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new InternalServerErrorException("metadata 직렬화 중 오류가 발생했습니다.", e);
         }
 

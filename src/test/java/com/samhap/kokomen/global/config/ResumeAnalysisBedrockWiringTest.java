@@ -2,7 +2,6 @@ package com.samhap.kokomen.global.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseClient;
 import com.samhap.kokomen.global.external.bedrock.BedrockConverseProperties;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
@@ -10,13 +9,14 @@ import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 이력서 분석 Bedrock 클라이언트가 60초 공용 빈이 아니라 360초 전용 빈에 물리는지 고정한다.
@@ -39,7 +39,7 @@ class ResumeAnalysisBedrockWiringTest {
      * BindValidationException으로 죽으므로, 실제로 쓰이지 않는 빈이라도 바인딩이 통과하도록 채운다.
      */
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(Jackson2AutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
             .withBean(ResumeAnalysisEvaluationBedrockClient.class)

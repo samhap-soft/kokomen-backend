@@ -8,7 +8,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.interview.external.SupertoneClient;
 import com.samhap.kokomen.interview.external.SupertoneClientBuilder;
@@ -42,6 +41,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 결제와 외부 API의 JSON을 고정한다. 토스 웹훅 본문 읽기, DB에 저장하는 구매 metadata 문자열, 외부로 보내는 요청 본문 바이트,
@@ -59,7 +59,7 @@ class PaymentAndExternalJsonCharacterizationTest extends BaseTest {
             "canceledAt":"2026-11-26T11:00:00+09:00","cancelStatus":"DONE","unknownCancelField":true}]}""";
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper objectMapper;
 
     @Autowired
     private ObjectProvider<RestClient.Builder> restClientBuilderProvider;

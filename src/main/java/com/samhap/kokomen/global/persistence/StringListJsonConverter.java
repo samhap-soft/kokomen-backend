@@ -1,16 +1,17 @@
 package com.samhap.kokomen.global.persistence;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import java.util.List;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Converter
 public class StringListJsonConverter implements AttributeConverter<List<String>, String> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = Jackson2CompatibleJsonMapper.builder().build();
     private static final TypeReference<List<String>> TYPE = new TypeReference<>() {
     };
 
@@ -21,7 +22,7 @@ public class StringListJsonConverter implements AttributeConverter<List<String>,
         }
         try {
             return MAPPER.writeValueAsString(attribute);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("List<String> 직렬화 실패", e);
         }
     }
@@ -33,7 +34,7 @@ public class StringListJsonConverter implements AttributeConverter<List<String>,
         }
         try {
             return MAPPER.readValue(dbData, TYPE);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("List<String> 역직렬화 실패", e);
         }
     }

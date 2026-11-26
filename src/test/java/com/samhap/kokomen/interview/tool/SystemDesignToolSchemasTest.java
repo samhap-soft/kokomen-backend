@@ -3,13 +3,12 @@ package com.samhap.kokomen.interview.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.external.bedrock.BedrockToolSchemaRenderer;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.global.external.llm.ToolField;
 import com.samhap.kokomen.global.external.llm.ToolSchema;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.ArrayList;
@@ -19,6 +18,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class SystemDesignToolSchemasTest {
 
@@ -160,7 +161,7 @@ class SystemDesignToolSchemasTest {
             "point_redirect_status_tradeoff_evidence", "point_redirect_status_tradeoff",
             "strengths", "improvements", "learning_direction");
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = Jackson2CompatibleJsonMapper.builder().build();
 
     @Test
     void 요구사항_도구는_요구사항마다_YES_NO_필드를_문제_순서로_만든다() throws Exception {
@@ -261,15 +262,15 @@ class SystemDesignToolSchemasTest {
         JsonNode properties = rendered.at("/inputSchema/json/properties");
         JsonNode expectedPointFields = objectMapper.readTree(URL_SHORTENER_POINT_FIELDS);
         assertAll(
-                () -> assertThat(rendered.get("name").asText()).isEqualTo("submit_system_design_end"),
+                () -> assertThat(rendered.get("name").asString()).isEqualTo("submit_system_design_end"),
                 () -> assertThat(fieldNames(properties)).containsExactlyElementsOf(END_FIELD_ORDER),
                 () -> assertThat(textValues(rendered.at("/inputSchema/json/required")))
                         .containsExactlyElementsOf(END_FIELD_ORDER),
                 () -> assertThat(fieldNames(expectedPointFields)).allSatisfy(field ->
                         assertThat(properties.get(field)).isEqualTo(expectedPointFields.get(field))),
                 () -> assertThat(URL_SHORTENER_EVIDENCE_FIELDS).allSatisfy(field -> assertAll(
-                        () -> assertThat(properties.at("/" + field + "/type").asText()).isEqualTo("string"),
-                        () -> assertThat(properties.at("/" + field + "/description").asText())
+                        () -> assertThat(properties.at("/" + field + "/type").asString()).isEqualTo("string"),
+                        () -> assertThat(properties.at("/" + field + "/description").asString())
                                 .isEqualTo(EVIDENCE_DESCRIPTION),
                         () -> assertThat(properties.get(field).has("enum")).isFalse()
                 )),
@@ -277,8 +278,8 @@ class SystemDesignToolSchemasTest {
                 () -> assertThat(properties.has("reasoning")).isFalse(),
                 () -> assertThat(List.of("feedback", "strengths", "improvements", "learning_direction"))
                         .allSatisfy(field -> assertAll(
-                                () -> assertThat(properties.at("/" + field + "/type").asText()).isEqualTo("string"),
-                                () -> assertThat(properties.at("/" + field + "/description").asText()).isNotBlank(),
+                                () -> assertThat(properties.at("/" + field + "/type").asString()).isEqualTo("string"),
+                                () -> assertThat(properties.at("/" + field + "/description").asString()).isNotBlank(),
                                 () -> assertThat(properties.get(field).has("enum")).isFalse()
                         )),
                 () -> assertThat(toolConfiguration.tools()).hasSize(1),
@@ -346,14 +347,12 @@ class SystemDesignToolSchemasTest {
     }
 
     private static List<String> fieldNames(JsonNode node) {
-        List<String> names = new ArrayList<>();
-        node.fieldNames().forEachRemaining(names::add);
-        return names;
+        return new ArrayList<>(node.propertyNames());
     }
 
     private static List<String> textValues(JsonNode arrayNode) {
         List<String> values = new ArrayList<>();
-        arrayNode.forEach(value -> values.add(value.asText()));
+        arrayNode.forEach(value -> values.add(value.asString()));
         return values;
     }
 }

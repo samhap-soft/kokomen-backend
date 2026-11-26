@@ -6,7 +6,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.auth.external.GoogleOAuthClient;
 import com.samhap.kokomen.auth.external.KakaoOAuthClient;
 import com.samhap.kokomen.auth.external.dto.GoogleUserInfoResponse;
@@ -23,12 +22,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 외부 API 클라이언트가 스프링이 주입하는 RestClient.Builder로 만들어졌을 때 JSON을 어떤 매퍼로 읽는지 고정한다.
  * BaseTest는 이 클라이언트들을 목으로 바꾸므로, 여기서는 실제 빌더로 직접 만들고 HTTP만 MockRestServiceServer로 대신한다.
- * Boot 4는 RestClient.Builder에 Jackson 3 변환기를 기본으로 넣는다. 우리 DTO는 Jackson 2 설정(카카오는 SNAKE_CASE)과
- * Jackson 2 어노테이션(토스의 @JsonDeserialize)에 기대므로, Jackson 3 변환기가 먼저 잡히면 값이 null이 되거나 파싱이 실패한다.
+ * 클라이언트는 JSON 변환기 자리를 앱 JsonMapper(카카오·구글, SNAKE_CASE) 또는 토스 전용 매퍼(camelCase, 오프셋 시각을 읽는
+ * {@code @JsonDeserialize})로 고정한다. 다른 매퍼의 변환기가 잡히면 카카오 값이 null이 되거나 토스 시각 파싱이 실패한다.
  */
 class ExternalClientJsonMappingTest extends BaseTest {
 
@@ -36,7 +36,7 @@ class ExternalClientJsonMappingTest extends BaseTest {
     private ObjectProvider<RestClient.Builder> restClientBuilderProvider;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper objectMapper;
 
     @Test
     void 카카오_토큰과_회원_정보의_snake_case_응답을_읽는다() {

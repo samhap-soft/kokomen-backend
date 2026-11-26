@@ -3,11 +3,9 @@ package com.samhap.kokomen.resume.external.dto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import com.samhap.kokomen.resume.domain.ResumeAnalysisEvaluation;
 import com.samhap.kokomen.resume.tool.ResumeAnalysisToolNames;
 import java.math.BigDecimal;
@@ -15,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
 
 /**
  * 이력서 분석 tool 스키마가 JD 유무에 따라 두 가지 필드 집합으로 갈리고,
@@ -23,9 +24,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
  */
 class ResumeAnalysisFlatSchemaTest {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper objectMapper = Jackson2CompatibleJsonMapper.builder()
+            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     @Test
     void JD가_제공되면_Bedrock_평가_스키마의_required는_21개다() {
