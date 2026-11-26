@@ -99,6 +99,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
     private static final String ROOT_QUESTION_METRIC_NAME = "root_question_interview_count";
     private static final String ANSWER_CONTENT = "API 서버 앞에 Redis 캐시를 두고, 캐시에 없을 때만 DB를 읽어요.";
+    private static final String TEMPORARILY_UNAVAILABLE_MESSAGE = "일시적인 문제로 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
 
     @Autowired
     private SystemDesignInterviewFacadeService systemDesignInterviewFacadeService;
@@ -1072,6 +1073,79 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(response.curQuestionId()).isEqualTo(2),
                 () -> assertThat(response.curAnswerProceedState()).isEqualTo("NONE")
         );
+    }
+
+    // Redis 장애 때 진행 락을 잡지 못하면 내부 문구(레디스 예외 발생)의 500 대신 사용자 문구의 503이다. 아무것도 바뀌지 않는다.
+    @Test
+    void Redis가_실패하면_역질문_요구사항_정리_답변_제출은_사용자_문구의_503이고_아무것도_바뀌지_않는다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(6);
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        SystemDesignInterview requirementStageInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview designStageInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(lockKeyOf(member), StringCodec.INSTANCE);
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> askRequirementQuestion(requirementStageInterview, member,
+                        "하루에 몇 개나 만들어지나요?"))
+                        .isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE),
+                () -> assertThatThrownBy(() -> systemDesignInterviewFacadeService.completeRequirements(
+                        interviewIdOf(requirementStageInterview), new MemberAuth(member.getId())))
+                        .isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE),
+                () -> assertThatThrownBy(() -> submitAnswer(designStageInterview, member, 2, validRequest()))
+                        .isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE)
+        );
+        assertAll(
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> verify(systemDesignAnswerBedrockClient, never()).evaluateAnswer(any()),
+                () -> assertThat(readRequirementQuestions(requirementStageInterview)).isEmpty(),
+                () -> assertThat(readStage(requirementStageInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThat(readAnswerCount(designStageInterview)).isEqualTo(1),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
+        );
+    }
+
+    // 답이 없는 질문은 Redis의 채점 상태를 읽어야 해서, 읽지 못하면 사용자 문구의 503이다. 면접 조회는 따로 NONE으로 견딘다.
+    @Test
+    void 답이_없는_질문의_결과를_조회할_때_Redis가_실패하면_사용자_문구의_503이다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(anyString(), any(Codec.class));
+
+        // when & then
+        assertThatThrownBy(() -> findAnswerResult(systemDesignInterview, member, 2))
+                .isInstanceOf(ServiceUnavailableException.class)
+                .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE);
+    }
+
+    // DB에 답이 있으면 Redis를 읽지 않으므로 Redis 장애와 상관없이 COMPLETED다.
+    @Test
+    void 답이_저장된_질문의_결과는_Redis가_실패해도_COMPLETED다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member,
+                List.of(B));
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(anyString(), any(Codec.class));
+
+        // when
+        SystemDesignAnswerResultResponse response = findAnswerResult(systemDesignInterview, member, 1);
+
+        // then
+        assertThat(response.proceedState()).isEqualTo(InterviewProceedState.COMPLETED);
     }
 
     private void submitAnswer(SystemDesignInterview systemDesignInterview, Member member, Integer questionOrder,

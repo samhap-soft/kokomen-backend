@@ -1,5 +1,9 @@
 package com.samhap.kokomen.interview.service.systemdesign;
 
+import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignErrorMessage.TEMPORARILY_UNAVAILABLE;
+
+import com.samhap.kokomen.global.exception.RedisException;
+import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.service.RedisService;
 import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import java.time.Duration;
@@ -43,10 +47,18 @@ public class SystemDesignProceedStateStore {
     }
 
     /**
+     * 답변 결과 조회가 부른다. Redis 오류는 내부 문구(레디스 예외 발생)의 500 대신 사용자 문구의 503으로 바꾼다. 면접 조회는 이 예외를
+     * 받아 NONE으로 견딘다. 기록은 워커와 제출 스레드에서만 하고 그쪽이 오류를 따로 처리하므로 그대로 둔다.
+     *
      * @return 기록한 상태. 기록하지 않았거나 TTL이 지났으면 비어 있다
+     * @throws ServiceUnavailableException Redis 오류로 읽지 못했으면 사용자 문구의 503(원인은 RedisException)
      */
     public Optional<InterviewProceedState> find(Long interviewId, int questionOrder) {
-        return redisService.get(createKey(interviewId, questionOrder), String.class)
-                .map(InterviewProceedState::valueOf);
+        try {
+            return redisService.get(createKey(interviewId, questionOrder), String.class)
+                    .map(InterviewProceedState::valueOf);
+        } catch (RedisException e) {
+            throw new ServiceUnavailableException(TEMPORARILY_UNAVAILABLE.getMessage(), e);
+        }
     }
 }

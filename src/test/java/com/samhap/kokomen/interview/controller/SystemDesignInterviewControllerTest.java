@@ -13,6 +13,7 @@ import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -103,6 +104,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.data.domain.Pageable;
@@ -1126,6 +1128,40 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 ));
         assertAll(
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
+                () -> assertThat(readQuestions(systemDesignInterview)).isEmpty()
+        );
+    }
+
+    // Redis 장애로 진행 락을 잡지 못하면 내부 문구(레디스 예외 발생)의 500 대신 사용자 문구의 503이다. 요구사항 역질문·답변 제출과
+    // 채점 상태를 읽어야 하는 답변 결과 조회도 같은 문구다.
+    @Test
+    void Redis_장애로_요청을_처리하지_못하면_사용자_문구의_503이다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(lockKeyOf(member), StringCodec.INSTANCE);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(COMPLETE_REQUIREMENTS_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value("일시적인 문제로 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요."))
+                .andDo(document("system-design-interview-temporarily-unavailable",
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("Redis 장애처럼 서버가 잠시 요청을 처리할 수 없을 때의 오류 문구. 잠시 뒤 다시 보내면 된다")
+                        )
+                ));
+        assertAll(
                 () -> assertThat(readStage(systemDesignInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
                 () -> assertThat(readQuestions(systemDesignInterview)).isEmpty()
         );
