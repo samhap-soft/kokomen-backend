@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.dto.ErrorResponse;
 import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
+import com.samhap.kokomen.interview.service.dto.InterviewRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -16,9 +18,17 @@ import org.springframework.boot.actuate.endpoint.jackson.EndpointJsonMapper;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.data.web.ProjectingJacksonHttpMessageConverter;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.ResourceRegionHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
+import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
+import org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter;
 import org.springframework.session.data.redis.RedisSessionRepository;
 import org.springframework.session.web.http.SessionRepositoryFilter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
@@ -44,7 +54,7 @@ import tools.jackson.databind.json.JsonMapper;
  *     MockMvc 테스트는 그래도 통과하지만, 배포하면 기존 로그인이 모두 풀리고 블루그린 인스턴스끼리 세션을 공유하지 못한다.</li>
  *     <li>JSON: 우리 코드와 API 응답은 Boot가 만드는 Jackson 3 JsonMapper(SNAKE_CASE, non_null)를 쓴다. spring.jackson.* 설정과
  *     MVC JSON 변환기가 그 매퍼를 쓰는지 본다. 클래스패스에는 logback·Redisson이 쓰는 Jackson 2가 남아 있으므로, JSON을 쓰는 변환기가
- *     Jackson 2로 되돌아가지 않는지도 본다.</li>
+ *     Jackson 2로 되돌아가지 않는지, MVC 변환기에 Jackson 2 YAML 변환기가 남지 않는지(WebConfig가 뺀다)도 본다.</li>
  *     <li>Jackson 2 호환 설정: Boot 매퍼(application.yml)와 코드에서 만드는 매퍼(Jackson2CompatibleJsonMapper)가 Jackson 3 기본값이
  *     다른 설정을 Jackson 2 값으로 쓰는지, 둘이 Jackson 2 때처럼 Boot가 바꾸는 설정만 다른지 본다.</li>
  * </ul>
@@ -73,7 +83,7 @@ class SessionAndJsonWiringTest extends BaseTest {
 
     @Test
     void MVC_JSON_변환기는_주입받는_JsonMapper를_쓴다() {
-        List<HttpMessageConverter<?>> converters = context.getBean(RequestMappingHandlerAdapter.class).getMessageConverters();
+        List<HttpMessageConverter<?>> converters = mvcConverters();
 
         assertThat(converters)
                 .filteredOn(converter -> converter.canWrite(Object.class, MediaType.APPLICATION_JSON))
@@ -84,6 +94,40 @@ class SessionAndJsonWiringTest extends BaseTest {
                 .map(converter -> ((JacksonJsonHttpMessageConverter) converter).getMapper())
                 .isNotEmpty()
                 .allSatisfy(mapper -> assertThat(mapper).isSameAs(jsonMapper));
+    }
+
+    /**
+     * Redisson이 끌어오는 jackson-dataformat-yaml 2.x 때문에 Spring은 기본 변환기로 Jackson 2 YAML 변환기를 넣는다. WebConfig가 MVC
+     * 변환기와 폼 변환기의 부품 변환기(multipart를 쓸 때 고른다)에서 그것을 빼므로, YAML을 읽거나 쓰는 변환기도 Jackson 2 변환기도 없다.
+     */
+    @Test
+    void MVC_변환기와_폼_부품_변환기에는_YAML을_다루는_변환기와_Jackson_2_변환기가_없다() {
+        List<HttpMessageConverter<?>> converters = mvcConvertersWithFormParts();
+
+        assertThat(converters)
+                .noneMatch(converter -> converter.canRead(InterviewRequest.class, MediaType.APPLICATION_YAML))
+                .noneMatch(converter -> converter.canWrite(ErrorResponse.class, MediaType.APPLICATION_YAML))
+                .noneMatch(converter -> isJackson2TypeOrSubtype(converter.getClass()));
+    }
+
+    // YAML 변환기만 빠지고 나머지 변환기와 순서는 그대로다. 빼기 전에는 두 목록 모두 JacksonJsonHttpMessageConverter와
+    // Jaxb2RootElementHttpMessageConverter 사이에 MappingJackson2YamlHttpMessageConverter가 있었다.
+    // 테스트 클래스패스의 목록이다. ProjectingJacksonHttpMessageConverter는 Spring Data가 json-path가 있을 때만 넣는데, json-path는
+    // 테스트 의존성에만 있어 운영 목록에는 없다.
+    @Test
+    void MVC_변환기와_폼_부품_변환기는_YAML_변환기만_빠지고_나머지_순서는_그대로다() {
+        List<Class<?>> converterTypes = types(mvcConverters());
+        List<Class<?>> partConverterTypes = types(formConverter().getPartConverters());
+
+        assertThat(converterTypes).containsExactly(
+                ProjectingJacksonHttpMessageConverter.class, ByteArrayHttpMessageConverter.class,
+                StringHttpMessageConverter.class, ResourceHttpMessageConverter.class,
+                ResourceRegionHttpMessageConverter.class, AllEncompassingFormHttpMessageConverter.class,
+                JacksonJsonHttpMessageConverter.class, Jaxb2RootElementHttpMessageConverter.class);
+        assertThat(partConverterTypes).containsExactly(
+                ByteArrayHttpMessageConverter.class, StringHttpMessageConverter.class,
+                ResourceHttpMessageConverter.class, ProjectingJacksonHttpMessageConverter.class,
+                JacksonJsonHttpMessageConverter.class, Jaxb2RootElementHttpMessageConverter.class);
     }
 
     /**
@@ -153,6 +197,38 @@ class SessionAndJsonWiringTest extends BaseTest {
         assertThat(jackson2Beans).isEmpty();
         assertThat(context.getBeanNamesForType(EndpointJsonMapper.class))
                 .containsExactly("jackson2CompatibleEndpointJsonMapper");
+    }
+
+    private List<HttpMessageConverter<?>> mvcConverters() {
+        return context.getBean(RequestMappingHandlerAdapter.class).getMessageConverters();
+    }
+
+    private FormHttpMessageConverter formConverter() {
+        return mvcConverters().stream()
+                .filter(FormHttpMessageConverter.class::isInstance)
+                .map(FormHttpMessageConverter.class::cast)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private List<HttpMessageConverter<?>> mvcConvertersWithFormParts() {
+        List<HttpMessageConverter<?>> converters = new ArrayList<>(mvcConverters());
+        converters.addAll(formConverter().getPartConverters());
+        return converters;
+    }
+
+    private static List<Class<?>> types(List<HttpMessageConverter<?>> converters) {
+        return converters.stream().<Class<?>>map(Object::getClass).toList();
+    }
+
+    // 클래스 자신이나 상위 클래스가 Jackson 2 타입이면 참이다. Spring의 Jackson 2 변환기는 모두 AbstractJackson2HttpMessageConverter를 잇는다.
+    private static boolean isJackson2TypeOrSubtype(Class<?> type) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            if (isJackson2Type(current)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isJackson2Type(Class<?> type) {
