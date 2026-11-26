@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.ExternalApiException;
@@ -39,7 +40,7 @@ class BedrockToolInputJsonCharacterizationTest extends BaseTest {
     private BedrockConverseClient converseClient;
 
     @Test
-    void 랭크와_피드백은_snake_case로_읽고_모르는_필드는_버린다() {
+    void 랭크와_피드백을_읽고_모르는_필드는_버린다() {
         BedrockConverseResponse response = new BedrockConverseResponse(document(Map.of(
                 "rank", Document.fromString("A"), "feedback", Document.fromString("좋아요 😀"),
                 "reasoning", Document.fromString("무시되는 필드"))));
@@ -154,6 +155,20 @@ class BedrockToolInputJsonCharacterizationTest extends BaseTest {
                         "{\"problem_solving_reason\":[\"근거\",[\"더\"]],\"total_feedback\":\"종합\"}",
                         ResumeAnalysisEvaluationFlatResponse.class))
                         .isInstanceOf(MismatchedInputException.class)
+        );
+    }
+
+    @Test
+    void 주입받는_매퍼는_문자열_목록_속성에_빈_문자열이나_공백_문자열이_오면_값_오류로_거절한다() {
+        assertAll(
+                () -> assertThatThrownBy(() -> objectMapper.readValue(
+                        "{\"problem_solving_reason\":\"\",\"total_feedback\":\"종합\"}",
+                        ResumeAnalysisEvaluationFlatResponse.class))
+                        .isInstanceOf(InvalidFormatException.class),
+                () -> assertThatThrownBy(() -> objectMapper.readValue(
+                        "{\"problem_solving_reason\":\"  \",\"total_feedback\":\"종합\"}",
+                        ResumeAnalysisEvaluationFlatResponse.class))
+                        .isInstanceOf(InvalidFormatException.class)
         );
     }
 

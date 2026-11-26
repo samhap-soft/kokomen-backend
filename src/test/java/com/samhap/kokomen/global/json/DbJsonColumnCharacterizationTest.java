@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.persistence.StringListJsonConverter;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
@@ -79,7 +80,11 @@ class DbJsonColumnCharacterizationTest {
                         .hasMessage("List<String> 역직렬화 실패"),
                 () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("[[]]"))
                         .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("List<String> 역직렬화 실패"),
+                () -> assertThatThrownBy(() -> stringListConverter.convertToEntityAttribute("\"\""))
+                        .isInstanceOf(IllegalStateException.class)
                         .hasMessage("List<String> 역직렬화 실패")
+                        .hasCauseInstanceOf(InvalidFormatException.class)
         );
     }
 

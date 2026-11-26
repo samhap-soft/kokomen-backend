@@ -18,7 +18,12 @@ import com.samhap.kokomen.payment.domain.ServiceType;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.payment.external.TossPaymentsClientBuilder;
 import com.samhap.kokomen.payment.external.TosspaymentsClient;
+import com.samhap.kokomen.payment.external.dto.Checkout;
+import com.samhap.kokomen.payment.external.dto.EasyPay;
+import com.samhap.kokomen.payment.external.dto.Failure;
+import com.samhap.kokomen.payment.external.dto.Receipt;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsCancel;
+import com.samhap.kokomen.payment.external.dto.TosspaymentsConfirmRequest;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentCancelRequest;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import com.samhap.kokomen.payment.service.dto.ConfirmRequest;
@@ -150,6 +155,42 @@ class PaymentAndExternalJsonCharacterizationTest extends BaseTest {
     }
 
     @Test
+    void 토스로_보내는_승인_요청_본문은_필드_순서까지_그대로이고_응답의_중첩_객체를_모두_읽는다() {
+        TossPaymentsClientBuilder tossBuilder = new TossPaymentsClientBuilder(restClientBuilderProvider.getObject(),
+                "test-secret");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(tossBuilder.getTossPaymentsClientBuilder()).build();
+        TosspaymentsClient client = new TosspaymentsClient(tossBuilder);
+
+        server.expect(requestTo("https://api.tosspayments.com/v1/payments/confirm"))
+                .andExpect(header("Idempotency-Key", "idem-1"))
+                .andExpect(content().bytes("{\"paymentKey\":\"pk\",\"orderId\":\"order-1\",\"amount\":1000}"
+                        .getBytes(StandardCharsets.UTF_8)))
+                .andRespond(withSuccess("""
+                        {"paymentKey":"pk","type":"BILLING","orderId":"order-1","orderName":"토큰 10개",\
+                        "mId":"tosspayments","currency":"KRW","method":"간편결제","totalAmount":1000,"balanceAmount":1000,\
+                        "status":"DONE","requestedAt":"2026-11-26T10:00:00+09:00","approvedAt":"2026-11-26T01:00:05Z",\
+                        "lastTransactionKey":"tx-1","suppliedAmount":909,"vat":91,"taxFreeAmount":0,\
+                        "taxExemptionAmount":0,\
+                        "isPartialCancelable":true,"metadata":null,\
+                        "receipt":{"url":"https://dashboard.tosspayments.com/receipt?ref=1&x=2"},\
+                        "checkout":{"url":"https://api.tosspayments.com/v1/payments/pk/checkout"},\
+                        "easyPay":{"provider":"토스페이","amount":1000,"discountAmount":0},"country":"KR",\
+                        "failure":{"code":"REJECT_CARD_COMPANY","message":"카드사 거절 😀"},"cancels":[]}""",
+                        MediaType.APPLICATION_JSON));
+
+        TosspaymentsPaymentResponse response = client.confirmPayment(
+                new TosspaymentsConfirmRequest("pk", "order-1", 1000L), "idem-1");
+
+        assertThat(response).isEqualTo(new TosspaymentsPaymentResponse("pk", PaymentType.BILLING, "order-1",
+                "토큰 10개", "tosspayments", "KRW", "간편결제", 1000L, 1000L, TosspaymentsStatus.DONE,
+                LocalDateTime.of(2026, 11, 26, 10, 0, 0), LocalDateTime.of(2026, 11, 26, 10, 0, 5), "tx-1", 909L, 91L,
+                0L, 0L, true, null, new Receipt("https://dashboard.tosspayments.com/receipt?ref=1&x=2"),
+                new Checkout("https://api.tosspayments.com/v1/payments/pk/checkout"),
+                new EasyPay("토스페이", 1000L, 0L), "KR", new Failure("REJECT_CARD_COMPANY", "카드사 거절 😀"), List.of()));
+        server.verify();
+    }
+
+    @Test
     void 토스_응답의_metadata는_모양대로_문자열로_바꾼다() {
         assertAll(
                 () -> assertThat(metadataOf("""
@@ -181,7 +222,7 @@ class PaymentAndExternalJsonCharacterizationTest extends BaseTest {
     }
 
     @Test
-    void Supertone으로_보내는_요청_본문은_snake_case_매퍼로_쓰고_이모지는_서로게이트_쌍_이스케이프다() {
+    void Supertone으로_보내는_요청_본문은_이모지를_서로게이트_쌍_이스케이프로_쓴다() {
         SupertoneClientBuilder supertoneBuilder = new SupertoneClientBuilder(restClientBuilderProvider.getObject(),
                 objectMapper, "test-token");
         MockRestServiceServer server = MockRestServiceServer.bindTo(supertoneBuilder.getSupertoneClientBuilder())

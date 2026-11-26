@@ -42,15 +42,23 @@ import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.token.dto.RefundReasonResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponse;
 import com.samhap.kokomen.token.dto.TokenPurchaseResponses;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.mock.http.MockHttpOutputMessage;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 /**
  * 대표 API 응답을 주입받는 매퍼(MVC가 응답을 쓰는 매퍼, SessionAndJsonWiringTest)로 직렬화한 문자열을 그대로 고정한다.
  * 필드 순서, snake_case 이름, null 생략과 {@code @JsonInclude(ALWAYS)}, enum 이름, LocalDateTime과 실수 표기를 한 글자씩 비교한다.
  * 값은 이 클래스의 고정 값으로 만들고, 엔티티를 거치지 않고 응답 record를 직접 만든다.
+ *
+ * <p>문자열 비교는 매퍼의 문자열 출력이다. MVC는 UTF-8 바이트로 쓰므로 이모지 같은 BMP 밖 문자는 서로게이트 쌍 이스케이프가 되고,
+ * 그 바이트는 MVC JSON 변환기로 직접 쓴 결과로 따로 비교한다.
  */
 class ApiResponseJsonCharacterizationTest extends BaseTest {
 
@@ -63,6 +71,9 @@ class ApiResponseJsonCharacterizationTest extends BaseTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private RequestMappingHandlerAdapter handlerAdapter;
 
     @Test
     void 랭킹_페이지_응답은_필드_순서와_snake_case_이름을_그대로_쓴다() throws Exception {
@@ -101,6 +112,21 @@ class ApiResponseJsonCharacterizationTest extends BaseTest {
                 "interviewee_rank":7,"interview_mode":"TEXT","include_live_coding":true,\
                 "root_question_reference_answers":[{"nickname":"면접왕","interview_id":55,"answer_content":"모범 답안",\
                 "answer_rank":"A"}]}""");
+    }
+
+    @Test
+    void 인터뷰_결과_응답을_MVC_JSON_변환기로_쓴_바이트는_이모지를_서로게이트_쌍_이스케이프로_쓴다() throws Exception {
+        InterviewResultResponse response = new InterviewResultResponse(
+                List.of(new FeedbackResponse(12L, 102L, "컨텍스트 스위칭이란?", "😀 모르겠습니다 </script>", AnswerRank.F,
+                        "다시 공부하자.", null, null, null, "임시 메모", AnswerMemoVisibility.PRIVATE)),
+                "종합 피드백 🙂", 80, null, null, null, null, null, null, null, null, InterviewMode.VOICE, false, List.of());
+
+        assertThat(writeWithMvcJsonConverter(response)).isEqualTo("""
+                {"feedbacks":[{"question_id":12,"answer_id":102,"question":"컨텍스트 스위칭이란?",\
+                "answer":"\\uD83D\\uDE00 모르겠습니다 </script>","answer_rank":"F","answer_feedback":"다시 공부하자.",\
+                "temp_answer_memo_content":"임시 메모","answer_memo_visibility":"PRIVATE"}],\
+                "total_feedback":"종합 피드백 \\uD83D\\uDE42","total_score":80,"interview_mode":"VOICE",\
+                "include_live_coding":false,"root_question_reference_answers":[]}""".getBytes(StandardCharsets.UTF_8));
     }
 
     @Test
@@ -248,6 +274,19 @@ class ApiResponseJsonCharacterizationTest extends BaseTest {
         assertThat(objectMapper.writeValueAsString(new ErrorResponse("잘못된 요청 형식입니다. JSON 형식을 확인해주세요.")))
                 .isEqualTo("{\"message\":\"잘못된 요청 형식입니다. JSON 형식을 확인해주세요.\"}");
         assertThat(objectMapper.writeValueAsString(new ErrorResponse(null))).isEqualTo("{}");
+    }
+
+    // MVC가 application/json 응답에 고르는 변환기(목록에서 처음으로 쓸 수 있다고 답하는 변환기)로 바이트를 쓴다.
+    @SuppressWarnings("unchecked")
+    private byte[] writeWithMvcJsonConverter(Object value) throws Exception {
+        HttpMessageConverter<Object> converter = (HttpMessageConverter<Object>) handlerAdapter.getMessageConverters()
+                .stream()
+                .filter(candidate -> candidate.canWrite(value.getClass(), MediaType.APPLICATION_JSON))
+                .findFirst()
+                .orElseThrow();
+        MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
+        converter.write(value, MediaType.APPLICATION_JSON, outputMessage);
+        return outputMessage.getBodyAsBytes();
     }
 
     private static SystemDesignDiagramResponse diagram() {
