@@ -12,6 +12,8 @@ public enum SystemDesignErrorMessage {
     NOT_OWNER("본인의 면접만 볼 수 있어요."),
     QUESTION_NOT_FOUND("질문을 찾을 수 없어요."),
     PROCEED_IN_PROGRESS("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요."),
+    // Redis 장애 등으로 진행 락이나 채점 상태를 다루지 못했을 때(503). 내부 문구(레디스 예외 발생) 대신 보인다.
+    TEMPORARILY_UNAVAILABLE("일시적인 문제로 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요."),
 
     PROBLEM_UNAVAILABLE("시스템 설계 문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."),
 

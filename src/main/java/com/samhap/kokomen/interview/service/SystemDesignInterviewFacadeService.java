@@ -30,11 +30,13 @@ import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirement
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService.RequirementQuestionDraft;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
  * 시스템 설계 면접 API의 진입점. 트랜잭션은 아래 서비스가 열고, 여기서는 진행 락처럼 트랜잭션 밖에서 해야 하는 순서를 맞춘다.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class SystemDesignInterviewFacadeService {
@@ -60,8 +62,10 @@ public class SystemDesignInterviewFacadeService {
     }
 
     /**
-     * 사전 준비(소유자 → 단계 → 길이 → 개수) → 진행 락 → 락 안에서 다시 준비 → 동시 실행 허가 → LLM 호출(트랜잭션 밖) → 저장.
-     * 락은 finally 한 곳에서 풀고, 저장 트랜잭션은 락을 풀기 전에 커밋되므로 다음 요청은 늘어난 개수를 본다. 토큰은 건드리지 않는다.
+     * 사전 준비(소유자 → 단계 → 길이 → 직전 역질문 재시도 → 개수) → 진행 락 → 락 안에서 다시 준비 → 동시 실행 허가 → LLM 호출
+     * (트랜잭션 밖) → 저장. 락 안의 준비가 응답을 받지 못해 다시 보낸 직전 역질문(60초 안, 같은 내용)으로 보면 LLM을 부르지 않고 새로
+     * 저장하지 않으며 직전 행의 응답을 그대로 준다. 락은 finally 한 곳에서 풀고, 저장 트랜잭션은 락을 풀기 전에 커밋되므로 다음 요청은
+     * 늘어난 개수와 방금 저장한 역질문을 본다. 토큰은 건드리지 않는다.
      */
     public SystemDesignRequirementAnswerResponse askRequirementQuestion(Long interviewId,
                                                                         SystemDesignRequirementQuestionRequest request,
@@ -72,6 +76,11 @@ public class SystemDesignInterviewFacadeService {
         try {
             RequirementQuestionDraft draft = systemDesignRequirementQuestionService.prepare(interviewId, memberId,
                     request.question());
+            if (draft.isRetry()) {
+                log.info("시스템 설계 역질문 재시도에 직전 응답을 돌려줍니다. interviewId: {}, remainingCount: {}", interviewId,
+                        draft.retriedResponse().remainingCount());
+                return draft.retriedResponse();
+            }
             SystemDesignRequirementAnswerResult result = answerRequirement(draft);
             return systemDesignRequirementQuestionService.save(draft, result);
         } finally {

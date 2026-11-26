@@ -663,11 +663,13 @@ class SystemDesignAnswerBedrockClientTest {
         );
     }
 
+    // 잘림은 지금처럼 실패(LLM_FAILED)로 끝나되, 어느 면접의 몇 번째 답변이 상한의 얼마를 쓰고 잘렸는지 ERROR 한 줄로 남긴다(운영 알림).
     @Test
-    void MAX_TOKENS_잘림은_ExternalApiException() {
+    void MAX_TOKENS_잘림은_ExternalApiException이고_면접_질문_순번_출력_토큰을_ERROR로_남긴다() {
         // given
+        // 출력 토큰을 상한과 다른 값으로 두어, 로그의 outputTokens가 상한이 아니라 응답의 사용량인지 가린다.
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
-                .willReturn(maxTokensResponse(2_048), maxTokensResponse(3_200));
+                .willReturn(maxTokensResponse(2_047), maxTokensResponse(3_200));
 
         // when & then
         assertAll(
@@ -680,9 +682,32 @@ class SystemDesignAnswerBedrockClientTest {
                 () -> assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.ERROR)
                         .extracting(ILoggingEvent::getFormattedMessage)
                         .satisfiesExactly(
-                                message -> assertThat(message).contains("ANSWER", "interviewId: 41", "maxTokens: 2048"),
-                                message -> assertThat(message).contains("END", "interviewId: 41", "maxTokens: 3200")),
+                                message -> assertThat(message).contains("ANSWER", "interviewId: 41",
+                                        "questionOrder: 2", "maxTokens: 2048", "outputTokens: 2047"),
+                                message -> assertThat(message).contains("END", "interviewId: 41",
+                                        "questionOrder: 6", "maxTokens: 3200", "outputTokens: 3200")),
                 () -> assertFailureLogged("ANSWER", "END")
+        );
+    }
+
+    @Test
+    void MAX_TOKENS_잘림_응답에_사용량이_없어도_ERROR를_남기고_ExternalApiException() {
+        // given
+        ConverseResponse withoutUsage = maxTokensResponse(3_200).toBuilder()
+                .usage((TokenUsage) null)
+                .build();
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(withoutUsage);
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> client.evaluateEnd(endCommand()))
+                        .isInstanceOf(ExternalApiException.class)
+                        .hasMessageContaining("stopReason=max_tokens"),
+                () -> assertThat(clientLogs.list).filteredOn(event -> event.getLevel() == Level.ERROR)
+                        .extracting(ILoggingEvent::getFormattedMessage)
+                        .singleElement()
+                        .satisfies(message -> assertThat(message)
+                                .contains("END", "questionOrder: 6", "maxTokens: 3200", "outputTokens: null"))
         );
     }
 

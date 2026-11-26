@@ -8,12 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class SystemDesignRequirementQuestionTest {
 
@@ -130,6 +133,35 @@ class SystemDesignRequirementQuestionTest {
         );
     }
 
+    // 응답을 받지 못해 다시 보낸 역질문을 가려낸다. 다듬은 내용이 같고 저장한 지 60초 안(60초 포함)일 때만 재시도다.
+    @Test
+    void 저장한_지_60초_안에_다듬은_내용이_같은_질문이_오면_재시도다() {
+        // given
+        LocalDateTime savedAt = LocalDateTime.of(2026, 11, 26, 14, 0, 0);
+        SystemDesignRequirementQuestion question = savedRequirementQuestion("하루에 몇 개나 만들어지나요?", savedAt);
+
+        // when & then
+        assertAll(
+                () -> assertThat(SystemDesignRequirementQuestion.RETRY_WINDOW).isEqualTo(Duration.ofSeconds(60)),
+                () -> assertThat(question.isRetriedBy("하루에 몇 개나 만들어지나요?", savedAt.plusSeconds(1))).isTrue(),
+                () -> assertThat(question.isRetriedBy("하루에 몇 개나 만들어지나요?", savedAt.plusSeconds(60))).isTrue(),
+                () -> assertThat(question.isRetriedBy("하루에 몇 개나 만들어지나요?",
+                        savedAt.plusSeconds(60).plusNanos(1_000))).isFalse(),
+                () -> assertThat(question.isRetriedBy("하루에 몇 개나 만들어지나요!", savedAt.plusSeconds(1))).isFalse(),
+                () -> assertThat(question.isRetriedBy("하루에 몇 개나", savedAt.plusSeconds(1))).isFalse()
+        );
+    }
+
+    // 저장 전(생성 시각 없음)에는 비교할 시각이 없으므로 재시도로 보지 않는다.
+    @Test
+    void 저장_시각이_없으면_같은_내용이어도_재시도가_아니다() {
+        SystemDesignRequirementQuestion question = SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .content("하루에 몇 개나 만들어지나요?")
+                .build();
+
+        assertThat(question.isRetriedBy("하루에 몇 개나 만들어지나요?", LocalDateTime.now())).isFalse();
+    }
+
     private static SystemDesignRequirementQuestion requirementQuestion(int questionOrder) {
         return SystemDesignRequirementQuestionFixtureBuilder.builder().questionOrder(questionOrder).build();
     }
@@ -139,5 +171,14 @@ class SystemDesignRequirementQuestionTest {
                 .questionOrder(questionOrder)
                 .askedRequirementCodes(askedCodes)
                 .build();
+    }
+
+    // 생성 시각은 저장할 때 JPA 감사가 채운다. 저장하지 않고 시각만 정해 둔다.
+    private static SystemDesignRequirementQuestion savedRequirementQuestion(String content, LocalDateTime savedAt) {
+        SystemDesignRequirementQuestion question = SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .content(content)
+                .build();
+        ReflectionTestUtils.setField(question, "createdAt", savedAt);
+        return question;
     }
 }

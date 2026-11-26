@@ -1,9 +1,13 @@
 package com.samhap.kokomen.interview.service.systemdesign;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.BDDMockito.willThrow;
 
 import com.samhap.kokomen.global.BaseTest;
+import com.samhap.kokomen.global.exception.RedisException;
+import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.interview.service.InterviewProceedFacadeService;
 import com.samhap.kokomen.interview.tool.InterviewProceedState;
 import java.time.Duration;
@@ -78,6 +82,20 @@ class SystemDesignProceedStateStoreTest extends BaseTest {
                 () -> assertThat(completedTimeToLive).isGreaterThan(Duration.ofMinutes(4).toMillis())
                         .isLessThanOrEqualTo(Duration.ofMinutes(5).toMillis())
         );
+    }
+
+    // 답변 결과 조회가 Redis를 읽지 못하면 내부 문구(레디스 예외 발생)의 500 대신 사용자 문구의 503으로 알린다.
+    @Test
+    void 조회할_때_Redis가_실패하면_사용자_문구의_503이고_원인은_레디스_예외다() {
+        // given
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getBucket(SystemDesignProceedStateStore.createKey(INTERVIEW_ID, QUESTION_ORDER), StringCodec.INSTANCE);
+
+        // when & then
+        assertThatThrownBy(() -> stateStore.find(INTERVIEW_ID, QUESTION_ORDER))
+                .isInstanceOf(ServiceUnavailableException.class)
+                .hasMessage("일시적인 문제로 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.")
+                .hasCauseInstanceOf(RedisException.class);
     }
 
     private long remainTimeToLive(String key) {

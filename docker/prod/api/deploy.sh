@@ -5,7 +5,11 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-prod.yml"
 HEALTH_TIMEOUT=120
 HEALTH_INTERVAL=5
-GRACEFUL_SHUTDOWN_WAIT=65
+# SIGTERM 뒤 SIGKILL까지의 유예(초). 채점은 늦어도 웹 서버 우아한 종료 단계(spring.lifecycle.timeout-per-shutdown-phase, 60초)가 끝나기
+# 전에 맡겨지고, 맡긴 때부터 전체 호출 상한 85초 + 저장 안에 끝난다. 채점 실행기(bedrockFlowCallbackExecutor)는 최대 100초 기다리고
+# 채점이 쓰는 자원은 그 뒤에 닫힌다. 그래서 60초 + 100초보다 길게(여유 20초) 두면 진행 중인 채점이 저장까지 끝난다. 이력서 분석이 돌고
+# 있으면 앱 전체 종료가 이보다 오래 걸려 끝 무렵 SIGKILL을 받을 수 있지만, 그때 채점은 이미 끝났다. rollback.sh와 compose도 같은 값이다.
+GRACEFUL_SHUTDOWN_WAIT=180
 
 log_info() { echo "[INFO] $1"; }
 log_warn() { echo "[WARN] $1"; }
