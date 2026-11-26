@@ -82,8 +82,8 @@ public class SystemDesignAnswerBedrockClient {
                 SystemDesignBedrockRequestFactory.createAnswerToolConfig(),
                 maxTokens,
                 properties.evaluationTemperature());
-        JsonNode toolInput = readToolInput(SystemDesignCallType.ANSWER, command.interviewId(), maxTokens, response,
-                SystemDesignToolSchemas.ANSWER_TOOL_NAME);
+        JsonNode toolInput = readToolInput(SystemDesignCallType.ANSWER, command.interviewId(),
+                command.currentTurn().questionOrder(), maxTokens, response, SystemDesignToolSchemas.ANSWER_TOOL_NAME);
         return new SystemDesignAnswerEvaluation(readRank(toolInput), readFeedback(toolInput),
                 nextQuestionOrNull(command.interviewId(), toolInput));
     }
@@ -116,8 +116,8 @@ public class SystemDesignAnswerBedrockClient {
                 SystemDesignBedrockRequestFactory.createEndToolConfig(command.problem().evaluationPoints()),
                 maxTokens,
                 properties.evaluationTemperature());
-        JsonNode toolInput = readToolInput(SystemDesignCallType.END, command.interviewId(), maxTokens, response,
-                SystemDesignToolSchemas.END_TOOL_NAME);
+        JsonNode toolInput = readToolInput(SystemDesignCallType.END, command.interviewId(),
+                command.currentTurn().questionOrder(), maxTokens, response, SystemDesignToolSchemas.END_TOOL_NAME);
         return new SystemDesignEndEvaluation(readRank(toolInput), readFeedback(toolInput), readTotalFeedback(toolInput),
                 readPointVerdicts(command, toolInput));
     }
@@ -189,13 +189,17 @@ public class SystemDesignAnswerBedrockClient {
         }
     }
 
-    // 사용량을 남긴 뒤 tool_use를 꺼낸다. maxTokens에서 잘렸으면 stopReason이 tool_use가 아니라 extractToolUse가 실패시킨다.
-    private JsonNode readToolInput(SystemDesignCallType callType, Long interviewId, int maxTokens,
+    /**
+     * 사용량을 남긴 뒤 tool_use를 꺼낸다. maxTokens에서 잘렸으면 stopReason이 tool_use가 아니라 extractToolUse가 실패시킨다(LLM_FAILED).
+     * 잘림은 다시 내도 되풀이될 수 있어(특히 6번째 답변의 L3) 어느 면접의 몇 번째 답변이 몇 토큰을 쓰고 잘렸는지 ERROR로 남긴다.
+     */
+    private JsonNode readToolInput(SystemDesignCallType callType, Long interviewId, int questionOrder, int maxTokens,
                                    ConverseResponse response, String toolName) {
         SystemDesignBedrockCallLogger.logUsage(callType, interviewId, response);
         if (response.stopReason() == StopReason.MAX_TOKENS) {
-            log.error("시스템 설계 LLM 응답이 maxTokens에서 잘렸습니다. callType: {}, interviewId: {}, maxTokens: {}",
-                    callType, interviewId, maxTokens);
+            log.error("시스템 설계 LLM 응답이 maxTokens에서 잘렸습니다. callType: {}, interviewId: {}, questionOrder: {}, "
+                            + "maxTokens: {}, outputTokens: {}", callType, interviewId, questionOrder, maxTokens,
+                    response.usage() == null ? null : response.usage().outputTokens());
         }
         ToolUseBlock toolUse = converseClient.extractToolUse(response, toolName);
         return converseClient.parseToolInput(toolUse, JsonNode.class);

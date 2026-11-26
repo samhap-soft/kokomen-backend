@@ -13,6 +13,10 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.fixture.async.CallerRunsTaskExecutor;
@@ -50,9 +54,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.redisson.client.codec.StringCodec;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskRejectedException;
@@ -75,6 +81,8 @@ class SystemDesignAnswerAsyncServiceTest extends BaseTest {
     @Autowired
     private SystemDesignProceedLock proceedLock;
     @Autowired
+    private SystemDesignProceedFailureCounter failureCounter;
+    @Autowired
     private SystemDesignInterviewTestSupport interviewTestSupport;
     @Autowired
     private TokenFacadeService tokenFacadeService;
@@ -94,6 +102,8 @@ class SystemDesignAnswerAsyncServiceTest extends BaseTest {
     private TokenRepository tokenRepository;
 
     private SystemDesignAnswerAsyncService asyncService;
+    private Logger failureCounterLogger;
+    private ListAppender<ILoggingEvent> failureCounterLogs;
 
     // 질문 PK가 순번과, 면접 id가 질문 순번(1~6)과 우연히 같아지지 않게 다른 회원의 기록을 먼저 둔다.
     // 상태 키를 PK나 다른 id로 만들면 순번으로 찾는 단정이 실패한다.
@@ -101,6 +111,15 @@ class SystemDesignAnswerAsyncServiceTest extends BaseTest {
     void setUp() {
         interviewTestSupport.saveOtherMemberRecords();
         asyncService = assemble(new CallerRunsTaskExecutor());
+        failureCounterLogger = (Logger) LoggerFactory.getLogger(SystemDesignProceedFailureCounter.class);
+        failureCounterLogs = new ListAppender<>();
+        failureCounterLogs.start();
+        failureCounterLogger.addAppender(failureCounterLogs);
+    }
+
+    @AfterEach
+    void tearDown() {
+        failureCounterLogger.detachAppender(failureCounterLogs);
     }
 
     @Test
@@ -327,6 +346,121 @@ class SystemDesignAnswerAsyncServiceTest extends BaseTest {
         );
     }
 
+    // 같은 입력이 거듭 실패하는 경우(마지막 답변 평가의 잘림 반복 등)를 운영에서 알아채게 한다. 사용자는 지금처럼 다시 낼 수 있다.
+    @Test
+    void 같은_질문의_채점이_세_번_연달아_실패하면_세_번째부터_반복_실패_ERROR를_남기고_사용자_동작은_같다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        Long interviewId = interviewIdOf(systemDesignInterview);
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any()))
+                .willThrow(new ExternalApiException("시스템 설계 답변 평가 호출에 실패했습니다."));
+
+        // when
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            asyncService.submit(draft, proceedLock.acquire(member.getId()));
+        }
+
+        // then
+        assertNothingSaved(systemDesignInterview, member, 6);
+        assertAll(
+                () -> assertThat(stateStore.find(interviewId, 2)).contains(InterviewProceedState.LLM_FAILED),
+                () -> assertThat(readFailCount(interviewId, 2)).isEqualTo("3"),
+                () -> assertThat(repeatedFailureMessages()).singleElement().satisfies(message -> assertThat(message)
+                        .contains("interviewId: " + interviewId, "questionOrder: 2", "memberId: " + member.getId(),
+                                "failCount: 3"))
+        );
+    }
+
+    // 제출이 실패해도(큐 포화) 그 질문은 LLM_FAILED가 되므로 같이 센다.
+    @Test
+    void 실행기가_거절해도_그_질문의_실패로_센다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
+        SystemDesignAnswerAsyncService rejectingService = assemble(new RejectingTaskExecutor());
+
+        // when
+        rejectingService.submit(draft, proceedLock.acquire(member.getId()));
+
+        // then
+        assertThat(readFailCount(interviewIdOf(systemDesignInterview), 2)).isEqualTo("1");
+    }
+
+    @Test
+    void 채점에_성공하면_그_질문의_실패_횟수를_지운다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        Long interviewId = interviewIdOf(systemDesignInterview);
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any()))
+                .willThrow(new ExternalApiException("시스템 설계 답변 평가 호출에 실패했습니다."))
+                .willThrow(new ExternalApiException("시스템 설계 답변 평가 호출에 실패했습니다."))
+                .willReturn(new SystemDesignAnswerEvaluation(A, "단축 키 충돌 처리가 분명해요.", null));
+        asyncService.submit(draft, proceedLock.acquire(member.getId()));
+        asyncService.submit(draft, proceedLock.acquire(member.getId()));
+        String failCountAfterFailures = readFailCount(interviewId, 2);
+
+        // when
+        asyncService.submit(draft, proceedLock.acquire(member.getId()));
+
+        // then
+        assertAll(
+                () -> assertThat(failCountAfterFailures).isEqualTo("2"),
+                () -> assertThat(redisTemplate.hasKey(SystemDesignProceedFailureCounter.createKey(interviewId, 2)))
+                        .isFalse(),
+                () -> assertThat(stateStore.find(interviewId, 2)).contains(InterviewProceedState.COMPLETED),
+                () -> assertThat(readAnswer(systemDesignInterview, 2).getAnswerRank()).isEqualTo(A),
+                () -> assertThat(repeatedFailureMessages()).isEmpty()
+        );
+    }
+
+    // 실패 횟수 기록은 Redis 오류를 삼킨다. 그래도 LLM_FAILED 기록과 락 해제는 그대로 일어나야 한다.
+    @Test
+    void 실패_횟수_기록이_Redis_오류로_실패해도_LLM_FAILED를_남기고_락을_푼다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        Long interviewId = interviewIdOf(systemDesignInterview);
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any()))
+                .willThrow(new ExternalApiException("시스템 설계 답변 평가 호출에 실패했습니다."));
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
+                .getAtomicLong(SystemDesignProceedFailureCounter.createKey(interviewId, 2));
+        String lockValue = proceedLock.acquire(member.getId());
+
+        // when & then
+        assertThatCode(() -> asyncService.submit(draft, lockValue)).doesNotThrowAnyException();
+        assertNothingSaved(systemDesignInterview, member, 6);
+        assertThat(stateStore.find(interviewId, 2)).contains(InterviewProceedState.LLM_FAILED);
+    }
+
+    // 성공한 뒤 실패 횟수를 지우다 Redis가 실패해도 채점 실패로 바꾸지 않는다. 남은 키는 1시간 뒤 사라진다.
+    @Test
+    void 실패_횟수_삭제가_Redis_오류로_실패해도_채점은_COMPLETED이고_락을_푼다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveInterviewWithAnswers(member, List.of(B));
+        Long interviewId = interviewIdOf(systemDesignInterview);
+        SystemDesignAnswerDraft draft = prepare(systemDesignInterview, member, 2);
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any()))
+                .willReturn(new SystemDesignAnswerEvaluation(A, "단축 키 충돌 처리가 분명해요.", null));
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient).getKeys();
+        String lockValue = proceedLock.acquire(member.getId());
+
+        // when & then
+        assertThatCode(() -> asyncService.submit(draft, lockValue)).doesNotThrowAnyException();
+        assertAll(
+                () -> assertThat(stateStore.find(interviewId, 2)).contains(InterviewProceedState.COMPLETED),
+                () -> assertThat(readAnswer(systemDesignInterview, 2).getAnswerRank()).isEqualTo(A),
+                () -> assertThat(readTokenCount(member)).isEqualTo(5),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
     @Test
     void 워커는_제출한_스레드의_MDC를_이어_쓰고_끝나면_지운다() {
         // given
@@ -367,7 +501,20 @@ class SystemDesignAnswerAsyncServiceTest extends BaseTest {
 
     private SystemDesignAnswerAsyncService assemble(ThreadPoolTaskExecutor executor) {
         return new SystemDesignAnswerAsyncService(answerService, systemDesignAnswerBedrockClient, stateStore,
-                proceedLock, executor);
+                failureCounter, proceedLock, executor);
+    }
+
+    private String readFailCount(Long interviewId, int questionOrder) {
+        return (String) redissonClient.getBucket(SystemDesignProceedFailureCounter.createKey(interviewId,
+                questionOrder), StringCodec.INSTANCE).get();
+    }
+
+    private List<String> repeatedFailureMessages() {
+        return failureCounterLogs.list.stream()
+                .filter(event -> event.getLevel() == Level.ERROR)
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(message -> message.contains("반복 실패"))
+                .toList();
     }
 
     private SystemDesignAnswerDraft prepare(SystemDesignInterview systemDesignInterview, Member member,

@@ -94,4 +94,8 @@ public class RedisService {
     public void releaseLock(String lockKey) {
         redissonClient.getKeys().delete(lockKey);
     }
+
+    public void deleteKey(String key) {
+        redissonClient.getKeys().delete(key);
+    }
 }
