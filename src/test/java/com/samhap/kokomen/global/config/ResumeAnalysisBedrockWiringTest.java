@@ -10,7 +10,7 @@ import com.samhap.kokomen.resume.external.ResumeAnalysisEvaluationBedrockClient;
 import com.samhap.kokomen.resume.external.ResumeAnalysisQuestionBedrockClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,7 +39,7 @@ class ResumeAnalysisBedrockWiringTest {
      * BindValidationException으로 죽으므로, 실제로 쓰이지 않는 빈이라도 바인딩이 통과하도록 채운다.
      */
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(Jackson2AutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
             .withBean(ResumeAnalysisEvaluationBedrockClient.class)
