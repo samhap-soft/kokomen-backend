@@ -34,7 +34,7 @@ docker compose -f test.yml up -d
 ## Architecture
 
 ### Key Technologies
-- Java 17, Spring Boot 3.x
+- Java 25, Spring Boot 4.1 (Jackson 3, Gradle 9)
 - MySQL 8.0 (Primary DB), Redis/Valkey (Session & Cache, Redisson for distributed locks)
 - OpenAI GPT-4 / AWS Bedrock for AI features
 - Supertone for TTS (voice mode)

@@ -38,7 +38,7 @@ kokomen-backend/
 ```
 
 ### 핵심 기술 스택
-- **Backend**: Spring Boot 3.x, Java 17
+- **Backend**: Spring Boot 4.1, Java 25
 - **Database**: MySQL 8.0 (Primary), Redis (Session & Cache)
 - **AI Integration**: OpenAI GPT-4, AWS Bedrock
 - **TTS**: Supertone Text-to-Speech
@@ -72,7 +72,7 @@ kokomen-backend/
 ## 빠른 시작
 
 ### 필수 요구사항
-- Java 17+
+- Java 25 (JDK)
 - Docker & Docker Compose
 - MySQL 8.0+
 - Redis 6.0+
