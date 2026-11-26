@@ -7,6 +7,12 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
+  jackson2:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   session:
     store-type: redis
   servlet:

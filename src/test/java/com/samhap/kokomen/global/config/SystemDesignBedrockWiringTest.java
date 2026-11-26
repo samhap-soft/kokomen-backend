@@ -12,7 +12,7 @@ import com.samhap.kokomen.interview.external.SystemDesignRequirementBedrockClien
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +33,7 @@ class SystemDesignBedrockWiringTest {
     private static final BedrockConverseProperties PROPERTIES = BedrockConversePropertiesFixture.create();
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(Jackson2AutoConfiguration.class))
             .withPropertyValues(BedrockConversePropertiesFixture.propertyValues(PROPERTIES))
             .withUserConfiguration(AwsConfig.class, TestBeans.class)
             .withBean(SystemDesignRequirementBedrockClient.class)
