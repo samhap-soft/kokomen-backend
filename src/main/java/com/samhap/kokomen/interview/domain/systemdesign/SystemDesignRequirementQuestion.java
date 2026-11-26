@@ -17,6 +17,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -39,6 +41,8 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     public static final int MAX_COUNT = 5;
     public static final int MAX_CONTENT_LENGTH = 200;
     public static final int MAX_ANSWER_LENGTH = 1_000;
+    // 응답을 받지 못해 다시 보낸 역질문으로 볼 시간. 역질문 응답은 길면 30초 가까이 걸리고 프론트는 그 뒤에 다시 보낸다.
+    public static final Duration RETRY_WINDOW = Duration.ofSeconds(60);
 
     private static final int FIRST_QUESTION_ORDER = 1;
 
@@ -99,6 +103,18 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
             throw new BadRequestException(REQUIREMENT_QUESTION_LENGTH.getMessage());
         }
         return content;
+    }
+
+    /**
+     * 이 역질문(직전에 저장한 역질문)과 다듬은 내용이 같은 질문이 저장한 지 {@link #RETRY_WINDOW} 안(경계 포함)에 다시 왔는지 본다.
+     * 그렇다면 응답을 받지 못해 다시 보낸 요청으로 보고 서비스가 새로 답하지 않는다. 저장 전이라 생성 시각이 없으면 재시도가 아니다.
+     *
+     * @param content     {@link #normalizeContent(String)}로 다듬은 질문
+     * @param requestedAt 다시 온 요청을 처리하는 시각
+     */
+    public boolean isRetriedBy(String content, LocalDateTime requestedAt) {
+        LocalDateTime savedAt = getCreatedAt();
+        return savedAt != null && this.content.equals(content) && !requestedAt.isAfter(savedAt.plus(RETRY_WINDOW));
     }
 
     public static void validateCount(long currentCount) {

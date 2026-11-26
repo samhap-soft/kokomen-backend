@@ -9,6 +9,7 @@ import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.exception.BadRequestException;
 import com.samhap.kokomen.global.exception.ConflictException;
+import com.samhap.kokomen.global.exception.ForbiddenException;
 import com.samhap.kokomen.global.fixture.interview.InterviewFixtureBuilder;
 import com.samhap.kokomen.global.fixture.interview.RootQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
@@ -40,10 +41,12 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
@@ -72,6 +75,8 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // TRUNCATE 뒤에는 테이블마다 id가 1부터 다시 시작한다. 테이블마다 다른 수의 행(회원 1, 문제 2, 시스템 설계 면접 3, 면접 4,
     // 역질문 1)을 먼저 두어, 각 테스트가 만드는 회원·문제·시스템 설계 면접·면접의 id가 서로 같아지지 않게 한다. 면접이나 문제를
@@ -354,6 +359,158 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty();
     }
 
+    // 응답을 받지 못해 같은 질문을 다시 보낸 경우다. LLM 입력 대신 직전 행의 질문·답·남은 개수를 담아, 파사드가 LLM을 부르지 않고 그대로 준다.
+    @Test
+    void 직전_역질문과_다듬은_내용이_같고_60초_안이면_LLM_입력_대신_직전_행의_응답을_담는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        saveRequirementQuestion(systemDesignInterview, 2, "단축 키는 몇 자까지 되나요?", "7자 이하여야 해요.");
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "\u3000단축 키는 몇 자까지 되나요? ");
+
+        // then
+        assertAll(
+                () -> assertThat(draft.isRetry()).isTrue(),
+                () -> assertThat(draft.command()).isNull(),
+                () -> assertThat(draft.retriedResponse()).isEqualTo(
+                        new SystemDesignRequirementAnswerResponse("단축 키는 몇 자까지 되나요?", "7자 이하여야 해요.", 3))
+        );
+    }
+
+    @Test
+    void 직전_역질문과_같아도_저장한_지_60초가_지났으면_새_역질문으로_준비한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        moveSavedAtBack(systemDesignInterview, 1, 61);
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertAll(
+                () -> assertThat(draft.isRetry()).isFalse(),
+                () -> assertThat(draft.retriedResponse()).isNull(),
+                () -> assertThat(draft.command().currentQuestion()).isEqualTo("하루에 몇 개나 만들어지나요?")
+        );
+    }
+
+    // 직전 역질문만 본다. 더 앞의 역질문과 같은 질문은 다시 물은 것으로 보고 새로 답한다.
+    @Test
+    void 직전보다_앞의_역질문과_같은_질문은_새_역질문으로_준비한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        saveRequirementQuestion(systemDesignInterview, 2, "단축 키는 몇 자까지 되나요?", "7자 이하여야 해요.");
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertThat(draft.isRetry()).isFalse();
+    }
+
+    // 같은 회원의 다른 면접에 같은 질문이 방금 저장됐어도 이 면접에는 직전 역질문이 없으니 새로 묻는다.
+    @Test
+    void 다른_면접의_직전_역질문과_같은_질문은_재시도가_아니다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        SystemDesignInterview askedInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview otherInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(askedInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                otherInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertThat(draft.isRetry()).isFalse();
+    }
+
+    // 재시도 판단은 개수 검사보다 앞이다. 5번째 역질문의 응답을 받지 못해 다시 보내도 400이 아니라 저장된 응답을 받는다.
+    @Test
+    void 다섯_개를_다_쓴_뒤에도_직전_역질문의_재시도는_개수_오류가_아니다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        for (int order = 1; order <= SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            saveRequirementQuestion(systemDesignInterview, order, "역질문 " + order, "답 " + order);
+        }
+        Long interviewId = systemDesignInterview.getInterview().getId();
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(interviewId, member.getId(), "역질문 5");
+
+        // then
+        assertAll(
+                () -> assertThat(draft.retriedResponse())
+                        .isEqualTo(new SystemDesignRequirementAnswerResponse("역질문 5", "답 5", 0)),
+                () -> assertThatThrownBy(() -> requirementQuestionService.prepare(interviewId, member.getId(),
+                        "여섯 번째 역질문"))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("역질문은 5개까지 할 수 있어요.")
+        );
+    }
+
+    // 재시도 판단은 소유자와 단계 검사 뒤다. 다른 회원은 같은 질문을 보내도 403이고, 요구사항 정리가 끝났으면 409다.
+    @Test
+    void 다른_회원이거나_요구사항_정리가_끝났으면_같은_질문이어도_재시도가_아니라_오류다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignProblem problem = problemTestSupport.saveProblem();
+        SystemDesignInterview requirementStageInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.REQUIREMENTS);
+        SystemDesignInterview designStageInterview = saveSystemDesignInterview(member, problem,
+                SystemDesignStage.HIGH_LEVEL);
+        saveRequirementQuestion(requirementStageInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        saveRequirementQuestion(designStageInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+
+        // when & then
+        assertAll(
+                () -> assertThatThrownBy(() -> requirementQuestionService.prepare(
+                        requirementStageInterview.getInterview().getId(), otherMember.getId(), "하루에 몇 개나 만들어지나요?"))
+                        .isInstanceOf(ForbiddenException.class)
+                        .hasMessage("본인의 면접만 볼 수 있어요."),
+                () -> assertThatThrownBy(() -> requirementQuestionService.prepare(
+                        designStageInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?"))
+                        .isInstanceOf(ConflictException.class)
+                        .hasMessage("요구사항 단계가 끝났어요.")
+        );
+    }
+
+    @Test
+    void 재시도로_준비한_역질문은_저장하지_않는다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.save(draft,
+                new SystemDesignRequirementAnswerResult(List.of(), "")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1);
+    }
+
     @Test
     void 역질문은_토큰을_검증하지도_차감하지도_않는다() {
         // given
@@ -412,6 +569,16 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 .content(content)
                 .answer(answer)
                 .build());
+    }
+
+    // 저장 시각(created_at)을 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다.
+    private void moveSavedAtBack(SystemDesignInterview systemDesignInterview, int questionOrder, long seconds) {
+        SystemDesignRequirementQuestion question = readRequirementQuestions(systemDesignInterview).stream()
+                .filter(requirementQuestion -> requirementQuestion.getQuestionOrder() == questionOrder)
+                .findFirst()
+                .orElseThrow();
+        jdbcTemplate.update("UPDATE system_design_requirement_question SET created_at = ? WHERE id = ?",
+                LocalDateTime.now().minusSeconds(seconds), question.getId());
     }
 
     private int readTokenCount(Member member, TokenType type) {

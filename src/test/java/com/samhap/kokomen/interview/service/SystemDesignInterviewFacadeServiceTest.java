@@ -4,6 +4,7 @@ import static com.samhap.kokomen.answer.domain.AnswerRank.A;
 import static com.samhap.kokomen.answer.domain.AnswerRank.B;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,6 +76,7 @@ import com.samhap.kokomen.token.repository.TokenRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -91,6 +93,7 @@ import org.junit.jupiter.api.Test;
 import org.redisson.client.codec.Codec;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
@@ -131,6 +134,8 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     private RedisService redisService;
     @Autowired
     private MeterRegistry meterRegistry;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // TRUNCATE로 테이블마다 id가 1부터 다시 시작해도 interview와 system_design_interview의 id가 같아지지 않게
     // 다른 회원의 일반 면접을 먼저 둔다. interview id 대신 system_design_interview id로 찾는 실수가 드러난다.
@@ -535,6 +540,153 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                         .extracting(SystemDesignRequirementQuestion::getContent)
                         .doesNotContain("다섯 번째 역질문")
         );
+    }
+
+    // 첫 요청은 저장까지 끝났는데 응답을 받지 못해(클라이언트 타임아웃, 네트워크 오류) 같은 질문을 다시 보낸 경우다.
+    @Test
+    void 응답을_받지_못해_같은_역질문을_다시_보내면_LLM을_다시_부르지_않고_저장된_응답을_그대로_준다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        SystemDesignRequirementAnswerResponse first = askRequirementQuestion(systemDesignInterview, member,
+                "하루에 몇 개나 만들어지나요?");
+
+        // when
+        SystemDesignRequirementAnswerResponse retried = askRequirementQuestion(systemDesignInterview, member,
+                "  하루에 몇 개나 만들어지나요?  ");
+
+        // then
+        assertAll(
+                () -> assertThat(retried).isEqualTo(first),
+                () -> assertThat(retried.remainingCount()).isEqualTo(4),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
+                () -> verify(systemDesignRequirementBedrockClient, times(1)).answerRequirement(any()),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    @Test
+    void 저장한_지_60초가_지난_뒤_같은_역질문을_보내면_새로_답하고_저장한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
+        moveSavedAtBack(readRequirementQuestions(systemDesignInterview).get(0), 61);
+
+        // when
+        SystemDesignRequirementAnswerResponse response = askRequirementQuestion(systemDesignInterview, member,
+                "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertAll(
+                () -> assertThat(response.remainingCount()).isEqualTo(3),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview))
+                        .extracting(SystemDesignRequirementQuestion::getQuestionOrder,
+                                SystemDesignRequirementQuestion::getContent)
+                        .containsExactly(tuple(1, "하루에 몇 개나 만들어지나요?"), tuple(2, "하루에 몇 개나 만들어지나요?")),
+                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any())
+        );
+    }
+
+    @Test
+    void 직전과_다른_역질문은_60초_안이어도_새로_답하고_저장한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of(), "등록되지 않은 내용이에요. 가정하고 진행하세요."));
+        askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
+
+        // when
+        SystemDesignRequirementAnswerResponse response = askRequirementQuestion(systemDesignInterview, member,
+                "하루에 몇 개나 조회되나요?");
+
+        // then
+        assertAll(
+                () -> assertThat(response.question()).isEqualTo("하루에 몇 개나 조회되나요?"),
+                () -> assertThat(response.remainingCount()).isEqualTo(3),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(2),
+                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any())
+        );
+    }
+
+    // 5번째 역질문의 응답을 받지 못해 다시 보낸 경우. 락 밖 사전 검사도 락 안 준비도 개수 오류(400)를 내지 않는다.
+    @Test
+    void 역질문_5개를_다_쓴_뒤_직전과_같은_질문을_다시_보내면_400이_아니라_저장된_응답을_준다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            saveRequirementQuestion(systemDesignInterview, order);
+        }
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of(), "등록되지 않은 내용이에요. 가정하고 진행하세요."));
+        SystemDesignRequirementAnswerResponse fifth = askRequirementQuestion(systemDesignInterview, member,
+                "다섯 번째 역질문");
+
+        // when
+        SystemDesignRequirementAnswerResponse retried = askRequirementQuestion(systemDesignInterview, member,
+                "다섯 번째 역질문");
+
+        // then
+        assertAll(
+                () -> assertThat(retried).isEqualTo(fifth),
+                () -> assertThat(retried.remainingCount()).isZero(),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview))
+                        .hasSize(SystemDesignRequirementQuestion.MAX_COUNT),
+                () -> verify(systemDesignRequirementBedrockClient, times(1)).answerRequirement(any()),
+                () -> assertThatThrownBy(() -> askRequirementQuestion(systemDesignInterview, member, "여섯 번째 역질문"))
+                        .isInstanceOf(BadRequestException.class)
+                        .hasMessage("역질문은 5개까지 할 수 있어요.")
+        );
+    }
+
+    // 재시도인지는 락 안의 준비에서 정한다. 첫 요청을 처리하는 중(락을 쥔 동안)에 다시 보낸 요청은 지금처럼 409다.
+    @Test
+    void 다른_요청이_진행_락을_쥐고_있으면_직전과_같은_역질문도_409다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+
+        // when & then
+        assertThatThrownBy(() -> askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("이전 요청을 처리하고 있어요. 잠시 후 다시 시도해 주세요.");
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1)
+        );
+    }
+
+    // 다른 회원은 면접 주인의 직전 역질문과 같은 질문을 보내도 그 응답을 받지 못한다.
+    @Test
+    void 다른_회원이_직전과_같은_역질문을_보내면_403이다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
+
+        // when & then
+        assertThatThrownBy(() -> askRequirementQuestion(systemDesignInterview, otherMember, "하루에 몇 개나 만들어지나요?"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("본인의 면접만 볼 수 있어요.");
     }
 
     // 끝난 면접에 빈 답변을 토큰 0개로 내도 끝남 문구가 나와야 상태를 입력·토큰보다 먼저 본 것이다.
@@ -1016,6 +1168,12 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     private List<SystemDesignRequirementQuestion> readRequirementQuestions(
             SystemDesignInterview systemDesignInterview) {
         return requirementQuestionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
+    }
+
+    // 저장 시각(created_at)을 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다.
+    private void moveSavedAtBack(SystemDesignRequirementQuestion requirementQuestion, long seconds) {
+        jdbcTemplate.update("UPDATE system_design_requirement_question SET created_at = ? WHERE id = ?",
+                LocalDateTime.now().minusSeconds(seconds), requirementQuestion.getId());
     }
 
     private static Object awaitQuietly(CountDownLatch latch) {

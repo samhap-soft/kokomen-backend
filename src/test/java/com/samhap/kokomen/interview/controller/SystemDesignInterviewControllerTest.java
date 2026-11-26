@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
@@ -111,6 +112,7 @@ import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.restdocs.payload.RequestFieldsSnippet;
 import org.springframework.restdocs.payload.ResponseFieldsSnippet;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -594,6 +596,44 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                                 List.of("DAILY_CREATION_VOLUME"))),
                 () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(3),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero(),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    // 응답을 받지 못해 같은 질문을 60초 안에 다시 보내면 LLM을 다시 부르지 않고 저장된 답을 그대로 200으로 준다. 남은 개수도 그대로다.
+    @Test
+    void 응답을_받지_못해_같은_역질문을_다시_보내면_저장된_답을_그대로_준다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        given(systemDesignRequirementBedrockClient.answerRequirement(any()))
+                .willReturn(new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"),
+                        "하루에 새로 만들어지는 단축 URL은 10만 개 정도예요."));
+        MockHttpSession session = loginSession(member);
+        String firstResponse = mockMvc.perform(post(REQUIREMENT_QUESTIONS_URL, interviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUIREMENT_QUESTION_JSON)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // when & then
+        mockMvc.perform(post(REQUIREMENT_QUESTIONS_URL, interviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUIREMENT_QUESTION_JSON)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().json(firstResponse, JsonCompareMode.STRICT))
+                .andExpect(jsonPath("$.remaining_count").value(4));
+        assertAll(
+                () -> verify(systemDesignRequirementBedrockClient, times(1)).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
         );
     }
@@ -2569,10 +2609,13 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .build());
     }
 
+    // 내용을 순번마다 다르게 둔다. 요청 본문(REQUIREMENT_QUESTION_JSON)과 같은 내용이 직전에 저장돼 있으면 서버가 응답을 받지 못한 재시도로
+    // 보고 저장된 응답을 그대로 주므로, 새 역질문을 보내는 테스트가 그 경로를 타지 않게 한다.
     private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder) {
         requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
                 .systemDesignInterview(systemDesignInterview)
                 .questionOrder(questionOrder)
+                .content("역질문 " + questionOrder)
                 .build());
     }
 
