@@ -28,10 +28,10 @@ public class GoogleOAuthClient {
             @Value("${oauth.google.client-secret}") String clientSecret
     ) {
         this.restClient = builder
-                .messageConverters(converters -> {
-                    converters.removeIf(MappingJackson2HttpMessageConverter.class::isInstance);
-                    converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
-                })
+                .configureMessageConverters(converters -> converters
+                        // Boot 4는 빌더에 Jackson 3 변환기를 기본으로 넣는다. withJsonConverter로 JSON 변환기 자리를 Jackson 2로 바꿔야
+                        // 우리 DTO가 기대하는 매퍼 설정과 Jackson 2 어노테이션이 적용된다(ExternalClientJsonMappingTest).
+                        .withJsonConverter(new MappingJackson2HttpMessageConverter(objectMapper)))
                 .build();
         this.clientId = clientId;
         this.clientSecret = clientSecret;
