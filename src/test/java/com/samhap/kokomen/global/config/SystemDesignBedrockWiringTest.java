@@ -21,6 +21,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkClientConfiguration;
+import software.amazon.awssdk.core.client.config.SdkClientOption;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.SdkHttpConfigurationOption;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache.internal.ApacheHttpRequestConfig;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.retries.api.AcquireInitialTokenRequest;
 import software.amazon.awssdk.retries.api.AcquireInitialTokenResponse;
@@ -31,6 +37,7 @@ import software.amazon.awssdk.retries.api.TokenAcquisitionFailedException;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeServiceClientConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ServiceUnavailableException;
+import software.amazon.awssdk.utils.AttributeMap;
 
 /**
  * 시스템 설계 역질문 답(요청 스레드에서 부르는 동기 호출)과 답변 채점(비동기 워커에서 부르는 L2·L3)이 공용 빈(소켓 60초, apiCall 타임아웃
@@ -114,6 +121,27 @@ class SystemDesignBedrockWiringTest {
                             ServiceUnavailableException.builder().message("unavailable").build()).token()).isNotNull(),
                     () -> assertThatThrownBy(() -> refreshWith(strategy, new SocketTimeoutException("Read timed out")))
                             .isInstanceOf(TokenAcquisitionFailedException.class)
+            );
+        });
+    }
+
+    // 연결·소켓 타임아웃과 최대 연결 수는 빌드된 클라이언트의 공개 API로는 읽을 수 없어 SDK 내부 필드(클라이언트 설정의 HTTP 클라이언트,
+    // Apache 클라이언트의 요청 설정·옵션)로 본다. 역질문 답 전용 상수(소켓 20초, 연결 8개)를 잘못 넣으면 마지막 답변 평가가 20초에 끊긴다.
+    // SDK 내부 구조가 바뀌면 이 테스트가 먼저 깨진다.
+    @Test
+    void 채점_전용_런타임_클라이언트의_HTTP_클라이언트는_연결_3초_소켓_70초_최대_연결_100개다() {
+        contextRunner.run(context -> {
+            SdkClientConfiguration clientConfiguration = (SdkClientConfiguration) ReflectionTestUtils.getField(
+                    context.getBean("systemDesignAnswerBedrockRuntimeClient"), "clientConfiguration");
+            SdkHttpClient httpClient = clientConfiguration.option(SdkClientOption.SYNC_HTTP_CLIENT);
+            ApacheHttpRequestConfig requestConfig = (ApacheHttpRequestConfig) ReflectionTestUtils.getField(httpClient,
+                    "requestConfig");
+            AttributeMap resolvedOptions = (AttributeMap) ReflectionTestUtils.getField(httpClient, "resolvedOptions");
+            assertAll(
+                    () -> assertThat(httpClient).isInstanceOf(ApacheHttpClient.class),
+                    () -> assertThat(requestConfig.connectionTimeout()).isEqualTo(Duration.ofSeconds(3)),
+                    () -> assertThat(requestConfig.socketTimeout()).isEqualTo(Duration.ofSeconds(70)),
+                    () -> assertThat(resolvedOptions.get(SdkHttpConfigurationOption.MAX_CONNECTIONS)).isEqualTo(100)
             );
         });
     }

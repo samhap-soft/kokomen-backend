@@ -27,8 +27,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ThrottlingException;
  * <p>재시도는 빈 전략에서 시작해 네 예외만 허용한다. 스로틀링(429)·서버 내부 오류(500)·서비스 불가(503)는 대개 생성 전에 바로 온다. 모델
  * 타임아웃(408)은 처리한 뒤에 올 수 있지만 재시도까지 포함한 한 호출을 apiCall 타임아웃이 묶는다. 소켓 타임아웃과 이를 감싼
  * SdkClientException(apiCall 타임아웃 초과 포함)은 허용 목록에 없어 재시도하지 않는다. 이미 70초를 쓴 생성을 다시 하면 과금과 지연만 는다.
- * 연결·소켓 타임아웃과 최대 연결 수는 빌드된 BedrockRuntimeClient에서 읽을 수 없어 상수로 고정한다. 리전·apiCall 타임아웃·재시도 전략은
- * 빌드된 클라이언트에서 읽히므로 배선 테스트가 실제 빈에서 확인한다.
+ * 연결·소켓 타임아웃과 최대 연결 수는 빌드된 BedrockRuntimeClient의 공개 API로 읽을 수 없어 상수로 둔다(배선 테스트는 SDK 내부 필드로
+ * 실제 빈의 값을 본다). 리전·apiCall 타임아웃·재시도 전략은 공개 API로 읽히므로 배선 테스트가 실제 빈에서 확인한다.
  */
 public final class SystemDesignAnswerBedrockTimeouts {
 

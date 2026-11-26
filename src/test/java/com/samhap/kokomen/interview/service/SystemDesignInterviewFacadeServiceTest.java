@@ -76,7 +76,6 @@ import com.samhap.kokomen.token.repository.TokenRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1244,10 +1243,12 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         return requirementQuestionRepository.findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
     }
 
-    // 저장 시각(created_at)을 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다.
+    // 저장 시각(created_at)을 DB 안에서 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다. 자바의 LocalDateTime을 바로 넣으면
+    // JPA와 시간대 변환이 달라(JVM이 UTC이고 연결은 Asia/Seoul) 9시간이 더 지난 값으로 읽힌다.
     private void moveSavedAtBack(SystemDesignRequirementQuestion requirementQuestion, long seconds) {
-        jdbcTemplate.update("UPDATE system_design_requirement_question SET created_at = ? WHERE id = ?",
-                LocalDateTime.now().minusSeconds(seconds), requirementQuestion.getId());
+        jdbcTemplate.update("UPDATE system_design_requirement_question "
+                        + "SET created_at = DATE_SUB(created_at, INTERVAL ? SECOND) WHERE id = ?",
+                seconds, requirementQuestion.getId());
     }
 
     private static Object awaitQuietly(CountDownLatch latch) {

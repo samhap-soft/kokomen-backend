@@ -3,7 +3,7 @@ services:
     image: samhap/kokomen-interview-api:dev
     container_name: kokomen-interview-api-dev
     restart: on-failure:3
-    # SIGTERM 뒤 SIGKILL까지의 유예(prod와 같다: 웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유).
+    # SIGTERM 뒤 SIGKILL까지의 유예(prod와 같다: 웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유, 이유는 prod deploy.sh).
     # dev 배포 워크플로는 docker rm -f로 바로 멈춰 이 값이 적용되지 않는다. docker compose stop·restart, docker stop(-t 없이),
     # 설정이 바뀐 컨테이너를 compose가 다시 만들 때 적용된다.
     stop_grace_period: 180s

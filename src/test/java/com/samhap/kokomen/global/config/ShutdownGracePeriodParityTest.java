@@ -19,9 +19,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * 배포가 컨테이너를 멈출 때 주는 유예(SIGTERM 뒤 SIGKILL까지)가 앱의 종료 시간보다 짧으면, 채점 실행기가 진행 중인 채점을 기다리는 도중에
- * 컨테이너가 죽어 기다림이 소용없다. 앱은 웹 서버의 우아한 종료 단계(spring.lifecycle.timeout-per-shutdown-phase까지)를 마친 뒤 빈을
- * 파괴하면서 채점 실행기의 종료 대기만큼 더 기다린다. 유예를 정하는 배포 파일이 이 둘을 더한 값보다 길게 함께 움직이도록 고정한다.
+ * 배포가 컨테이너를 멈출 때 주는 유예(SIGTERM 뒤 SIGKILL까지)가 짧으면, 채점 실행기가 진행 중인 채점을 기다리는 도중에 컨테이너가 죽어
+ * 기다림이 소용없다. 채점은 늦어도 웹 서버의 우아한 종료 단계(spring.lifecycle.timeout-per-shutdown-phase까지) 안에 맡겨지고, 맡긴 때부터
+ * 전체 호출 상한 + 저장 안에 끝난다. 실행기의 종료 대기는 그보다 길다. 그래서 유예를 종료 단계 상한과 실행기 대기를 더한 값보다 길게 두면
+ * 진행 중인 채점이 끝난다(앱 전체 종료는 이력서 분석이 돌고 있으면 더 걸릴 수 있다). 유예를 정하는 배포 파일이 이 값과 함께 움직이도록
+ * 고정한다.
  * dev는 배포 워크플로가 docker rm -f(SIGKILL)로 멈춰 compose의 유예가 적용되지 않지만, 수동 재시작·compose 재생성에는 적용된다.
  */
 class ShutdownGracePeriodParityTest {

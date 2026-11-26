@@ -59,13 +59,16 @@ class SystemDesignProceedFailureCounterTest extends BaseTest {
         );
     }
 
+    // 첫 실패 뒤 TTL을 일부러 1분으로 줄여 둔다. 실패할 때마다 TTL을 다시 거는지(마지막 실패 기준) 처음 한 번만 거는지(첫 실패
+    // 기준)가 이 값으로 갈린다.
     @Test
     void 실패를_기록할_때마다_횟수가_오르고_마지막_실패부터_1시간_뒤_만료된다() {
         // given
         String key = SystemDesignProceedFailureCounter.createKey(INTERVIEW_ID, QUESTION_ORDER);
+        failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
+        redissonClient.getBucket(key, StringCodec.INSTANCE).expire(Duration.ofMinutes(1));
 
         // when
-        failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
         failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
 
         // then
@@ -74,6 +77,27 @@ class SystemDesignProceedFailureCounterTest extends BaseTest {
                 () -> assertThat(readCount(key)).isEqualTo("2"),
                 () -> assertThat(remainTimeToLive(key)).isGreaterThan(Duration.ofMinutes(59).toMillis())
                         .isLessThanOrEqualTo(Duration.ofHours(1).toMillis())
+        );
+    }
+
+    // 횟수는 올렸는데 TTL을 걸다 Redis가 실패한 경우다. 이미 아는 횟수로 반복 실패 알림은 그대로 남긴다.
+    @Test
+    void TTL을_걸다_Redis가_실패해도_세_번째_실패의_반복_실패_ERROR는_남긴다() {
+        // given
+        String key = SystemDesignProceedFailureCounter.createKey(INTERVIEW_ID, QUESTION_ORDER);
+        failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
+        failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
+        willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient).getBucket(key);
+
+        // when
+        failureCounter.recordFailure(INTERVIEW_ID, QUESTION_ORDER, MEMBER_ID);
+
+        // then
+        assertAll(
+                () -> assertThat(readCount(key)).isEqualTo("3"),
+                () -> assertThat(errorMessages()).singleElement().satisfies(message -> assertThat(message)
+                        .contains(REPEATED_FAILURE, "failCount: 3")),
+                () -> assertThat(counterLogs.list).filteredOn(event -> event.getLevel() == Level.WARN).hasSize(1)
         );
     }
 

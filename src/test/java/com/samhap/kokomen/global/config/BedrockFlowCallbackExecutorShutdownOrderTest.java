@@ -19,8 +19,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 /**
  * 컨텍스트를 닫을 때(배포의 SIGTERM) 채점 실행기가 진행 중인 채점을 기다리는 동안, 채점 워커가 쓰는 자원(채점·공용 Bedrock 클라이언트,
  * Redis, JPA, DB 커넥션 풀)이 먼저 닫히지 않는지 본다. 빈 파괴 순서는 등록 순서의 역순이라 실행기보다 늦게 등록된 자원은 실행기가
- * 기다리기 전에 닫힌다. 실제 앱에서도 채점 전용 Bedrock 클라이언트가 실행기보다 먼저 닫혔다. 여기서는 자원을 일부러 실행기보다 늦게
- * 등록해 순서가 등록 순서에 기대지 않는지 확인한다. 이름은 실제 앱의 빈 이름과 같아야 실행기의 의존 선언이 이 대역을 가리킨다.
+ * 기다리기 전에 닫힌다. 실제 앱에서도 채점 전용 Bedrock 클라이언트가 실행기보다 먼저 닫혔다. 여기서는 자원의 정의를 일부러 실행기보다
+ * 늦게 등록해 순서가 등록 순서에 기대지 않는지 확인한다. 이름은 실제 앱의 빈 이름과 같아야 실행기의 의존 선언이 이 대역을 가리킨다.
  */
 class BedrockFlowCallbackExecutorShutdownOrderTest {
 
@@ -68,7 +68,8 @@ class BedrockFlowCallbackExecutorShutdownOrderTest {
     }
 
     /**
-     * 채점 워커가 쓰는 자원의 대역. 닫힐 때 이름을 남긴다. AsyncConfig 뒤에 등록되어 실행기보다 늦게 만들어진다.
+     * 채점 워커가 쓰는 자원의 대역. 닫힐 때 이름을 남긴다. AsyncConfig 뒤에 등록된다. 실행기의 의존 선언이 없으면 실행기보다 늦게
+     * 만들어져 먼저 닫히고, 의존 선언이 있으면 실행기보다 먼저 만들어져 실행기 뒤에 닫힌다.
      */
     @Configuration
     static class GradingResources {

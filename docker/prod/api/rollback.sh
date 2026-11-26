@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-prod.yml"
 HEALTH_TIMEOUT=120
 HEALTH_INTERVAL=5
-# SIGTERM 뒤 SIGKILL까지의 유예(초). deploy.sh와 같은 값이다(웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유).
+# SIGTERM 뒤 SIGKILL까지의 유예(초). deploy.sh와 같은 값이고 이유도 그쪽에 적었다(웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유).
 GRACEFUL_SHUTDOWN_WAIT=180
 
 log_info() { echo "[INFO] $1"; }

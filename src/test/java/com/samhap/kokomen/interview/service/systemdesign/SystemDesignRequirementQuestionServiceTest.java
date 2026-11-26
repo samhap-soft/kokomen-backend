@@ -41,7 +41,6 @@ import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
 import com.samhap.kokomen.token.domain.TokenType;
 import com.samhap.kokomen.token.repository.TokenRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -403,6 +402,25 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         );
     }
 
+    // 저장 시각을 DB에서 옮겨 시간이 지난 것처럼 만든다. 60초 안쪽이면 재시도, 바깥이면 새 역질문이어야 경계를 실제 왕복(JPA로 읽은
+    // 저장 시각과 서비스의 현재 시각 비교)으로 확인한 것이다.
+    @Test
+    void 저장한_지_55초인_직전_역질문과_같은_질문은_아직_재시도다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        moveSavedAtBack(systemDesignInterview, 1, 55);
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertThat(draft.isRetry()).isTrue();
+    }
+
     // 직전 역질문만 본다. 더 앞의 역질문과 같은 질문은 다시 물은 것으로 보고 새로 답한다.
     @Test
     void 직전보다_앞의_역질문과_같은_질문은_새_역질문으로_준비한다() {
@@ -571,14 +589,16 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 .build());
     }
 
-    // 저장 시각(created_at)을 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다.
+    // 저장 시각(created_at)을 DB 안에서 seconds초 앞으로 옮겨 그만큼 시간이 지난 것처럼 만든다. 자바의 LocalDateTime을 바로 넣으면
+    // JPA와 시간대 변환이 달라(JVM이 UTC이고 연결은 Asia/Seoul) 9시간이 더 지난 값으로 읽힌다.
     private void moveSavedAtBack(SystemDesignInterview systemDesignInterview, int questionOrder, long seconds) {
         SystemDesignRequirementQuestion question = readRequirementQuestions(systemDesignInterview).stream()
                 .filter(requirementQuestion -> requirementQuestion.getQuestionOrder() == questionOrder)
                 .findFirst()
                 .orElseThrow();
-        jdbcTemplate.update("UPDATE system_design_requirement_question SET created_at = ? WHERE id = ?",
-                LocalDateTime.now().minusSeconds(seconds), question.getId());
+        jdbcTemplate.update("UPDATE system_design_requirement_question "
+                        + "SET created_at = DATE_SUB(created_at, INTERVAL ? SECOND) WHERE id = ?",
+                seconds, question.getId());
     }
 
     private int readTokenCount(Member member, TokenType type) {

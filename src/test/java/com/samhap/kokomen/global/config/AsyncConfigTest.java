@@ -38,23 +38,36 @@ class AsyncConfigTest {
         }
     }
 
+    // 끝까지 기다렸는지와 함께, 인터럽트로 작업을 끊지 않았는지(진행 중인 채점을 버리지 않는지) 본다.
     @Test
-    void 채점_실행기는_종료할_때_실행_중인_작업이_끝나기를_기다린다() throws Exception {
+    void 채점_실행기는_종료할_때_실행_중인_작업을_끊지_않고_끝나기를_기다린다() throws Exception {
         ThreadPoolTaskExecutor executor = new AsyncConfig().bedrockFlowCallbackExecutor();
         CountDownLatch started = new CountDownLatch(1);
         AtomicBoolean finished = new AtomicBoolean();
-        executor.execute(() -> {
-            started.countDown();
-            sleepQuietly(Duration.ofMillis(500));
-            finished.set(true);
-        });
-        assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+        AtomicBoolean interrupted = new AtomicBoolean();
 
-        // when
-        executor.shutdown();
+        try {
+            executor.execute(() -> {
+                started.countDown();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    interrupted.set(true);
+                    Thread.currentThread().interrupt();
+                }
+                finished.set(true);
+            });
+            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            // when
+            executor.shutdown();
+        }
 
         // then
-        assertThat(finished).isTrue();
+        assertAll(
+                () -> assertThat(finished).isTrue(),
+                () -> assertThat(interrupted).isFalse()
+        );
     }
 
     // 채점 전용 Bedrock 클라이언트의 최대 연결 수와 같아, 모든 채점 워커가 연결을 기다리지 않고 호출한다.
@@ -135,13 +148,5 @@ class AsyncConfigTest {
         }
 
         assertThat(workerRequestId.get()).isEqualTo("req-1");
-    }
-
-    private static void sleepQuietly(Duration duration) {
-        try {
-            Thread.sleep(duration.toMillis());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 }

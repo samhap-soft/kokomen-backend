@@ -34,11 +34,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 용량 포화(503)는 즉시 알람 대상이라 handleKokomenException의 log.warn에 묻히지 않게 전용 핸들러로 분리한다.
+     * 503은 즉시 알람 대상이라 handleKokomenException의 log.warn에 묻히지 않게 전용 핸들러로 분리한다. 용량 포화(시스템 설계
+     * 역질문 동시 실행 상한, 이력서 분석 수용량)와 시스템 설계 API의 짧은 의존 장애(Redis를 읽거나 쓰지 못함)가 503이다.
      * ServiceUnavailableException은 KokomenException의 하위 타입이므로 Spring이 더 구체적인 이 핸들러를 선택하고,
      * 기존 예외들의 처리 경로는 그대로 유지된다.
      * 카운터는 actuator가 이미 내보내는 http_server_requests_seconds_count{status="503"}로 관측한다
-     * (MeterRegistry를 주입해 이 클래스에 의존성을 추가하지 않는다).
+     * (MeterRegistry를 주입해 이 클래스에 의존성을 추가하지 않는다). 상태 코드만으로는 원인을 가릴 수 없으니 로그의 문구와 던진 곳으로 가린다.
      */
     @ExceptionHandler(ServiceUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleServiceUnavailableException(ServiceUnavailableException e) {

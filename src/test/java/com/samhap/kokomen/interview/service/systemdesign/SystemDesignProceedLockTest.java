@@ -9,7 +9,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -21,9 +23,12 @@ import com.samhap.kokomen.global.exception.RedisException;
 import com.samhap.kokomen.global.exception.ServiceUnavailableException;
 import com.samhap.kokomen.global.service.RedisService;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RBucket;
-import org.redisson.client.RedisTimeoutException;
+import org.redisson.api.options.OptionalOptions;
+import org.redisson.client.RedisConnectionException;
+import org.redisson.client.RedisResponseTimeoutException;
 import org.redisson.client.codec.StringCodec;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -155,15 +160,42 @@ class SystemDesignProceedLockTest extends BaseTest {
     }
 
     // 명령은 Redis에 닿아 키가 생겼는데 응답만 잃은 경우(응답 시간 초과)다. 그대로 두면 이 회원의 다음 요청이 5분 동안 409를 받는다.
+    @SuppressWarnings("unchecked")
     @Test
-    void 잡기가_Redis_오류로_끝나도_실제로_잡힌_락은_풀어_둔다() {
+    void 잡기의_응답을_잃으면_실제로_잡힌_락은_풀어_둔다() {
         // given
+        AtomicBoolean setApplied = new AtomicBoolean();
         willAnswer(invocation -> {
             RBucket<Object> bucket = spy((RBucket<Object>) invocation.callRealMethod());
             willAnswer(setIfAbsent -> {
-                setIfAbsent.callRealMethod();
-                throw new RedisTimeoutException("응답 시간 초과");
+                setApplied.set((Boolean) setIfAbsent.callRealMethod());
+                throw new RedisResponseTimeoutException("응답 시간 초과");
             }).given(bucket).setIfAbsent(anyString(), any(Duration.class));
+            return bucket;
+        }).given(redissonClient).getBucket(LOCK_KEY, StringCodec.INSTANCE);
+
+        // when
+        Throwable thrown = catchThrowable(() -> systemDesignProceedLock.acquire(MEMBER_ID));
+
+        // then
+        assertAll(
+                () -> assertThat(setApplied).isTrue(),
+                () -> assertThat(thrown).isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE),
+                () -> assertThat(redisTemplate.hasKey(LOCK_KEY)).isFalse()
+        );
+    }
+
+    // 응답을 잃은 SET이 아무것도 하지 않은 경우(다른 요청이 이미 락을 쥠)다. 정리는 이 요청의 값일 때만 지우므로 다른 요청의 락은 남는다.
+    @SuppressWarnings("unchecked")
+    @Test
+    void 응답을_잃은_잡기를_정리해도_다른_요청의_락은_지우지_않는다() {
+        // given
+        redisService.acquireLockWithValue(LOCK_KEY, "other-request", Duration.ofMinutes(5));
+        willAnswer(invocation -> {
+            RBucket<Object> bucket = spy((RBucket<Object>) invocation.callRealMethod());
+            willThrow(new RedisResponseTimeoutException("응답 시간 초과")).given(bucket)
+                    .setIfAbsent(anyString(), any(Duration.class));
             return bucket;
         }).given(redissonClient).getBucket(LOCK_KEY, StringCodec.INSTANCE);
 
@@ -174,7 +206,26 @@ class SystemDesignProceedLockTest extends BaseTest {
         assertAll(
                 () -> assertThat(thrown).isInstanceOf(ServiceUnavailableException.class)
                         .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE),
-                () -> assertThat(redisTemplate.hasKey(LOCK_KEY)).isFalse()
+                () -> assertThat(redisService.get(LOCK_KEY, String.class)).contains("other-request")
+        );
+    }
+
+    // 연결을 얻지 못했거나 명령을 보내지 못한 실패는 키가 생겼을 수 없다. 정리 명령으로 503을 더 늦추지 않는다.
+    @Test
+    void 잡기가_연결_오류로_끝나면_락을_정리하지_않고_바로_503이다() {
+        // given
+        willThrow(new RedisConnectionException("연결할 수 없어요.")).given(redissonClient)
+                .getBucket(LOCK_KEY, StringCodec.INSTANCE);
+
+        // when
+        Throwable thrown = catchThrowable(() -> systemDesignProceedLock.acquire(MEMBER_ID));
+
+        // then
+        assertAll(
+                () -> assertThat(thrown).isInstanceOf(ServiceUnavailableException.class)
+                        .hasMessage(TEMPORARILY_UNAVAILABLE_MESSAGE),
+                () -> verify(redissonClient, never()).getScript(any(OptionalOptions.class)),
+                () -> verify(redissonClient, never()).getScript(StringCodec.INSTANCE)
         );
     }
 

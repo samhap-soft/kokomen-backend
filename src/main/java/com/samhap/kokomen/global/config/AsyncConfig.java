@@ -39,8 +39,10 @@ public class AsyncConfig implements AsyncConfigurer {
     /**
      * 기존 면접(V2) 답변 처리와 시스템 설계 답변 채점(L2·L3)의 워커. 배포(SIGTERM) 때 진행 중이거나 큐에 있는 작업을 끝까지 기다린다.
      * 기다림은 웹 서버의 우아한 종료 단계(spring.lifecycle.timeout-per-shutdown-phase)가 끝난 뒤 이 빈을 파괴할 때 일어나고 최대
-     * {@link #BEDROCK_FLOW_CALLBACK_AWAIT_TERMINATION}이다. 그래서 컨테이너 종료 유예(docker stop -t, stop_grace_period)는 종료 단계 상한과
-     * 이 대기를 더한 것보다 길어야 한다(ShutdownGracePeriodParityTest가 고정한다).
+     * {@link #BEDROCK_FLOW_CALLBACK_AWAIT_TERMINATION}이다. 채점은 늦어도 그 종료 단계 안에 맡겨지고 맡긴 때부터 전체 호출 상한(85초) +
+     * 저장 안에 끝나므로, 컨테이너 종료 유예(docker stop -t, stop_grace_period)를 종료 단계 상한과 이 대기를 더한 것보다 길게 두면 진행 중인
+     * 채점이 끝난다(ShutdownGracePeriodParityTest가 고정한다). 이력서 분석이 돌고 있으면 실행기 생명주기 단계와 이력서 실행기 종료가 이
+     * 실행기보다 먼저 더 기다려 앱 전체 종료가 유예를 넘길 수 있지만, 그때도 채점은 끝나 있다.
      *
      * <p>빈은 등록의 역순으로 파괴되므로, 의존을 선언하지 않으면 워커가 쓰는 자원이 이 실행기가 기다리기 전에 닫힐 수 있다. 실제로 채점 전용
      * Bedrock 클라이언트가 실행기보다 먼저 닫혔다. 워커가 쓰는 Bedrock 클라이언트·Redis·JPA·DB 커넥션 풀에 의존을 선언해, 이 실행기를 먼저

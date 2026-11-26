@@ -10,7 +10,7 @@ services:
     image: samhap/kokomen-interview-api:prod
     container_name: kokomen-api-blue
     restart: on-failure:3
-    # SIGTERM 뒤 SIGKILL까지의 유예. deploy.sh·rollback.sh의 GRACEFUL_SHUTDOWN_WAIT와 같다
+    # SIGTERM 뒤 SIGKILL까지의 유예. deploy.sh·rollback.sh의 GRACEFUL_SHUTDOWN_WAIT와 같고 이유는 deploy.sh에 적었다
     # (웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유). docker stop을 -t 없이 부를 때도 이 값을 쓴다.
     stop_grace_period: 180s
     expose:
@@ -67,7 +67,7 @@ services:
     image: samhap/kokomen-interview-api:prod
     container_name: kokomen-api-green
     restart: on-failure:3
-    # SIGTERM 뒤 SIGKILL까지의 유예. deploy.sh·rollback.sh의 GRACEFUL_SHUTDOWN_WAIT와 같다
+    # SIGTERM 뒤 SIGKILL까지의 유예. deploy.sh·rollback.sh의 GRACEFUL_SHUTDOWN_WAIT와 같고 이유는 deploy.sh에 적었다
     # (웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유). docker stop을 -t 없이 부를 때도 이 값을 쓴다.
     stop_grace_period: 180s
     expose:

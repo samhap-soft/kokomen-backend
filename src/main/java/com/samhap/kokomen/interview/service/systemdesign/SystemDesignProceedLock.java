@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.client.RedisResponseTimeoutException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Component;
 public class SystemDesignProceedLock {
 
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
+    private static final Duration UNCONFIRMED_RELEASE_TIMEOUT = Duration.ofSeconds(1);
 
     private final RedisService redisService;
 
@@ -41,14 +43,35 @@ public class SystemDesignProceedLock {
         return lockValue;
     }
 
-    // 명령이 Redis에 닿아 키가 생긴 뒤 응답만 잃었을 수 있다(응답 시간 초과). 그대로 두면 이 회원의 요청이 TTL(5분) 동안 409를 받으므로
-    // 이 값으로 잡힌 락을 풀어 둔다. 해제도 실패하면 WARN만 남고 키는 TTL이 지나 사라진다.
     private boolean tryAcquire(Long memberId, String lockValue) {
         try {
             return redisService.acquireLockWithValue(createLockKey(memberId), lockValue, LOCK_TTL);
         } catch (RedisException e) {
-            release(memberId, lockValue);
+            if (isResponseLost(e)) {
+                releaseUnconfirmed(memberId, lockValue);
+            }
             throw new ServiceUnavailableException(TEMPORARILY_UNAVAILABLE.getMessage(), e);
+        }
+    }
+
+    // SET을 보낸 뒤 응답만 잃은 경우(응답 시간 초과)에만 키가 생겼을 수 있다. Redisson은 SET을 다시 보내지 않는다. 연결을 얻지 못했거나
+    // 명령을 보내지 못한 실패는 키가 없으니 정리하지 않는다.
+    private static boolean isResponseLost(RedisException e) {
+        for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof RedisResponseTimeoutException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 응답을 잃은 SET이 남긴 키를 그대로 두면 이 회원의 요청이 TTL(5분) 동안 409를 받는다. 이 값일 때만 지우므로 다른 요청의 락은 남는다.
+    // 503을 늦추지 않게 다시 보내지 않고 짧게 한 번만 보낸다(최선 노력). 실패하면 WARN만 남고 키는 TTL이 지나 사라진다.
+    private void releaseUnconfirmed(Long memberId, String lockValue) {
+        try {
+            redisService.releaseLockSafelyWithin(createLockKey(memberId), lockValue, UNCONFIRMED_RELEASE_TIMEOUT);
+        } catch (RuntimeException e) {
+            log.warn("시스템 설계 진행 락 정리 실패 - memberId: {}", memberId, e);
         }
     }
 
