@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-prod.yml"
 HEALTH_TIMEOUT=120
 HEALTH_INTERVAL=5
+# SIGTERM 뒤 SIGKILL까지의 유예(초). deploy.sh와 같은 값이다(웹 서버 종료 단계 60초 + 채점 실행기 대기 100초 + 여유).
+GRACEFUL_SHUTDOWN_WAIT=180
 
 log_info() { echo "[INFO] $1"; }
 log_warn() { echo "[WARN] $1"; }
@@ -91,7 +93,7 @@ main() {
 
     # 현재 활성 컨테이너 종료
     log_info "현재 컨테이너 종료: kokomen-api-$CURRENT"
-    docker stop -t 65 "kokomen-api-$CURRENT" || true
+    docker stop -t $GRACEFUL_SHUTDOWN_WAIT "kokomen-api-$CURRENT" || true
     docker rm -f "kokomen-api-$CURRENT" 2>/dev/null || true
 
     log_info "========== 롤백 완료 =========="

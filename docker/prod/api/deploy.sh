@@ -5,7 +5,10 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-prod.yml"
 HEALTH_TIMEOUT=120
 HEALTH_INTERVAL=5
-GRACEFUL_SHUTDOWN_WAIT=65
+# SIGTERM 뒤 SIGKILL까지의 유예(초). 앱은 웹 서버 우아한 종료 단계(spring.lifecycle.timeout-per-shutdown-phase, 60초)를 마친 뒤
+# 채점 실행기(bedrockFlowCallbackExecutor)가 진행 중인 채점을 최대 100초 기다린다. 둘을 더한 160초에 나머지 빈 종료 여유를 더했다.
+# 이보다 짧으면 기다리던 채점이 SIGKILL로 사라진다. rollback.sh와 compose의 stop_grace_period도 같은 값이다.
+GRACEFUL_SHUTDOWN_WAIT=180
 
 log_info() { echo "[INFO] $1"; }
 log_warn() { echo "[WARN] $1"; }
