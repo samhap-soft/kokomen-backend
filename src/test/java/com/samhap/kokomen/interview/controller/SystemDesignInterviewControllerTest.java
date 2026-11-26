@@ -1248,7 +1248,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andDo(document("system-design-interview-submit-answer-not-current-question",
                         responseFields(
                                 fieldWithPath("message")
-                                        .description("지금 질문이 아닌 순번(지난 질문, 숫자가 아닌 값 포함)에 답했을 때의 오류 문구")
+                                        .description("설계 단계에서 지금 질문이 아닌 순번(지난 질문, 아직 없는 질문, 숫자가 아닌 값 포함)에 "
+                                                + "답했을 때의 오류 문구. 끝난 면접이면 순번과 상관없이 ``이미 끝난 면접이에요.``, "
+                                                + "요구사항 단계면 ``요구사항 정리를 먼저 끝내 주세요.``다")
                         )
                 ));
         for (String questionId : List.of("not-a-number", "99999999999", "-1", "3", String.valueOf(currentQuestionPk))) {
@@ -2367,7 +2369,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         List<FieldDescriptor> fields = reportContentFields();
         fields.add(fieldWithPath("user_cur_score").description("면접자의 지금 회원 점수(랭킹 점수). 다른 면접을 마치면 바뀐다"));
         fields.add(fieldWithPath("user_prev_score")
-                .description("user_cur_score에서 이번 면접의 등급 점수 합(A 20, B 10, C 0, D -10, F -20)을 뺀 값"));
+                .description("user_cur_score에서 이번 면접의 등급 점수 합(A 20, B 10, C 0, D -10, F -20)을 뺀 값. "
+                        + "실제 이전 점수와 다를 수 있고 음수일 수도 있다"));
         return responseFields(fields);
     }
 
@@ -2375,10 +2378,12 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     // 조회수·좋아요 필드는 없다.
     private static ResponseFieldsSnippet publicReportResponseFields() {
         List<FieldDescriptor> fields = reportContentFields();
-        fields.add(fieldWithPath("interviewee_nickname").description("면접자 닉네임"));
+        fields.add(fieldWithPath("interviewee_nickname").type(JsonFieldType.STRING).optional()
+                .description("면접자 닉네임. 탈퇴한 회원이면 없음"));
         fields.add(fieldWithPath("total_member_count").description("전체 회원 수"));
         fields.add(fieldWithPath("interviewee_rank")
-                .description("면접자의 지금 회원 점수(랭킹 점수) 순위. 점수가 같으면 같은 순위이고, 면접자가 다른 면접을 마치면 바뀐다"));
+                .description("면접자의 지금 회원 점수(랭킹 점수) 순위. 점수가 같으면 같은 순위이고, 조회할 때 계산하므로 "
+                        + "면접자나 다른 회원의 점수가 바뀌면 달라질 수 있다"));
         return responseFields(fields);
     }
 
