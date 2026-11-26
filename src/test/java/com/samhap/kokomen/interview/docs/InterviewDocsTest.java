@@ -4,7 +4,6 @@ import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.docu
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.repository.AnswerRepository;
 import com.samhap.kokomen.category.domain.Category;
 import com.samhap.kokomen.global.DocsTest;
@@ -30,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import tools.jackson.databind.ObjectMapper;
 
 class InterviewDocsTest extends DocsTest {
 

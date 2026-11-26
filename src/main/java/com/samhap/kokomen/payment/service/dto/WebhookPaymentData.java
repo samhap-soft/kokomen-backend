@@ -1,11 +1,11 @@
 package com.samhap.kokomen.payment.service.dto;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import com.samhap.kokomen.payment.external.dto.TossDateTimeDeserializer;
 import java.time.LocalDateTime;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonNaming;
 
 @JsonNaming(PropertyNamingStrategies.LowerCamelCaseStrategy.class)
 public record WebhookPaymentData(

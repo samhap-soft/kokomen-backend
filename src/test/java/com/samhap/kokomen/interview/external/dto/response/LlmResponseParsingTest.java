@@ -3,12 +3,13 @@ package com.samhap.kokomen.interview.external.dto.response;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.fixture.interview.BedrockResponseFixtureBuilder;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
 
 /**
  * Stage 0 특성화 테스트: 리팩토링 전 provider별 응답 파싱 동작을 고정한다.
@@ -17,9 +18,10 @@ import org.junit.jupiter.api.Test;
  */
 class LlmResponseParsingTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper objectMapper = Jackson2CompatibleJsonMapper.builder()
+            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     @Test
     void Bedrock_진행_응답에서_랭크만_추출한다() {

@@ -1,7 +1,7 @@
 package com.samhap.kokomen.payment.external.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDateTime;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 public record TosspaymentsCancel(
         String transactionKey,

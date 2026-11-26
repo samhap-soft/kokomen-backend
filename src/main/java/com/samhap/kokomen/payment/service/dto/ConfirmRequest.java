@@ -1,12 +1,12 @@
 package com.samhap.kokomen.payment.service.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.samhap.kokomen.global.infrastructure.ObjectToStringDeserializer;
 import com.samhap.kokomen.payment.domain.ServiceType;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsConfirmRequest;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 public record ConfirmRequest(
         @NotBlank(message = "payment_key는 비어있거나 공백일 수 없습니다.")

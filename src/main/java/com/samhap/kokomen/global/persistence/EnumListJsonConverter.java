@@ -1,17 +1,18 @@
 package com.samhap.kokomen.global.persistence;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.CollectionType;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import jakarta.persistence.AttributeConverter;
 import java.util.List;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.type.CollectionType;
 
 /**
  * enum 목록을 JSON 배열 컬럼에 저장하기 위한 공통 컨버터다. JPA가 구체 타입을 요구하므로 enum마다 이 클래스를 상속한 {@code @Converter} 클래스를 하나씩 둔다.
  */
 public abstract class EnumListJsonConverter<E extends Enum<E>> implements AttributeConverter<List<E>, String> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = Jackson2CompatibleJsonMapper.builder().build();
 
     private final CollectionType collectionType;
 
@@ -26,7 +27,7 @@ public abstract class EnumListJsonConverter<E extends Enum<E>> implements Attrib
         }
         try {
             return MAPPER.writeValueAsString(attribute);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("List<%s> 직렬화 실패".formatted(collectionType.getContentType()), e);
         }
     }
@@ -38,7 +39,7 @@ public abstract class EnumListJsonConverter<E extends Enum<E>> implements Attrib
         }
         try {
             return MAPPER.readValue(dbData, collectionType);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("List<%s> 역직렬화 실패".formatted(collectionType.getContentType()), e);
         }
     }

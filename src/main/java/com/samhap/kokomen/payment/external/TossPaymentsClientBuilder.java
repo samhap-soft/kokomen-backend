@@ -1,18 +1,18 @@
 package com.samhap.kokomen.payment.external;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 @Getter
 @Component
@@ -37,17 +37,17 @@ public class TossPaymentsClientBuilder {
                 .defaultHeader("Authorization", "Basic " + encodedSecretKey)
                 .defaultHeader("Content-Type", "application/json")
                 .configureMessageConverters(converters -> converters
-                        // Boot 4는 빌더에 Jackson 3 변환기를 기본으로 넣는다. withJsonConverter로 JSON 변환기 자리를 Jackson 2로 바꿔야
-                        // 우리 DTO가 기대하는 매퍼 설정과 Jackson 2 어노테이션이 적용된다(ExternalClientJsonMappingTest).
-                        .withJsonConverter(new MappingJackson2HttpMessageConverter(createObjectMapper())));
+                        // 토스 API는 camelCase라 앱 매퍼(SNAKE_CASE)가 아닌 전용 매퍼로 JSON 변환기 자리를 바꾼다
+                        // (ExternalClientJsonMappingTest).
+                        .withJsonConverter(new JacksonJsonHttpMessageConverter(createJsonMapper())));
     }
 
-    private ObjectMapper createObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE);
-        return objectMapper;
+    // Jackson 2 때 new ObjectMapper()에 JavaTimeModule을 등록하고 아래 셋을 바꾸던 매퍼와 같다. Jackson 3은 java.time을 기본으로 다룬다.
+    private JsonMapper createJsonMapper() {
+        return Jackson2CompatibleJsonMapper.builder()
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
+                .build();
     }
 }

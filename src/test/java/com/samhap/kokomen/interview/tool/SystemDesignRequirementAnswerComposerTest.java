@@ -8,15 +8,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.IntNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.List;
 import java.util.stream.Stream;
@@ -24,6 +18,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.BooleanNode;
+import tools.jackson.databind.node.IntNode;
+import tools.jackson.databind.node.NullNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
 
 class SystemDesignRequirementAnswerComposerTest {
 
@@ -33,7 +34,7 @@ class SystemDesignRequirementAnswerComposerTest {
     private static final String READ_WRITE_RATIO_ANSWER = "단축 URL로 접속하는 조회 요청은 생성 요청의 100배쯤 된다고 보면 돼요.";
     private static final String RETENTION_PERIOD_ANSWER = "단축 URL은 만든 날부터 5년 동안 열려야 하고, 그 뒤에는 지워도 돼요.";
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = Jackson2CompatibleJsonMapper.builder().build();
 
     @Test
     void YES인_요구사항의_code를_문제_순서로_돌려준다() {
@@ -86,8 +87,8 @@ class SystemDesignRequirementAnswerComposerTest {
     }
 
     static Stream<JsonNode> invalidVerdicts() {
-        return Stream.of(TextNode.valueOf("yes"), TextNode.valueOf("MAYBE"), TextNode.valueOf(""),
-                TextNode.valueOf(" YES"), IntNode.valueOf(1), BooleanNode.TRUE, NullNode.getInstance());
+        return Stream.of(StringNode.valueOf("yes"), StringNode.valueOf("MAYBE"), StringNode.valueOf(""),
+                StringNode.valueOf(" YES"), IntNode.valueOf(1), BooleanNode.TRUE, NullNode.getInstance());
     }
 
     @Test
@@ -98,7 +99,7 @@ class SystemDesignRequirementAnswerComposerTest {
                         .isInstanceOf(ExternalApiException.class)
                         .hasMessageContaining("field=requirement_daily_creation_volume"),
                 () -> assertThatThrownBy(() -> SystemDesignRequirementAnswerComposer.resolveAskedCodes(REQUIREMENTS,
-                        TextNode.valueOf("YES")))
+                        StringNode.valueOf("YES")))
                         .isInstanceOf(ExternalApiException.class)
                         .hasMessageContaining("field=requirement_daily_creation_volume")
         );

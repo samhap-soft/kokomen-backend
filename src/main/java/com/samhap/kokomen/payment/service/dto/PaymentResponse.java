@@ -1,6 +1,5 @@
 package com.samhap.kokomen.payment.service.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.samhap.kokomen.global.infrastructure.ObjectToStringDeserializer;
 import com.samhap.kokomen.payment.domain.PaymentType;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
@@ -10,6 +9,7 @@ import com.samhap.kokomen.payment.external.dto.TossDateTimeDeserializer;
 import com.samhap.kokomen.payment.external.dto.TosspaymentsPaymentResponse;
 import java.time.LocalDateTime;
 import java.util.List;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 public record PaymentResponse(
         String paymentKey,

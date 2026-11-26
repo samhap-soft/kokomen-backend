@@ -5,14 +5,30 @@ spring:
     include:
       - common
   jackson:
+    # Jackson 3 매퍼를 Jackson 2(Boot 3) 때와 같게 동작시킨다. use-jackson2-defaults는 매퍼 기본값만 되돌리므로
+    # 팩토리 기본값(read, json.write)과 입출력 크기 제한(factory.constraints)은 아래에서 Jackson 2 값으로 둔다.
+    # 코드에서 직접 만드는 매퍼는 Jackson2CompatibleJsonMapper가 같은 값을 쓴다(SessionAndJsonWiringTest가 둘을 맞춰 본다).
+    use-jackson2-defaults: true
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
-  jackson2:
-    property-naming-strategy: SNAKE_CASE
-    default-property-inclusion: non_null
-  http:
-    converters:
-      preferred-json-mapper: jackson2
+    read:
+      use-fast-double-parser: false
+      use-fast-big-number-parser: false
+    mapper:
+      allow-void-valued-properties: false
+    serialization:
+      fail-on-order-map-by-incomparable-key: true
+    json:
+      write:
+        # UTF-8로 쓸 때 이모지 같은 BMP 밖 문자를 서로게이트 쌍 이스케이프(\uD83D\uDE00)로 쓴다.
+        combine-unicode-surrogates-in-utf8: false
+    factory:
+      constraints:
+        read:
+          max-nesting-depth: 1000
+          max-string-length: 20000000
+        write:
+          max-nesting-depth: 1000
   session:
     store-type: redis
   servlet:
@@ -63,6 +79,13 @@ aws:
     # 약 62 tok/s로 끝까지 써도 약 52초라 6번째 답변 결과 폴링 한도(90초) 안이다.
     system-design-end-max-tokens: 3200
 management:
+  endpoints:
+    jackson:
+      # actuator JSON은 JacksonConfig의 Jackson 2 호환 매퍼로 쓴다. Boot가 따로 만드는 매퍼는 키를 알파벳 순으로 쓴다.
+      isolated-json-mapper: false
+    jackson2:
+      # 클래스패스에 남은 Jackson 2(logback·Redisson 의존성)로 actuator용 매퍼를 따로 만들지 않는다.
+      isolated-object-mapper: false
   metrics:
     distribution:
       percentiles-histogram:

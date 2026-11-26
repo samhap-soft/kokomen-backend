@@ -6,8 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.fixture.member.MemberFixtureBuilder;
 import com.samhap.kokomen.global.fixture.payment.TosspaymentsPaymentFixtureBuilder;
@@ -40,6 +38,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 class PaymentRecoveryServiceTest extends BaseTest {
 
@@ -63,7 +63,7 @@ class PaymentRecoveryServiceTest extends BaseTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void 토스에서_DONE으로_확인되어_복구된_결제에는_결제_결과가_저장된다() throws JsonProcessingException {
+    void 토스에서_DONE으로_확인되어_복구된_결제에는_결제_결과가_저장된다() throws JacksonException {
         Long memberId = saveMemberWithPaidToken();
         TosspaymentsPayment payment = saveNeedCancelPayment(memberId, "recovery_result_key", "recovery_result_order");
         TosspaymentsPaymentResponse tossResponse = createDoneResponse("recovery_result_key", "recovery_result_order");
@@ -86,7 +86,7 @@ class PaymentRecoveryServiceTest extends BaseTest {
 
     @Test
     void 토스에서_DONE으로_확인되어_복구된_결제를_환불하면_결제가_취소되고_결제_결과에_취소_정보가_반영된다()
-            throws JsonProcessingException {
+            throws JacksonException {
         Long memberId = saveMemberWithPaidToken();
         TosspaymentsPayment payment = saveNeedCancelPayment(memberId, "recovery_refund_key", "recovery_refund_order");
         given(tosspaymentsClient.getPayment("recovery_refund_key"))
@@ -118,7 +118,7 @@ class PaymentRecoveryServiceTest extends BaseTest {
     }
 
     @Test
-    void 결제_결과가_이미_있는_결제를_DONE으로_복구하면_결제_결과를_중복_저장하지_않는다() throws JsonProcessingException {
+    void 결제_결과가_이미_있는_결제를_DONE으로_복구하면_결제_결과를_중복_저장하지_않는다() throws JacksonException {
         Long memberId = saveMemberWithPaidToken();
         String metadata = objectMapper.writeValueAsString(
                 new PurchaseMetadata(PRODUCT.name(), PRODUCT.getTokenCount(), PRODUCT.getUnitPrice()));
@@ -159,7 +159,7 @@ class PaymentRecoveryServiceTest extends BaseTest {
 
     // 승인 요청이 읽기 타임아웃으로 끝나 결과 행 없이 NEED_CANCEL로 남은 결제
     private TosspaymentsPayment saveNeedCancelPayment(Long memberId, String paymentKey, String orderId)
-            throws JsonProcessingException {
+            throws JacksonException {
         String metadata = objectMapper.writeValueAsString(
                 new PurchaseMetadata(PRODUCT.name(), PRODUCT.getTokenCount(), PRODUCT.getUnitPrice()));
         TosspaymentsPayment payment = TosspaymentsPaymentFixtureBuilder.builder()

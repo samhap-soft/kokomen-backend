@@ -1,6 +1,5 @@
 package com.samhap.kokomen.global.external.bedrock;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +18,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Primary

@@ -15,7 +15,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.global.BaseTest;
 import com.samhap.kokomen.global.dto.ClientIp;
 import com.samhap.kokomen.global.exception.BadRequestException;
@@ -63,6 +62,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
+import tools.jackson.databind.ObjectMapper;
 
 class ResumeAnalysisAsyncServiceTest extends BaseTest {
 

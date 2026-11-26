@@ -1,12 +1,12 @@
 package com.samhap.kokomen.payment.external.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.samhap.kokomen.global.infrastructure.ObjectToStringDeserializer;
 import com.samhap.kokomen.payment.domain.PaymentType;
 import com.samhap.kokomen.payment.domain.TosspaymentsPayment;
 import com.samhap.kokomen.payment.domain.TosspaymentsPaymentResult;
 import com.samhap.kokomen.payment.domain.TosspaymentsStatus;
 import java.time.LocalDateTime;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 public record TosspaymentsPaymentResponse(
         String paymentKey,

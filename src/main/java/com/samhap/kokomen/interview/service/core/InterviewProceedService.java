@@ -1,6 +1,5 @@
 package com.samhap.kokomen.interview.service.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samhap.kokomen.answer.domain.Answer;
 import com.samhap.kokomen.answer.service.AnswerService;
 import com.samhap.kokomen.global.exception.ExternalApiException;
@@ -22,6 +21,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @RequiredArgsConstructor
 @Service
