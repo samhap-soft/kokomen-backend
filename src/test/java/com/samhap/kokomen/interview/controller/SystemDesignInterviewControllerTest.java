@@ -1248,7 +1248,8 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andDo(document("system-design-interview-submit-answer-not-current-question",
                         responseFields(
                                 fieldWithPath("message")
-                                        .description("지금 질문이 아닌 순번(지난 질문, 숫자가 아닌 값 포함)에 답했을 때의 오류 문구")
+                                        .description("진행 중인 면접에서 지금 질문이 아닌 순번(지난 질문, 숫자가 아닌 값 포함)에 답했을 때의 "
+                                                + "오류 문구. 끝난 면접이면 순번과 상관없이 '이미 끝난 면접이에요.'다")
                         )
                 ));
         for (String questionId : List.of("not-a-number", "99999999999", "-1", "3", String.valueOf(currentQuestionPk))) {
