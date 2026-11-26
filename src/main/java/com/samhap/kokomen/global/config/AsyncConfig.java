@@ -15,6 +15,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
 
+    // 시스템 설계 답변 채점 전용 Bedrock 클라이언트의 최대 연결 수(SystemDesignAnswerBedrockTimeouts.MAX_CONNECTIONS)와 같다.
+    public static final int BEDROCK_FLOW_CALLBACK_POOL_SIZE = 100;
+
     public ThreadPoolTaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(20);
@@ -32,8 +35,9 @@ public class AsyncConfig implements AsyncConfigurer {
     @Bean("bedrockFlowCallbackExecutor")
     public ThreadPoolTaskExecutor bedrockFlowCallbackExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(100); // TODO: Supertone 호출도 1~2초 걸리므로, 이를 논블로킹으로 전환한 뒤에 다시 크기 조정
-        executor.setMaxPoolSize(100);
+        // TODO: Supertone 호출도 1~2초 걸리므로, 이를 논블로킹으로 전환한 뒤에 다시 크기 조정
+        executor.setCorePoolSize(BEDROCK_FLOW_CALLBACK_POOL_SIZE);
+        executor.setMaxPoolSize(BEDROCK_FLOW_CALLBACK_POOL_SIZE);
         executor.setQueueCapacity(1000);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(10);
