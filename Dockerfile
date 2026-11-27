@@ -1,4 +1,4 @@
-FROM amazoncorretto:17
+FROM amazoncorretto:25
 
 COPY build/libs/*SNAPSHOT.jar /app.jar
 
