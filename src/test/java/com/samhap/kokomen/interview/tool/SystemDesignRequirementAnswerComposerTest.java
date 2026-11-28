@@ -57,6 +57,8 @@ class SystemDesignRequirementAnswerComposerTest {
     private static final String READ_WRITE_RATIO_ANSWER = "단축 URL로 접속하는 조회 요청은 생성 요청의 100배쯤 된다고 보면 돼요.";
     private static final String RETENTION_PERIOD_ANSWER = "단축 URL은 만든 날부터 5년 동안 열려야 하고, 그 뒤에는 지워도 돼요.";
     private static final String CUSTOM_ALIAS_ANSWER = "커스텀 별칭은 이번 범위에서 빼도 돼요.";
+    // 다시 묻는 말과 시드를 캐는 말이 같이 들어 있는 역질문에서 캐는 말에 덧붙일 수 있는 안내(프롬프트의 큰따옴표 안 문구)
+    private static final String DIG_GUIDE = "궁금한 요구사항은 구체적으로 물어봐 주세요";
     private static final String[] ALL_NO = {"NO", "NO", "NO", "NO", "NO"};
     private static final String[] DAILY_CREATION_VOLUME_ONLY = {"YES", "NO", "NO", "NO", "NO"};
     private static final String[] READ_WRITE_RATIO_ONLY = {"NO", "YES", "NO", "NO", "NO"};
@@ -395,6 +397,46 @@ class SystemDesignRequirementAnswerComposerTest {
     })
     void 안내_문구와_겹치는_말이_있어도_정상_문장은_회피_문구가_아니다(String answer) {
         assertThat(compose(toolInput("ASSUMED", answer, ALL_NO)).answer()).isEqualTo(answer);
+    }
+
+    // 다시 묻는 말과 시드를 캐는 말이 같이 들어 있는 역질문에는 다시 묻는 말에만 답하고, 캐는 말에는 프롬프트가 정해 둔 안내 한마디만
+    // 덧붙일 수 있다(SystemDesignPromptFragments.REQUIREMENT_ANSWER_RULES). 이 안내가 회피 문구로 걸리면 시드를 다시 묻는 답은 시드
+    // 답으로 바뀌고, 앞에서 정한 값을 다시 묻는 답은 바꿀 시드 답이 없어 답 생성 실패가 된다.
+    @Test
+    void 다시_묻는_말에만_답하고_캐는_말에_안내_한마디를_덧붙인_답은_그대로_쓴다() {
+        // given: 앞에서 하루 생성량을 물었고, 가용성 목표를 99.9%로 정했다
+        SystemDesignRequirementAnswerCommand command = command(new SystemDesignConfirmedRequirements(
+                List.of("DAILY_CREATION_VOLUME"), List.of(new SystemDesignRequirementItem("가용성 목표",
+                        "가용성은 99.9%를 목표로 한다.", SystemDesignRequirementSource.ASSUMED))));
+        String seedAnswer = "네, 하루 평균 10만 개 정도예요. " + DIG_GUIDE + ".";
+        String assumedAnswer = "가용성은 99.9%를 목표로 해요. " + DIG_GUIDE + ".";
+
+        // when
+        SystemDesignRequirementAnswerResult seed = SystemDesignRequirementAnswerComposer.compose(command,
+                toolInput("SEED", seedAnswer, DAILY_CREATION_VOLUME_ONLY));
+        SystemDesignRequirementAnswerResult assumed = SystemDesignRequirementAnswerComposer.compose(command,
+                toolInput("ASSUMED", assumedAnswer, ALL_NO));
+
+        // then
+        assertAll(
+                () -> assertThat(SystemDesignPromptFragments.REQUIREMENT_ANSWER_RULES)
+                        .contains("\"" + DIG_GUIDE + "\""),
+                () -> assertThat(seed)
+                        .extracting(SystemDesignRequirementAnswerResult::askedRequirementCodes,
+                                SystemDesignRequirementAnswerResult::answerType,
+                                SystemDesignRequirementAnswerResult::answer,
+                                SystemDesignRequirementAnswerResult::requirementItems)
+                        .containsExactly(List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED,
+                                seedAnswer, List.of()),
+                () -> assertThat(assumed)
+                        .extracting(SystemDesignRequirementAnswerResult::askedRequirementCodes,
+                                SystemDesignRequirementAnswerResult::answerType,
+                                SystemDesignRequirementAnswerResult::answer,
+                                SystemDesignRequirementAnswerResult::requirementItems)
+                        .containsExactly(List.of(), SystemDesignRequirementAnswerType.ASSUMED, assumedAnswer,
+                                List.of()),
+                () -> assertThat(warnings()).isEmpty()
+        );
     }
 
     // 조회 비율(100배)만 물었는데 묻지 않은 하루 생성량(10만)을 흘린 답이다.
