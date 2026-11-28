@@ -2,6 +2,7 @@ package com.samhap.kokomen.interview.tool;
 
 import com.samhap.kokomen.global.exception.ExternalApiException;
 import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
@@ -9,10 +10,13 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -31,7 +35,10 @@ import tools.jackson.databind.ObjectMapper;
  *     <li>답이 비었거나 {@value #MAX_ANSWER_LENGTH}자를 넘거나, 결정을 면접자에게 넘기는 회피 문구가 있거나, 묻지 않은 숨은
  *     요구사항의 '숫자+단위'가 있거나, SEED 답에 정해 둔 사실에 없는 '숫자+단위'가 있으면 쓰지 않는다. 물은 숨은 요구사항이 있으면
  *     그 시드 답으로 바꾸고(폴백), 없으면 실패다. 다만 모델이 DECLINED로 낸 답이면 시드 답으로 바꾸지 않고 정해진 문구로 답한다.</li>
- *     <li>확정 항목은 규칙을 어긴 것만 버린다. 항목은 다음 역질문의 문맥과 리포트용이라 버려도 답은 나간다.</li>
+ *     <li>확정 항목은 규칙을 어긴 것만 버린다. 형식과 묻지 않은 숨은 요구사항의 '숫자+단위'를 먼저 보고, 리포트·채점의 확정한
+ *     요구사항 모으기(SystemDesignConfirmedRequirement.collect)와 같은 규칙으로 면접자가 들을 답에 맞춰 한 번 더 거른다. 그래서 저장하는
+ *     항목, 다음 역질문의 확정한 요구사항 문맥, 리포트·채점의 목록이 같은 규칙을 지난다. 답의 종류는 거른 뒤 남은 항목으로 정한다.
+ *     항목은 다음 역질문의 문맥과 리포트용이라 버려도 답은 나간다.</li>
  * </ul>
  */
 @Slf4j
@@ -102,10 +109,15 @@ public final class SystemDesignRequirementAnswerComposer {
             return declined();
         }
         NumberUnits numberUnits = NumberUnits.of(requirements, command.confirmedRequirements(), askedCodes);
-        List<SystemDesignRequirementItem> items = readItems(toolInput, askedCodes, numberUnits.forbidden(),
-                command.interviewId());
-        answerType = adjustForAssumedItems(answerType, items);
         String answer = Objects.requireNonNullElse(readText(toolInput, SystemDesignToolSchemas.ANSWER_FIELD), "");
+        List<SystemDesignRequirementItem> candidates = readItems(toolInput, askedCodes, numberUnits.forbidden(),
+                command.interviewId());
+        // 확정 항목은 면접자가 들을 답으로 거른다. LLM 답을 쓰면 그 답이다. 시드 답으로 바꾸면 아래에서 ASSUMED 항목을 모두 버리고, SEED
+        // 항목의 검사는 답이 아니라 정해 둔 사실과 견주므로 이 답으로 거른 결과와 같다. 정해진 문구로 답하면 항목을 모두 비운다. 답의
+        // 종류를 거른 항목으로 정해야 버려질 ASSUMED 항목 때문에 MIXED로 보고 SEED 답의 수치 검사를 건너뛰지 않는다.
+        List<SystemDesignRequirementItem> items = ConfirmedItemRule.of(requirements, command.confirmedRequirements(),
+                askedCodes).keepConfirmableItems(candidates, answer, command.interviewId());
+        answerType = adjustForAssumedItems(answerType, items);
         String rejectReason = findRejectReason(answer, answerType, numberUnits);
         if (rejectReason == null) {
             return new SystemDesignRequirementAnswerResult(askedCodes, answerType, answer, items);
@@ -125,6 +137,7 @@ public final class SystemDesignRequirementAnswerComposer {
         log.warn("시스템 설계 역질문 답을 시드 답으로 바꿉니다. reason: {}, askedCodes: {}, interviewId: {}", rejectReason,
                 askedCodes, command.interviewId());
         // 답이 시드 문장으로 바뀌면 LLM이 정한 내용은 면접자에게 나가지 않는다. 답과 항목이 어긋나지 않게 LLM이 정한 항목을 버린다.
+        // 남은 SEED 항목은 정해 둔 사실과 견준 검사를 이미 지났다.
         List<SystemDesignRequirementItem> seedItems = items.stream()
                 .filter(item -> item.source() == SystemDesignRequirementSource.SEED)
                 .toList();
@@ -183,7 +196,7 @@ public final class SystemDesignRequirementAnswerComposer {
         };
     }
 
-    // LLM이 정한 내용(ASSUMED 항목)이 남은 SEED 답은 둘 다 답한 것이다.
+    // LLM이 정한 내용(거른 뒤에도 남은 ASSUMED 항목)이 있는 SEED 답은 둘 다 답한 것이다.
     private static SystemDesignRequirementAnswerType adjustForAssumedItems(
             SystemDesignRequirementAnswerType answerType, List<SystemDesignRequirementItem> items) {
         boolean hasAssumedItem = items.stream()
@@ -318,6 +331,53 @@ public final class SystemDesignRequirementAnswerComposer {
             return extract(text).stream()
                     .filter(numberUnit -> !known.contains(numberUnit))
                     .toList();
+        }
+    }
+
+    /**
+     * 확정 항목을 리포트·채점의 확정한 요구사항 모으기(SystemDesignConfirmedRequirement.collect)와 같은 규칙
+     * (SystemDesignConfirmedRequirement.findItemRejectReason)으로 거를 때 넘기는 숨은 요구사항. 이번 행을 마지막 행으로 둔 collect가
+     * 이 행에 쓰는 값과 같다. 물은 시드는 이전 역질문과 이번 판정을 합친 것이고(collect도 그 행까지 누적한다), 묻지 않은 시드는 그
+     * 나머지다. 들은 '숫자+단위'는 이번 답만 본다(collect도 행마다 그 행의 답만 본다). 뒤 역질문에서 다른 시드를 물으면 collect의 묻지
+     * 않은 시드가 줄 뿐이라, 여기서 남긴 항목은 나중에 모아도 버려지지 않는다.
+     */
+    private record ConfirmedItemRule(Map<String, String> seedFactsByName, Set<String> askedSeedNames,
+                                     Set<String> unaskedSeedNames) {
+
+        static ConfirmedItemRule of(List<Requirement> requirements, SystemDesignConfirmedRequirements confirmed,
+                                    List<String> askedCodes) {
+            Set<String> askedCodesSoFar = new HashSet<>(confirmed.askedRequirementCodes());
+            askedCodesSoFar.addAll(askedCodes);
+            Map<String, String> seedFactsByName = new HashMap<>();
+            Set<String> askedSeedNames = new HashSet<>();
+            for (Requirement requirement : requirements) {
+                String name = SystemDesignText.normalize(requirement.name());
+                seedFactsByName.put(name, requirement.answer());
+                if (askedCodesSoFar.contains(requirement.code())) {
+                    askedSeedNames.add(name);
+                }
+            }
+            Set<String> unaskedSeedNames = new HashSet<>(seedFactsByName.keySet());
+            unaskedSeedNames.removeAll(askedSeedNames);
+            return new ConfirmedItemRule(seedFactsByName, askedSeedNames, unaskedSeedNames);
+        }
+
+        // 규칙을 어긴 항목을 버린다. 로그에는 이유만 남기고 항목 내용은 남기지 않는다.
+        List<SystemDesignRequirementItem> keepConfirmableItems(List<SystemDesignRequirementItem> items,
+                                                               String answer, Long interviewId) {
+            Set<String> heardNumberUnits = SystemDesignText.numberUnits(answer);
+            List<SystemDesignRequirementItem> kept = new ArrayList<>();
+            for (SystemDesignRequirementItem item : items) {
+                Optional<String> rejectReason = SystemDesignConfirmedRequirement.findItemRejectReason(item,
+                        seedFactsByName, askedSeedNames, unaskedSeedNames, heardNumberUnits);
+                if (rejectReason.isPresent()) {
+                    log.warn("시스템 설계 역질문 확정 항목이 확정한 요구사항 규칙에 맞지 않아 버립니다. reason: {}, interviewId: {}",
+                            rejectReason.get(), interviewId);
+                    continue;
+                }
+                kept.add(item);
+            }
+            return List.copyOf(kept);
         }
     }
 

@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -44,6 +45,9 @@ public record SystemDesignConfirmedRequirement(
      *     역질문 답을 시드 답으로 바꾼 행에 남은 항목, 수를 한글로 써 가릴 수 없는 항목) 정해 둔 사실이 남는다. ASSUMED 항목은
      *     이름·내용의 '숫자+단위'가 그 역질문의 답에 모두 있을 때만 넣는다.</li>
      *     <li>ASSUMED 항목의 이름이나 내용에 묻지 않은 숨은 요구사항의 이름이 그대로 들어 있으면 넣지 않는다.</li>
+     *     <li>항목마다의 규칙은 {@link #findItemRejectReason}이다. 역질문을 저장할 때 SystemDesignRequirementAnswerComposer가 같은
+     *     규칙으로 저장할 항목을 거르므로, 저장한 뒤 시드의 이름·정해 둔 사실을 바꾸지 않았다면 새 행의 항목은 여기서 버려지지 않는다.
+     *     그렇게 거르기 전에 저장한 행이 있고 시드를 고칠 수도 있어 여기서도 거른다.</li>
      *     <li>확정 항목을 저장하기 전(V58 전)에 만든 행(NULL)은 항목을 건너뛰고 물은 숨은 요구사항만 정해 둔 사실로 나온다.
      *     요구사항을 묻는 질문이 아니었던 행(DECLINED)은 물은 code도 항목도 없다.</li>
      * </ul>
@@ -81,12 +85,11 @@ public record SystemDesignConfirmedRequirement(
             }
             Set<String> heardNumberUnits = SystemDesignText.numberUnits(requirementQuestion.getAnswer());
             for (SystemDesignRequirementItem item : items) {
-                String rejectReason = item.source() == SystemDesignRequirementSource.SEED
-                        ? findSeedItemRejectReason(item, seedFactsByName, askedNames)
-                        : findAssumedItemRejectReason(item, seedFactsByName, unconfirmedNames, heardNumberUnits);
-                if (rejectReason != null) {
+                Optional<String> rejectReason = findItemRejectReason(item, seedFactsByName, askedNames,
+                        unconfirmedNames, heardNumberUnits);
+                if (rejectReason.isPresent()) {
                     log.warn("확정한 요구사항에 이 확정 항목을 넣지 않습니다. requirementQuestionId: {}, source: {}, reason: {}",
-                            requirementQuestion.getId(), item.source(), rejectReason);
+                            requirementQuestion.getId(), item.source(), rejectReason.get());
                     continue;
                 }
                 requirementsByName.put(nameKey(item.name()),
@@ -112,8 +115,37 @@ public record SystemDesignConfirmedRequirement(
         }
     }
 
-    // SEED 항목은 그 행까지 물은 시드의 이름이고, 내용의 '숫자+단위'가 비어 있지 않고 그 시드의 정해 둔 사실 안에 있어야 한다.
-    // 이름은 시드 이름이라 수치를 보지 않는다("1인당 발급 한도"의 "1인").
+    /**
+     * 확정 항목 하나를 확정한 요구사항에 넣지 않을 이유. {@link #collect}가 역질문 행마다 쓰고, 역질문을 저장할 때
+     * SystemDesignRequirementAnswerComposer가 이번 행의 항목에 같은 규칙을 쓴다. 이름은 앞뒤 공백을 지운 값으로 견주므로 맵과 집합에도
+     * {@link SystemDesignText#normalize}로 다듬은 이름을 넣는다.
+     *
+     * <ul>
+     *     <li>SEED 항목은 그 행까지 물은 시드의 이름이고, 내용의 '숫자+단위'가 비어 있지 않고 그 시드의 정해 둔 사실 안에 있어야 한다.
+     *     이름은 시드 이름이라 수치를 보지 않는다("1인당 발급 한도"의 "1인").</li>
+     *     <li>ASSUMED 항목은 시드의 이름이 아니고, 이름·내용에 묻지 않은 시드의 이름이 없고, 이름·내용의 '숫자+단위'가 그 행의 답(면접자가
+     *     들은 문장) 안에 있어야 한다.</li>
+     * </ul>
+     *
+     * @param item             검사할 확정 항목
+     * @param seedFactsByName  이 문제의 숨은 요구사항 전부의 이름과 정해 둔 사실
+     * @param askedSeedNames   그 행까지(그 행 포함) 물은 숨은 요구사항의 이름
+     * @param unaskedSeedNames 묻지 않은 숨은 요구사항의 이름. collect는 모든 행에서 한 번도 묻지 않은 것을 넘긴다(그 행이 마지막
+     *                         행이면 그 행까지 묻지 않은 것과 같다)
+     * @param heardNumberUnits 그 행의 답에 나온 '숫자+단위'({@link SystemDesignText#numberUnits})
+     * @return 넣지 않을 이유. 넣어도 되면 빈 값
+     */
+    public static Optional<String> findItemRejectReason(SystemDesignRequirementItem item,
+                                                        Map<String, String> seedFactsByName,
+                                                        Set<String> askedSeedNames, Set<String> unaskedSeedNames,
+                                                        Set<String> heardNumberUnits) {
+        if (item.source() == SystemDesignRequirementSource.SEED) {
+            return Optional.ofNullable(findSeedItemRejectReason(item, seedFactsByName, askedSeedNames));
+        }
+        return Optional.ofNullable(findAssumedItemRejectReason(item, seedFactsByName, unaskedSeedNames,
+                heardNumberUnits));
+    }
+
     private static String findSeedItemRejectReason(SystemDesignRequirementItem item,
                                                    Map<String, String> seedFactsByName, Set<String> askedNames) {
         String name = nameKey(item.name());
@@ -128,8 +160,6 @@ public record SystemDesignConfirmedRequirement(
         return null;
     }
 
-    // ASSUMED 항목은 시드의 이름이 아니고, 이름·내용에 묻지 않은 시드의 이름이 없고, 이름·내용의 '숫자+단위'가 그 역질문의 답(면접자가
-    // 들은 문장) 안에 있어야 한다.
     private static String findAssumedItemRejectReason(SystemDesignRequirementItem item,
                                                       Map<String, String> seedFactsByName,
                                                       Set<String> unconfirmedNames, Set<String> heardNumberUnits) {
