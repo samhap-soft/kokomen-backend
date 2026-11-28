@@ -13,9 +13,9 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignHiddenRe
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignInterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
+import com.samhap.kokomen.interview.tool.SystemDesignConfirmedRequirements;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerCommand;
-import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerComposer;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementTurn;
 import com.samhap.kokomen.token.service.TokenFacadeService;
 import jakarta.persistence.EntityManager;
@@ -75,8 +75,10 @@ public class SystemDesignRequirementQuestionService {
         List<SystemDesignRequirementTurn> previousTurns = previousQuestions.stream()
                 .map(question -> new SystemDesignRequirementTurn(question.getContent(), question.getAnswer()))
                 .toList();
+        SystemDesignConfirmedRequirements confirmedRequirements = new SystemDesignConfirmedRequirements(
+                SystemDesignRequirementQuestion.collectAskedRequirementCodes(previousQuestions), List.of());
         SystemDesignRequirementAnswerCommand command = new SystemDesignRequirementAnswerCommand(interviewId,
-                readProblemContext(systemDesignInterview.getProblem()), previousTurns, content);
+                readProblemContext(systemDesignInterview.getProblem()), previousTurns, confirmedRequirements, content);
         return RequirementQuestionDraft.newQuestion(interviewId, memberId, content, command);
     }
 
@@ -116,11 +118,9 @@ public class SystemDesignRequirementQuestionService {
         int savedCount = Math.toIntExact(requirementQuestionRepository.countBySystemDesignInterview(
                 systemDesignInterview));
         SystemDesignRequirementQuestion.validateCount(savedCount);
-        String answer = SystemDesignRequirementAnswerComposer.compose(draft.command().problem().requirements(),
-                result.askedRequirementCodes(), result.answer());
         SystemDesignRequirementQuestion requirementQuestion = requirementQuestionRepository.save(
-                new SystemDesignRequirementQuestion(systemDesignInterview, savedCount + 1, draft.content(), answer,
-                        result.askedRequirementCodes()));
+                new SystemDesignRequirementQuestion(systemDesignInterview, savedCount + 1, draft.content(),
+                        result.answer(), result.askedRequirementCodes()));
         chargeRequirementQuestionToken(draft.memberId());
         return SystemDesignRequirementAnswerResponse.from(requirementQuestion);
     }

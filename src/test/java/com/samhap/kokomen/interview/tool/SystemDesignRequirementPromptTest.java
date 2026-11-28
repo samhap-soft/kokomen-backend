@@ -47,12 +47,12 @@ class SystemDesignRequirementPromptTest {
         Collections.reverse(reversed);
         SystemDesignRequirementAnswerCommand first = new SystemDesignRequirementAnswerCommand(11L,
                 SystemDesignProblemContext.of(problem, requirements, List.of()), List.of(),
-                "하루에 단축 URL이 몇 개나 만들어지나요?");
+                SystemDesignConfirmedRequirements.empty(), "하루에 단축 URL이 몇 개나 만들어지나요?");
         SystemDesignRequirementAnswerCommand second = new SystemDesignRequirementAnswerCommand(12L,
                 SystemDesignProblemContext.of(problem, reversed, List.of()),
                 List.of(new SystemDesignRequirementTurn("하루에 단축 URL이 몇 개나 만들어지나요?",
                         "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")),
-                "그럼 조회 요청은 생성의 몇 배쯤인가요?");
+                SystemDesignConfirmedRequirements.empty(), "그럼 조회 요청은 생성의 몇 배쯤인가요?");
 
         // when
         String firstSystem = SystemDesignSystemMessages.requirementAnswer(first.problem());
@@ -148,7 +148,7 @@ class SystemDesignRequirementPromptTest {
     private static SystemDesignRequirementAnswerCommand command(List<SystemDesignRequirementTurn> previousTurns,
                                                                 String currentQuestion) {
         return new SystemDesignRequirementAnswerCommand(11L, SystemDesignProblemContextFixture.urlShortener(),
-                previousTurns, currentQuestion);
+                previousTurns, SystemDesignConfirmedRequirements.empty(), currentQuestion);
     }
 
     private static List<SystemDesignHiddenRequirement> hiddenRequirements(SystemDesignProblem problem) {

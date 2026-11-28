@@ -3,6 +3,8 @@ package com.samhap.kokomen.interview.tool;
 import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.external.llm.ToolField;
 import com.samhap.kokomen.global.external.llm.ToolSchema;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.EvaluationPoint;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.ArrayList;
@@ -13,7 +15,7 @@ import java.util.Locale;
 /**
  * 시스템 설계 면접 LLM 도구 스키마와 필드 이름의 한곳. system 프롬프트의 목록 줄, 도구 스키마, 응답 파서가 모두 이 이름을 쓴다.
  * 판정 필드(역질문 답의 requirement_*, 마지막 답변 평가의 point_*와 그 증거 필드 point_*_evidence)는 문제의 행마다 하나씩이라
- * 호출마다 만든다. 기존 렌더러가 평평한 string·string enum 필드만 그리기 때문이다.
+ * 호출마다 만든다. 판정 필드는 평평한 string enum 필드로 두고, 역질문 답의 확정 항목(requirement_items)만 객체 배열이다.
  */
 public final class SystemDesignToolSchemas {
 
@@ -28,6 +30,11 @@ public final class SystemDesignToolSchemas {
     public static final String STRENGTHS_FIELD = "strengths";
     public static final String IMPROVEMENTS_FIELD = "improvements";
     public static final String LEARNING_DIRECTION_FIELD = "learning_direction";
+    public static final String ANSWER_TYPE_FIELD = "answer_type";
+    public static final String REQUIREMENT_ITEMS_FIELD = "requirement_items";
+    public static final String ITEM_NAME_FIELD = "name";
+    public static final String ITEM_DETAIL_FIELD = "detail";
+    public static final String ITEM_SOURCE_FIELD = "source";
     public static final String REQUIREMENT_ASKED = "YES";
     public static final String REQUIREMENT_NOT_ASKED = "NO";
     public static final String POINT_MET = "MET";
@@ -38,6 +45,12 @@ public final class SystemDesignToolSchemas {
     private static final String POINT_EVIDENCE_FIELD_SUFFIX = "_evidence";
     private static final List<String> REQUIREMENT_VERDICTS = List.of(REQUIREMENT_ASKED, REQUIREMENT_NOT_ASKED);
     private static final List<String> POINT_VERDICTS = List.of(POINT_MET, POINT_NOT_MET);
+    private static final List<String> ANSWER_TYPES = Arrays.stream(SystemDesignRequirementAnswerType.values())
+            .map(SystemDesignRequirementAnswerType::name)
+            .toList();
+    private static final List<String> REQUIREMENT_SOURCES = Arrays.stream(SystemDesignRequirementSource.values())
+            .map(SystemDesignRequirementSource::name)
+            .toList();
     private static final List<String> RANKS = Arrays.stream(AnswerRank.values())
             .map(AnswerRank::name)
             .toList();
@@ -72,20 +85,30 @@ public final class SystemDesignToolSchemas {
     }
 
     /**
-     * 판정을 먼저 내고 그 판정에 맞춰 답을 쓰게 하려고 reasoning → 요구사항마다 판정(문제 순서) → answer 순서로 둔다. 모두 required다.
+     * 판정을 먼저 내고 그 판정에 맞춰 답의 종류와 확정 항목을 정한 뒤 답을 쓰게 하려고 reasoning → 요구사항마다 판정(문제 순서) →
+     * answer_type → requirement_items → answer 순서로 둔다. 모두 required다. 확정 항목의 개수·글자 수 제한은 설명에만 적고 서버가
+     * 다시 검사한다(SystemDesignRequirementAnswerComposer).
      */
     public static ToolSchema requirementAnswer(List<Requirement> requirements) {
         List<ToolField> fields = new ArrayList<>();
-        fields.add(ToolField.required(REASONING_FIELD,
-                "역질문이 묻는 내용과 항목별 판정 근거. 200자 이내. 사용자에게 노출되지 않는다."));
+        fields.add(ToolField.required(REASONING_FIELD, "역질문이 묻는 내용, 항목별 판정 근거, 숨은 요구사항에 없는 내용이면 "
+                + "정한 값과 그 근거. 200자 이내. 사용자에게 노출되지 않는다."));
         for (Requirement requirement : requirements) {
             fields.add(ToolField.requiredEnum(requirementFieldName(requirement.code()),
                     "역질문이 '" + requirement.name() + "' 항목을 묻는지. 물으면 YES, 아니면 NO.", REQUIREMENT_VERDICTS));
         }
-        fields.add(ToolField.required(ANSWER_FIELD,
-                "면접관의 답. 해요체 1~3문장, 300자 이내. YES인 항목이 없으면 정해진 문구."));
-        return new ToolSchema(REQUIREMENT_ANSWER_TOOL_NAME,
-                "면접자의 요구사항 역질문이 숨은 요구사항의 각 항목을 묻는지 판정하고 면접관의 답을 제출한다.", fields);
+        fields.add(ToolField.requiredEnum(ANSWER_TYPE_FIELD, "답의 종류. SEED(YES인 항목의 정해 둔 사실만으로 답함), "
+                + "ASSUMED(숨은 요구사항에 없는 요구사항을 정해 답함), MIXED(둘 다), DECLINED(요구사항을 묻는 질문이 아님) 중 하나.",
+                ANSWER_TYPES));
+        fields.add(ToolField.requiredObjectArray(REQUIREMENT_ITEMS_FIELD,
+                "이번 답으로 새로 확정한 요구사항. 0~3개. 이미 확정한 내용을 다시 말했거나 DECLINED면 빈 배열.", List.of(
+                        ToolField.required(ITEM_NAME_FIELD, "요구사항의 짧은 이름. 30자 이하."),
+                        ToolField.required(ITEM_DETAIL_FIELD, "확정한 내용 한 문장. 150자 이하."),
+                        ToolField.requiredEnum(ITEM_SOURCE_FIELD, "정해 둔 사실이면 SEED, 면접관이 정했으면 ASSUMED.",
+                                REQUIREMENT_SOURCES))));
+        fields.add(ToolField.required(ANSWER_FIELD, "면접관의 답. 해요체 1~3문장, 300자 이내. DECLINED면 빈 문자열."));
+        return new ToolSchema(REQUIREMENT_ANSWER_TOOL_NAME, "면접자의 요구사항 역질문이 숨은 요구사항의 각 항목을 묻는지 판정하고, "
+                + "답의 종류와 이번 답으로 확정한 요구사항, 면접관의 답을 제출한다.", fields);
     }
 
     /**

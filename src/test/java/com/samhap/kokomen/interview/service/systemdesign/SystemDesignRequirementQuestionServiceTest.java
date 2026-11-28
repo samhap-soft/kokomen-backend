@@ -18,6 +18,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewFixtu
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementAnswerResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
@@ -28,7 +29,6 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
-import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignHiddenRequirementRepository;
@@ -52,9 +52,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class SystemDesignRequirementQuestionServiceTest extends BaseTest {
-
-    private static final String DEFAULT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
-    private static final String DAILY_CREATION_VOLUME_ANSWER = "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.";
 
     @Autowired
     private SystemDesignRequirementQuestionService requirementQuestionService;
@@ -134,23 +131,27 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         SystemDesignProblem problem = problemTestSupport.saveProblem();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member, problem,
                 SystemDesignStage.REQUIREMENTS);
-        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
-        saveRequirementQuestion(systemDesignInterview, 2, "그럼 조회는요?", "조회는 생성의 100배쯤 돼요.");
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.",
+                List.of("DAILY_CREATION_VOLUME"));
+        saveRequirementQuestion(systemDesignInterview, 2, "그럼 조회와 보관 기간은요?", "조회는 생성의 100배쯤이고 5년 동안 열려야 해요.",
+                List.of("READ_WRITE_RATIO", "RETENTION_PERIOD", "DAILY_CREATION_VOLUME"));
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
         RequirementQuestionDraft draft = requirementQuestionService.prepare(interviewId, member.getId(),
-                " 얼마나 오래 보관하나요? ");
+                " 커스텀 별칭도 지원하나요? ");
 
         // then
         assertAll(
                 () -> assertThat(draft.interviewId()).isEqualTo(interviewId),
-                () -> assertThat(draft.content()).isEqualTo("얼마나 오래 보관하나요?"),
+                () -> assertThat(draft.content()).isEqualTo("커스텀 별칭도 지원하나요?"),
                 () -> assertThat(draft.command().interviewId()).isEqualTo(interviewId),
-                () -> assertThat(draft.command().currentQuestion()).isEqualTo("얼마나 오래 보관하나요?"),
+                () -> assertThat(draft.command().currentQuestion()).isEqualTo("커스텀 별칭도 지원하나요?"),
                 () -> assertThat(draft.command().previousTurns()).containsExactly(
                         new SystemDesignRequirementTurn("하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요."),
-                        new SystemDesignRequirementTurn("그럼 조회는요?", "조회는 생성의 100배쯤 돼요.")),
+                        new SystemDesignRequirementTurn("그럼 조회와 보관 기간은요?", "조회는 생성의 100배쯤이고 5년 동안 열려야 해요.")),
+                () -> assertThat(draft.command().confirmedRequirements().askedRequirementCodes())
+                        .containsExactly("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO", "RETENTION_PERIOD"),
                 () -> assertThat(draft.command().problem())
                         .isEqualTo(SystemDesignProblemContextFixture.urlShortener(problem.getId()))
         );
@@ -168,8 +169,10 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // when
         SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME", "RETENTION_PERIOD"),
-                        "하루 평균 10만 개가 만들어지고, 만든 날부터 5년 동안 열려야 해요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .askedRequirementCodes(List.of("DAILY_CREATION_VOLUME", "RETENTION_PERIOD"))
+                        .answer("하루 평균 10만 개가 만들어지고, 만든 날부터 5년 동안 열려야 해요.")
+                        .build());
 
         // then
         assertAll(
@@ -187,52 +190,30 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         );
     }
 
+    // 최종 답은 클라이언트가 검증해 정한다(SystemDesignRequirementAnswerComposer). 서비스는 바꾸지 않고 저장한다.
     @Test
-    void 물은_요구사항이_없으면_정해진_문구를_저장한다() {
+    void 검증을_마친_답을_바꾸지_않고_저장한다() {
         // given
         Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
-                systemDesignInterview.getInterview().getId(), member.getId(), "요구사항을 전부 알려 주세요.");
+                systemDesignInterview.getInterview().getId(), member.getId(), "로그인해야 단축 URL을 만들 수 있나요?");
 
         // when
         SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of(), "하루 평균 10만 개가 만들어져요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build());
 
         // then
         assertAll(
-                () -> assertThat(response.answer()).isEqualTo(DEFAULT_ANSWER),
+                () -> assertThat(response.answer()).isEqualTo("로그인 없이도 누구나 단축 URL을 만들 수 있어요."),
                 () -> assertThat(response.remainingCount()).isEqualTo(4),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).singleElement()
                         .extracting(SystemDesignRequirementQuestion::getAnswer,
                                 SystemDesignRequirementQuestion::getAskedRequirementCodes)
-                        .containsExactly(DEFAULT_ANSWER, List.of())
-        );
-    }
-
-    // 면접자가 직접 계산할 값(초당 요청 수)을 LLM이 대신 계산한 답은 시드 답으로 바꿔 저장한다. 물은 요구사항 code는 그대로 남긴다.
-    @Test
-    void 시드에_없는_숫자를_쓴_답은_시드_답으로_저장한다() {
-        // given
-        Member member = saveMemberWithRequirementQuestionTokens();
-        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
-                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
-        RequirementQuestionDraft draft = requirementQuestionService.prepare(
-                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
-
-        // when
-        SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"),
-                        "하루 평균 10만 개, 초당 약 1.2건 정도예요."));
-
-        // then
-        assertAll(
-                () -> assertThat(response.answer()).isEqualTo(DAILY_CREATION_VOLUME_ANSWER),
-                () -> assertThat(readRequirementQuestions(systemDesignInterview)).singleElement()
-                        .extracting(SystemDesignRequirementQuestion::getAnswer,
-                                SystemDesignRequirementQuestion::getAskedRequirementCodes)
-                        .containsExactly(DAILY_CREATION_VOLUME_ANSWER, List.of("DAILY_CREATION_VOLUME"))
+                        .containsExactly("로그인 없이도 누구나 단축 URL을 만들 수 있어요.", List.of())
         );
     }
 
@@ -249,7 +230,9 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
                 systemDesignInterview.getInterview().getId(), member.getId(), paddedQuestion);
         SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of(), ""));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build());
 
         // then
         assertAll(
@@ -305,7 +288,9 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // when
         SystemDesignRequirementAnswerResponse response = requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of(), ""));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build());
 
         // then
         assertAll(
@@ -336,7 +321,9 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // when & then
         assertThatThrownBy(() -> requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of(), "")))
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("역질문은 5개까지 할 수 있어요.");
         assertThat(readRequirementQuestions(systemDesignInterview))
@@ -359,7 +346,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // when & then
         assertThatThrownBy(() -> requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요.")))
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("요구사항 단계가 끝났어요.");
         assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty();
@@ -531,7 +518,9 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
         // when & then
         assertThatThrownBy(() -> requirementQuestionService.save(draft,
-                new SystemDesignRequirementAnswerResult(List.of(), "")))
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1);
     }
@@ -546,8 +535,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         // when
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
                 systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
-        requirementQuestionService.save(draft, new SystemDesignRequirementAnswerResult(
-                List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        requirementQuestionService.save(draft, SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
 
         // then
         assertAll(
@@ -575,7 +563,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         requirementQuestionService.save(
                 requirementQuestionService.prepare(systemDesignInterview.getInterview().getId(), member.getId(),
                         "하루에 몇 개나 만들어지나요?"),
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
 
         // then
         assertAll(
@@ -596,7 +584,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         Long interviewId = systemDesignInterview.getInterview().getId();
         requirementQuestionService.save(
                 requirementQuestionService.prepare(interviewId, member.getId(), "하루에 몇 개나 만들어지나요?"),
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
 
         // when & then
         assertThatThrownBy(() -> requirementQuestionService.prepare(interviewId, member.getId(), "조회는 얼마나 되나요?"))
@@ -651,7 +639,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         Long interviewId = systemDesignInterview.getInterview().getId();
         requirementQuestionService.save(
                 requirementQuestionService.prepare(interviewId, member.getId(), "하루에 몇 개나 만들어지나요?"),
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
 
         // when
         RequirementQuestionDraft draft = requirementQuestionService.prepare(interviewId, member.getId(),
@@ -677,8 +665,8 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         jdbcTemplate.update("UPDATE token SET token_count = 0 WHERE member_id = ?", member.getId());
 
         // when & then
-        assertThatThrownBy(() -> requirementQuestionService.save(draft, new SystemDesignRequirementAnswerResult(
-                List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요.")))
+        assertThatThrownBy(() -> requirementQuestionService.save(draft,
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("토큰 갯수가 부족합니다.");
         assertAll(
@@ -714,11 +702,18 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
 
     private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
                                          String content, String answer) {
+        saveRequirementQuestion(systemDesignInterview, questionOrder, content, answer,
+                List.of("DAILY_CREATION_VOLUME"));
+    }
+
+    private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
+                                         String content, String answer, List<String> askedRequirementCodes) {
         requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
                 .systemDesignInterview(systemDesignInterview)
                 .questionOrder(questionOrder)
                 .content(content)
                 .answer(answer)
+                .askedRequirementCodes(askedRequirementCodes)
                 .build());
     }
 

@@ -1,29 +1,56 @@
 package com.samhap.kokomen.interview.tool;
 
 import com.samhap.kokomen.global.exception.ExternalApiException;
+import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
+import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
- * 역질문 답(L1) 출력에서 물은 요구사항과 최종 답을 정한다. 도구 스키마의 required·enum은 모델에 대한 지시일 뿐이라 서버가 다시 검사한다.
+ * 역질문 답(L1) 출력을 검증해 최종 결과를 정한다. 도구 스키마의 required·enum은 모델에 대한 지시일 뿐이라 서버가 다시 검사한다.
+ *
+ * <ul>
+ *     <li>판정 필드(requirement_*)와 답의 종류(answer_type)가 없거나 값이 잘못되면 응답 전체를 실패로 본다.</li>
+ *     <li>답의 종류는 판정을 기준으로 바로잡는다. YES인 숨은 요구사항이 있으면 시드 사실이 답에 들어간 것이다.</li>
+ *     <li>요구사항을 묻는 질문이 아니면(DECLINED) 정해진 문구 {@value #DECLINED_ANSWER}로 답하고 확정 항목을 비운다.</li>
+ *     <li>답이 비었거나 {@value #MAX_ANSWER_LENGTH}자를 넘거나, 결정을 면접자에게 넘기는 회피 문구가 있거나, 묻지 않은 숨은
+ *     요구사항의 '숫자+단위'가 있으면 쓰지 않는다. 물은 숨은 요구사항이 있으면 그 시드 답으로 바꾸고(폴백), 없으면 실패다.</li>
+ *     <li>확정 항목은 규칙을 어긴 것만 버린다. 항목은 다음 역질문의 문맥과 리포트용이라 버려도 답은 나간다.</li>
+ * </ul>
  */
 @Slf4j
 public final class SystemDesignRequirementAnswerComposer {
 
-    public static final String DEFAULT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
+    public static final String DECLINED_ANSWER = "요구사항을 묻는 질문에만 답할 수 있어요. 설계 방법은 직접 정해 주세요.";
     public static final int MAX_ANSWER_LENGTH = 300;
+    public static final int MAX_ITEM_COUNT = 3;
 
+    private static final ObjectMapper ITEMS_MAPPER = Jackson2CompatibleJsonMapper.builder().build();
     private static final Pattern THOUSANDS_SEPARATOR = Pattern.compile("(?<=\\d),(?=\\d{3})");
-    private static final Pattern NUMBER = Pattern.compile("\\d+(?:\\.\\d+)?");
+    // 숫자(소수 포함) 바로 뒤에 붙은 단위. 단위는 %, 한글이면 첫 글자, 영문이면 이어진 영문 전체다.
+    private static final Pattern NUMBER_WITH_UNIT = Pattern.compile("(\\d+(?:\\.\\d+)?)(%|[가-힣]|[A-Za-z]+)");
+    // 결정을 면접자에게 넘기는 문구(배포 전의 고정 답 "등록되지 않은 내용이에요. 가정하고 진행하세요." 포함)와, 요구사항 질문이 아닐 때의
+    // 정해진 문구. 답의 종류가 DECLINED가 아닌데 거절했다면 답과 종류가 어긋난다.
+    private static final Pattern EVASION = Pattern.compile("등록되지\\s*않은|정해\\s*두지\\s*않은|정해지지\\s*않은"
+            + "|가정(?:하고|해서|하여)\\s*진행|(?:자유롭게|직접|알아서|임의로|적절히|편하게)\\s*가정|가정해\\s*주세요"
+            + "|요구사항을\\s*묻는\\s*질문에만");
     private static final String SEED_ANSWER_DELIMITER = " ";
 
     private SystemDesignRequirementAnswerComposer() {
@@ -62,60 +89,266 @@ public final class SystemDesignRequirementAnswerComposer {
     }
 
     /**
-     * 물은 요구사항이 없으면 LLM 답과 상관없이 정해진 문구다. 물은 요구사항이 있으면 LLM 답을 쓰되, 답이 비었거나
-     * {@value #MAX_ANSWER_LENGTH}자를 넘거나 정해진 문구를 담았거나 물은 요구사항의 시드 답에 없는 숫자가 있으면 그 요구사항들의
-     * 시드 답을 문제 순서로 공백 하나를 두고 이어 쓴다(폴백). 숫자 검증은 지어낸 수치, 묻지 않은 요구사항의 수치, 면접자가 직접 할
-     * 계산을 막는다. "백만" 같은 한글 수사와 전각 숫자처럼 ASCII가 아닌 숫자는 잡지 못해 프롬프트 규칙이 함께 막는다. 허용하는 숫자는
-     * 물은 요구사항의 시드 답에서만 나오므로, 이름에만 있는 숫자(예: "1인당")를 답에 쓰면 폴백된다.
+     * 도구 입력을 검증해 저장하고 면접자에게 줄 결과를 정한다. 답과 확정 항목은 엔티티를 되돌리고 앞뒤 공백을 지운 값으로 검사한다.
      *
-     * @param askedCodes {@link #resolveAskedCodes}가 돌려준 code
-     * @param llmAnswer  엔티티를 되돌린 LLM 답
+     * @throws ExternalApiException 판정 필드나 답의 종류가 없거나 잘못됐을 때, 답을 쓸 수 없는데 바꿀 시드 답(물은 숨은 요구사항)이
+     *                              없을 때
      */
-    public static String compose(List<Requirement> requirements, List<String> askedCodes, String llmAnswer) {
-        List<Requirement> askedRequirements = requirements.stream()
-                .filter(requirement -> askedCodes.contains(requirement.code()))
+    public static SystemDesignRequirementAnswerResult compose(SystemDesignRequirementAnswerCommand command,
+                                                              JsonNode toolInput) {
+        List<Requirement> requirements = command.problem().requirements();
+        List<String> askedCodes = resolveAskedCodes(requirements, toolInput);
+        SystemDesignRequirementAnswerType answerType = correctAnswerType(readAnswerType(toolInput), askedCodes,
+                command.interviewId());
+        if (answerType == SystemDesignRequirementAnswerType.DECLINED) {
+            return new SystemDesignRequirementAnswerResult(askedCodes, answerType, DECLINED_ANSWER, List.of());
+        }
+        Set<String> forbiddenNumberUnits = forbiddenNumberUnits(requirements, command.confirmedRequirements(),
+                askedCodes);
+        List<SystemDesignRequirementItem> items = readItems(toolInput, askedCodes, forbiddenNumberUnits,
+                command.interviewId());
+        String answer = Objects.requireNonNullElse(readText(toolInput, SystemDesignToolSchemas.ANSWER_FIELD), "");
+        String rejectReason = findRejectReason(answer, forbiddenNumberUnits);
+        if (rejectReason == null) {
+            return new SystemDesignRequirementAnswerResult(askedCodes, adjustForAssumedItems(answerType, items),
+                    answer, items);
+        }
+        if (askedCodes.isEmpty()) {
+            log.warn("시스템 설계 역질문 답을 쓸 수 없고 바꿀 시드 답도 없어 실패로 봅니다. reason: {}, answerType: {}, "
+                    + "interviewId: {}", rejectReason, answerType, command.interviewId());
+            throw new ExternalApiException("시스템 설계 역질문 답을 쓸 수 없습니다. reason=" + rejectReason);
+        }
+        log.warn("시스템 설계 역질문 답을 시드 답으로 바꿉니다. reason: {}, askedCodes: {}, interviewId: {}", rejectReason,
+                askedCodes, command.interviewId());
+        // 답이 시드 문장으로 바뀌면 LLM이 정한 내용은 면접자에게 나가지 않는다. 답과 항목이 어긋나지 않게 LLM이 정한 항목을 버린다.
+        List<SystemDesignRequirementItem> seedItems = items.stream()
+                .filter(item -> item.source() == SystemDesignRequirementSource.SEED)
                 .toList();
-        if (askedRequirements.isEmpty()) {
-            return DEFAULT_ANSWER;
-        }
-        String seedAnswer = askedRequirements.stream()
-                .map(Requirement::answer)
-                .collect(Collectors.joining(SEED_ANSWER_DELIMITER));
-        String answer = SystemDesignText.normalize(llmAnswer);
-        String fallbackReason = findFallbackReason(answer, seedAnswer);
-        if (fallbackReason != null) {
-            log.warn("시스템 설계 역질문 답을 시드 답으로 바꿉니다. reason: {}, askedCodes: {}", fallbackReason, askedCodes);
-            return seedAnswer;
-        }
-        return answer;
+        return new SystemDesignRequirementAnswerResult(askedCodes, SystemDesignRequirementAnswerType.SEED,
+                seedAnswer(requirements, askedCodes), seedItems);
     }
 
-    private static String findFallbackReason(String answer, String seedAnswer) {
+    private static SystemDesignRequirementAnswerType readAnswerType(JsonNode toolInput) {
+        JsonNode value = toolInput == null ? null : toolInput.get(SystemDesignToolSchemas.ANSWER_TYPE_FIELD);
+        if (value != null && value.isString()) {
+            for (SystemDesignRequirementAnswerType answerType : SystemDesignRequirementAnswerType.values()) {
+                if (answerType.name().equals(value.stringValue())) {
+                    return answerType;
+                }
+            }
+        }
+        throw new ExternalApiException("시스템 설계 역질문 답의 종류가 없거나 값이 잘못됐습니다. field="
+                + SystemDesignToolSchemas.ANSWER_TYPE_FIELD);
+    }
+
+    /**
+     * 판정을 믿는다. YES가 있으면 시드 사실이 답에 들어가므로 ASSUMED는 MIXED로, DECLINED는 SEED로 본다(DECLINED였던 답도 다른
+     * 답과 같은 검사를 받아 거절 문구나 빈 답이면 시드 답으로 바뀐다). YES가 없으면 SEED·MIXED는 ASSUMED로 본다.
+     */
+    private static SystemDesignRequirementAnswerType correctAnswerType(SystemDesignRequirementAnswerType answerType,
+                                                                       List<String> askedCodes, Long interviewId) {
+        SystemDesignRequirementAnswerType corrected = askedCodes.isEmpty()
+                ? withoutAskedRequirement(answerType)
+                : withAskedRequirement(answerType);
+        if (corrected != answerType) {
+            log.info("시스템 설계 역질문 답의 종류를 판정에 맞춰 바꿉니다. from: {}, to: {}, askedCodes: {}, interviewId: {}",
+                    answerType, corrected, askedCodes, interviewId);
+        }
+        return corrected;
+    }
+
+    private static SystemDesignRequirementAnswerType withAskedRequirement(
+            SystemDesignRequirementAnswerType answerType) {
+        return switch (answerType) {
+            case ASSUMED -> SystemDesignRequirementAnswerType.MIXED;
+            case DECLINED -> SystemDesignRequirementAnswerType.SEED;
+            case SEED, MIXED -> answerType;
+        };
+    }
+
+    private static SystemDesignRequirementAnswerType withoutAskedRequirement(
+            SystemDesignRequirementAnswerType answerType) {
+        return switch (answerType) {
+            case SEED, MIXED -> SystemDesignRequirementAnswerType.ASSUMED;
+            case ASSUMED, DECLINED -> answerType;
+        };
+    }
+
+    // LLM이 정한 내용(ASSUMED 항목)이 남은 SEED 답은 둘 다 답한 것이다.
+    private static SystemDesignRequirementAnswerType adjustForAssumedItems(
+            SystemDesignRequirementAnswerType answerType, List<SystemDesignRequirementItem> items) {
+        boolean hasAssumedItem = items.stream()
+                .anyMatch(item -> item.source() == SystemDesignRequirementSource.ASSUMED);
+        if (answerType == SystemDesignRequirementAnswerType.SEED && hasAssumedItem) {
+            return SystemDesignRequirementAnswerType.MIXED;
+        }
+        return answerType;
+    }
+
+    /**
+     * 묻지 않은 숨은 요구사항의 '숫자+단위' 가운데, 지금까지 물은 숨은 요구사항(이전 역질문과 이번 판정)과 이전 확정 항목에 없는 것.
+     * 이번 SEED 항목도 같은 검사를 통과해야 남으므로 허용 목록에 더해도 결과가 같다. 숫자만 같은 우연(정한 "5개"와 시드 "5년")은
+     * 단위가 달라 걸리지 않는다. "백만" 같은 한글 수사와 전각 숫자는 잡지 못해 프롬프트 규칙이 함께 막는다.
+     */
+    private static Set<String> forbiddenNumberUnits(List<Requirement> requirements,
+                                                    SystemDesignConfirmedRequirements confirmed,
+                                                    List<String> askedCodes) {
+        Set<String> knownCodes = new HashSet<>(confirmed.askedRequirementCodes());
+        knownCodes.addAll(askedCodes);
+        Set<String> forbidden = new LinkedHashSet<>();
+        Set<String> allowed = new HashSet<>();
+        for (Requirement requirement : requirements) {
+            Set<String> numberUnits = numberUnits(requirement.answer());
+            if (knownCodes.contains(requirement.code())) {
+                allowed.addAll(numberUnits);
+            } else {
+                forbidden.addAll(numberUnits);
+            }
+        }
+        for (SystemDesignRequirementItem item : confirmed.items()) {
+            allowed.addAll(numberUnits(item.name() + SEED_ANSWER_DELIMITER + item.detail()));
+        }
+        forbidden.removeAll(allowed);
+        return forbidden;
+    }
+
+    // 천 단위 쉼표를 지운 뒤 '숫자+단위'를 모은다. "1,000만 명"과 "1000만명"은 같은 1000만이고, "100배쯤"과 "100배예요"는 같은 100배다.
+    // 단위가 붙지 않은 숫자는 모으지 않는다.
+    private static Set<String> numberUnits(String text) {
+        Matcher matcher = NUMBER_WITH_UNIT.matcher(THOUSANDS_SEPARATOR.matcher(text).replaceAll(""));
+        Set<String> numberUnits = new LinkedHashSet<>();
+        while (matcher.find()) {
+            numberUnits.add(matcher.group(1) + matcher.group(2).toLowerCase(Locale.ROOT));
+        }
+        return numberUnits;
+    }
+
+    private static List<String> leakedNumberUnits(String text, Set<String> forbiddenNumberUnits) {
+        return numberUnits(text).stream()
+                .filter(forbiddenNumberUnits::contains)
+                .toList();
+    }
+
+    private static String findRejectReason(String answer, Set<String> forbiddenNumberUnits) {
         if (answer.isEmpty()) {
             return "빈 답";
         }
         if (answer.length() > MAX_ANSWER_LENGTH) {
             return "답 길이 " + answer.length() + "자";
         }
-        // 판정은 YES인데 답은 "등록되지 않은 내용"이면 둘이 어긋난다. 물은 것으로 기록하는 요구사항을 면접자가 실제로 듣게 한다.
-        if (answer.contains(DEFAULT_ANSWER)) {
-            return "물은 요구사항이 있는데 정해진 문구";
+        if (EVASION.matcher(answer).find()) {
+            return "회피 문구";
         }
-        Set<String> unknownNumbers = new LinkedHashSet<>(numbers(answer));
-        unknownNumbers.removeAll(numbers(seedAnswer));
-        if (!unknownNumbers.isEmpty()) {
-            return "시드에 없는 숫자 " + unknownNumbers;
+        List<String> leaked = leakedNumberUnits(answer, forbiddenNumberUnits);
+        if (!leaked.isEmpty()) {
+            return "묻지 않은 요구사항의 수치 " + leaked;
         }
         return null;
     }
 
-    // 천 단위 쉼표를 지운 뒤 숫자(소수 포함)를 문자열로 모은다. "1,000만"과 "1000만"은 같은 숫자 1000이다.
-    private static Set<String> numbers(String text) {
-        Matcher matcher = NUMBER.matcher(THOUSANDS_SEPARATOR.matcher(text).replaceAll(""));
-        Set<String> numbers = new LinkedHashSet<>();
-        while (matcher.find()) {
-            numbers.add(matcher.group());
+    private static List<SystemDesignRequirementItem> readItems(JsonNode toolInput, List<String> askedCodes,
+                                                               Set<String> forbiddenNumberUnits, Long interviewId) {
+        JsonNode itemsNode = itemsArray(toolInput.get(SystemDesignToolSchemas.REQUIREMENT_ITEMS_FIELD), interviewId);
+        List<SystemDesignRequirementItem> items = new ArrayList<>();
+        for (int index = 0; index < itemsNode.size(); index++) {
+            ItemCandidate candidate = ItemCandidate.from(itemsNode.get(index));
+            String dropReason = candidate.findDropReason(askedCodes, forbiddenNumberUnits);
+            if (dropReason != null) {
+                log.warn("시스템 설계 역질문 확정 항목을 버립니다. reason: {}, index: {}, interviewId: {}", dropReason, index,
+                        interviewId);
+                continue;
+            }
+            items.add(candidate.toItem());
         }
-        return numbers;
+        if (items.size() > MAX_ITEM_COUNT) {
+            log.warn("시스템 설계 역질문에서 {}개를 넘는 확정 항목을 버립니다. count: {}, interviewId: {}", MAX_ITEM_COUNT,
+                    items.size(), interviewId);
+            return List.copyOf(items.subList(0, MAX_ITEM_COUNT));
+        }
+        return List.copyOf(items);
+    }
+
+    // 배열이 아니면 빈 배열로 본다. 모델이 배열을 JSON 문자열로 감싸 보내기도 해서, 문자열이면 배열로 읽어 본다.
+    private static JsonNode itemsArray(JsonNode itemsNode, Long interviewId) {
+        if (itemsNode != null && itemsNode.isString()) {
+            try {
+                itemsNode = ITEMS_MAPPER.readTree(itemsNode.stringValue());
+            } catch (JacksonException e) {
+                itemsNode = null;
+            }
+        }
+        if (itemsNode == null || !itemsNode.isArray()) {
+            log.warn("시스템 설계 역질문 확정 항목 필드가 없거나 배열이 아니어서 비웁니다. interviewId: {}", interviewId);
+            return ITEMS_MAPPER.createArrayNode();
+        }
+        return itemsNode;
+    }
+
+    // 문자열이 아니면 null이다. 엔티티를 되돌린 뒤 앞뒤 공백을 지운다.
+    private static String readText(JsonNode node, String fieldName) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || !value.isString()) {
+            return null;
+        }
+        return SystemDesignText.normalize(SystemDesignUserMessages.unescape(value.stringValue()));
+    }
+
+    private static String seedAnswer(List<Requirement> requirements, List<String> askedCodes) {
+        return requirements.stream()
+                .filter(requirement -> askedCodes.contains(requirement.code()))
+                .map(Requirement::answer)
+                .collect(Collectors.joining(SEED_ANSWER_DELIMITER));
+    }
+
+    // 확정 항목 원소 하나를 읽은 값. 객체가 아니거나 필드가 문자열이 아니면 그 값이 null이다.
+    private record ItemCandidate(boolean object, String name, String detail, String source) {
+
+        static ItemCandidate from(JsonNode element) {
+            if (element == null || !element.isObject()) {
+                return new ItemCandidate(false, null, null, null);
+            }
+            JsonNode source = element.get(SystemDesignToolSchemas.ITEM_SOURCE_FIELD);
+            return new ItemCandidate(true, readText(element, SystemDesignToolSchemas.ITEM_NAME_FIELD),
+                    readText(element, SystemDesignToolSchemas.ITEM_DETAIL_FIELD),
+                    source != null && source.isString() ? source.stringValue() : null);
+        }
+
+        // 잘라 내면 뜻이 바뀔 수 있어 규칙을 어긴 항목은 통째로 버린다.
+        String findDropReason(List<String> askedCodes, Set<String> forbiddenNumberUnits) {
+            if (!object) {
+                return "객체가 아님";
+            }
+            if (!SystemDesignRequirementItem.hasValidLength(name, SystemDesignRequirementItem.MAX_NAME_LENGTH)) {
+                return "이름 길이 " + (name == null ? "없음" : name.length() + "자");
+            }
+            if (!SystemDesignRequirementItem.hasValidLength(detail, SystemDesignRequirementItem.MAX_DETAIL_LENGTH)) {
+                return "내용 길이 " + (detail == null ? "없음" : detail.length() + "자");
+            }
+            SystemDesignRequirementSource itemSource = parseSource();
+            if (itemSource == null) {
+                return "출처 값 " + source;
+            }
+            if (itemSource == SystemDesignRequirementSource.SEED && askedCodes.isEmpty()) {
+                return "물은 숨은 요구사항이 없는데 SEED";
+            }
+            List<String> leaked = leakedNumberUnits(name + SEED_ANSWER_DELIMITER + detail, forbiddenNumberUnits);
+            if (!leaked.isEmpty()) {
+                return "묻지 않은 요구사항의 수치 " + leaked;
+            }
+            return null;
+        }
+
+        SystemDesignRequirementItem toItem() {
+            return new SystemDesignRequirementItem(name, detail, parseSource());
+        }
+
+        private SystemDesignRequirementSource parseSource() {
+            for (SystemDesignRequirementSource candidate : SystemDesignRequirementSource.values()) {
+                if (candidate.name().equals(source)) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
     }
 }

@@ -47,6 +47,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixture
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignQuestionFixtureBuilder;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementAnswerResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
@@ -63,7 +64,6 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
-import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
@@ -549,7 +549,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         Long interviewId = systemDesignInterview.getInterview().getId();
         String answer = "하루에 새로 만들어지는 단축 URL은 10만 개 정도예요.";
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
-                .willReturn(new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), answer));
+                .willReturn(SystemDesignRequirementAnswerResultFixtureBuilder.builder().answer(answer).build());
         MockHttpSession session = loginSession(member);
 
         // when
@@ -611,8 +611,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         Long interviewId = systemDesignInterview.getInterview().getId();
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
-                .willReturn(new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"),
-                        "하루에 새로 만들어지는 단축 URL은 10만 개 정도예요."));
+                .willReturn(SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .answer("하루에 새로 만들어지는 단축 URL은 10만 개 정도예요.")
+                        .build());
         MockHttpSession session = loginSession(member);
         String firstResponse = mockMvc.perform(post(REQUIREMENT_QUESTIONS_URL, interviewId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -640,15 +641,18 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         );
     }
 
+    // 숨은 요구사항에 없는 내용을 물으면 면접관이 정한 답이 그대로 나가고 저장된다. 답의 검증은 클라이언트 쪽에서 끝난다.
     @Test
-    void 등록되지_않은_내용을_물으면_정해진_문구로_답한다() throws Exception {
+    void 숨은_요구사항에_없는_내용을_물으면_면접관이_정한_답을_준다() throws Exception {
         // given
         Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         saveRequirementQuestion(systemDesignInterview, 1);
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
-                .willReturn(new SystemDesignRequirementAnswerResult(List.of(), "결제 기능은 없어요."));
+                .willReturn(SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("결제 기능은 이번 범위에서 빼도 돼요.")
+                        .build());
         MockHttpSession session = loginSession(member);
 
         // when & then
@@ -663,13 +667,13 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         .session(session)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.answer").value(DEFAULT_REQUIREMENT_ANSWER))
+                .andExpect(jsonPath("$.answer").value("결제 기능은 이번 범위에서 빼도 돼요."))
                 .andExpect(jsonPath("$.remaining_count").value(3));
         assertThat(readRequirementQuestions(systemDesignInterview))
                 .extracting(SystemDesignRequirementQuestion::getAnswer,
                         SystemDesignRequirementQuestion::getAskedRequirementCodes)
                 .last()
-                .isEqualTo(tuple(DEFAULT_REQUIREMENT_ANSWER, List.of()));
+                .isEqualTo(tuple("결제 기능은 이번 범위에서 빼도 돼요.", List.of()));
     }
 
     @Test
