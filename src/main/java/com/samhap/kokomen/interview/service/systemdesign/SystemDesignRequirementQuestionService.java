@@ -76,7 +76,8 @@ public class SystemDesignRequirementQuestionService {
                 .map(question -> new SystemDesignRequirementTurn(question.getContent(), question.getAnswer()))
                 .toList();
         SystemDesignConfirmedRequirements confirmedRequirements = new SystemDesignConfirmedRequirements(
-                SystemDesignRequirementQuestion.collectAskedRequirementCodes(previousQuestions), List.of());
+                SystemDesignRequirementQuestion.collectAskedRequirementCodes(previousQuestions),
+                SystemDesignRequirementQuestion.collectRequirementItems(previousQuestions));
         SystemDesignRequirementAnswerCommand command = new SystemDesignRequirementAnswerCommand(interviewId,
                 readProblemContext(systemDesignInterview.getProblem()), previousTurns, confirmedRequirements, content);
         return RequirementQuestionDraft.newQuestion(interviewId, memberId, content, command);
@@ -120,7 +121,8 @@ public class SystemDesignRequirementQuestionService {
         SystemDesignRequirementQuestion.validateCount(savedCount);
         SystemDesignRequirementQuestion requirementQuestion = requirementQuestionRepository.save(
                 new SystemDesignRequirementQuestion(systemDesignInterview, savedCount + 1, draft.content(),
-                        result.answer(), result.askedRequirementCodes()));
+                        result.answer(), result.askedRequirementCodes(), result.answerType(),
+                        result.requirementItems()));
         chargeRequirementQuestionToken(draft.memberId());
         return SystemDesignRequirementAnswerResponse.from(requirementQuestion);
     }

@@ -29,7 +29,10 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -50,6 +53,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 class SystemDesignInterviewRepositoryTest extends BaseTest {
+
+    private static final SystemDesignRequirementItem LOGIN_ITEM = new SystemDesignRequirementItem("로그인",
+            "단축 URL은 로그인 없이 누구나 만들 수 있다.", SystemDesignRequirementSource.ASSUMED);
 
     @Autowired
     private SystemDesignInterviewRepository systemDesignInterviewRepository;
@@ -295,7 +301,7 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
     }
 
     @Test
-    void 역질문의_물은_요구사항_code_목록이_JSON으로_왕복한다() {
+    void 역질문의_물은_요구사항_code_목록과_확정_항목이_JSON으로_왕복한다() {
         // given
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
         SystemDesignInterview otherInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
@@ -315,8 +321,10 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                         .systemDesignInterview(systemDesignInterview)
                         .questionOrder(2)
                         .content("사용자 인증도 해야 하나요?")
-                        .answer("등록되지 않은 내용이에요. 가정하고 진행하세요.")
+                        .answer("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
                         .askedRequirementCodes(List.of())
+                        .answerType(SystemDesignRequirementAnswerType.ASSUMED)
+                        .requirementItems(List.of(LOGIN_ITEM))
                         .build());
 
         // when
@@ -329,19 +337,45 @@ class SystemDesignInterviewRepositoryTest extends BaseTest {
                 () -> assertThat(found)
                         .extracting(SystemDesignRequirementQuestion::getId, SystemDesignRequirementQuestion::getContent,
                                 SystemDesignRequirementQuestion::getAnswer,
-                                SystemDesignRequirementQuestion::getAskedRequirementCodes)
+                                SystemDesignRequirementQuestion::getAskedRequirementCodes,
+                                SystemDesignRequirementQuestion::getAnswerType,
+                                SystemDesignRequirementQuestion::getRequirementItems)
                         .containsExactly(
                                 tuple(first.getId(), "하루 생성량과 조회 비율이 어떻게 되나요?",
                                         "하루 평균 10만 개가 만들어지고, 조회는 생성의 100배쯤이에요.",
-                                        List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO")),
-                                tuple(second.getId(), "사용자 인증도 해야 하나요?", "등록되지 않은 내용이에요. 가정하고 진행하세요.",
-                                        List.of())),
+                                        List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"),
+                                        SystemDesignRequirementAnswerType.SEED, List.of()),
+                                tuple(second.getId(), "사용자 인증도 해야 하나요?", "로그인 없이도 누구나 단축 URL을 만들 수 있어요.",
+                                        List.of(), SystemDesignRequirementAnswerType.ASSUMED, List.of(LOGIN_ITEM))),
                 () -> assertThat(count).isEqualTo(2),
                 () -> assertThat(jdbcTemplate.queryForObject(
                         "SELECT JSON_LENGTH(asked_requirement_codes) FROM system_design_requirement_question "
                                 + "WHERE id = ?",
                         Integer.class, second.getId())).isZero()
         );
+    }
+
+    // 답의 종류와 확정 항목을 저장하기 전(V58 전)에 만든 행은 두 컬럼이 NULL이다. 실패하지 않고 null로 읽는다.
+    @Test
+    void 배포_전에_저장한_역질문은_답의_종류와_확정_항목을_null로_읽는다() {
+        // given
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(SystemDesignStage.REQUIREMENTS);
+        SystemDesignRequirementQuestion legacy = requirementQuestionRepository.save(
+                SystemDesignRequirementQuestionFixtureBuilder.builder()
+                        .systemDesignInterview(systemDesignInterview)
+                        .build());
+        jdbcTemplate.update("UPDATE system_design_requirement_question "
+                + "SET answer_type = NULL, requirement_items = NULL WHERE id = ?", legacy.getId());
+
+        // when
+        List<SystemDesignRequirementQuestion> found = requirementQuestionRepository
+                .findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
+
+        // then
+        assertThat(found).singleElement()
+                .extracting(SystemDesignRequirementQuestion::getAnswer, SystemDesignRequirementQuestion::getAnswerType,
+                        SystemDesignRequirementQuestion::getRequirementItems)
+                .containsExactly("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.", null, null);
     }
 
     @Test

@@ -27,7 +27,10 @@ import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -37,6 +40,7 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemR
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignRequirementAnswerResponse;
 import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirementQuestionService.RequirementQuestionDraft;
+import com.samhap.kokomen.interview.tool.SystemDesignConfirmedRequirements;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementTurn;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
@@ -52,6 +56,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class SystemDesignRequirementQuestionServiceTest extends BaseTest {
+
+    private static final SystemDesignRequirementItem DAILY_CREATION_VOLUME_ITEM = new SystemDesignRequirementItem(
+            "하루 생성량", "하루 평균 10만 개가 새로 만들어진다.", SystemDesignRequirementSource.SEED);
+    private static final SystemDesignRequirementItem READ_WRITE_RATIO_ITEM = new SystemDesignRequirementItem(
+            "조회와 생성 비율", "조회는 생성의 100배쯤이다.", SystemDesignRequirementSource.SEED);
+    private static final SystemDesignRequirementItem REGION_ITEM = new SystemDesignRequirementItem(
+            "서비스 지역", "국내 사용자만 대상으로 한다.", SystemDesignRequirementSource.ASSUMED);
 
     @Autowired
     private SystemDesignRequirementQuestionService requirementQuestionService;
@@ -131,10 +142,23 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         SystemDesignProblem problem = problemTestSupport.saveProblem();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member, problem,
                 SystemDesignStage.REQUIREMENTS);
-        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.",
-                List.of("DAILY_CREATION_VOLUME"));
-        saveRequirementQuestion(systemDesignInterview, 2, "그럼 조회와 보관 기간은요?", "조회는 생성의 100배쯤이고 5년 동안 열려야 해요.",
-                List.of("READ_WRITE_RATIO", "RETENTION_PERIOD", "DAILY_CREATION_VOLUME"));
+        requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(1)
+                .content("하루에 몇 개나 만들어지나요?")
+                .answer("하루 평균 10만 개 정도예요.")
+                .askedRequirementCodes(List.of("DAILY_CREATION_VOLUME"))
+                .requirementItems(List.of(DAILY_CREATION_VOLUME_ITEM))
+                .build());
+        requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(2)
+                .content("그럼 조회와 보관 기간은요?")
+                .answer("조회는 생성의 100배쯤이고 5년 동안 열려야 해요.")
+                .askedRequirementCodes(List.of("READ_WRITE_RATIO", "RETENTION_PERIOD", "DAILY_CREATION_VOLUME"))
+                .answerType(SystemDesignRequirementAnswerType.MIXED)
+                .requirementItems(List.of(READ_WRITE_RATIO_ITEM, REGION_ITEM))
+                .build());
         Long interviewId = systemDesignInterview.getInterview().getId();
 
         // when
@@ -152,6 +176,8 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                         new SystemDesignRequirementTurn("그럼 조회와 보관 기간은요?", "조회는 생성의 100배쯤이고 5년 동안 열려야 해요.")),
                 () -> assertThat(draft.command().confirmedRequirements().askedRequirementCodes())
                         .containsExactly("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO", "RETENTION_PERIOD"),
+                () -> assertThat(draft.command().confirmedRequirements().items())
+                        .containsExactly(DAILY_CREATION_VOLUME_ITEM, READ_WRITE_RATIO_ITEM, REGION_ITEM),
                 () -> assertThat(draft.command().problem())
                         .isEqualTo(SystemDesignProblemContextFixture.urlShortener(problem.getId()))
         );
@@ -188,6 +214,90 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                                 tuple(2, "하루 생성량과 보관 기간을 알려 주세요.",
                                         List.of("DAILY_CREATION_VOLUME", "RETENTION_PERIOD")))
         );
+    }
+
+    // 배포 전에 저장한 행은 답의 종류와 확정 항목이 NULL이다. 물은 요구사항 code는 문맥에 넣고 확정 항목은 건너뛴다.
+    @Test
+    void 배포_전에_저장한_역질문이_있어도_준비한다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
+        jdbcTemplate.update("UPDATE system_design_requirement_question "
+                + "SET answer_type = NULL, requirement_items = NULL WHERE system_design_interview_id = ?",
+                systemDesignInterview.getId());
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "커스텀 별칭도 지원하나요?");
+
+        // then
+        assertAll(
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).singleElement()
+                        .extracting(SystemDesignRequirementQuestion::getAnswerType,
+                                SystemDesignRequirementQuestion::getRequirementItems)
+                        .containsExactly(null, null),
+                () -> assertThat(draft.command().confirmedRequirements())
+                        .isEqualTo(new SystemDesignConfirmedRequirements(List.of("DAILY_CREATION_VOLUME"), List.of()))
+        );
+    }
+
+    // 다음 역질문의 확정한 요구사항 문맥과 리포트가 이 값을 쓴다.
+    @Test
+    void 답의_종류와_확정_항목을_역질문_행에_저장한다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루 생성량과 서비스 지역을 알려 주세요.");
+        List<SystemDesignRequirementItem> items = List.of(DAILY_CREATION_VOLUME_ITEM, REGION_ITEM);
+
+        // when
+        requirementQuestionService.save(draft, SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                .answerType(SystemDesignRequirementAnswerType.MIXED)
+                .answer("하루 평균 10만 개가 만들어지고, 국내 사용자만 생각하면 돼요.")
+                .requirementItems(items)
+                .build());
+
+        // then
+        assertAll(
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).singleElement()
+                        .extracting(SystemDesignRequirementQuestion::getAnswerType,
+                                SystemDesignRequirementQuestion::getRequirementItems)
+                        .containsExactly(SystemDesignRequirementAnswerType.MIXED, items),
+                () -> assertThat(jdbcTemplate.queryForObject("SELECT answer_type FROM "
+                        + "system_design_requirement_question WHERE system_design_interview_id = ?", String.class,
+                        systemDesignInterview.getId())).isEqualTo("MIXED"),
+                () -> assertThat(jdbcTemplate.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(requirement_items, "
+                                + "'$[1].source')) FROM system_design_requirement_question "
+                                + "WHERE system_design_interview_id = ?", String.class, systemDesignInterview.getId()))
+                        .isEqualTo("ASSUMED")
+        );
+    }
+
+    // 확정 항목이 없는 답은 NULL이 아니라 빈 배열로 저장한다. NULL은 배포 전에 저장한 행에만 있다.
+    @Test
+    void 확정_항목이_없으면_빈_배열로_저장한다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "어떤 DB를 써야 하나요?");
+
+        // when
+        requirementQuestionService.save(draft, SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                .askedRequirementCodes(List.of())
+                .answerType(SystemDesignRequirementAnswerType.DECLINED)
+                .answer("요구사항을 묻는 질문에만 답할 수 있어요. 설계 방법은 직접 정해 주세요.")
+                .build());
+
+        // then
+        assertThat(jdbcTemplate.queryForObject("SELECT JSON_LENGTH(requirement_items) FROM "
+                + "system_design_requirement_question WHERE system_design_interview_id = ?", Integer.class,
+                systemDesignInterview.getId())).isZero();
     }
 
     // 최종 답은 클라이언트가 검증해 정한다(SystemDesignRequirementAnswerComposer). 서비스는 바꾸지 않고 저장한다.

@@ -61,7 +61,10 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -548,8 +551,13 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         Long interviewId = systemDesignInterview.getInterview().getId();
         String answer = "하루에 새로 만들어지는 단축 URL은 10만 개 정도예요.";
+        SystemDesignRequirementItem item = new SystemDesignRequirementItem("하루 생성량", "하루 평균 10만 개가 새로 만들어진다.",
+                SystemDesignRequirementSource.SEED);
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
-                .willReturn(SystemDesignRequirementAnswerResultFixtureBuilder.builder().answer(answer).build());
+                .willReturn(SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .answer(answer)
+                        .requirementItems(List.of(item))
+                        .build());
         MockHttpSession session = loginSession(member);
 
         // when
@@ -593,9 +601,12 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 () -> assertThat(readRequirementQuestions(systemDesignInterview))
                         .extracting(SystemDesignRequirementQuestion::getQuestionOrder,
                                 SystemDesignRequirementQuestion::getContent, SystemDesignRequirementQuestion::getAnswer,
-                                SystemDesignRequirementQuestion::getAskedRequirementCodes)
+                                SystemDesignRequirementQuestion::getAskedRequirementCodes,
+                                SystemDesignRequirementQuestion::getAnswerType,
+                                SystemDesignRequirementQuestion::getRequirementItems)
                         .containsExactly(tuple(1, "하루에 단축 URL이 몇 개나 만들어지나요?", answer,
-                                List.of("DAILY_CREATION_VOLUME"))),
+                                List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED,
+                                List.of(item))),
                 () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero(),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
