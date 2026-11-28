@@ -420,7 +420,8 @@ class SystemDesignEvaluationEvidenceVerifierTest {
     }
 
     // 근거는 면접자의 설계 답변이어야 한다. 면접관의 질문과 역질문 기록(면접자가 물은 역질문, 그때 돌려준 면접관 답)과 역질문으로 확정한
-    // 요구사항은 출처가 아니다.
+    // 요구사항은 출처가 아니다. 검증기는 확정한 요구사항을 읽지 않으므로 마지막 단언은 지금 동작을 고정하는 것이다. L3 증거 규칙이 확정한
+    // 요구사항의 인용을 근거로 인정하지 않으니, 출처에 더하는 변경이 들어오면 이 단언이 깨져 규칙과 검증이 어긋난 것을 알린다.
     @Test
     void 면접관_질문이나_역질문_기록이나_확정한_요구사항을_인용하면_NOT_MET으로_내린다() {
         VerifiedVerdict downgraded = new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE);

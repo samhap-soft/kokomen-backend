@@ -222,6 +222,74 @@ class SystemDesignConfirmedRequirementTest {
                 new SystemDesignConfirmedRequirement("가용성 목표", "서비스 가용성은 99.9% 이상을 목표로 한다.", ASSUMED));
     }
 
+    // SEED 항목의 내용에 '숫자+단위'가 하나도 없으면 값을 가릴 수 없어(예: "백만"처럼 한글로 쓴 수) 정해 둔 사실을 덮지 않는다. 정해 둔
+    // 사실에 숫자가 없는 시드(클릭 통계)도 정해 둔 사실이 남는다.
+    @Test
+    void 숫자_없는_SEED_항목은_정해_둔_사실을_덮지_않는다() {
+        // given
+        String clickFact = "링크별 클릭 수 같은 통계 기능은 이번 범위에서 빼도 돼요.";
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                row(1, List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED, "하루에 백만 개예요.",
+                        item("하루 생성량", "하루에 백만 개가 만들어진다.", SEED)),
+                row(2, List.of("CLICK_STATISTICS"), SystemDesignRequirementAnswerType.SEED, clickFact,
+                        item("클릭 통계", "통계 기능은 넣지 않는다.", SEED)));
+
+        // when
+        List<SystemDesignConfirmedRequirement> confirmed = SystemDesignConfirmedRequirement.collect(
+                requirementQuestions, REQUIREMENTS);
+
+        // then
+        assertThat(confirmed).containsExactly(
+                new SystemDesignConfirmedRequirement("하루 생성량", DAILY_FACT, SEED),
+                new SystemDesignConfirmedRequirement("클릭 통계", clickFact, SEED));
+    }
+
+    // SEED 항목은 그 행까지 물은 시드의 것만 쓴다. 아직 묻지 않은 시드를 앞 행에 적은 항목은 넣지 않고, 그 시드는 처음 물은 자리에 정해 둔
+    // 사실로 나온다.
+    @Test
+    void 그_행까지_묻지_않은_시드의_SEED_항목은_넣지_않는다() {
+        // given
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                row(1, List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED,
+                        item("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                        item("보관 기간", "만든 날부터 5년 동안 열려야 한다.", SEED)),
+                row(2, List.of(), SystemDesignRequirementAnswerType.ASSUMED,
+                        item("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED)),
+                row(3, List.of("RETENTION_PERIOD"), SystemDesignRequirementAnswerType.SEED, RETENTION_FACT));
+
+        // when
+        List<SystemDesignConfirmedRequirement> confirmed = SystemDesignConfirmedRequirement.collect(
+                requirementQuestions, REQUIREMENTS);
+
+        // then
+        assertThat(confirmed).containsExactly(
+                new SystemDesignConfirmedRequirement("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                new SystemDesignConfirmedRequirement("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED),
+                new SystemDesignConfirmedRequirement("보관 기간", RETENTION_FACT, SEED));
+    }
+
+    // ASSUMED 항목의 이름이나 내용에 묻지 않은 시드의 이름이 그대로 들어 있으면 넣지 않는다(확인한 시드의 이름은 괜찮다). 이름이 그대로
+    // 나오지 않고 뜻만 같은 문장은 가리지 못한다.
+    @Test
+    void 묻지_않은_시드의_이름이_들어_있는_ASSUMED_항목은_넣지_않는다() {
+        // given
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                row(1, List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.MIXED,
+                        item("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                        item("통계 범위", "클릭 통계는 이번 범위에서 뺀다.", ASSUMED),
+                        item("별칭과 보관 기간", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED),
+                        item("커스텀 별칭", "하루 생성량과 상관없이 커스텀 별칭은 뺀다.", ASSUMED)));
+
+        // when
+        List<SystemDesignConfirmedRequirement> confirmed = SystemDesignConfirmedRequirement.collect(
+                requirementQuestions, REQUIREMENTS);
+
+        // then
+        assertThat(confirmed).containsExactly(
+                new SystemDesignConfirmedRequirement("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                new SystemDesignConfirmedRequirement("커스텀 별칭", "하루 생성량과 상관없이 커스텀 별칭은 뺀다.", ASSUMED));
+    }
+
     /**
      * 불변식: 역질문으로 확인한 시드(모든 행의 물은 code 중 이 문제에 있는 것) = 목록의 SEED 항목. 이름마다 한 번씩이고, SEED 항목의
      * 이름과 놓친 요구사항(확인하지 않은 시드)의 이름을 합치면 문제의 숨은 요구사항 전부이고 겹치지 않는다. ASSUMED 항목은 시드의
@@ -236,12 +304,13 @@ class SystemDesignConfirmedRequirementTest {
         for (int caseIndex = 0; caseIndex < 500; caseIndex++) {
             // given
             List<SystemDesignRequirementQuestion> requirementQuestions = randomRequirementQuestions(random);
+            // 처음 물은 순서(행 순서, 행 안에서는 물은 code 순서)의 확인한 시드 이름
             Set<String> confirmedNames = new LinkedHashSet<>();
             for (SystemDesignRequirementQuestion requirementQuestion : requirementQuestions) {
-                for (SystemDesignHiddenRequirement requirement : REQUIREMENTS) {
-                    if (requirementQuestion.getAskedRequirementCodes().contains(requirement.getCode())) {
-                        confirmedNames.add(requirement.getName());
-                    }
+                for (String code : requirementQuestion.getAskedRequirementCodes()) {
+                    REQUIREMENTS.stream()
+                            .filter(requirement -> requirement.getCode().equals(code))
+                            .forEach(requirement -> confirmedNames.add(requirement.getName()));
                 }
             }
             List<String> missedNames = allNames.stream().filter(name -> !confirmedNames.contains(name)).toList();
@@ -263,8 +332,11 @@ class SystemDesignConfirmedRequirementTest {
             seedNamesWithMissed.addAll(missedNames);
             String description = "case " + caseIndex + ": " + describe(requirementQuestions);
             assertAll(
-                    () -> assertThat(seedNames).as(description).hasSameElementsAs(confirmedNames)
-                            .doesNotHaveDuplicates(),
+                    () -> assertThat(seedNames).as(description).containsExactlyElementsOf(confirmedNames),
+                    () -> assertThat(confirmed).as(description)
+                            .filteredOn(requirement -> requirement.source() == SEED)
+                            .allSatisfy(requirement -> assertThat(isSeedFact(requirement.detail())
+                                    || isWithinSeedFact(requirement)).as(requirement.toString()).isTrue()),
                     () -> assertThat(seedNamesWithMissed).as(description).containsExactlyInAnyOrderElementsOf(allNames),
                     () -> assertThat(assumedNames).as(description).doesNotContainAnyElementsOf(allNames),
                     () -> assertThat(confirmed).as(description)
@@ -314,8 +386,12 @@ class SystemDesignConfirmedRequirementTest {
         for (SystemDesignHiddenRequirement requirement : REQUIREMENTS) {
             boolean asked = askedCodes.contains(requirement.getCode());
             int dice = random.nextInt(10);
-            if (asked && dice < 5) {
+            if (asked && dice < 3) {
                 items.add(item(requirement.getName(), requirement.getName() + "을 확정했다.", SEED));
+            } else if (asked && dice < 5) {
+                String numberUnit = SystemDesignText.numberUnits(requirement.getAnswer()).stream().findFirst()
+                        .orElse("3배");
+                items.add(item(requirement.getName(), requirement.getName() + "은 " + numberUnit + "다.", SEED));
             } else if (asked && dice == 5) {
                 items.add(item("일일 " + requirement.getName(), "이름을 바꿔 적었다.", SEED));
             } else if (!asked && dice == 0) {
@@ -335,6 +411,15 @@ class SystemDesignConfirmedRequirementTest {
 
     private static boolean isSeedFact(String detail) {
         return REQUIREMENTS.stream().anyMatch(requirement -> requirement.getAnswer().equals(detail));
+    }
+
+    // 모델이 적은 SEED 항목이 남았다면 그 내용의 '숫자+단위'는 비어 있지 않고 그 시드의 정해 둔 사실 안에 있다.
+    private static boolean isWithinSeedFact(SystemDesignConfirmedRequirement requirement) {
+        Set<String> detailNumberUnits = SystemDesignText.numberUnits(requirement.detail());
+        return REQUIREMENTS.stream()
+                .filter(seed -> seed.getName().equals(requirement.name()))
+                .anyMatch(seed -> !detailNumberUnits.isEmpty()
+                        && SystemDesignText.numberUnits(seed.getAnswer()).containsAll(detailNumberUnits));
     }
 
     private static String describe(List<SystemDesignRequirementQuestion> requirementQuestions) {
