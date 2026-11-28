@@ -134,7 +134,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
             "/api/v1/interviews/system-design/{interviewId}/questions/{questionId}";
     private static final String REPORT_URL = "/api/v1/interviews/system-design/{interviewId}/report";
     private static final String PUBLIC_REPORT_URL = "/api/v1/interviews/system-design/{interviewId}/result";
-    private static final String DEFAULT_REQUIREMENT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
+    private static final String DECLINED_REQUIREMENT_ANSWER = "요구사항을 묻는 질문에만 답할 수 있어요. 설계 방법은 직접 정해 주세요.";
     private static final String REQUIREMENT_QUESTION_JSON = """
             {
               "question": "하루에 단축 URL이 몇 개나 만들어지나요?"
@@ -583,8 +583,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         ),
                         responseFields(
                                 fieldWithPath("question").description("앞뒤 공백을 지운 역질문. 저장한 값 그대로"),
-                                fieldWithPath("answer").description("면접관 답. 문제에 정해 둔 요구사항을 근거로 만들고, "
-                                        + "정해 두지 않은 내용을 물으면 `" + DEFAULT_REQUIREMENT_ANSWER + "`"),
+                                fieldWithPath("answer").description("면접관 답. 문제에 정해 둔 요구사항이면 정해 둔 사실로, "
+                                        + "정해 두지 않은 요구사항이면 면접관이 앞의 답과 어긋나지 않게 정해서 답한다. "
+                                        + "요구사항을 묻는 질문이 아니면 ``" + DECLINED_REQUIREMENT_ANSWER + "``"),
                                 fieldWithPath("remaining_count")
                                         .description("더 할 수 있는 역질문 수. 5 - (이번 질문까지 포함한 역질문 수)")
                         )
