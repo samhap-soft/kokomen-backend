@@ -11,6 +11,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixture
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -173,6 +174,54 @@ class SystemDesignConfirmedRequirementTest {
                 new SystemDesignConfirmedRequirement("조회와 생성 비율", RATIO_FACT, SEED));
     }
 
+    // 모델이 적은 SEED 항목에 정해 둔 사실에 없는 '숫자+단위'가 있으면(값을 바꾸거나 면접자가 할 계산을 대신한 항목) 그 항목을 쓰지 않고
+    // 정해 둔 사실을 둔다. 역질문 답은 서버가 시드 답으로 바꿨는데 같은 이름의 SEED 항목만 남은 행이다. 이름은 시드 이름이라 보지 않는다.
+    @Test
+    void 정해_둔_사실에_없는_수치를_담은_SEED_항목은_정해_둔_사실로_둔다() {
+        // given
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                row(1, List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED, DAILY_FACT,
+                        item("하루 생성량", "하루 평균 20만 개가 만들어진다.", SEED)),
+                row(2, List.of("READ_WRITE_RATIO"), SystemDesignRequirementAnswerType.SEED, RATIO_FACT,
+                        item("조회와 생성 비율", "조회는 생성의 100배라 초당 약 116건이다.", SEED)),
+                row(3, List.of("RETENTION_PERIOD"), SystemDesignRequirementAnswerType.SEED, RETENTION_FACT,
+                        item("보관 기간", "만든 날부터 5년 동안 열려야 한다.", SEED)));
+
+        // when
+        List<SystemDesignConfirmedRequirement> confirmed = SystemDesignConfirmedRequirement.collect(
+                requirementQuestions, REQUIREMENTS);
+
+        // then
+        assertThat(confirmed).containsExactly(
+                new SystemDesignConfirmedRequirement("하루 생성량", DAILY_FACT, SEED),
+                new SystemDesignConfirmedRequirement("조회와 생성 비율", RATIO_FACT, SEED),
+                new SystemDesignConfirmedRequirement("보관 기간", "만든 날부터 5년 동안 열려야 한다.", SEED));
+    }
+
+    // ASSUMED 항목은 그 역질문의 답(면접자가 들은 문장)에 없는 '숫자+단위'가 이름이나 내용에 있으면 넣지 않는다. 면접자가 듣지 않은 수치가
+    // 리포트와 채점 입력에 들어가지 않게 한다.
+    @Test
+    void 답에_없는_수치를_담은_ASSUMED_항목은_넣지_않는다() {
+        // given
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                row(1, List.of(), SystemDesignRequirementAnswerType.ASSUMED,
+                        "가용성은 99.9% 이상을 목표로 보면 돼요. 커스텀 별칭은 이번 범위에서 빼도 돼요.",
+                        item("가용성 목표", "가용성은 99.9% 이상이고 장애 복구는 5분 안이다.", ASSUMED),
+                        item("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED),
+                        item("3단계 인증", "인증은 이번 범위에서 뺀다.", ASSUMED)),
+                row(2, List.of(), SystemDesignRequirementAnswerType.ASSUMED, "서비스 가용성은 99.9% 이상을 목표로 해요.",
+                        item("가용성 목표", "서비스 가용성은 99.9% 이상을 목표로 한다.", ASSUMED)));
+
+        // when
+        List<SystemDesignConfirmedRequirement> confirmed = SystemDesignConfirmedRequirement.collect(
+                requirementQuestions, REQUIREMENTS);
+
+        // then
+        assertThat(confirmed).containsExactly(
+                new SystemDesignConfirmedRequirement("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED),
+                new SystemDesignConfirmedRequirement("가용성 목표", "서비스 가용성은 99.9% 이상을 목표로 한다.", ASSUMED));
+    }
+
     /**
      * 불변식: 역질문으로 확인한 시드(모든 행의 물은 code 중 이 문제에 있는 것) = 목록의 SEED 항목. 이름마다 한 번씩이고, SEED 항목의
      * 이름과 놓친 요구사항(확인하지 않은 시드)의 이름을 합치면 문제의 숨은 요구사항 전부이고 겹치지 않는다. ASSUMED 항목은 시드의
@@ -296,13 +345,24 @@ class SystemDesignConfirmedRequirementTest {
                 .toString();
     }
 
+    // 답은 확정 항목 내용을 이은 문장이다(면접자가 들은 답에 항목 내용이 있다). 항목이 없으면 픽스처의 기본 답이다.
     private static SystemDesignRequirementQuestion row(int questionOrder, List<String> askedCodes,
                                                        SystemDesignRequirementAnswerType answerType,
+                                                       SystemDesignRequirementItem... items) {
+        String answer = items.length == 0 ? null : String.join(" ", Arrays.stream(items)
+                .map(SystemDesignRequirementItem::detail)
+                .toList());
+        return row(questionOrder, askedCodes, answerType, answer, items);
+    }
+
+    private static SystemDesignRequirementQuestion row(int questionOrder, List<String> askedCodes,
+                                                       SystemDesignRequirementAnswerType answerType, String answer,
                                                        SystemDesignRequirementItem... items) {
         return SystemDesignRequirementQuestionFixtureBuilder.builder()
                 .questionOrder(questionOrder)
                 .askedRequirementCodes(askedCodes)
                 .answerType(answerType)
+                .answer(answer)
                 .requirementItems(List.of(items))
                 .build();
     }

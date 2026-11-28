@@ -649,15 +649,19 @@ class SystemDesignReportServiceTest extends BaseTest {
         );
     }
 
+    // 면접관 답은 확정 항목 내용을 이은 문장이다(면접자가 들은 답에 항목 내용이 있다). 항목이 없으면 "n번 역질문의 답이에요."다.
     private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
                                          List<String> askedRequirementCodes,
                                          SystemDesignRequirementAnswerType answerType,
                                          SystemDesignRequirementItem... items) {
+        String answer = items.length == 0 ? questionOrder + "번 역질문의 답이에요." : String.join(" ", Arrays.stream(items)
+                .map(SystemDesignRequirementItem::detail)
+                .toList());
         requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
                 .systemDesignInterview(systemDesignInterview)
                 .questionOrder(questionOrder)
                 .content(questionOrder + "번 역질문이에요.")
-                .answer(questionOrder + "번 역질문의 답이에요.")
+                .answer(answer)
                 .askedRequirementCodes(askedRequirementCodes)
                 .answerType(answerType)
                 .requirementItems(List.of(items))

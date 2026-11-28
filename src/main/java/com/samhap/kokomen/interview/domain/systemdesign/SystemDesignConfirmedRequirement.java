@@ -33,11 +33,15 @@ public record SystemDesignConfirmedRequirement(
      *     마지막 말이 기준이다. 모델이 적은 시드 항목도 같은 이름의 정해 둔 사실을 덮는다.</li>
      *     <li>숨은 요구사항의 이름은 확인한 숨은 요구사항의 SEED 항목만 쓴다. 확인한 시드의 이름이 아닌 SEED 항목(묻지 않은 시드나 이름을
      *     바꿔 적은 시드)과 숨은 요구사항의 이름을 단 ASSUMED 항목은 넣지 않는다.</li>
+     *     <li>항목의 수치는 면접자가 들은 것이어야 한다. SEED 항목은 내용의 '숫자+단위'({@link SystemDesignText#numberUnits})가 그
+     *     시드의 정해 둔 사실에 모두 있을 때만 쓰고, 아니면(값을 바꾸거나 면접자가 할 계산을 대신한 항목, 역질문 답을 시드 답으로 바꾼 행에
+     *     남은 항목) 정해 둔 사실을 둔다. ASSUMED 항목은 이름·내용의 '숫자+단위'가 그 역질문의 답에 모두 있을 때만 넣는다.</li>
      *     <li>확정 항목을 저장하기 전(V58 전)에 만든 행(NULL)은 항목을 건너뛰고 물은 숨은 요구사항만 정해 둔 사실로 나온다.
      *     요구사항을 묻는 질문이 아니었던 행(DECLINED)은 물은 code도 항목도 없다.</li>
      * </ul>
      * 그래서 목록의 SEED 항목은 역질문으로 확인한 숨은 요구사항(모든 행의 물은 code 합집합)과 이름마다 하나씩 같고, 리포트의 놓친
-     * 요구사항과 합치면 문제의 숨은 요구사항 전부다. 묻지 않은 숨은 요구사항의 정해 둔 사실은 들어가지 않는다.
+     * 요구사항과 합치면 문제의 숨은 요구사항 전부다. 묻지 않은 숨은 요구사항의 정해 둔 사실은 들어가지 않는다. 다만 모델이 시드 항목을
+     * 적지 않았거나 V58 전 행이면 정해 둔 사실 전체가 나오므로, 답이 그 사실의 일부만 말했다면 답에 없던 내용이 함께 나온다.
      *
      * @param requirementQuestions 이 면접의 역질문 행(물은 순서)
      * @param hiddenRequirements   이 문제의 숨은 요구사항(순서는 상관없다)
@@ -47,9 +51,9 @@ public record SystemDesignConfirmedRequirement(
             List<SystemDesignHiddenRequirement> hiddenRequirements) {
         Map<String, SystemDesignHiddenRequirement> requirementsByCode = hiddenRequirements.stream()
                 .collect(Collectors.toMap(SystemDesignHiddenRequirement::getCode, Function.identity()));
-        Set<String> requirementNames = hiddenRequirements.stream()
-                .map(requirement -> nameKey(requirement.getName()))
-                .collect(Collectors.toSet());
+        Map<String, String> seedFactsByName = hiddenRequirements.stream()
+                .collect(Collectors.toMap(requirement -> nameKey(requirement.getName()),
+                        SystemDesignHiddenRequirement::getAnswer));
         Set<String> confirmedNames = SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions)
                 .stream()
                 .filter(requirementsByCode::containsKey)
@@ -63,8 +67,9 @@ public record SystemDesignConfirmedRequirement(
             if (items == null) {
                 continue;
             }
+            Set<String> heardNumberUnits = SystemDesignText.numberUnits(requirementQuestion.getAnswer());
             items.stream()
-                    .filter(item -> isAllowed(item, requirementNames, confirmedNames))
+                    .filter(item -> isAllowed(item, seedFactsByName, confirmedNames, heardNumberUnits))
                     .forEach(item -> requirementsByName.put(nameKey(item.name()),
                             new SystemDesignConfirmedRequirement(nameKey(item.name()), item.detail(), item.source())));
         }
@@ -86,13 +91,17 @@ public record SystemDesignConfirmedRequirement(
         }
     }
 
-    private static boolean isAllowed(SystemDesignRequirementItem item, Set<String> requirementNames,
-                                     Set<String> confirmedNames) {
+    // SEED 항목은 확인한 시드의 이름이고 내용의 수치가 그 시드의 정해 둔 사실 안에 있어야 한다(이름은 시드 이름이라 보지 않는다).
+    // ASSUMED 항목은 시드의 이름이 아니고 이름·내용의 수치가 그 역질문의 답(면접자가 들은 문장) 안에 있어야 한다.
+    private static boolean isAllowed(SystemDesignRequirementItem item, Map<String, String> seedFactsByName,
+                                     Set<String> confirmedNames, Set<String> heardNumberUnits) {
         String name = nameKey(item.name());
         if (item.source() == SystemDesignRequirementSource.SEED) {
-            return confirmedNames.contains(name);
+            return confirmedNames.contains(name) && SystemDesignText.numberUnits(seedFactsByName.get(name))
+                    .containsAll(SystemDesignText.numberUnits(item.detail()));
         }
-        return !requirementNames.contains(name);
+        return !seedFactsByName.containsKey(name)
+                && heardNumberUnits.containsAll(SystemDesignText.numberUnits(item.name() + " " + item.detail()));
     }
 
     private static String nameKey(String name) {
