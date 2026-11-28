@@ -33,6 +33,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignInterviewTestS
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
+import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementAnswerResultFixtureBuilder;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
 import com.samhap.kokomen.global.service.RedisService;
@@ -47,7 +48,6 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQ
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluation;
-import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
@@ -497,7 +497,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         willThrow(new IllegalStateException("Redis 연결이 끊겼어요.")).given(redissonClient)
                 .getScript(StringCodec.INSTANCE);
 
@@ -527,7 +527,9 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         }
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willAnswer(invocation -> {
             saveRequirementQuestion(systemDesignInterview, SystemDesignRequirementQuestion.MAX_COUNT);
-            return new SystemDesignRequirementAnswerResult(List.of(), "");
+            return SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                    .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                    .build();
         });
 
         // when & then
@@ -551,7 +553,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         SystemDesignRequirementAnswerResponse first = askRequirementQuestion(systemDesignInterview, member,
                 "하루에 몇 개나 만들어지나요?");
 
@@ -578,7 +580,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
         moveSavedAtBack(readRequirementQuestions(systemDesignInterview).get(0), 61);
 
@@ -606,7 +608,9 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of(), "등록되지 않은 내용이에요. 가정하고 진행하세요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build());
         askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
 
         // when
@@ -634,7 +638,9 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
             saveRequirementQuestion(systemDesignInterview, order);
         }
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of(), "등록되지 않은 내용이에요. 가정하고 진행하세요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder()
+                        .assumed("로그인 없이도 누구나 단축 URL을 만들 수 있어요.")
+                        .build());
         SystemDesignRequirementAnswerResponse fifth = askRequirementQuestion(systemDesignInterview, member,
                 "다섯 번째 역질문");
 
@@ -663,7 +669,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
         redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
 
@@ -686,7 +692,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?");
 
         // when & then
@@ -767,7 +773,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         Member member = saveMemberWithTokens(11);
         problemTestSupport.saveProblem();
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
-                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+                SystemDesignRequirementAnswerResultFixtureBuilder.builder().build());
         given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(answerEvaluation());
         given(systemDesignAnswerBedrockClient.evaluateEnd(any())).willReturn(endEvaluation());
         MemberAuth memberAuth = new MemberAuth(member.getId());

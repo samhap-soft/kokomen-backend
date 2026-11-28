@@ -150,7 +150,7 @@ class SystemDesignReportServiceTest extends BaseTest {
                                 tuple("조회와 생성 비율, 보관 기간에 대해 알려 주세요.",
                                         "단축 URL로 접속하는 조회 요청은 생성 요청의 100배쯤 된다고 보면 돼요. "
                                                 + "단축 URL은 만든 날부터 5년 동안 열려야 하고, 그 뒤에는 지워도 돼요."),
-                                tuple("로그인한 사용자만 단축 URL을 만들 수 있나요?", "등록되지 않은 내용이에요. 가정하고 진행하세요.")),
+                                tuple("로그인한 사용자만 단축 URL을 만들 수 있나요?", "로그인 없이도 누구나 단축 URL을 만들 수 있어요.")),
                 () -> assertThat(report.feedbacks())
                         .extracting(SystemDesignFeedbackResponse::questionId, SystemDesignFeedbackResponse::stage,
                                 SystemDesignFeedbackResponse::answerRank)

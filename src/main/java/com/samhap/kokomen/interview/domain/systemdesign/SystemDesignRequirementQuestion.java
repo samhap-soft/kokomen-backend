@@ -9,6 +9,8 @@ import com.samhap.kokomen.global.persistence.StringListJsonConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,12 +22,15 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
  * 요구사항 역질문과 답. askedRequirementCodes는 LLM이 YES로 판정하고 서버가 검증한 숨은 요구사항 code 목록이다(문제 순서).
+ * answerType은 서버가 판정에 맞춰 바로잡은 답의 종류이고, requirementItems는 이 답으로 확정한 요구사항이다(0~3개, 답에 적은 순서).
+ * 두 값을 저장하기 전(V58 전)에 만든 행은 둘 다 null이고, 새 행은 둘 다 있다(확정 항목이 없으면 빈 목록).
  * 면접당 {@link #MAX_COUNT}개까지이고 서비스가 진행 락 안에서 센다. questionOrder는 면접 안 순번(1~{@value #MAX_COUNT})이고,
  * (면접, 순번) 유니크와 순번 CHECK가 락 없이도 개수 한도를 DB에서 지킨다.
  */
@@ -68,21 +73,42 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
     @Column(name = "asked_requirement_codes", nullable = false, columnDefinition = "JSON")
     private List<String> askedRequirementCodes;
 
+    @Column(name = "answer_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private SystemDesignRequirementAnswerType answerType;
+
+    @Convert(converter = SystemDesignRequirementItemsConverter.class)
+    @Column(name = "requirement_items", columnDefinition = "JSON")
+    private List<SystemDesignRequirementItem> requirementItems;
+
     public SystemDesignRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
-                                           String content, String answer, List<String> askedRequirementCodes) {
+                                           String content, String answer, List<String> askedRequirementCodes,
+                                           SystemDesignRequirementAnswerType answerType,
+                                           List<SystemDesignRequirementItem> requirementItems) {
         validateQuestionOrder(questionOrder);
         validateAnswer(answer);
+        validateAnswerTypeAndItems(answerType, requirementItems);
         this.systemDesignInterview = systemDesignInterview;
         this.questionOrder = questionOrder;
         this.content = normalizeContent(content);
         this.answer = answer;
         this.askedRequirementCodes = List.copyOf(askedRequirementCodes);
+        this.answerType = answerType;
+        this.requirementItems = List.copyOf(requirementItems);
     }
 
     private static void validateQuestionOrder(int questionOrder) {
         if (questionOrder < FIRST_QUESTION_ORDER || questionOrder > MAX_COUNT) {
             throw new IllegalArgumentException(
                     "역질문 순번은 %d~%d이어야 합니다: %d".formatted(FIRST_QUESTION_ORDER, MAX_COUNT, questionOrder));
+        }
+    }
+
+    // null은 두 값을 저장하기 전에 만든 행만 갖는다. 새 행이 null을 남기면 다음 역질문과 리포트가 배포 전 행으로 읽는다.
+    private static void validateAnswerTypeAndItems(SystemDesignRequirementAnswerType answerType,
+                                                   List<SystemDesignRequirementItem> requirementItems) {
+        if (answerType == null || requirementItems == null) {
+            throw new IllegalArgumentException("새 역질문에는 답의 종류와 확정 항목이 있어야 합니다.");
         }
     }
 
@@ -132,6 +158,19 @@ public class SystemDesignRequirementQuestion extends BaseEntity {
         return requirementQuestions.stream()
                 .flatMap(requirementQuestion -> requirementQuestion.getAskedRequirementCodes().stream())
                 .distinct()
+                .toList();
+    }
+
+    /**
+     * 지금까지 확정한 요구사항: 역질문 행들의 확정 항목을 물은 순서대로 이은 목록. 확정 항목을 저장하기 전에 만든 행(null)은 건너뛴다.
+     * 다음 역질문의 확정한 요구사항 문맥이 이 목록을 쓴다.
+     */
+    public static List<SystemDesignRequirementItem> collectRequirementItems(
+            List<SystemDesignRequirementQuestion> requirementQuestions) {
+        return requirementQuestions.stream()
+                .map(SystemDesignRequirementQuestion::getRequirementItems)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
                 .toList();
     }
 }

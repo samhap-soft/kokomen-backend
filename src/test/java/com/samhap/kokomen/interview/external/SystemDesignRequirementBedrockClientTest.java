@@ -20,7 +20,11 @@ import com.samhap.kokomen.global.external.bedrock.DocumentJsonConverter;
 import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
+import com.samhap.kokomen.interview.tool.SystemDesignConfirmedRequirements;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerCommand;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementTurn;
 import com.samhap.kokomen.interview.tool.SystemDesignSystemMessages;
@@ -151,7 +155,7 @@ class SystemDesignRequirementBedrockClientTest {
                 () -> assertThat(inputSchemaPropertyNames(request)).containsExactly("reasoning",
                         "requirement_daily_creation_volume", "requirement_read_write_ratio",
                         "requirement_retention_period", "requirement_short_key_length",
-                        "requirement_click_statistics", "answer")
+                        "requirement_click_statistics", "answer_type", "requirement_items", "answer")
         );
     }
 
@@ -162,11 +166,12 @@ class SystemDesignRequirementBedrockClientTest {
         given(bedrockRuntimeClient.converse(any(ConverseRequest.class)))
                 .willReturn(toolUseResponse(verdicts("YES", "NO", "NO", "NO", "NO", "하루 평균 10만 개 정도예요.")));
         SystemDesignRequirementAnswerCommand first = new SystemDesignRequirementAnswerCommand(41L,
-                SystemDesignProblemContextFixture.urlShortener(), List.of(), "하루에 몇 개나 만들어지나요?");
+                SystemDesignProblemContextFixture.urlShortener(), List.of(), SystemDesignConfirmedRequirements.empty(),
+                "하루에 몇 개나 만들어지나요?");
         SystemDesignRequirementAnswerCommand second = new SystemDesignRequirementAnswerCommand(42L,
                 SystemDesignProblemContextFixture.urlShortener(),
                 List.of(new SystemDesignRequirementTurn("하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.")),
-                "그럼 조회는요?");
+                new SystemDesignConfirmedRequirements(List.of("DAILY_CREATION_VOLUME"), List.of()), "그럼 조회는요?");
 
         // when
         client.answerRequirement(first);
@@ -187,8 +192,11 @@ class SystemDesignRequirementBedrockClientTest {
     @Test
     void YES로_판정한_요구사항_code를_문제_순서로_돌려준다() {
         // given
-        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(
-                verdicts("NO", "YES", "NO", "NO", "YES", "조회는 생성의 100배쯤이고, 클릭 통계는 범위에서 빼도 돼요.")));
+        Map<String, Document> input = verdicts("NO", "YES", "NO", "NO", "YES",
+                "조회는 생성의 100배쯤이고, 클릭 통계는 범위에서 빼도 돼요.");
+        input.put("requirement_items", Document.fromList(List.of(
+                item("조회와 생성 비율", "조회는 생성의 100배쯤이다.", "SEED"))));
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(input));
 
         // when
         SystemDesignRequirementAnswerResult result = client.answerRequirement(command());
@@ -197,21 +205,84 @@ class SystemDesignRequirementBedrockClientTest {
         assertAll(
                 () -> assertThat(result.askedRequirementCodes())
                         .containsExactly("READ_WRITE_RATIO", "CLICK_STATISTICS"),
-                () -> assertThat(result.answer()).isEqualTo("조회는 생성의 100배쯤이고, 클릭 통계는 범위에서 빼도 돼요.")
+                () -> assertThat(result.answerType()).isEqualTo(SystemDesignRequirementAnswerType.SEED),
+                () -> assertThat(result.answer()).isEqualTo("조회는 생성의 100배쯤이고, 클릭 통계는 범위에서 빼도 돼요."),
+                () -> assertThat(result.requirementItems()).containsExactly(new SystemDesignRequirementItem(
+                        "조회와 생성 비율", "조회는 생성의 100배쯤이다.", SystemDesignRequirementSource.SEED))
         );
     }
 
+    // 숨은 요구사항에 없는 요구사항이면 LLM이 정한 답과 확정 항목을 쓴다. 답의 종류는 판정(YES 없음)에 맞춰 ASSUMED로 바로잡는다.
     @Test
-    void 모두_NO면_빈_목록이다() {
+    void 모두_NO면_LLM이_정한_답과_확정_항목을_돌려준다() {
         // given
-        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(
-                verdicts("NO", "NO", "NO", "NO", "NO", "등록되지 않은 내용이에요. 가정하고 진행하세요.")));
+        Map<String, Document> input = verdicts("NO", "NO", "NO", "NO", "NO", "커스텀 별칭은 이번 범위에서 빼도 돼요.");
+        input.put("answer_type", Document.fromString("SEED"));
+        input.put("requirement_items", Document.fromList(List.of(
+                item("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", "ASSUMED"))));
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(input));
 
         // when
         SystemDesignRequirementAnswerResult result = client.answerRequirement(command());
 
         // then
-        assertThat(result.askedRequirementCodes()).isEmpty();
+        assertThat(result)
+                .extracting(SystemDesignRequirementAnswerResult::askedRequirementCodes,
+                        SystemDesignRequirementAnswerResult::answerType, SystemDesignRequirementAnswerResult::answer,
+                        SystemDesignRequirementAnswerResult::requirementItems)
+                .containsExactly(List.of(), SystemDesignRequirementAnswerType.ASSUMED, "커스텀 별칭은 이번 범위에서 빼도 돼요.",
+                        List.of(new SystemDesignRequirementItem("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.",
+                                SystemDesignRequirementSource.ASSUMED)));
+    }
+
+    @Test
+    void 요구사항을_묻는_질문이_아니면_정해진_문구로_답한다() {
+        // given
+        Map<String, Document> input = verdicts("NO", "NO", "NO", "NO", "NO", "");
+        input.put("answer_type", Document.fromString("DECLINED"));
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(input));
+
+        // when
+        SystemDesignRequirementAnswerResult result = client.answerRequirement(command());
+
+        // then
+        assertThat(result)
+                .extracting(SystemDesignRequirementAnswerResult::answerType,
+                        SystemDesignRequirementAnswerResult::answer)
+                .containsExactly(SystemDesignRequirementAnswerType.DECLINED,
+                        "요구사항을 묻는 질문에만 답할 수 있어요. 설계 방법은 직접 정해 주세요.");
+    }
+
+    // 앞 역질문에서 들은 단축 키 길이(7자)는 다시 말해도 된다. 묻지 않은 보관 기간(5년)을 흘렸는데 바꿀 시드 답이 없으면 실패다.
+    @Test
+    void 묻지_않은_시드의_수치를_흘렸는데_바꿀_시드_답이_없으면_ExternalApiException() {
+        // given
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(
+                toolUseResponse(verdicts("NO", "NO", "NO", "NO", "NO", "커스텀 별칭도 7자 이하로 받아요.")),
+                toolUseResponse(verdicts("NO", "NO", "NO", "NO", "NO", "커스텀 별칭은 5년 동안 유지해요.")));
+
+        // when & then
+        assertAll(
+                () -> assertThat(client.answerRequirement(command()).answer()).isEqualTo("커스텀 별칭도 7자 이하로 받아요."),
+                () -> assertThatThrownBy(() -> client.answerRequirement(command()))
+                        .isInstanceOf(ExternalApiException.class)
+                        .hasMessage("시스템 설계 역질문 답을 쓸 수 없습니다. reason=묻지 않은 요구사항의 수치 [5년]")
+        );
+        assertFailureLogged();
+    }
+
+    @Test
+    void 답의_종류가_없으면_ExternalApiException() {
+        // given
+        Map<String, Document> input = verdicts("YES", "NO", "NO", "NO", "NO", "하루 평균 10만 개 정도예요.");
+        input.remove("answer_type");
+        given(bedrockRuntimeClient.converse(any(ConverseRequest.class))).willReturn(toolUseResponse(input));
+
+        // when & then
+        assertThatThrownBy(() -> client.answerRequirement(command()))
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessage("시스템 설계 역질문 답의 종류가 없거나 값이 잘못됐습니다. field=answer_type");
+        assertFailureLogged();
     }
 
     @Test
@@ -227,9 +298,9 @@ class SystemDesignRequirementBedrockClientTest {
         assertThat(result.answer()).isEqualTo("단축 키는 7자 이하 <영문> & 숫자예요. &lt;는 그대로예요.");
     }
 
-    // answer가 없거나 문자열이 아니면 빈 답으로 받고, 최종 답은 서비스가 시드 답으로 정한다.
+    // answer가 없거나 문자열이 아니면 빈 답으로 보고, 물은 요구사항이 있으면 그 시드 답으로 바꾼다.
     @Test
-    void answer가_없거나_문자열이_아니면_빈_답이다() {
+    void answer가_없거나_문자열이_아니면_물은_시드_답으로_바꾼다() {
         // given
         Map<String, Document> withoutAnswer = verdicts("YES", "NO", "NO", "NO", "NO", "");
         withoutAnswer.remove("answer");
@@ -245,8 +316,8 @@ class SystemDesignRequirementBedrockClientTest {
         // then
         assertAll(
                 () -> assertThat(first.askedRequirementCodes()).containsExactly("DAILY_CREATION_VOLUME"),
-                () -> assertThat(first.answer()).isEmpty(),
-                () -> assertThat(second.answer()).isEmpty()
+                () -> assertThat(first.answer()).isEqualTo("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."),
+                () -> assertThat(second.answer()).isEqualTo("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")
         );
     }
 
@@ -417,6 +488,7 @@ class SystemDesignRequirementBedrockClientTest {
         return new SystemDesignRequirementAnswerCommand(INTERVIEW_ID, SystemDesignProblemContextFixture.urlShortener(),
                 List.of(new SystemDesignRequirementTurn("단축 키는 몇 자까지 되나요?",
                         "단축 키는 영문 대소문자와 숫자로 7자 이하여야 해요.")),
+                new SystemDesignConfirmedRequirements(List.of("SHORT_KEY_LENGTH"), List.of()),
                 "하루에 단축 URL이 몇 개나 만들어지나요?");
     }
 
@@ -430,8 +502,18 @@ class SystemDesignRequirementBedrockClientTest {
         input.put("requirement_retention_period", Document.fromString(retentionPeriod));
         input.put("requirement_short_key_length", Document.fromString(shortKeyLength));
         input.put("requirement_click_statistics", Document.fromString(clickStatistics));
+        input.put("answer_type", Document.fromString("SEED"));
+        input.put("requirement_items", Document.fromList(List.of()));
         input.put("answer", Document.fromString(answer));
         return input;
+    }
+
+    private static Document item(String name, String detail, String source) {
+        Map<String, Document> item = new LinkedHashMap<>();
+        item.put("name", Document.fromString(name));
+        item.put("detail", Document.fromString(detail));
+        item.put("source", Document.fromString(source));
+        return Document.fromMap(item);
     }
 
     private static ConverseResponse toolUseResponse(Map<String, Document> input) {

@@ -17,19 +17,49 @@ public final class SystemDesignUserMessages {
     private static final String NO_REQUIREMENT_QUESTIONS = "면접자는 요구사항을 확인하지 않고 설계를 시작했다.";
     private static final String CONFIRMED = "확인함";
     private static final String NOT_CONFIRMED = "확인하지 않음";
+    private static final String ASKED_HIDDEN_REQUIREMENTS_HEADING = "이미 답한 숨은 요구사항:";
+    private static final String CONFIRMED_ITEMS_HEADING = "지금까지 확정한 요구사항(물은 순서):";
 
     private SystemDesignUserMessages() {
     }
 
     /**
-     * 역질문 답(L1). 이전 역질문과 그때의 면접관 답(물은 순서) 뒤에 이번 역질문을 둔다.
+     * 역질문 답(L1). 이전 역질문과 그때의 면접관 답(물은 순서), 지금까지 확정한 요구사항, 이번 역질문 순서다.
      */
     public static String requirementAnswer(SystemDesignRequirementAnswerCommand command) {
         return SystemDesignSystemMessages.joinBlocks(
                 SystemDesignSystemMessages.tagged("previous_requirement_questions",
                         command.previousTurns().isEmpty() ? NONE : requirementItems(command.previousTurns())),
+                SystemDesignSystemMessages.tagged("confirmed_requirements",
+                        confirmedRequirements(command.problem().requirements(), command.confirmedRequirements())),
                 SystemDesignSystemMessages.tagged("current_requirement_question",
                         candidateQuestion(command.currentQuestion())));
+    }
+
+    /**
+     * 이미 답한 숨은 요구사항(정해 둔 사실, 처음 물은 순서)과 확정 항목(물은 순서)을 따로 적는다. 숨은 요구사항 줄은 system 블록의
+     * hidden_requirements와 같은 모양이라 모델이 판정 필드와 짝짓는다. 이 문제에 없는 code는 건너뛴다. 둘 다 없으면 없음만 쓴다.
+     */
+    private static String confirmedRequirements(List<Requirement> requirements,
+                                                SystemDesignConfirmedRequirements confirmed) {
+        List<String> askedLines = confirmed.askedRequirementCodes().stream()
+                .flatMap(code -> requirements.stream().filter(requirement -> requirement.code().equals(code)))
+                .map(requirement -> "- " + SystemDesignToolSchemas.requirementFieldName(requirement.code())
+                        + " | 이름: " + escape(requirement.name()) + " | 정해 둔 사실: " + escape(requirement.answer()))
+                .toList();
+        List<String> itemLines = confirmed.items().stream()
+                .map(item -> "- " + item.source().name() + " | 이름: " + escape(item.name()) + " | 내용: "
+                        + escape(item.detail()))
+                .toList();
+        if (askedLines.isEmpty() && itemLines.isEmpty()) {
+            return NONE;
+        }
+        return ASKED_HIDDEN_REQUIREMENTS_HEADING + LINE_SEPARATOR + linesOrNone(askedLines) + LINE_SEPARATOR
+                + CONFIRMED_ITEMS_HEADING + LINE_SEPARATOR + linesOrNone(itemLines);
+    }
+
+    private static String linesOrNone(List<String> lines) {
+        return lines.isEmpty() ? NONE : String.join(LINE_SEPARATOR, lines);
     }
 
     /**

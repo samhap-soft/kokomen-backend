@@ -19,6 +19,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuest
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignReportScore;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
@@ -83,7 +84,7 @@ public class SystemDesignInterviewTestSupport {
             + "설계가 좋았어요. 저장소를 고른 이유와 301·302 리다이렉트의 장단점 비교가 부족했어요. "
             + "요구사항의 수치를 저장소와 응답 방식 선택으로 이어 설명하는 연습을 해 보세요.";
     private static final String UNREGISTERED_REQUIREMENT_QUESTION = "로그인한 사용자만 단축 URL을 만들 수 있나요?";
-    private static final String UNREGISTERED_REQUIREMENT_ANSWER = "등록되지 않은 내용이에요. 가정하고 진행하세요.";
+    private static final String UNREGISTERED_REQUIREMENT_ANSWER = "로그인 없이도 누구나 단축 URL을 만들 수 있어요.";
 
     private final SystemDesignProblemTestSupport problemTestSupport;
     private final MemberRepository memberRepository;
@@ -318,6 +319,7 @@ public class SystemDesignInterviewTestSupport {
     }
 
     // 물은 요구사항의 이름으로 역질문을, 그 요구사항들의 정해 둔 답을 문제 순서로 이어 면접관 답을 만든다(시드 답으로 답할 때와 같은 모양).
+    // 물은 요구사항이 없으면 숨은 요구사항에 없는 내용을 물어 면접관이 정해 답한 역질문이다.
     private static SystemDesignRequirementQuestion requirementQuestion(SystemDesignInterview systemDesignInterview,
                                                                        int questionOrder, List<String> askedCodes) {
         List<Requirement> askedRequirements = SystemDesignProblemContextFixture.URL_SHORTENER_REQUIREMENTS.stream()
@@ -330,6 +332,7 @@ public class SystemDesignInterviewTestSupport {
         if (askedRequirements.isEmpty()) {
             return builder.content(UNREGISTERED_REQUIREMENT_QUESTION)
                     .answer(UNREGISTERED_REQUIREMENT_ANSWER)
+                    .answerType(SystemDesignRequirementAnswerType.ASSUMED)
                     .build();
         }
         return builder.content(askedRequirements.stream()

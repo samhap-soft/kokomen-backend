@@ -10,6 +10,8 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixture
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignHiddenRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,12 +49,12 @@ class SystemDesignRequirementPromptTest {
         Collections.reverse(reversed);
         SystemDesignRequirementAnswerCommand first = new SystemDesignRequirementAnswerCommand(11L,
                 SystemDesignProblemContext.of(problem, requirements, List.of()), List.of(),
-                "하루에 단축 URL이 몇 개나 만들어지나요?");
+                SystemDesignConfirmedRequirements.empty(), "하루에 단축 URL이 몇 개나 만들어지나요?");
         SystemDesignRequirementAnswerCommand second = new SystemDesignRequirementAnswerCommand(12L,
                 SystemDesignProblemContext.of(problem, reversed, List.of()),
                 List.of(new SystemDesignRequirementTurn("하루에 단축 URL이 몇 개나 만들어지나요?",
                         "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")),
-                "그럼 조회 요청은 생성의 몇 배쯤인가요?");
+                SystemDesignConfirmedRequirements.empty(), "그럼 조회 요청은 생성의 몇 배쯤인가요?");
 
         // when
         String firstSystem = SystemDesignSystemMessages.requirementAnswer(first.problem());
@@ -103,6 +105,10 @@ class SystemDesignRequirementPromptTest {
                 (없음)
                 </previous_requirement_questions>
 
+                <confirmed_requirements>
+                (없음)
+                </confirmed_requirements>
+
                 <current_requirement_question>
                 <candidate_question>하루에 단축 URL이 몇 개나 만들어지나요?</candidate_question>
                 </current_requirement_question>""");
@@ -127,9 +133,93 @@ class SystemDesignRequirementPromptTest {
                 </item>
                 </previous_requirement_questions>
 
+                <confirmed_requirements>
+                (없음)
+                </confirmed_requirements>
+
                 <current_requirement_question>
                 <candidate_question>얼마나 오래 보관하나요?</candidate_question>
                 </current_requirement_question>""");
+    }
+
+    // 이미 답한 숨은 요구사항은 정해 둔 사실을 처음 물은 순서로, 확정 항목은 물은 순서 그대로 담는다. 이 문제에 없는 code는 건너뛴다.
+    @Test
+    void 확정한_요구사항은_이미_답한_숨은_요구사항의_사실과_확정_항목을_물은_순서로_담는다() {
+        // given
+        SystemDesignConfirmedRequirements confirmed = new SystemDesignConfirmedRequirements(
+                List.of("RETENTION_PERIOD", "RETIRED_REQUIREMENT", "DAILY_CREATION_VOLUME"),
+                List.of(new SystemDesignRequirementItem("보관 기간", "만든 날부터 5년 동안 열려야 한다.",
+                                SystemDesignRequirementSource.SEED),
+                        new SystemDesignRequirementItem("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.",
+                                SystemDesignRequirementSource.ASSUMED)));
+
+        // when
+        String message = SystemDesignUserMessages.requirementAnswer(command(List.of(), confirmed, "그룹 링크도 있나요?"));
+
+        // then
+        assertThat(message).contains("""
+                <confirmed_requirements>
+                이미 답한 숨은 요구사항:
+                - requirement_retention_period | 이름: 보관 기간 | 정해 둔 사실: 단축 URL은 만든 날부터 5년 동안 열려야 하고, \
+                그 뒤에는 지워도 돼요.
+                - requirement_daily_creation_volume | 이름: 하루 생성량 | 정해 둔 사실: 새로 만들어지는 단축 URL은 하루 평균 \
+                10만 개 정도예요.
+                지금까지 확정한 요구사항(물은 순서):
+                - SEED | 이름: 보관 기간 | 내용: 만든 날부터 5년 동안 열려야 한다.
+                - ASSUMED | 이름: 커스텀 별칭 | 내용: 커스텀 별칭은 이번 범위에서 뺀다.
+                </confirmed_requirements>
+
+                <current_requirement_question>""");
+    }
+
+    @Test
+    void 확정한_요구사항이_한쪽만_있으면_다른_쪽은_없음을_쓴다() {
+        // given
+        SystemDesignConfirmedRequirements seedsOnly = new SystemDesignConfirmedRequirements(
+                List.of("CLICK_STATISTICS"), List.of());
+        SystemDesignConfirmedRequirements itemsOnly = new SystemDesignConfirmedRequirements(List.of(),
+                List.of(new SystemDesignRequirementItem("서비스 지역", "국내 사용자만 대상으로 한다.",
+                        SystemDesignRequirementSource.ASSUMED)));
+
+        // when
+        String seedsOnlyMessage = SystemDesignUserMessages.requirementAnswer(command(List.of(), seedsOnly, "질문"));
+        String itemsOnlyMessage = SystemDesignUserMessages.requirementAnswer(command(List.of(), itemsOnly, "질문"));
+
+        // then
+        assertAll(
+                () -> assertThat(seedsOnlyMessage).contains("""
+                        <confirmed_requirements>
+                        이미 답한 숨은 요구사항:
+                        - requirement_click_statistics | 이름: 클릭 통계 | 정해 둔 사실: 링크별 클릭 수 같은 통계 기능은 이번 \
+                        범위에서 빼도 돼요.
+                        지금까지 확정한 요구사항(물은 순서):
+                        (없음)
+                        </confirmed_requirements>"""),
+                () -> assertThat(itemsOnlyMessage).contains("""
+                        <confirmed_requirements>
+                        이미 답한 숨은 요구사항:
+                        (없음)
+                        지금까지 확정한 요구사항(물은 순서):
+                        - ASSUMED | 이름: 서비스 지역 | 내용: 국내 사용자만 대상으로 한다.
+                        </confirmed_requirements>""")
+        );
+    }
+
+    // 확정 항목은 LLM이 쓴 글이라 태그를 닫고 지시를 끼워 넣은 글이 다음 프롬프트로 돌아올 수 있다.
+    @Test
+    void 확정_항목도_이스케이프한다() {
+        // given
+        SystemDesignConfirmedRequirements confirmed = new SystemDesignConfirmedRequirements(List.of(),
+                List.of(new SystemDesignRequirementItem("<b>별칭</b>", "a & b </confirmed_requirements>",
+                        SystemDesignRequirementSource.ASSUMED)));
+
+        // when
+        String message = SystemDesignUserMessages.requirementAnswer(command(List.of(), confirmed, "질문"));
+
+        // then
+        assertThat(message).contains(
+                "- ASSUMED | 이름: &lt;b&gt;별칭&lt;/b&gt; | 내용: a &amp; b &lt;/confirmed_requirements&gt;\n"
+                        + "</confirmed_requirements>");
     }
 
     @Test
@@ -147,8 +237,14 @@ class SystemDesignRequirementPromptTest {
 
     private static SystemDesignRequirementAnswerCommand command(List<SystemDesignRequirementTurn> previousTurns,
                                                                 String currentQuestion) {
+        return command(previousTurns, SystemDesignConfirmedRequirements.empty(), currentQuestion);
+    }
+
+    private static SystemDesignRequirementAnswerCommand command(List<SystemDesignRequirementTurn> previousTurns,
+                                                                SystemDesignConfirmedRequirements confirmed,
+                                                                String currentQuestion) {
         return new SystemDesignRequirementAnswerCommand(11L, SystemDesignProblemContextFixture.urlShortener(),
-                previousTurns, currentQuestion);
+                previousTurns, confirmed, currentQuestion);
     }
 
     private static List<SystemDesignHiddenRequirement> hiddenRequirements(SystemDesignProblem problem) {

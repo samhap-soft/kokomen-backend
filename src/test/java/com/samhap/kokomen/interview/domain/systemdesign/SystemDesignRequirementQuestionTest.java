@@ -92,15 +92,19 @@ class SystemDesignRequirementQuestionTest {
     }
 
     @Test
-    void 역질문을_만들면_정규화한_내용과_물은_요구사항_code를_복사해_담는다() {
+    void 역질문을_만들면_정규화한_내용과_물은_요구사항_code와_답의_종류와_확정_항목을_복사해_담는다() {
         // given
         SystemDesignInterview systemDesignInterview = SystemDesignInterviewFixtureBuilder.builder().build();
         List<String> askedCodes = new ArrayList<>(List.of("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"));
+        List<SystemDesignRequirementItem> items = new ArrayList<>(List.of(new SystemDesignRequirementItem(
+                "하루 생성량", "하루 평균 10만 개가 만들어진다.", SystemDesignRequirementSource.SEED)));
 
         // when
         SystemDesignRequirementQuestion question = new SystemDesignRequirementQuestion(systemDesignInterview, 1,
-                "  하루에 몇 개나 만들어지나요?\u00A0", "하루 평균 10만 개 정도예요.", askedCodes);
+                "  하루에 몇 개나 만들어지나요?\u00A0", "하루 평균 10만 개 정도예요.", askedCodes,
+                SystemDesignRequirementAnswerType.SEED, items);
         askedCodes.clear();
+        items.clear();
 
         // then
         assertAll(
@@ -109,10 +113,60 @@ class SystemDesignRequirementQuestionTest {
                 () -> assertThat(question.getAnswer()).isEqualTo("하루 평균 10만 개 정도예요."),
                 () -> assertThat(question.getAskedRequirementCodes())
                         .containsExactly("DAILY_CREATION_VOLUME", "READ_WRITE_RATIO"),
+                () -> assertThat(question.getAnswerType()).isEqualTo(SystemDesignRequirementAnswerType.SEED),
+                () -> assertThat(question.getRequirementItems()).extracting(SystemDesignRequirementItem::name)
+                        .containsExactly("하루 생성량"),
                 () -> assertThatThrownBy(() -> new SystemDesignRequirementQuestion(systemDesignInterview, 1, "\u3000",
-                        "답", List.of()))
+                        "답", List.of(), SystemDesignRequirementAnswerType.ASSUMED, List.of()))
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("질문은 1~200자로 적어 주세요.")
+        );
+    }
+
+    // 새로 저장하는 역질문은 답의 종류와 확정 항목(없으면 빈 목록)이 늘 있다. NULL은 이 값을 저장하기 전에 만든 행에만 있다.
+    @Test
+    void 새_역질문은_답의_종류와_확정_항목이_있어야_한다() {
+        SystemDesignInterview systemDesignInterview = SystemDesignInterviewFixtureBuilder.builder().build();
+
+        assertAll(
+                () -> assertThatThrownBy(() -> new SystemDesignRequirementQuestion(systemDesignInterview, 1, "질문",
+                        "답", List.of(), null, List.of()))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("새 역질문에는 답의 종류와 확정 항목이 있어야 합니다."),
+                () -> assertThatThrownBy(() -> new SystemDesignRequirementQuestion(systemDesignInterview, 1, "질문",
+                        "답", List.of(), SystemDesignRequirementAnswerType.ASSUMED, null))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("새 역질문에는 답의 종류와 확정 항목이 있어야 합니다.")
+        );
+    }
+
+    // 다음 역질문의 확정한 요구사항 문맥이 이 목록을 쓴다. 확정 항목을 저장하기 전에 만든 행(NULL)은 건너뛴다.
+    @Test
+    void 확정_항목은_물은_순서로_모으고_저장하기_전에_만든_행은_건너뛴다() {
+        // given
+        SystemDesignRequirementItem customAlias = new SystemDesignRequirementItem("커스텀 별칭", "이번 범위에서 뺀다.",
+                SystemDesignRequirementSource.ASSUMED);
+        SystemDesignRequirementItem region = new SystemDesignRequirementItem("서비스 지역", "국내 사용자만 대상으로 한다.",
+                SystemDesignRequirementSource.ASSUMED);
+        SystemDesignRequirementItem retention = new SystemDesignRequirementItem("보관 기간", "5년 동안 열려야 한다.",
+                SystemDesignRequirementSource.SEED);
+        SystemDesignRequirementQuestion legacy = requirementQuestion(1, List.of("DAILY_CREATION_VOLUME"));
+        ReflectionTestUtils.setField(legacy, "answerType", null);
+        ReflectionTestUtils.setField(legacy, "requirementItems", null);
+        List<SystemDesignRequirementQuestion> requirementQuestions = List.of(
+                legacy,
+                SystemDesignRequirementQuestionFixtureBuilder.builder().questionOrder(2)
+                        .requirementItems(List.of(customAlias, region)).build(),
+                SystemDesignRequirementQuestionFixtureBuilder.builder().questionOrder(3)
+                        .requirementItems(List.of()).build(),
+                SystemDesignRequirementQuestionFixtureBuilder.builder().questionOrder(4)
+                        .requirementItems(List.of(retention)).build());
+
+        // when & then
+        assertAll(
+                () -> assertThat(SystemDesignRequirementQuestion.collectRequirementItems(requirementQuestions))
+                        .containsExactly(customAlias, region, retention),
+                () -> assertThat(SystemDesignRequirementQuestion.collectRequirementItems(List.of(legacy))).isEmpty()
         );
     }
 

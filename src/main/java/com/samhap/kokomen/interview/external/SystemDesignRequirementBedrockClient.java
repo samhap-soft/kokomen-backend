@@ -10,7 +10,6 @@ import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerCommand;
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementAnswerComposer;
 import com.samhap.kokomen.interview.tool.SystemDesignToolSchemas;
-import com.samhap.kokomen.interview.tool.SystemDesignUserMessages;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,7 +23,9 @@ import tools.jackson.databind.JsonNode;
 /**
  * 요구사항 역질문 답(L1). 요청 스레드에서 동기로 부르므로 짧은 타임아웃의 전용 converse 빈을 쓴다.
  * {@code converse}부터 응답 검증까지를 감싸, SDK 예외(소켓 타임아웃, apiCall 타임아웃, 재시도를 다 쓴 스로틀링)와 검증 실패를 모두
- * {@link ExternalApiException}으로 올린다. 최종 답(정해진 문구·폴백)은 서비스가 정한다.
+ * {@link ExternalApiException}으로 올린다. 최종 답과 답의 종류, 확정 항목은 {@link SystemDesignRequirementAnswerComposer}가 정한다.
+ * 답을 쓸 수 없는데 바꿀 시드 답도 없는 경우(묻지 않은 숨은 요구사항의 수치를 흘린 답 등)도 검증 실패라, 파사드가 답 생성 실패(500)로
+ * 바꾸고 저장·차감 없이 끝난다.
  */
 @Slf4j
 @ExecutionTimer
@@ -47,7 +48,8 @@ public class SystemDesignRequirementBedrockClient {
     }
 
     /**
-     * @throws ExternalApiException 전송 실패, stopReason이 tool_use가 아님(maxTokens 잘림 포함), 판정 필드 누락·잘못된 값
+     * @throws ExternalApiException 전송 실패, stopReason이 tool_use가 아님(maxTokens 잘림 포함), 판정 필드·답의 종류 누락이나
+     *                              잘못된 값, 쓸 수 없는 답인데 바꿀 시드 답이 없음
      */
     public SystemDesignRequirementAnswerResult answerRequirement(SystemDesignRequirementAnswerCommand command) {
         long startedAt = System.currentTimeMillis();
@@ -80,18 +82,7 @@ public class SystemDesignRequirementBedrockClient {
         ToolUseBlock toolUse = converseClient.extractToolUse(response,
                 SystemDesignToolSchemas.REQUIREMENT_ANSWER_TOOL_NAME);
         JsonNode toolInput = converseClient.parseToolInput(toolUse, JsonNode.class);
-        List<String> askedCodes = SystemDesignRequirementAnswerComposer.resolveAskedCodes(requirements, toolInput);
-        return new SystemDesignRequirementAnswerResult(askedCodes,
-                SystemDesignUserMessages.unescape(answerOrEmpty(toolInput)));
-    }
-
-    // 답이 없거나 문자열이 아니면 빈 답으로 본다. 빈 답은 서비스가 시드 답으로 바꾼다.
-    private static String answerOrEmpty(JsonNode toolInput) {
-        JsonNode answer = toolInput == null ? null : toolInput.get(SystemDesignToolSchemas.ANSWER_FIELD);
-        if (answer == null || !answer.isString()) {
-            return "";
-        }
-        return answer.stringValue();
+        return SystemDesignRequirementAnswerComposer.compose(command, toolInput);
     }
 
     private static void logFailure(SystemDesignRequirementAnswerCommand command, long startedAt, Exception failure) {

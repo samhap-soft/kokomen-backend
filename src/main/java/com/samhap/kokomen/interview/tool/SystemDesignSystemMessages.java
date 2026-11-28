@@ -19,15 +19,17 @@ public final class SystemDesignSystemMessages {
 
     private static final String REQUIREMENT_ANSWER_TASK = """
             <task>
-            지금은 면접자가 설계를 시작하기 전에 요구사항을 확인하는 단계다. 면접자의 역질문(user 메시지의 <current_requirement_question>)이 <hidden_requirements>의 각 항목을 묻는지 YES/NO로 판정하고, YES로 판정한 항목에 정해 둔 사실만으로 면접관의 답을 만들어라.
+            지금은 면접자가 설계를 시작하기 전에 요구사항을 확인하는 단계다. 면접자의 역질문(user 메시지의 <current_requirement_question>)이 <hidden_requirements>의 각 항목을 묻는지 YES/NO로 판정하고, 답의 종류를 정한 뒤 면접관의 답을 만들어라. YES로 판정한 항목은 정해 둔 사실 그대로 답하고, <hidden_requirements>에 없는 요구사항은 문제에 어울리는 값을 네가 정해 확정적으로 답한다. 지금까지 확정한 요구사항(user 메시지의 <confirmed_requirements>)과 어긋나게 답하지 않는다.
             </task>
             """;
 
     private static final String REQUIREMENT_ANSWER_OUTPUT = """
             <output>
-            제공된 도구를 호출해 reasoning, requirement_로 시작하는 필드 전부, answer를 함께 제출하라.
-            - reasoning : 역질문이 무엇을 묻는지와 항목별 판정 근거를 200자 이내로 쓴다. 사용자에게 노출되지 않는다.
+            제공된 도구를 호출해 reasoning, requirement_로 시작하는 필드 전부, answer_type, requirement_items, answer를 함께 제출하라.
+            - reasoning : 역질문이 무엇을 묻는지, 항목별 판정 근거, <hidden_requirements>에 없는 요구사항이면 정한 값과 그 근거를 200자 이내로 쓴다. 사용자에게 노출되지 않는다.
             - requirement_* : <hidden_requirements>의 항목마다 하나씩 있다. answer_rules의 판정 기준으로 역질문이 그 항목을 물으면 YES, 아니면 NO다. 모든 항목을 빠짐없이 판정한다.
+            - answer_type : answer_rules의 답의 종류. SEED, ASSUMED, MIXED, DECLINED 중 하나.
+            - requirement_items : answer_rules의 확정 항목 규칙을 따르는 배열. 원소마다 name, detail, source를 쓴다.
             - answer : 면접관의 답. answer_rules를 따른다.
             </output>
             """;

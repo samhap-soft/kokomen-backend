@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.samhap.kokomen.global.external.bedrock.BedrockToolSchemaRenderer;
@@ -28,14 +29,16 @@ class SystemDesignToolSchemasTest {
     private static final String URL_SHORTENER_TOOL = """
             {
               "name": "submit_requirement_answer",
-              "description": "면접자의 요구사항 역질문이 숨은 요구사항의 각 항목을 묻는지 판정하고 면접관의 답을 제출한다.",
+              "description": "면접자의 요구사항 역질문이 숨은 요구사항의 각 항목을 묻는지 판정하고, 답의 종류와 이번 답으로 확정한 \
+            요구사항, 면접관의 답을 제출한다.",
               "inputSchema": {
                 "json": {
                   "type": "object",
                   "properties": {
                     "reasoning": {
                       "type": "string",
-                      "description": "역질문이 묻는 내용과 항목별 판정 근거. 200자 이내. 사용자에게 노출되지 않는다."
+                      "description": "역질문이 묻는 내용, 항목별 판정 근거, 숨은 요구사항에 없는 내용이면 정한 값과 그 근거. 200자 이내. \
+            사용자에게 노출되지 않는다."
                     },
                     "requirement_daily_creation_volume": {
                       "type": "string",
@@ -62,9 +65,38 @@ class SystemDesignToolSchemasTest {
                       "description": "역질문이 '클릭 통계' 항목을 묻는지. 물으면 YES, 아니면 NO.",
                       "enum": ["YES", "NO"]
                     },
+                    "answer_type": {
+                      "type": "string",
+                      "description": "답의 종류. SEED(YES인 항목의 정해 둔 사실만으로 답함), ASSUMED(숨은 요구사항에 없는 요구사항을 \
+            정해 답함), MIXED(둘 다), DECLINED(요구사항을 묻는 질문이 아님) 중 하나.",
+                      "enum": ["SEED", "ASSUMED", "MIXED", "DECLINED"]
+                    },
+                    "requirement_items": {
+                      "type": "array",
+                      "description": "이번 답으로 새로 확정한 요구사항. 0~3개. 이미 확정한 내용을 다시 말했거나 DECLINED면 빈 배열.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "요구사항의 짧은 이름. 30자 이하."
+                          },
+                          "detail": {
+                            "type": "string",
+                            "description": "확정한 내용 한 문장. 150자 이하."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "정해 둔 사실이면 SEED, 면접관이 정했으면 ASSUMED.",
+                            "enum": ["SEED", "ASSUMED"]
+                          }
+                        },
+                        "required": ["name", "detail", "source"]
+                      }
+                    },
                     "answer": {
                       "type": "string",
-                      "description": "면접관의 답. 해요체 1~3문장, 300자 이내. YES인 항목이 없으면 정해진 문구."
+                      "description": "면접관의 답. 해요체 1~3문장, 300자 이내. DECLINED면 빈 문자열."
                     }
                   },
                   "required": [
@@ -74,6 +106,8 @@ class SystemDesignToolSchemasTest {
                     "requirement_retention_period",
                     "requirement_short_key_length",
                     "requirement_click_statistics",
+                    "answer_type",
+                    "requirement_items",
                     "answer"
                   ]
                 }
@@ -82,7 +116,7 @@ class SystemDesignToolSchemasTest {
             """;
     private static final List<String> FIELD_ORDER = List.of("reasoning", "requirement_daily_creation_volume",
             "requirement_read_write_ratio", "requirement_retention_period", "requirement_short_key_length",
-            "requirement_click_statistics", "answer");
+            "requirement_click_statistics", "answer_type", "requirement_items", "answer");
     // 답변 평가 도구의 정본. 필드 순서는 reasoning → rank → feedback → next_question이다.
     private static final String ANSWER_TOOL = """
             {
@@ -210,7 +244,8 @@ class SystemDesignToolSchemasTest {
 
         assertThat(schema.fields().get(0))
                 .extracting(ToolField::name, ToolField::description)
-                .containsExactly("reasoning", "역질문이 묻는 내용과 항목별 판정 근거. 200자 이내. 사용자에게 노출되지 않는다.");
+                .containsExactly("reasoning", "역질문이 묻는 내용, 항목별 판정 근거, 숨은 요구사항에 없는 내용이면 정한 값과 그 근거. "
+                        + "200자 이내. 사용자에게 노출되지 않는다.");
     }
 
     // 스키마의 required는 모델에 대한 지시일 뿐이라 서버가 응답을 다시 검사한다. 그래도 모든 필드를 요구해야 모델이 항목마다 판정을 낸다.
@@ -224,9 +259,36 @@ class SystemDesignToolSchemasTest {
 
         assertAll(
                 () -> assertThat(schema.fields()).extracting(ToolField::name)
-                        .containsExactly("reasoning", "requirement_peak_traffic", "requirement_coupon_stock", "answer"),
+                        .containsExactly("reasoning", "requirement_peak_traffic", "requirement_coupon_stock",
+                                "answer_type", "requirement_items", "answer"),
                 () -> assertThat(schema.fields()).allMatch(ToolField::required),
-                () -> assertThat(schema.requiredFields()).isEqualTo(schema.fields())
+                () -> assertThat(schema.requiredFields()).isEqualTo(schema.fields()),
+                () -> assertThat(schema.fields().get(4).itemFields()).allMatch(ToolField::required)
+        );
+    }
+
+    // 판정을 먼저 내고, 판정에 맞춰 답의 종류와 확정 항목을 정한 뒤 답을 쓰게 한다. 확정 항목 원소의 속성 이름은 저장하는 JSON과 같다.
+    @Test
+    void 요구사항_도구는_판정_뒤에_답의_종류와_확정_항목을_두고_답을_마지막에_둔다() {
+        ToolSchema schema = SystemDesignToolSchemas.requirementAnswer(
+                SystemDesignProblemContextFixture.URL_SHORTENER_REQUIREMENTS);
+        ToolField answerType = schema.fields().get(6);
+        ToolField requirementItems = schema.fields().get(7);
+
+        assertAll(
+                () -> assertThat(answerType)
+                        .extracting(ToolField::name, ToolField::enumValues, ToolField::isObjectArray)
+                        .containsExactly("answer_type", List.of("SEED", "ASSUMED", "MIXED", "DECLINED"), false),
+                () -> assertThat(requirementItems)
+                        .extracting(ToolField::name, ToolField::isObjectArray)
+                        .containsExactly("requirement_items", true),
+                () -> assertThat(requirementItems.itemFields())
+                        .extracting(ToolField::name, ToolField::enumValues)
+                        .containsExactly(
+                                tuple("name", null),
+                                tuple("detail", null),
+                                tuple("source", List.of("SEED", "ASSUMED"))),
+                () -> assertThat(schema.fields().get(8).name()).isEqualTo("answer")
         );
     }
 
