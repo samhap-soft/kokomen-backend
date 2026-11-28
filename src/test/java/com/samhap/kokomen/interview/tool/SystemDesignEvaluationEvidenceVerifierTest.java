@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.Input;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.InputBlock;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.InputConnection;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram.InputProp;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.tool.SystemDesignEvaluationEvidenceVerifier.DowngradeReason;
 import com.samhap.kokomen.interview.tool.SystemDesignEvaluationEvidenceVerifier.VerifiedVerdict;
@@ -20,6 +22,7 @@ class SystemDesignEvaluationEvidenceVerifierTest {
 
     private static final String FIFTH_QUESTION = "DB 서버가 내려가면 이미 보낸 링크는 어떻게 되나요?";
     private static final String REQUIREMENT_QUESTION = "하루에 몇 개나 만들어지나요?";
+    private static final String CONFIRMED_DETAIL = "하루 평균 10만 개가 만들어진다.";
     private static final VerifiedVerdict KEPT_MET = new VerifiedVerdict(true, null);
     private static final VerifiedVerdict KEPT_NOT_MET = new VerifiedVerdict(false, null);
 
@@ -29,6 +32,8 @@ class SystemDesignEvaluationEvidenceVerifierTest {
             new SystemDesignEndCommand(77L, SystemDesignProblemContextFixture.urlShortener(),
                     List.of(new SystemDesignRequirementTurn(REQUIREMENT_QUESTION,
                             "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")),
+                    List.of(new SystemDesignConfirmedRequirement("하루 생성량", CONFIRMED_DETAIL,
+                            SystemDesignRequirementSource.SEED)),
                     List.of(turn(1, "전체 구조를 그려 주세요.", "생성 요청은 API 서버가 받아 단축 키를 만들고 원래 URL과 함께 DB에 저장해요."),
                             turn(2, "단축 키는 어떻게 만드나요?",
                                     "DB 자동 증가 값을 Base62로 바꿔 단축 키를 만들어요. 값이 겹치지 않으니 키 충돌이 없어요."),
@@ -414,15 +419,17 @@ class SystemDesignEvaluationEvidenceVerifierTest {
         );
     }
 
-    // 근거는 면접자의 설계 답변이어야 한다. 면접관의 질문과 역질문 기록(면접자가 물은 역질문, 그때 돌려준 면접관 답)은 출처가 아니다.
+    // 근거는 면접자의 설계 답변이어야 한다. 면접관의 질문과 역질문 기록(면접자가 물은 역질문, 그때 돌려준 면접관 답)과 역질문으로 확정한
+    // 요구사항은 출처가 아니다.
     @Test
-    void 면접관_질문이나_역질문_기록을_인용하면_NOT_MET으로_내린다() {
+    void 면접관_질문이나_역질문_기록이나_확정한_요구사항을_인용하면_NOT_MET으로_내린다() {
         VerifiedVerdict downgraded = new VerifiedVerdict(false, DowngradeReason.UNMATCHED_QUOTE);
 
         assertAll(
                 () -> assertThat(verifier.verify(true, "[5] \"" + FIFTH_QUESTION + "\"")).isEqualTo(downgraded),
                 () -> assertThat(verifier.verify(true, "[1] \"" + REQUIREMENT_QUESTION + "\"")).isEqualTo(downgraded),
-                () -> assertThat(verifier.verify(true, "[1] \"하루 평균 10만 개 정도예요\"")).isEqualTo(downgraded)
+                () -> assertThat(verifier.verify(true, "[1] \"하루 평균 10만 개 정도예요\"")).isEqualTo(downgraded),
+                () -> assertThat(verifier.verify(true, "[1] \"" + CONFIRMED_DETAIL + "\"")).isEqualTo(downgraded)
         );
     }
 
@@ -485,8 +492,8 @@ class SystemDesignEvaluationEvidenceVerifierTest {
 
     private static SystemDesignEvaluationEvidenceVerifier verifierOf(SystemDesignDiagram diagram, String answer) {
         return SystemDesignEvaluationEvidenceVerifier.of(new SystemDesignEndCommand(78L,
-                SystemDesignProblemContextFixture.urlShortener(), List.of(), List.of(), turn(6, "질문이에요.", answer),
-                diagram, List.of()));
+                SystemDesignProblemContextFixture.urlShortener(), List.of(), List.of(), List.of(),
+                turn(6, "질문이에요.", answer), diagram, List.of()));
     }
 
     private static SystemDesignAnswerTurn turn(int questionOrder, String question, String answer) {
