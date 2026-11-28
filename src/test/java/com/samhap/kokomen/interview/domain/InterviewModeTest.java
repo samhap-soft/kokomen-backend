@@ -23,6 +23,12 @@ class InterviewModeTest {
                 .isEqualTo(2 * maxQuestionCount - 1);
     }
 
+    // 시스템 설계 면접은 텍스트 6문항이다. 역질문 1개에 본 면접 답변 6개분이 더 있어야 한다.
+    @Test
+    void 요구사항_역질문에는_역질문_1개와_본_면접_답변_전부의_토큰이_필요하다() {
+        assertThat(InterviewMode.TEXT.calculateRequiredTokenCountToAskRequirementQuestion(6)).isEqualTo(7);
+    }
+
     @Test
     void 텍스트_답변에는_다음_질문이_있든_없든_토큰_1개가_필요하다() {
         assertThat(InterviewMode.TEXT.calculateRequiredTokenCountToAnswer(true)).isEqualTo(1);

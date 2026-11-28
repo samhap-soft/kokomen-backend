@@ -271,7 +271,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 다른_요청이_진행_락을_쥐고_있으면_409이고_락은_그대로다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
@@ -325,7 +325,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 락을_잡는_사이에_요구사항_정리가_끝나면_락_안에서_409이고_락을_푼다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         Long interviewId = systemDesignInterview.getInterview().getId();
@@ -353,7 +353,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void LLM이_실패하면_사용자_문구로_500이고_저장하지_않으며_락을_푼다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         ExternalApiException llmFailure = new ExternalApiException(
@@ -368,6 +368,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
         assertAll(
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty(),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readTokenCount(member)).isEqualTo(7),
                 () -> assertThat(llmBulkhead.availablePermits()).isEqualTo(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS)
         );
     }
@@ -375,7 +376,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void LLM_호출에서_예상하지_못한_예외가_나도_저장하지_않고_락을_푼다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
@@ -394,7 +395,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 동시_실행_허가를_못_받으면_503이고_500으로_바뀌지_않으며_락을_푼다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         ExecutorService executor = Executors.newFixedThreadPool(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS);
@@ -434,7 +435,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 동시_실행_허가를_기다리다_인터럽트되면_503이고_락을_푼다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         ExecutorService executor = Executors.newFixedThreadPool(SystemDesignLlmBulkhead.MAX_CONCURRENT_CALLS);
@@ -492,7 +493,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 락_해제가_실패해도_역질문_답을_돌려준다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
@@ -518,7 +519,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void LLM을_기다리는_동안_5번째_역질문이_저장되면_400이고_락을_푼다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
@@ -546,7 +547,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 응답을_받지_못해_같은_역질문을_다시_보내면_LLM을_다시_부르지_않고_저장된_응답을_그대로_준다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
@@ -564,6 +565,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(retried.remainingCount()).isEqualTo(4),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
                 () -> verify(systemDesignRequirementBedrockClient, times(1)).answerRequirement(any()),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
         );
     }
@@ -571,7 +573,8 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 저장한_지_60초가_지난_뒤_같은_역질문을_보내면_새로_답하고_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        // 역질문 2개: 두 번째 역질문에도 7개가 남아 있어야 한다.
+        Member member = saveMemberWithTokens(8);
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
@@ -590,14 +593,16 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                         .extracting(SystemDesignRequirementQuestion::getQuestionOrder,
                                 SystemDesignRequirementQuestion::getContent)
                         .containsExactly(tuple(1, "하루에 몇 개나 만들어지나요?"), tuple(2, "하루에 몇 개나 만들어지나요?")),
-                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any())
+                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any()),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
         );
     }
 
     @Test
     void 직전과_다른_역질문은_60초_안이어도_새로_답하고_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        // 역질문 2개: 두 번째 역질문에도 7개가 남아 있어야 한다.
+        Member member = saveMemberWithTokens(8);
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
@@ -613,7 +618,8 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(response.question()).isEqualTo("하루에 몇 개나 조회되나요?"),
                 () -> assertThat(response.remainingCount()).isEqualTo(3),
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(2),
-                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any())
+                () -> verify(systemDesignRequirementBedrockClient, times(2)).answerRequirement(any()),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
         );
     }
 
@@ -621,7 +627,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 역질문_5개를_다_쓴_뒤_직전과_같은_질문을_다시_보내면_400이_아니라_저장된_응답을_준다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
@@ -653,7 +659,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 다른_요청이_진행_락을_쥐고_있으면_직전과_같은_역질문도_409다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
@@ -675,7 +681,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     @Test
     void 다른_회원이_직전과_같은_역질문을_보내면_403이다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         Member otherMember = memberRepository.save(MemberFixtureBuilder.builder().nickname("다른 회원").build());
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
@@ -729,6 +735,67 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                         .isInstanceOf(BadRequestException.class)
                         .hasMessage("다이어그램 형식이 맞지 않아요."),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
+    }
+
+    // 다른 요청이 락을 쥐고 있어도 토큰 문구가 나와야 토큰을 락보다 먼저 본 것이다.
+    @Test
+    void 역질문은_토큰이_7개보다_적으면_400이고_락을_잡지_않으며_LLM을_부르지_않는다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
+
+        // when & then
+        assertThatThrownBy(() -> askRequirementQuestion(systemDesignInterview, member, "하루에 몇 개나 만들어지나요?"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertAll(
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).contains("other-request"),
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readTokenCount(member)).isEqualTo(6)
+        );
+    }
+
+    // 역질문 5개에 5개, 답변 6개에 6개를 쓴다. 역질문을 다 써도 남은 토큰으로 면접을 끝낼 수 있어야 한다.
+    @Test
+    void 토큰_11개로_역질문_5개와_6문항을_모두_하면_0개가_남는다() {
+        // given
+        interviewTestSupport.saveOtherMemberRecords();
+        Member member = saveMemberWithTokens(11);
+        problemTestSupport.saveProblem();
+        given(systemDesignRequirementBedrockClient.answerRequirement(any())).willReturn(
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+        given(systemDesignAnswerBedrockClient.evaluateAnswer(any())).willReturn(answerEvaluation());
+        given(systemDesignAnswerBedrockClient.evaluateEnd(any())).willReturn(endEvaluation());
+        MemberAuth memberAuth = new MemberAuth(member.getId());
+        Long interviewId = systemDesignInterviewFacadeService.startInterview(memberAuth).interviewId();
+        List<Integer> tokenCounts = new ArrayList<>();
+
+        // when
+        for (int order = 1; order <= SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            systemDesignInterviewFacadeService.askRequirementQuestion(interviewId,
+                    new SystemDesignRequirementQuestionRequest("역질문 " + order), memberAuth);
+            tokenCounts.add(readTokenCount(member));
+        }
+        systemDesignInterviewFacadeService.completeRequirements(interviewId, memberAuth);
+        for (int order = 1; order <= 6; order++) {
+            systemDesignInterviewFacadeService.submitAnswer(interviewId, order, validRequest(), memberAuth);
+            int questionOrder = order;
+            await().atMost(Duration.ofSeconds(5)).until(() -> systemDesignInterviewFacadeService
+                    .findAnswerResult(interviewId, questionOrder, memberAuth).proceedState()
+                    == InterviewProceedState.COMPLETED);
+            awaitLockReleased(member);
+            tokenCounts.add(readTokenCount(member));
+        }
+
+        // then
+        assertAll(
+                () -> assertThat(tokenCounts).containsExactly(10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0),
+                () -> assertThat(systemDesignInterviewFacadeService.findInterview(interviewId, memberAuth)
+                        .interviewState()).isEqualTo(InterviewState.FINISHED)
         );
     }
 
@@ -1079,7 +1146,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
     void Redis가_실패하면_역질문_요구사항_정리_답변_제출은_사용자_문구의_503이고_아무것도_바뀌지_않는다() {
         // given
         interviewTestSupport.saveOtherMemberRecords();
-        Member member = saveMemberWithTokens(6);
+        Member member = saveMemberWithTokens(7);
         SystemDesignProblem problem = problemTestSupport.saveProblem();
         SystemDesignInterview requirementStageInterview = saveSystemDesignInterview(member, problem,
                 SystemDesignStage.REQUIREMENTS);
@@ -1108,7 +1175,7 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
                 () -> assertThat(readRequirementQuestions(requirementStageInterview)).isEmpty(),
                 () -> assertThat(readStage(requirementStageInterview)).isEqualTo(SystemDesignStage.REQUIREMENTS),
                 () -> assertThat(readAnswerCount(designStageInterview)).isEqualTo(1),
-                () -> assertThat(readTokenCount(member)).isEqualTo(6)
+                () -> assertThat(readTokenCount(member)).isEqualTo(7)
         );
     }
 
@@ -1282,6 +1349,11 @@ class SystemDesignInterviewFacadeServiceTest extends BaseTest {
 
     private static String lockKeyOf(Member member) {
         return InterviewProceedFacadeService.createInterviewProceedLockKey(member.getId());
+    }
+
+    // 역질문 하나를 하려면 역질문 1개에 본 면접 답변 6개분을 더한 7개가 있어야 한다.
+    private Member saveMemberWithRequirementQuestionTokens() {
+        return saveMemberWithTokens(7);
     }
 
     private Member saveMemberWithTokens(int freeTokenCount) {

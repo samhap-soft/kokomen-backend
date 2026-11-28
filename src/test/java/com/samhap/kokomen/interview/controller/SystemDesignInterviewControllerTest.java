@@ -543,7 +543,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void 요구사항_역질문에_답한다() throws Exception {
         // given
-        Member member = saveMemberWithTokens(3, 0);
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         Long interviewId = systemDesignInterview.getInterview().getId();
@@ -596,7 +596,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                                 SystemDesignRequirementQuestion::getAskedRequirementCodes)
                         .containsExactly(tuple(1, "하루에 단축 URL이 몇 개나 만들어지나요?", answer,
                                 List.of("DAILY_CREATION_VOLUME"))),
-                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(3),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero(),
                 () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
         );
@@ -606,7 +606,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void 응답을_받지_못해_같은_역질문을_다시_보내면_저장된_답을_그대로_준다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         Long interviewId = systemDesignInterview.getInterview().getId();
@@ -643,7 +643,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void 등록되지_않은_내용을_물으면_정해진_문구로_답한다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         saveRequirementQuestion(systemDesignInterview, 1);
@@ -670,6 +670,40 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         SystemDesignRequirementQuestion::getAskedRequirementCodes)
                 .last()
                 .isEqualTo(tuple(DEFAULT_REQUIREMENT_ANSWER, List.of()));
+    }
+
+    @Test
+    void 역질문은_토큰이_7개보다_적으면_400() throws Exception {
+        // given
+        Member member = saveMemberWithTokens(6, 0);
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
+        MockHttpSession session = loginSession(member);
+
+        // when & then
+        mockMvc.perform(post(REQUIREMENT_QUESTIONS_URL, systemDesignInterview.getInterview().getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUIREMENT_QUESTION_JSON)
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("토큰 갯수가 부족합니다."))
+                .andDo(document("system-design-interview-ask-requirement-question-not-enough-tokens",
+                        pathParameters(
+                                parameterWithName("interviewId").description("시스템 설계 면접 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("message")
+                                        .description("토큰(무료 + 유료)이 7개(역질문 1개 + 남은 답변 6개분)보다 적을 때의 오류 문구")
+                        )
+                ));
+        assertAll(
+                () -> verify(systemDesignRequirementBedrockClient, never()).answerRequirement(any()),
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
+                () -> assertThat(redisService.get(lockKeyOf(member), String.class)).isEmpty()
+        );
     }
 
     @Test
@@ -817,7 +851,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void 역질문은_다른_요청이_진행_락을_쥐고_있으면_409다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         redisService.acquireLockWithValue(lockKeyOf(member), "other-request", Duration.ofMinutes(5));
@@ -842,7 +876,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void LLM이_답하지_못하면_500이고_역질문이_남지_않는다() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         given(systemDesignRequirementBedrockClient.answerRequirement(any()))
@@ -876,7 +910,7 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
     @Test
     void 역질문이_몰려_동시_실행_허가를_못_받으면_503() throws Exception {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS, null);
         MockHttpSession session = loginSession(member);
@@ -2684,6 +2718,11 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
 
     private static String lockKeyOf(Member member) {
         return InterviewProceedFacadeService.createInterviewProceedLockKey(member.getId());
+    }
+
+    // 역질문 하나를 하려면 역질문 1개에 본 면접 답변 6개분을 더한 7개가 있어야 한다.
+    private Member saveMemberWithRequirementQuestionTokens() {
+        return saveMemberWithTokens(7, 0);
     }
 
     private Member saveMemberWithTokens(int freeTokenCount, int paidTokenCount) {

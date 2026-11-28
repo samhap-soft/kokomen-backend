@@ -20,6 +20,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixture
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
@@ -39,7 +40,10 @@ import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirement
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementTurn;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +78,8 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -124,7 +130,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 준비는_이전_역질문과_문제_문맥으로_command를_만든다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignProblem problem = problemTestSupport.saveProblem();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member, problem,
                 SystemDesignStage.REQUIREMENTS);
@@ -153,7 +159,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 물은_요구사항_code_목록을_역질문_행에_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         saveRequirementQuestion(systemDesignInterview, 1, "단축 키는 몇 자까지 되나요?", "7자 이하여야 해요.");
@@ -184,7 +190,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 물은_요구사항이_없으면_정해진_문구를_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
@@ -209,7 +215,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 시드에_없는_숫자를_쓴_답은_시드_답으로_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         RequirementQuestionDraft draft = requirementQuestionService.prepare(
@@ -234,7 +240,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 질문_앞뒤의_공백과_전각_공백을_지우고_저장한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         String paddedQuestion = "\u3000 \t하루에 몇 개나\u3000만들어지나요?\n\u3000";
@@ -288,7 +294,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 다섯_번째_역질문을_저장하면_남은_개수가_0이다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
@@ -317,7 +323,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 저장할_때_개수를_다시_확인한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         for (int order = 1; order < SystemDesignRequirementQuestion.MAX_COUNT; order++) {
@@ -337,12 +343,13 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 .extracting(SystemDesignRequirementQuestion::getContent)
                 .doesNotContain("다섯 번째 역질문")
                 .hasSize(SystemDesignRequirementQuestion.MAX_COUNT);
+        assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(7);
     }
 
     @Test
     void 저장할_때_단계를_다시_확인한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         Long interviewId = systemDesignInterview.getInterview().getId();
@@ -384,7 +391,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 직전_역질문과_같아도_저장한_지_60초가_지났으면_새_역질문으로_준비한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
@@ -425,7 +432,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 직전보다_앞의_역질문과_같은_질문은_새_역질문으로_준비한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
         saveRequirementQuestion(systemDesignInterview, 1, "하루에 몇 개나 만들어지나요?", "하루 평균 10만 개 정도예요.");
@@ -443,7 +450,7 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     @Test
     void 다른_면접의_직전_역질문과_같은_질문은_재시도가_아니다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignProblem problem = problemTestSupport.saveProblem();
         SystemDesignInterview askedInterview = saveSystemDesignInterview(member, problem,
                 SystemDesignStage.REQUIREMENTS);
@@ -530,13 +537,9 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     }
 
     @Test
-    void 역질문은_토큰을_검증하지도_차감하지도_않는다() {
+    void 역질문을_저장하면_토큰_1개를_차감한다() {
         // given
-        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
-        tokenRepository.save(TokenFixtureBuilder.builder()
-                .memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
-        tokenRepository.save(TokenFixtureBuilder.builder()
-                .memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        Member member = saveMemberWithRequirementQuestionTokens();
         SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
                 problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
 
@@ -549,8 +552,138 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         // then
         assertAll(
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
-                () -> assertThat(readTokenCount(member, TokenType.FREE)).isZero(),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero()
+        );
+    }
+
+    // 무료 토큰이 없으면 유료 토큰에서 차감하고 구매 건의 남은 수도 줄인다.
+    @Test
+    void 무료_토큰이_없으면_유료_토큰에서_차감한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.PAID).tokenCount(7).build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(member.getId()).purchaseCount(7).state(TokenPurchaseState.USABLE).build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+
+        // when
+        requirementQuestionService.save(
+                requirementQuestionService.prepare(systemDesignInterview.getInterview().getId(), member.getId(),
+                        "하루에 몇 개나 만들어지나요?"),
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+
+        // then
+        assertAll(
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isZero(),
+                () -> assertThat(readTokenCount(member, TokenType.PAID)).isEqualTo(6),
+                () -> assertThat(tokenPurchaseRepository.findById(tokenPurchase.getId()).orElseThrow()
+                        .getRemainingCount()).isEqualTo(6)
+        );
+    }
+
+    // 7개로 첫 역질문을 하면 6개가 남아 두 번째 역질문은 막힌다. 남은 6개로 본 면접을 끝낼 수 있다.
+    @Test
+    void 토큰이_딱_7개면_첫_역질문만_할_수_있다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        requirementQuestionService.save(
+                requirementQuestionService.prepare(interviewId, member.getId(), "하루에 몇 개나 만들어지나요?"),
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.prepare(interviewId, member.getId(), "조회는 얼마나 되나요?"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertAll(
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6)
+        );
+    }
+
+    // 역질문 1개에 본 면접 답변 6개분을 더한 7개가 있어야 한다. 역질문에 토큰을 쓰고 답변을 못 하는 일을 막는다.
+    @Test
+    void 토큰이_7개보다_적으면_400이다() {
+        // given
+        Member member = saveMemberWithTokens(6);
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.prepare(systemDesignInterview.getInterview().getId(),
+                member.getId(), "하루에 몇 개나 만들어지나요?"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6);
+    }
+
+    @Test
+    void 토큰_검사는_개수_검사보다_뒤다() {
+        // given
+        Member member = saveMemberWithTokens(0);
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        for (int order = 1; order <= SystemDesignRequirementQuestion.MAX_COUNT; order++) {
+            saveRequirementQuestion(systemDesignInterview, order, "역질문 " + order, "답 " + order);
+        }
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.prepare(systemDesignInterview.getInterview().getId(),
+                member.getId(), "여섯 번째 역질문"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("역질문은 5개까지 할 수 있어요.");
+    }
+
+    // 역질문 1개를 써서 토큰이 6개로 줄어든 뒤 응답을 받지 못해 다시 보낸 경우다. 토큰 검사보다 재시도 판정이 먼저라 직전 응답을 받는다.
+    @Test
+    void 토큰이_7개보다_적어져도_직전_역질문의_재시도는_직전_응답을_담는다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        requirementQuestionService.save(
+                requirementQuestionService.prepare(interviewId, member.getId(), "하루에 몇 개나 만들어지나요?"),
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+
+        // when
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(interviewId, member.getId(),
+                "하루에 몇 개나 만들어지나요?");
+
+        // then
+        assertAll(
+                () -> assertThat(draft.isRetry()).isTrue(),
+                () -> assertThat(draft.retriedResponse().answer()).isEqualTo("하루 평균 10만 개 정도예요."),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6)
+        );
+    }
+
+    // 준비와 저장 사이에 다른 면접이나 다른 기능이 토큰을 써서 모자라진 경우다. 차감이 실패하면 저장한 역질문도 함께 롤백된다.
+    @Test
+    void 저장할_때_토큰이_모자라면_역질문을_저장하지_않는다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        RequirementQuestionDraft draft = requirementQuestionService.prepare(
+                systemDesignInterview.getInterview().getId(), member.getId(), "하루에 몇 개나 만들어지나요?");
+        jdbcTemplate.update("UPDATE token SET token_count = 0 WHERE member_id = ?", member.getId());
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.save(draft, new SystemDesignRequirementAnswerResult(
+                List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요.")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertAll(
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).isEmpty(),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isZero()
         );
     }
 
@@ -599,6 +732,20 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
         jdbcTemplate.update("UPDATE system_design_requirement_question "
                         + "SET created_at = DATE_SUB(created_at, INTERVAL ? SECOND) WHERE id = ?",
                 seconds, question.getId());
+    }
+
+    // 역질문 하나를 하려면 역질문 1개에 본 면접 답변 6개분을 더한 7개가 있어야 한다.
+    private Member saveMemberWithRequirementQuestionTokens() {
+        return saveMemberWithTokens(7);
+    }
+
+    private Member saveMemberWithTokens(int freeTokenCount) {
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.FREE).tokenCount(freeTokenCount).build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.PAID).tokenCount(0).build());
+        return member;
     }
 
     private int readTokenCount(Member member, TokenType type) {
