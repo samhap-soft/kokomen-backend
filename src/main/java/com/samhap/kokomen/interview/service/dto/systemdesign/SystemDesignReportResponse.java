@@ -22,6 +22,7 @@ public record SystemDesignReportResponse(
         List<SystemDesignEvaluationPointResponse> evaluationPoints,
         List<String> missedRequirements,
         List<SystemDesignRequirementQuestionResponse> requirementQuestions,
+        List<SystemDesignConfirmedRequirementResponse> confirmedRequirements,
         List<SystemDesignFeedbackResponse> feedbacks,
         SystemDesignDiagramResponse finalDiagram,
         Integer userCurScore,
@@ -32,16 +33,18 @@ public record SystemDesignReportResponse(
      * 회원 점수는 요청한 회원이 아니라 면접자(interview.member)에게서 읽는다. 끝난 면접의 현재 다이어그램은 마지막 답변과 함께 낸
      * 다이어그램이다.
      *
-     * @param evaluationPoints     문제의 평가 포인트 순서
-     * @param missedRequirements   묻지 않은 숨은 요구사항의 이름(문제의 순서)
-     * @param requirementQuestions 물은 순서
-     * @param feedbacks            질문 순번 순서
+     * @param evaluationPoints      문제의 평가 포인트 순서
+     * @param missedRequirements    묻지 않은 숨은 요구사항의 이름(문제의 순서)
+     * @param requirementQuestions  물은 순서
+     * @param confirmedRequirements 역질문으로 확정한 요구사항(SystemDesignConfirmedRequirement.collect의 순서)
+     * @param feedbacks             질문 순번 순서
      */
     public static SystemDesignReportResponse of(
             SystemDesignInterview systemDesignInterview,
             List<SystemDesignEvaluationPointResponse> evaluationPoints,
             List<String> missedRequirements,
             List<SystemDesignRequirementQuestionResponse> requirementQuestions,
+            List<SystemDesignConfirmedRequirementResponse> confirmedRequirements,
             List<SystemDesignFeedbackResponse> feedbacks
     ) {
         Interview interview = systemDesignInterview.getInterview();
@@ -57,6 +60,7 @@ public record SystemDesignReportResponse(
                 evaluationPoints,
                 missedRequirements,
                 requirementQuestions,
+                confirmedRequirements,
                 feedbacks,
                 SystemDesignDiagramResponse.from(systemDesignInterview.getCurrentDiagram()),
                 interviewee.getScore(),

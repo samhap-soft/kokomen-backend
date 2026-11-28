@@ -5,6 +5,8 @@ import static com.samhap.kokomen.answer.domain.AnswerRank.B;
 import static com.samhap.kokomen.answer.domain.AnswerRank.C;
 import static com.samhap.kokomen.answer.domain.AnswerRank.D;
 import static com.samhap.kokomen.answer.domain.AnswerRank.F;
+import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource.ASSUMED;
+import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource.SEED;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage.DEEP_DIVE;
 import static com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage.HIGH_LEVEL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +40,9 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignReportScore;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignAnswerRepository;
@@ -49,6 +54,7 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemQ
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignProblemRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignConfirmedRequirementResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignEvaluationPointResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignFeedbackResponse;
@@ -72,11 +78,16 @@ import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class SystemDesignReportServiceTest extends BaseTest {
 
     // 뒤섞어 저장하는 면접의 답변 등급(질문 순번 순서)
     private static final List<AnswerRank> SHUFFLED_RANKS = List.of(A, B, C, D, F, B);
+    // URL 단축기 숨은 요구사항의 정해 둔 사실
+    private static final String DAILY_FACT = "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.";
+    private static final String RATIO_FACT = "단축 URL로 접속하는 조회 요청은 생성 요청의 100배쯤 된다고 보면 돼요.";
+    private static final String RETENTION_FACT = "단축 URL은 만든 날부터 5년 동안 열려야 하고, 그 뒤에는 지워도 돼요.";
 
     @Autowired
     private SystemDesignReportService reportService;
@@ -106,6 +117,8 @@ class SystemDesignReportServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void 끝난_면접의_리포트는_저장된_값을_조립한다() {
@@ -151,6 +164,12 @@ class SystemDesignReportServiceTest extends BaseTest {
                                         "단축 URL로 접속하는 조회 요청은 생성 요청의 100배쯤 된다고 보면 돼요. "
                                                 + "단축 URL은 만든 날부터 5년 동안 열려야 하고, 그 뒤에는 지워도 돼요."),
                                 tuple("로그인한 사용자만 단축 URL을 만들 수 있나요?", "로그인 없이도 누구나 단축 URL을 만들 수 있어요.")),
+                () -> assertThat(report.confirmedRequirements()).containsExactly(
+                        new SystemDesignConfirmedRequirementResponse("하루 생성량", DAILY_FACT, SEED),
+                        new SystemDesignConfirmedRequirementResponse("조회와 생성 비율", RATIO_FACT, SEED),
+                        new SystemDesignConfirmedRequirementResponse("보관 기간", RETENTION_FACT, SEED),
+                        new SystemDesignConfirmedRequirementResponse("로그인 여부", "로그인 없이도 누구나 단축 URL을 만들 수 있다.",
+                                ASSUMED)),
                 () -> assertThat(report.feedbacks())
                         .extracting(SystemDesignFeedbackResponse::questionId, SystemDesignFeedbackResponse::stage,
                                 SystemDesignFeedbackResponse::answerRank)
@@ -207,8 +226,83 @@ class SystemDesignReportServiceTest extends BaseTest {
         // then
         assertAll(
                 () -> assertThat(report.requirementQuestions()).isEmpty(),
+                () -> assertThat(report.confirmedRequirements()).isEmpty(),
                 () -> assertThat(report.missedRequirements())
                         .containsExactly("하루 생성량", "조회와 생성 비율", "보관 기간", "단축 키 길이", "클릭 통계")
+        );
+    }
+
+    // 역질문 행의 확정 항목을 물은 순서로 잇고 같은 이름은 처음 자리에 나중 값으로 둔다. 확정 항목을 저장하기 전(V58 전)에 만든 행은
+    // 물은 숨은 요구사항만 정해 둔 사실로 나오고, 요구사항을 묻는 질문이 아니었던 행은 아무것도 더하지 않는다. 묻지 않은 시드(클릭 통계)를
+    // 적은 SEED 항목은 넣지 않아 놓친 요구사항에만 남는다.
+    @Test
+    void 확정한_요구사항은_역질문_행의_확정_항목을_모으고_배포_전_행은_물은_시드만_나온다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+        saveRequirementQuestion(systemDesignInterview, 1, List.of("RETENTION_PERIOD"),
+                SystemDesignRequirementAnswerType.SEED);
+        saveRequirementQuestion(systemDesignInterview, 2, List.of(), SystemDesignRequirementAnswerType.DECLINED);
+        saveRequirementQuestion(systemDesignInterview, 3, List.of("DAILY_CREATION_VOLUME"),
+                SystemDesignRequirementAnswerType.MIXED,
+                item("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                item("클릭 통계", "통계 기능은 이번 범위에서 뺀다.", SEED),
+                item("커스텀 별칭", "커스텀 별칭은 이번 범위에서 뺀다.", ASSUMED));
+        saveRequirementQuestion(systemDesignInterview, 4, List.of(), SystemDesignRequirementAnswerType.ASSUMED,
+                item("커스텀 별칭 ", "커스텀 별칭은 영문 소문자 20자까지 받는다.", ASSUMED));
+        jdbcTemplate.update("UPDATE system_design_requirement_question "
+                + "SET answer_type = NULL, requirement_items = NULL "
+                + "WHERE system_design_interview_id = ? AND question_order = 1", systemDesignInterview.getId());
+
+        // when
+        SystemDesignReportResponse report = reportService.findReport(systemDesignInterview.getInterview().getId(),
+                member.getId());
+
+        // then
+        assertAll(
+                () -> assertThat(report.confirmedRequirements()).containsExactly(
+                        new SystemDesignConfirmedRequirementResponse("보관 기간", RETENTION_FACT, SEED),
+                        new SystemDesignConfirmedRequirementResponse("하루 생성량", "하루 평균 10만 개가 만들어진다.", SEED),
+                        new SystemDesignConfirmedRequirementResponse("커스텀 별칭", "커스텀 별칭은 영문 소문자 20자까지 받는다.",
+                                ASSUMED)),
+                () -> assertThat(report.missedRequirements()).containsExactly("조회와 생성 비율", "단축 키 길이", "클릭 통계")
+        );
+    }
+
+    // 확인한 숨은 요구사항은 SEED 항목으로, 확인하지 않은 숨은 요구사항은 놓친 요구사항으로 나온다. 둘을 합치면 문제의 숨은 요구사항
+    // 전부이고 겹치지 않는다. 정해 두지 않은 내용을 정한 ASSUMED 항목은 어느 쪽에도 들지 않는다.
+    @Test
+    void SEED_항목과_놓친_요구사항을_합치면_숨은_요구사항_전부다() {
+        // given
+        interviewTestSupport.saveOtherMemberReportRecords();
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of(
+                List.of("SHORT_KEY_LENGTH"),
+                List.of(),
+                List.of("DAILY_CREATION_VOLUME", "SHORT_KEY_LENGTH")));
+        assertThat(interviewTestSupport.readReportIds(systemDesignInterview)).doesNotHaveDuplicates();
+
+        // when
+        SystemDesignReportResponse report = reportService.findReport(systemDesignInterview.getInterview().getId(),
+                member.getId());
+
+        // then
+        List<String> seedNames = report.confirmedRequirements().stream()
+                .filter(requirement -> requirement.source() == SEED)
+                .map(SystemDesignConfirmedRequirementResponse::name)
+                .toList();
+        List<String> seedNamesWithMissed = new ArrayList<>(seedNames);
+        seedNamesWithMissed.addAll(report.missedRequirements());
+        assertAll(
+                () -> assertThat(seedNames).containsExactly("단축 키 길이", "하루 생성량"),
+                () -> assertThat(seedNamesWithMissed)
+                        .containsExactlyInAnyOrder("하루 생성량", "조회와 생성 비율", "보관 기간", "단축 키 길이", "클릭 통계"),
+                () -> assertThat(report.confirmedRequirements())
+                        .filteredOn(requirement -> requirement.source() == ASSUMED)
+                        .extracting(SystemDesignConfirmedRequirementResponse::name)
+                        .containsExactly("로그인 여부")
         );
     }
 
@@ -458,15 +552,19 @@ class SystemDesignReportServiceTest extends BaseTest {
                                 SystemDesignPublicReportResponse::evaluationPoints,
                                 SystemDesignPublicReportResponse::missedRequirements,
                                 SystemDesignPublicReportResponse::requirementQuestions,
+                                SystemDesignPublicReportResponse::confirmedRequirements,
                                 SystemDesignPublicReportResponse::feedbacks,
                                 SystemDesignPublicReportResponse::finalDiagram)
                         .containsExactly(report.interviewId(), report.topic(), report.difficulty(), report.totalScore(),
                                 report.totalFeedback(), report.difficultyComment(), report.evaluationPoints(),
-                                report.missedRequirements(), report.requirementQuestions(), report.feedbacks(),
-                                report.finalDiagram()),
+                                report.missedRequirements(), report.requirementQuestions(),
+                                report.confirmedRequirements(), report.feedbacks(), report.finalDiagram()),
                 () -> assertThat(publicReport.totalScore()).isEqualTo(65),
                 () -> assertThat(publicReport.missedRequirements()).containsExactly("단축 키 길이", "클릭 통계"),
                 () -> assertThat(publicReport.requirementQuestions()).hasSize(3),
+                () -> assertThat(publicReport.confirmedRequirements())
+                        .extracting(SystemDesignConfirmedRequirementResponse::name)
+                        .containsExactly("하루 생성량", "조회와 생성 비율", "보관 기간", "로그인 여부"),
                 () -> assertThat(publicReport.feedbacks()).hasSize(SystemDesignInterview.MAX_QUESTION_COUNT),
                 () -> assertThat(publicReport.intervieweeNickname()).isEqualTo("공개 리포트 면접자")
         );
@@ -549,6 +647,25 @@ class SystemDesignReportServiceTest extends BaseTest {
                 () -> assertThat(publicReportSelectCount).isEqualTo(reportSelectCount),
                 () -> assertThat(publicReportStatementCount).isEqualTo(reportStatementCount + 2)
         );
+    }
+
+    private void saveRequirementQuestion(SystemDesignInterview systemDesignInterview, int questionOrder,
+                                         List<String> askedRequirementCodes,
+                                         SystemDesignRequirementAnswerType answerType,
+                                         SystemDesignRequirementItem... items) {
+        requirementQuestionRepository.save(SystemDesignRequirementQuestionFixtureBuilder.builder()
+                .systemDesignInterview(systemDesignInterview)
+                .questionOrder(questionOrder)
+                .content(questionOrder + "번 역질문이에요.")
+                .answer(questionOrder + "번 역질문의 답이에요.")
+                .askedRequirementCodes(askedRequirementCodes)
+                .answerType(answerType)
+                .requirementItems(List.of(items))
+                .build());
+    }
+
+    private static SystemDesignRequirementItem item(String name, String detail, SystemDesignRequirementSource source) {
+        return new SystemDesignRequirementItem(name, detail, source);
     }
 
     private static List<String> recordComponentNames(Class<? extends Record> recordType) {

@@ -20,7 +20,9 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemState
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignReportScore;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementAnswerType;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementItem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementQuestion;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.repository.InterviewRepository;
 import com.samhap.kokomen.interview.repository.RootQuestionRepository;
@@ -85,6 +87,9 @@ public class SystemDesignInterviewTestSupport {
             + "요구사항의 수치를 저장소와 응답 방식 선택으로 이어 설명하는 연습을 해 보세요.";
     private static final String UNREGISTERED_REQUIREMENT_QUESTION = "로그인한 사용자만 단축 URL을 만들 수 있나요?";
     private static final String UNREGISTERED_REQUIREMENT_ANSWER = "로그인 없이도 누구나 단축 URL을 만들 수 있어요.";
+    // 정해 두지 않은 내용을 물은 역질문에 면접관이 정해 답하며 적은 확정 항목
+    private static final SystemDesignRequirementItem UNREGISTERED_REQUIREMENT_ITEM = new SystemDesignRequirementItem(
+            "로그인 여부", "로그인 없이도 누구나 단축 URL을 만들 수 있다.", SystemDesignRequirementSource.ASSUMED);
 
     private final SystemDesignProblemTestSupport problemTestSupport;
     private final MemberRepository memberRepository;
@@ -247,7 +252,8 @@ public class SystemDesignInterviewTestSupport {
      * 답변 6개의 등급은 B·B·C·A·B·C(등급 점수 합 50)이고, 평가 포인트 5개 중 1·2·4번을 충족해 리포트 점수는 65다.
      * 1~3번 답변은 시작 다이어그램, 4~6번 답변은 캐시를 더한 다이어그램과 함께 냈고, 마지막 답변의 다이어그램이 현재 다이어그램이다.
      *
-     * @param askedRequirementCodes 역질문마다 물은 숨은 요구사항 code(역질문 1번부터). 비어 있으면 정해 두지 않은 내용을 물은 역질문이다
+     * @param askedRequirementCodes 역질문마다 물은 숨은 요구사항 code(역질문 1번부터). 비어 있으면 정해 두지 않은 내용을 물은 역질문이다.
+     *                              확정 항목은 정해 두지 않은 내용을 물은 역질문에만 하나 있다(시드 항목은 적지 않은 행)
      */
     public SystemDesignInterview saveFinishedInterview(Member member, List<List<String>> askedRequirementCodes) {
         return saveFinishedInterview(member, askedRequirementCodes, FINISHED_RANKS);
@@ -319,7 +325,8 @@ public class SystemDesignInterviewTestSupport {
     }
 
     // 물은 요구사항의 이름으로 역질문을, 그 요구사항들의 정해 둔 답을 문제 순서로 이어 면접관 답을 만든다(시드 답으로 답할 때와 같은 모양).
-    // 물은 요구사항이 없으면 숨은 요구사항에 없는 내용을 물어 면접관이 정해 답한 역질문이다.
+    // 이 행은 확정 항목을 적지 않아 리포트가 정해 둔 사실을 폴백으로 넣는다. 물은 요구사항이 없으면 숨은 요구사항에 없는 내용을 물어
+    // 면접관이 정해 답하고 확정 항목 하나(로그인 여부)를 적은 역질문이다.
     private static SystemDesignRequirementQuestion requirementQuestion(SystemDesignInterview systemDesignInterview,
                                                                        int questionOrder, List<String> askedCodes) {
         List<Requirement> askedRequirements = SystemDesignProblemContextFixture.URL_SHORTENER_REQUIREMENTS.stream()
@@ -333,6 +340,7 @@ public class SystemDesignInterviewTestSupport {
             return builder.content(UNREGISTERED_REQUIREMENT_QUESTION)
                     .answer(UNREGISTERED_REQUIREMENT_ANSWER)
                     .answerType(SystemDesignRequirementAnswerType.ASSUMED)
+                    .requirementItems(List.of(UNREGISTERED_REQUIREMENT_ITEM))
                     .build();
         }
         return builder.content(askedRequirements.stream()
