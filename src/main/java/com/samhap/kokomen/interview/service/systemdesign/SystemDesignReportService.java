@@ -1,6 +1,7 @@
 package com.samhap.kokomen.interview.service.systemdesign;
 
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignAnswer;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationPoint;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationResult;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignHiddenRequirement;
@@ -14,6 +15,7 @@ import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignEvaluati
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignHiddenRequirementRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignQuestionRepository;
 import com.samhap.kokomen.interview.repository.systemdesign.SystemDesignRequirementQuestionRepository;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignConfirmedRequirementResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignEvaluationPointResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignFeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignPublicReportResponse;
@@ -74,17 +76,24 @@ public class SystemDesignReportService {
     /**
      * 끝난 면접의 저장된 값으로 리포트를 조립한다. 리포트와 공개 리포트가 함께 쓴다. 회원 점수는 면접자에게서 읽으므로 요청한 회원과 상관없이
      * 같은 리포트가 나온다.
-     * 평가 포인트·판정·숨은 요구사항·역질문·질문·답변을 목록마다 한 번씩 읽어 메모리에서 짝짓는다(원소마다 다시 읽지 않는다).
+     * 평가 포인트·판정·숨은 요구사항·역질문·질문·답변을 목록마다 한 번씩 읽어 메모리에서 짝짓는다(원소마다 다시 읽지 않는다). 확정한
+     * 요구사항은 답변 채점(SystemDesignAnswerService)과 같은 {@link SystemDesignConfirmedRequirement#collect}로 저장된 역질문 행에서
+     * 모은다.
      */
     private SystemDesignReportResponse createReport(SystemDesignInterview systemDesignInterview) {
         SystemDesignProblem problem = systemDesignInterview.getProblem();
+        List<SystemDesignHiddenRequirement> hiddenRequirements =
+                hiddenRequirementRepository.findByProblemOrderByDisplayOrderAsc(problem);
         List<SystemDesignRequirementQuestion> requirementQuestions = requirementQuestionRepository
                 .findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
         return SystemDesignReportResponse.of(systemDesignInterview,
                 createEvaluationPoints(systemDesignInterview, problem),
-                findMissedRequirementNames(problem, requirementQuestions),
+                findMissedRequirementNames(hiddenRequirements, requirementQuestions),
                 requirementQuestions.stream()
                         .map(SystemDesignRequirementQuestionResponse::from)
+                        .toList(),
+                SystemDesignConfirmedRequirement.collect(requirementQuestions, hiddenRequirements).stream()
+                        .map(SystemDesignConfirmedRequirementResponse::from)
                         .toList(),
                 createFeedbacks(systemDesignInterview));
     }
@@ -114,10 +123,10 @@ public class SystemDesignReportService {
     }
 
     // 확인한 요구사항(모든 역질문에서 물은 요구사항 code의 합집합)에 없는 숨은 요구사항의 이름(문제의 순서). 역질문이 없으면 모두다.
-    private List<String> findMissedRequirementNames(SystemDesignProblem problem,
-                                                    List<SystemDesignRequirementQuestion> requirementQuestions) {
+    private static List<String> findMissedRequirementNames(List<SystemDesignHiddenRequirement> hiddenRequirements,
+                                                           List<SystemDesignRequirementQuestion> requirementQuestions) {
         List<String> askedCodes = SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions);
-        return hiddenRequirementRepository.findByProblemOrderByDisplayOrderAsc(problem).stream()
+        return hiddenRequirements.stream()
                 .filter(requirement -> !askedCodes.contains(requirement.getCode()))
                 .map(SystemDesignHiddenRequirement::getName)
                 .toList();

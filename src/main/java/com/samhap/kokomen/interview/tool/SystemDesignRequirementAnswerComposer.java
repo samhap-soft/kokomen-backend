@@ -8,15 +8,12 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementS
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -45,10 +42,6 @@ public final class SystemDesignRequirementAnswerComposer {
     public static final int MAX_ITEM_COUNT = 3;
 
     private static final ObjectMapper ITEMS_MAPPER = Jackson2CompatibleJsonMapper.builder().build();
-    private static final Pattern THOUSANDS_SEPARATOR = Pattern.compile("(?<=\\d),(?=\\d{3})");
-    // 숫자(소수 포함) 바로 뒤의 단위. 한글이면 붙여 쓴 첫 글자, 영문이면 이어진 영문 전체, %다. 영문 단위와 %는 숫자와의 사이에 공백
-    // 하나를 허용한다("100 ms"). 한글은 붙여 쓰는 단위라 공백을 허용하면 "5 개"처럼 숫자만 같은 우연이 늘어 붙여 쓴 것만 본다.
-    private static final Pattern NUMBER_WITH_UNIT = Pattern.compile("(\\d+(?:\\.\\d+)?)(?:([가-힣])|\\s?(%|[A-Za-z]+))");
     // 결정을 면접자에게 넘기는 문구(배포 전의 고정 답 "등록되지 않은 내용이에요. 가정하고 진행하세요." 포함)와, 요구사항 질문이 아닐 때의
     // 정해진 문구. 답의 종류가 DECLINED가 아닌데 거절했다면 답과 종류가 어긋난다. "등록되지 않은 사용자"처럼 정상 문장에도 나오는 말은
     // 뒤에 "내용"이 올 때만 본다.
@@ -310,17 +303,9 @@ public final class SystemDesignRequirementAnswerComposer {
             return new NumberUnits(forbidden, known);
         }
 
-        // 전각 숫자·영문을 NFKC로 맞추고 천 단위 쉼표를 지운 뒤 모은다. "1,000만 명"과 "1000만명"은 같은 1000만이고, "100배쯤"과
-        // "100배예요"는 같은 100배다. 영문 단위는 소문자로 맞춘다("20MB"와 "20 mb"). 단위가 붙지 않은 숫자는 모으지 않는다.
+        // '숫자+단위'의 정의는 SystemDesignText.numberUnits에 있다(확정한 요구사항 모으기와 같은 정의).
         static Set<String> extract(String text) {
-            String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
-            Matcher matcher = NUMBER_WITH_UNIT.matcher(THOUSANDS_SEPARATOR.matcher(normalized).replaceAll(""));
-            Set<String> numberUnits = new LinkedHashSet<>();
-            while (matcher.find()) {
-                String unit = matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
-                numberUnits.add(matcher.group(1) + unit.toLowerCase(Locale.ROOT));
-            }
-            return numberUnits;
+            return SystemDesignText.numberUnits(text);
         }
 
         List<String> leakedIn(String text) {

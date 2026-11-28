@@ -2010,6 +2010,12 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.requirement_questions[0].question").value("하루 생성량에 대해 알려 주세요."))
                 .andExpect(jsonPath("$.requirement_questions[0].answer")
                         .value("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."))
+                .andExpect(jsonPath("$.confirmed_requirements[*].name",
+                        contains("하루 생성량", "조회와 생성 비율", "보관 기간", "로그인 여부")))
+                .andExpect(jsonPath("$.confirmed_requirements[*].source", contains("SEED", "SEED", "SEED", "ASSUMED")))
+                .andExpect(jsonPath("$.confirmed_requirements[0].detail")
+                        .value("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."))
+                .andExpect(jsonPath("$.confirmed_requirements[3].detail").value("로그인 없이도 누구나 단축 URL을 만들 수 있다."))
                 .andExpect(jsonPath("$.feedbacks[0].question_id").value(1))
                 .andExpect(jsonPath("$.feedbacks[*].question_id", contains(1, 2, 3, 4, 5, 6)))
                 .andExpect(jsonPath("$.feedbacks[*].stage", contains("HIGH_LEVEL", "HIGH_LEVEL", "HIGH_LEVEL",
@@ -2147,6 +2153,31 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
         );
     }
 
+    // 역질문을 하지 않았으면 확정한 요구사항이 없다. 키는 빠지지 않고 빈 배열이다.
+    @Test
+    void 역질문을_하지_않았으면_확정한_요구사항은_빈_배열이다() throws Exception {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        SystemDesignInterview systemDesignInterview = interviewTestSupport.saveFinishedInterview(member, List.of());
+        MockHttpSession session = loginSession(member);
+
+        // when
+        MvcResult result = mockMvc.perform(get(REPORT_URL, systemDesignInterview.getInterview().getId())
+                        .header("Cookie", "JSESSIONID=" + session.getId())
+                        .session(session)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.confirmed_requirements", empty()))
+                .andReturn();
+
+        // then
+        JsonNode body = readBody(result);
+        assertAll(
+                () -> assertThat(body.has("confirmed_requirements")).isTrue(),
+                () -> assertThat(body.get("confirmed_requirements").isArray()).isTrue()
+        );
+    }
+
     // 소유자를 끝났는지보다 먼저 본다. 다른 회원의 면접이면 진행 중이어도 409가 아니라 403이다.
     @Test
     void 리포트는_다른_회원의_면접이면_403() throws Exception {
@@ -2208,6 +2239,9 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.requirement_questions", hasSize(3)))
                 .andExpect(jsonPath("$.requirement_questions[0].answer")
                         .value("새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요."))
+                .andExpect(jsonPath("$.confirmed_requirements[*].name",
+                        contains("하루 생성량", "조회와 생성 비율", "보관 기간", "로그인 여부")))
+                .andExpect(jsonPath("$.confirmed_requirements[*].source", contains("SEED", "SEED", "SEED", "ASSUMED")))
                 .andExpect(jsonPath("$.feedbacks[0].question_id").value(1))
                 .andExpect(jsonPath("$.feedbacks[*].answer_rank", contains("B", "B", "C", "A", "B", "C")))
                 .andExpect(jsonPath("$.interviewee_nickname").value("시스템 설계 면접자"))
@@ -2536,6 +2570,15 @@ class SystemDesignInterviewControllerTest extends BaseControllerTest {
                         .description("역질문"),
                 fieldWithPath("requirement_questions[].answer").type(JsonFieldType.STRING).optional()
                         .description("면접관 답"),
+                fieldWithPath("confirmed_requirements").description("요구사항 역질문으로 확정한 요구사항. 물은 순서이고 이름이 "
+                        + "겹치지 않는다. 확정한 것이 없으면(역질문을 하지 않았거나 요구사항을 묻는 질문이 아니었으면) 빈 배열"),
+                fieldWithPath("confirmed_requirements[].name").type(JsonFieldType.STRING).optional()
+                        .description("요구사항 이름. SEED면 문제에 정해 둔 요구사항의 이름이다"),
+                fieldWithPath("confirmed_requirements[].detail").type(JsonFieldType.STRING).optional()
+                        .description("확정한 내용"),
+                fieldWithPath("confirmed_requirements[].source").type(JsonFieldType.STRING).optional()
+                        .description("SEED: 문제에 정해 둔 요구사항(숨은 요구사항)의 사실(화면 예: 문제 조건). ASSUMED: 문제에 정해 두지 "
+                                + "않아 면접관이 정해 답한 내용(화면 예: 면접관이 정한 조건)"),
                 fieldWithPath("feedbacks").description("설계 질문별 답변과 피드백. 질문 순번 순서"),
                 fieldWithPath("feedbacks[].question_id").description("질문 순번 (1~6)"),
                 fieldWithPath("feedbacks[].stage").description("그 질문의 단계 (HIGH_LEVEL, DEEP_DIVE)"),

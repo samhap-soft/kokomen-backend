@@ -23,6 +23,8 @@ import com.samhap.kokomen.global.fixture.bedrock.BedrockConversePropertiesFixtur
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignDiagramFixture;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemContextFixture;
 import com.samhap.kokomen.global.infrastructure.Jackson2CompatibleJsonMapper;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignAnswerEvaluation;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignEndEvaluation;
@@ -81,6 +83,10 @@ class SystemDesignAnswerBedrockClientTest {
             "point_storage_estimation", "point_redirect_availability", "point_redirect_status_tradeoff");
     // endCommand()의 6번 답변 원문을 그대로 인용한 증거. 서버 검증을 통과해 MET 판정이 그대로 남는다.
     private static final String GROUNDED_EVIDENCE = "[6] \"만료와 차단을 되돌릴 수 있게 302를 씁니다\"";
+    // 역질문 하나로 확인한 하루 생성량(정해 둔 사실). answerCommand·endCommand의 역질문 기록과 맞춘다.
+    private static final SystemDesignConfirmedRequirement DAILY_CREATION_VOLUME_CONFIRMED =
+            new SystemDesignConfirmedRequirement("하루 생성량", "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.",
+                    SystemDesignRequirementSource.SEED);
 
     private BedrockRuntimeClient bedrockRuntimeClient;
     private SystemDesignAnswerBedrockClient client;
@@ -224,7 +230,7 @@ class SystemDesignAnswerBedrockClientTest {
                 .willReturn(toolUseResponse(ANSWER_TOOL_NAME, answerInput("B", FEEDBACK, NEXT_QUESTION)));
         SystemDesignAnswerCommand first = answerCommand();
         SystemDesignAnswerCommand second = new SystemDesignAnswerCommand(42L,
-                SystemDesignProblemContextFixture.urlShortener(), List.of(), List.of(),
+                SystemDesignProblemContextFixture.urlShortener(), List.of(), List.of(), List.of(),
                 new SystemDesignAnswerTurn(1, SystemDesignStage.HIGH_LEVEL, "전체 구조를 그려 주세요.", "API 서버 하나로 시작합니다."),
                 SystemDesignDiagramFixture.withCache(),
                 new SystemDesignNextBaseQuestion(2, SystemDesignStage.HIGH_LEVEL, "단축 키는 어떻게 만드나요?"));
@@ -252,7 +258,7 @@ class SystemDesignAnswerBedrockClientTest {
                 .willReturn(toolUseResponse(END_TOOL_NAME, endInput("MET", "MET", "MET", "MET", "MET")));
         SystemDesignEndCommand first = endCommand();
         SystemDesignEndCommand second = new SystemDesignEndCommand(43L,
-                SystemDesignProblemContextFixture.urlShortener(), List.of(),
+                SystemDesignProblemContextFixture.urlShortener(), List.of(), List.of(),
                 List.of(new SystemDesignAnswerTurn(5, SystemDesignStage.DEEP_DIVE, "캐시가 내려가면 어떻게 되나요?",
                         "DB로 바로 읽습니다.")),
                 new SystemDesignAnswerTurn(6, SystemDesignStage.DEEP_DIVE, "301과 302 중 무엇을 쓰나요?", "301을 씁니다."),
@@ -855,6 +861,7 @@ class SystemDesignAnswerBedrockClientTest {
         return new SystemDesignAnswerCommand(INTERVIEW_ID, SystemDesignProblemContextFixture.urlShortener(),
                 List.of(new SystemDesignRequirementTurn("하루에 단축 URL이 몇 개나 만들어지나요?",
                         "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")),
+                List.of(DAILY_CREATION_VOLUME_CONFIRMED),
                 List.of(new SystemDesignAnswerTurn(1, SystemDesignStage.HIGH_LEVEL, "전체 구조를 그려 주세요.",
                         "클라이언트 요청은 API 서버로 갑니다.")),
                 new SystemDesignAnswerTurn(2, SystemDesignStage.HIGH_LEVEL, "단축 키는 어떻게 만드나요?",
@@ -867,6 +874,7 @@ class SystemDesignAnswerBedrockClientTest {
         return new SystemDesignEndCommand(INTERVIEW_ID, SystemDesignProblemContextFixture.urlShortener(),
                 List.of(new SystemDesignRequirementTurn("하루에 단축 URL이 몇 개나 만들어지나요?",
                         "새로 만들어지는 단축 URL은 하루 평균 10만 개 정도예요.")),
+                List.of(DAILY_CREATION_VOLUME_CONFIRMED),
                 List.of(new SystemDesignAnswerTurn(5, SystemDesignStage.DEEP_DIVE, "DB 서버가 내려가면 어떻게 되나요?",
                         "복제본을 승격합니다.")),
                 new SystemDesignAnswerTurn(6, SystemDesignStage.DEEP_DIVE, "301과 302 중 무엇을 쓰나요?",

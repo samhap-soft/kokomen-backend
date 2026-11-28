@@ -14,12 +14,14 @@ import com.samhap.kokomen.interview.domain.InterviewState;
 import com.samhap.kokomen.interview.domain.InterviewType;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignBlockKind;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDifficulty;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.service.dto.FeedbackResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewResultResponse;
 import com.samhap.kokomen.interview.service.dto.InterviewSummaryResponse;
 import com.samhap.kokomen.interview.service.dto.RootQuestionReferenceAnswer;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignAnswerCompletedResponse;
+import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignConfirmedRequirementResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse.Block;
 import com.samhap.kokomen.interview.service.dto.systemdesign.SystemDesignDiagramResponse.Connection;
@@ -181,6 +183,8 @@ class ApiResponseJsonCharacterizationTest extends BaseTest {
                 List.of(new SystemDesignEvaluationPointResponse("캐시로 읽기 부하를 줄인다.", true),
                         new SystemDesignEvaluationPointResponse("단축 키 충돌을 막는다.", false)),
                 List.of("만료 정책"), List.of(),
+                List.of(new SystemDesignConfirmedRequirementResponse("커스텀 별칭", "이번 범위에서 뺀다.",
+                        SystemDesignRequirementSource.ASSUMED)),
                 List.of(new SystemDesignFeedbackResponse(1, SystemDesignStage.HIGH_LEVEL, "전체 구조를 그려 주세요.",
                         "API 서버 뒤에 DB를 둡니다.", new SystemDesignDiagramResponse(List.of(), List.of()), AnswerRank.C,
                         "캐시가 빠졌다.")),
@@ -191,7 +195,9 @@ class ApiResponseJsonCharacterizationTest extends BaseTest {
                 "difficulty":"BASIC","total_score":72,"total_feedback":"전체적으로 좋았다.",\
                 "evaluation_points":[{"description":"캐시로 읽기 부하를 줄인다.","is_met":true},\
                 {"description":"단축 키 충돌을 막는다.","is_met":false}],"missed_requirements":["만료 정책"],\
-                "requirement_questions":[],"feedbacks":[{"question_id":1,"stage":"HIGH_LEVEL",\
+                "requirement_questions":[],\
+                "confirmed_requirements":[{"name":"커스텀 별칭","detail":"이번 범위에서 뺀다.","source":"ASSUMED"}],\
+                "feedbacks":[{"question_id":1,"stage":"HIGH_LEVEL",\
                 "question":"전체 구조를 그려 주세요.","answer":"API 서버 뒤에 DB를 둡니다.",\
                 "diagram":{"blocks":[],"connections":[]},"answer_rank":"C","answer_feedback":"캐시가 빠졌다."}],\
                 "final_diagram":%s,"user_cur_score":1572}""".formatted(DIAGRAM_JSON));

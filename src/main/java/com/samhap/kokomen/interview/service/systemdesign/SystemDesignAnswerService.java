@@ -6,9 +6,11 @@ import com.samhap.kokomen.answer.domain.AnswerRank;
 import com.samhap.kokomen.global.exception.NotFoundException;
 import com.samhap.kokomen.interview.domain.InterviewMode;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignAnswer;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationPoint;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignEvaluationResult;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignHiddenRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblem;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignProblemQuestion;
@@ -86,7 +88,8 @@ public class SystemDesignAnswerService {
 
     /**
      * 진행 락 안에서 {@link #precheck}의 검사를 최신 상태로 다시 하고, 채점 입력을 값만으로 만든다(트랜잭션 밖에서 LLM을 불러도
-     * 지연 로딩이 일어나지 않는다). 마지막 질문이면 마지막 답변 평가 입력(L3), 아니면 답변 평가 입력(L2)을 만든다.
+     * 지연 로딩이 일어나지 않는다). 마지막 질문이면 마지막 답변 평가 입력(L3), 아니면 답변 평가 입력(L2)을 만든다. 두 입력 모두
+     * 역질문 기록과 함께 확정한 요구사항(리포트의 confirmed_requirements와 같은 목록)을 담는다.
      *
      * @param content 다듬어 길이를 검사한 답변
      * @param diagram 검사를 마친 다이어그램
@@ -99,8 +102,9 @@ public class SystemDesignAnswerService {
         DesignDialogue dialogue = readDesignDialogue(systemDesignInterview);
         SystemDesignQuestion question = readAnswerableQuestion(systemDesignInterview, dialogue, questionOrder);
         SystemDesignProblem problem = systemDesignInterview.getProblem();
-        SystemDesignProblemContext problemContext = SystemDesignProblemContext.of(problem,
-                hiddenRequirementRepository.findByProblemOrderByDisplayOrderAsc(problem),
+        List<SystemDesignHiddenRequirement> hiddenRequirements =
+                hiddenRequirementRepository.findByProblemOrderByDisplayOrderAsc(problem);
+        SystemDesignProblemContext problemContext = SystemDesignProblemContext.of(problem, hiddenRequirements,
                 evaluationPointRepository.findByProblemOrderByDisplayOrderAsc(problem));
         List<SystemDesignRequirementQuestion> requirementQuestions = requirementQuestionRepository
                 .findBySystemDesignInterviewOrderByQuestionOrderAsc(systemDesignInterview);
@@ -108,19 +112,22 @@ public class SystemDesignAnswerService {
                 .map(requirementQuestion -> new SystemDesignRequirementTurn(requirementQuestion.getContent(),
                         requirementQuestion.getAnswer()))
                 .toList();
+        // 리포트(SystemDesignReportService)와 같은 조립기로 모아, 채점이 보는 확정한 요구사항과 리포트에 보이는 것이 같다.
+        List<SystemDesignConfirmedRequirement> confirmedRequirements =
+                SystemDesignConfirmedRequirement.collect(requirementQuestions, hiddenRequirements);
         List<SystemDesignAnswerTurn> previousTurns = dialogue.turnsBefore(question);
         SystemDesignAnswerTurn currentTurn = new SystemDesignAnswerTurn(question.getQuestionOrder(),
                 question.getStage(), question.getContent(), content);
         if (isLastQuestion(question)) {
             SystemDesignEndCommand endCommand = new SystemDesignEndCommand(interviewId, problemContext,
-                    requirementTurns, previousTurns, currentTurn, diagram,
+                    requirementTurns, confirmedRequirements, previousTurns, currentTurn, diagram,
                     SystemDesignRequirementQuestion.collectAskedRequirementCodes(requirementQuestions));
             return new SystemDesignAnswerDraft(interviewId, memberId, question.getQuestionOrder(), content, diagram,
                     null, endCommand);
         }
         SystemDesignProblemQuestion nextBaseQuestion = readProblemQuestion(problem, question.getQuestionOrder() + 1);
         SystemDesignAnswerCommand answerCommand = new SystemDesignAnswerCommand(interviewId, problemContext,
-                requirementTurns, previousTurns, currentTurn, diagram,
+                requirementTurns, confirmedRequirements, previousTurns, currentTurn, diagram,
                 new SystemDesignNextBaseQuestion(nextBaseQuestion.getQuestionOrder(), nextBaseQuestion.getStage(),
                         nextBaseQuestion.getContent()));
         return new SystemDesignAnswerDraft(interviewId, memberId, question.getQuestionOrder(), content, diagram,

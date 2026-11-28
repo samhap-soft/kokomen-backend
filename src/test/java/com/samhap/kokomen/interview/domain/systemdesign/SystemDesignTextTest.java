@@ -93,4 +93,26 @@ class SystemDesignTextTest {
                 () -> assertThat(SystemDesignText.truncate("가" + emoji + "나", 3)).isEqualTo("가" + emoji)
         );
     }
+
+    // 답과 확정 항목에서 보는 '숫자+단위'다. 역질문 답 검사(SystemDesignRequirementAnswerComposer)와 확정한 요구사항 모으기
+    // (SystemDesignConfirmedRequirement)가 같은 정의를 쓴다.
+    @Test
+    void numberUnits는_숫자_바로_뒤의_단위와_함께_모은다() {
+        assertAll(
+                () -> assertThat(SystemDesignText.numberUnits("하루 평균 10만 개, 조회는 100배쯤"))
+                        .containsExactly("10만", "100배"),
+                () -> assertThat(SystemDesignText.numberUnits("가용성 99.9 % 이상, 원본은 20 MB까지"))
+                        .containsExactly("99.9%", "20mb"),
+                () -> assertThat(SystemDesignText.numberUnits("1,000만 명과 １０만 명")).containsExactly("1000만", "10만")
+        );
+    }
+
+    // 한글 단위는 붙여 쓴 것만 본다("5 개"는 숫자만 같은 우연이 늘어 보지 않는다). 단위 없는 숫자와 null은 모으지 않는다.
+    @Test
+    void numberUnits는_띄어_쓴_한글_단위와_단위_없는_숫자와_null을_모으지_않는다() {
+        assertAll(
+                () -> assertThat(SystemDesignText.numberUnits("5 개만 받고 응답은 302")).isEmpty(),
+                () -> assertThat(SystemDesignText.numberUnits(null)).isEmpty()
+        );
+    }
 }

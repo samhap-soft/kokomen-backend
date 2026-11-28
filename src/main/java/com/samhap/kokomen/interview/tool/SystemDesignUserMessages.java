@@ -1,6 +1,8 @@
 package com.samhap.kokomen.interview.tool;
 
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignConfirmedRequirement;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignDiagram;
+import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementSource;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignStage;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
 import java.util.List;
@@ -19,6 +21,9 @@ public final class SystemDesignUserMessages {
     private static final String NOT_CONFIRMED = "확인하지 않음";
     private static final String ASKED_HIDDEN_REQUIREMENTS_HEADING = "이미 답한 숨은 요구사항:";
     private static final String CONFIRMED_ITEMS_HEADING = "지금까지 확정한 요구사항(물은 순서):";
+    // L2·L3 system에는 SEED·ASSUMED의 정의가 없어 머리줄이 밝힌다. 없으면 ASSUMED를 면접자가 스스로 밝힌 가정으로 읽을 수 있다.
+    private static final String CONFIRMED_REQUIREMENTS_HEADING =
+            "역질문으로 확정한 요구사항(물은 순서, SEED: 문제에 정해 둔 사실, ASSUMED: 면접관이 정한 내용):";
 
     private SystemDesignUserMessages() {
     }
@@ -48,8 +53,7 @@ public final class SystemDesignUserMessages {
                         + " | 이름: " + escape(requirement.name()) + " | 정해 둔 사실: " + escape(requirement.answer()))
                 .toList();
         List<String> itemLines = confirmed.items().stream()
-                .map(item -> "- " + item.source().name() + " | 이름: " + escape(item.name()) + " | 내용: "
-                        + escape(item.detail()))
+                .map(item -> confirmedItemLine(item.source(), item.name(), item.detail()))
                 .toList();
         if (askedLines.isEmpty() && itemLines.isEmpty()) {
             return NONE;
@@ -62,13 +66,19 @@ public final class SystemDesignUserMessages {
         return lines.isEmpty() ? NONE : String.join(LINE_SEPARATOR, lines);
     }
 
+    // 확정한 요구사항 한 줄. 역질문 답(L1)의 확정 항목 줄과 답변 평가(L2·L3)의 확정한 요구사항 줄이 같은 모양이다.
+    private static String confirmedItemLine(SystemDesignRequirementSource source, String name, String detail) {
+        return "- " + source.name() + " | 이름: " + escape(name) + " | 내용: " + escape(detail);
+    }
+
     /**
-     * 답변 평가(L2). 역질문 기록, 이전 설계 대화, 이번 질문·답변·다이어그램, 다음 기준 질문 순서다. 이전 답변의 rank는 넣지 않아
-     * 지금 답변만으로 채점하게 하고, 다이어그램은 답변마다 누적되므로 이번 것만 넣는다.
+     * 답변 평가(L2). 역질문 기록, 확정한 요구사항, 이전 설계 대화, 이번 질문·답변·다이어그램, 다음 기준 질문 순서다. 이전 답변의
+     * rank는 넣지 않아 지금 답변만으로 채점하게 하고, 다이어그램은 답변마다 누적되므로 이번 것만 넣는다.
      */
     public static String answer(SystemDesignAnswerCommand command) {
         return SystemDesignSystemMessages.joinBlocks(
                 requirementsDialogue(command.requirementTurns()),
+                confirmedRequirementList(command.confirmedRequirements()),
                 designDialogue(command.previousTurns()),
                 currentTurn(command.currentTurn(), command.currentDiagram()),
                 nextBaseQuestion(command.nextBaseQuestion()));
@@ -80,12 +90,14 @@ public final class SystemDesignUserMessages {
     }
 
     /**
-     * 마지막 답변 평가와 리포트(L3). 답변 평가와 같은 기록 뒤에 다음 기준 질문 대신 숨은 요구사항의 확인 여부를 둔다.
-     * 요구사항의 답(수치)은 넣지 않아, 확인하지 않은 요구사항의 수치를 종합 평가가 근거 없이 끌어 쓰지 않게 한다.
+     * 마지막 답변 평가와 리포트(L3). 답변 평가와 같은 기록 뒤에 다음 기준 질문 대신 숨은 요구사항의 확인 여부를 둔다. 확인하지 않은
+     * 요구사항의 답(수치)은 넣지 않아, 그 수치를 종합 평가가 근거 없이 끌어 쓰지 않게 한다. 확인한 요구사항의 정해 둔 사실은 확정한
+     * 요구사항 블록에만 있다.
      */
     public static String end(SystemDesignEndCommand command) {
         return SystemDesignSystemMessages.joinBlocks(
                 requirementsDialogue(command.requirementTurns()),
+                confirmedRequirementList(command.confirmedRequirements()),
                 designDialogue(command.previousTurns()),
                 currentTurn(command.currentTurn(), command.currentDiagram()),
                 hiddenRequirementsStatus(command.problem().requirements(), command.confirmedRequirementCodes()));
@@ -100,6 +112,21 @@ public final class SystemDesignUserMessages {
                 .map(requirement -> "- " + escape(requirement.name()) + ": "
                         + (confirmedCodes.contains(requirement.code()) ? CONFIRMED : NOT_CONFIRMED))
                 .collect(Collectors.joining(LINE_SEPARATOR)));
+    }
+
+    /**
+     * L2·L3. 리포트의 confirmed_requirements와 같은 목록을 같은 순서로 적는다. 면접자가 역질문으로 확인한 것만 들어 있고 묻지 않은 숨은
+     * 요구사항은 없다(SystemDesignConfirmedRequirement.collect). 목록이 비면 머리줄 없이 없음만 쓴다.
+     */
+    private static String confirmedRequirementList(List<SystemDesignConfirmedRequirement> requirements) {
+        if (requirements.isEmpty()) {
+            return SystemDesignSystemMessages.tagged("confirmed_requirements", NONE);
+        }
+        String lines = requirements.stream()
+                .map(requirement -> confirmedItemLine(requirement.source(), requirement.name(), requirement.detail()))
+                .collect(Collectors.joining(LINE_SEPARATOR));
+        return SystemDesignSystemMessages.tagged("confirmed_requirements",
+                CONFIRMED_REQUIREMENTS_HEADING + LINE_SEPARATOR + lines);
     }
 
     private static String requirementsDialogue(List<SystemDesignRequirementTurn> turns) {
