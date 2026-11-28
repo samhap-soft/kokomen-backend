@@ -197,29 +197,42 @@ class SystemDesignRequirementAnswerComposerTest {
         );
     }
 
-    // YES를 믿고 SEED로 본다. 답은 다른 답과 같은 검사를 받아, 거절 문구나 빈 답이면 물은 시드 답으로 바뀐다.
+    // YES를 믿고 SEED로 본다. 모델이 정해 둔 사실로 실제로 답했으면 그 답을 쓴다.
     @Test
-    void DECLINED인데_YES가_있으면_SEED로_보고_답을_검사한다() {
+    void DECLINED인데_YES가_있고_쓸_수_있는_답이면_SEED로_본다() {
+        assertThat(compose(toolInput("DECLINED", DAILY_CREATION_VOLUME_ANSWER, DAILY_CREATION_VOLUME_ONLY)))
+                .extracting(SystemDesignRequirementAnswerResult::askedRequirementCodes,
+                        SystemDesignRequirementAnswerResult::answerType, SystemDesignRequirementAnswerResult::answer)
+                .containsExactly(List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED,
+                        DAILY_CREATION_VOLUME_ANSWER);
+    }
+
+    // "요구사항을 전부 알려 주세요"를 DECLINED로 보면서 YES를 여럿 표시하고 답을 비운 경우다. 시드 답으로 바꾸면 거절하려던 질문에
+    // 정해 둔 사실을 한꺼번에 알려 주게 된다. 모델이 실제로 알려 준 것이 없으니 물은 요구사항으로 남기지도 않는다.
+    @Test
+    void DECLINED인데_YES가_있고_쓸_답이_없으면_시드를_알리지_않고_정해진_문구로_답한다() {
+        // given
+        String[] allYes = {"YES", "YES", "YES", "YES", "YES"};
+        ObjectNode emptyAnswer = toolInput("DECLINED", "", allYes);
+        emptyAnswer.set("requirement_items", items(item("하루 생성량", "하루 평균 10만 개가 만들어진다.", "SEED")));
+
         // when
-        SystemDesignRequirementAnswerResult answered = compose(
-                toolInput("DECLINED", DAILY_CREATION_VOLUME_ANSWER, DAILY_CREATION_VOLUME_ONLY));
-        SystemDesignRequirementAnswerResult empty = compose(toolInput("DECLINED", "", DAILY_CREATION_VOLUME_ONLY));
-        SystemDesignRequirementAnswerResult declined = compose(
-                toolInput("DECLINED", DECLINED_ANSWER, DAILY_CREATION_VOLUME_ONLY));
+        SystemDesignRequirementAnswerResult empty = compose(emptyAnswer);
+        SystemDesignRequirementAnswerResult declined = compose(toolInput("DECLINED", DECLINED_ANSWER, allYes));
+        SystemDesignRequirementAnswerResult leaked = compose(toolInput("DECLINED", "하루 10만 개이고 5년 보관해요.",
+                DAILY_CREATION_VOLUME_ONLY));
 
         // then
         assertAll(
-                () -> assertThat(answered)
+                () -> assertThat(List.of(empty, declined, leaked)).allSatisfy(result -> assertThat(result)
                         .extracting(SystemDesignRequirementAnswerResult::askedRequirementCodes,
                                 SystemDesignRequirementAnswerResult::answerType,
-                                SystemDesignRequirementAnswerResult::answer)
-                        .containsExactly(List.of("DAILY_CREATION_VOLUME"), SystemDesignRequirementAnswerType.SEED,
-                                DAILY_CREATION_VOLUME_ANSWER),
-                () -> assertThat(empty.answer()).isEqualTo(DAILY_CREATION_VOLUME_ANSWER),
-                () -> assertThat(declined)
-                        .extracting(SystemDesignRequirementAnswerResult::answerType,
-                                SystemDesignRequirementAnswerResult::answer)
-                        .containsExactly(SystemDesignRequirementAnswerType.SEED, DAILY_CREATION_VOLUME_ANSWER)
+                                SystemDesignRequirementAnswerResult::answer,
+                                SystemDesignRequirementAnswerResult::requirementItems)
+                        .containsExactly(List.of(), SystemDesignRequirementAnswerType.DECLINED, DECLINED_ANSWER,
+                                List.of())),
+                () -> assertThat(warnings()).hasSize(3)
+                        .allMatch(message -> message.contains("정해진 문구로 답합니다"))
         );
     }
 
@@ -332,6 +345,17 @@ class SystemDesignRequirementAnswerComposerTest {
         );
     }
 
+    // 정해진 안내 문구의 일부("등록되지 않은")가 들어간 정상 문장까지 막으면, 바꿀 시드 답이 없을 때 같은 질문이 계속 500이 된다.
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "등록되지 않은 사용자도 단축 URL을 만들 수 있어요.",
+            "만료일이 정해지지 않은 링크는 만들 수 없어요.",
+            "로그인은 필요 없고, 따로 정해 두지 않은 별칭은 받지 않아요."
+    })
+    void 안내_문구와_겹치는_말이_있어도_정상_문장은_회피_문구가_아니다(String answer) {
+        assertThat(compose(toolInput("ASSUMED", answer, ALL_NO)).answer()).isEqualTo(answer);
+    }
+
     // 조회 비율(100배)만 물었는데 묻지 않은 하루 생성량(10만)을 흘린 답이다.
     @Test
     void 묻지_않은_시드의_숫자와_단위가_있으면_물은_시드_답으로_바꾼다() {
@@ -386,15 +410,69 @@ class SystemDesignRequirementAnswerComposerTest {
         );
     }
 
-    // 계산을 대신하지 않는 규칙은 프롬프트가 막는다. 서버는 묻지 않은 시드의 수치만 본다.
+    // 전각 숫자는 같은 숫자로 읽고(NFKC), 영문 단위와 %는 숫자 사이에 공백이 하나 있어도 같은 단위로 본다. 한글 단위는 붙여 쓴 것만 본다.
     @Test
-    void 묻지_않은_시드의_수치가_아니면_시드에_없는_숫자도_막지_않는다() {
+    void 전각_숫자와_공백을_둔_영문_단위도_같은_수치로_본다() {
+        // given
+        List<Requirement> requirements = List.of(
+                new Requirement("RESPONSE_LATENCY", "응답 지연 목표", "API는 100ms 안에 응답해야 해요."),
+                new Requirement("PHOTO_SIZE", "사진 용량", "원본은 장당 최대 20MB까지 받아요."),
+                new Requirement("DAILY_VOLUME", "하루 생성량", "하루 평균 10만 개가 만들어져요."),
+                new Requirement("PRICING", "요금", "요금은 이번 범위에서 빼도 돼요."));
+        SystemDesignRequirementAnswerCommand command = new SystemDesignRequirementAnswerCommand(31L,
+                new SystemDesignProblemContext(7L, "문제", "설명", "기준", requirements, List.of()), List.of(),
+                SystemDesignConfirmedRequirements.empty(), "질문");
+        String[] pricingOnly = {"NO", "NO", "NO", "YES"};
+
+        // when & then
+        assertAll(
+                () -> assertThat(composeWith(command, "요금은 빼고 응답은 100 ms 안이에요.", pricingOnly))
+                        .isEqualTo("요금은 이번 범위에서 빼도 돼요."),
+                () -> assertThat(composeWith(command, "요금은 빼고 사진은 20 MB까지예요.", pricingOnly))
+                        .isEqualTo("요금은 이번 범위에서 빼도 돼요."),
+                () -> assertThat(composeWith(command, "요금은 빼고 하루 １０만 개예요.", pricingOnly))
+                        .isEqualTo("요금은 이번 범위에서 빼도 돼요."),
+                () -> assertThat(composeWith(command, "요금은 빼고 사진은 ２０ＭＢ까지예요.", pricingOnly))
+                        .isEqualTo("요금은 이번 범위에서 빼도 돼요.")
+        );
+    }
+
+    // 계산을 대신하지 않는 규칙은 프롬프트가 막는다. LLM이 정한 내용이 들어간 답(ASSUMED·MIXED)에서 서버는 묻지 않은 시드의 수치만 본다.
+    @Test
+    void LLM이_정한_내용이_들어간_답은_묻지_않은_시드의_수치가_아니면_숫자를_막지_않는다() {
         assertAll(
                 () -> assertThat(compose(toolInput("ASSUMED", "가용성은 99.9%를 목표로 해요.", ALL_NO)).answer())
                         .isEqualTo("가용성은 99.9%를 목표로 해요."),
-                () -> assertThat(compose(toolInput("SEED", "하루 평균 10만 개, 초당 116건 정도예요.",
-                        DAILY_CREATION_VOLUME_ONLY)).answer()).isEqualTo("하루 평균 10만 개, 초당 116건 정도예요.")
+                () -> assertThat(compose(toolInput("MIXED", "하루 평균 10만 개이고, 가용성은 99.9%예요.",
+                        DAILY_CREATION_VOLUME_ONLY)).answer()).isEqualTo("하루 평균 10만 개이고, 가용성은 99.9%예요.")
         );
+    }
+
+    // 정해 둔 사실만으로 답하는 SEED 답에는 정해 둔 사실(지금까지 물은 시드)과 앞에서 확정한 항목에 없는 수치가 들어갈 까닭이 없다.
+    // 시드 값을 바꾼 답(20만)과 면접자가 할 계산을 대신한 답(초당 116건)은 물은 시드 답으로 바꾼다.
+    @Test
+    void SEED_답에_정해_둔_사실에_없는_수치가_있으면_물은_시드_답으로_바꾼다() {
+        assertAll(
+                () -> assertThat(compose(toolInput("SEED", "하루 평균 20만 개 정도예요.", DAILY_CREATION_VOLUME_ONLY))
+                        .answer()).isEqualTo(DAILY_CREATION_VOLUME_ANSWER),
+                () -> assertThat(compose(toolInput("SEED", "하루 평균 10만 개, 초당 116건 정도예요.",
+                        DAILY_CREATION_VOLUME_ONLY)).answer()).isEqualTo(DAILY_CREATION_VOLUME_ANSWER),
+                () -> assertThat(warnings()).hasSize(2)
+                        .allMatch(message -> message.contains("정해 둔 사실에 없는 수치"))
+        );
+    }
+
+    @Test
+    void SEED_답은_앞에서_물은_시드와_확정_항목의_수치를_다시_말할_수_있다() {
+        // given
+        SystemDesignRequirementAnswerCommand command = command(new SystemDesignConfirmedRequirements(
+                List.of("DAILY_CREATION_VOLUME"), List.of(new SystemDesignRequirementItem("서비스 지역",
+                "국내 사용자 3천만 명을 대상으로 한다.", SystemDesignRequirementSource.ASSUMED))));
+        String answer = "하루 10만 개가 만들어지는 3천만 명 서비스라, 조회는 생성의 100배쯤이에요.";
+
+        // when & then
+        assertThat(SystemDesignRequirementAnswerComposer.compose(command,
+                toolInput("SEED", answer, READ_WRITE_RATIO_ONLY)).answer()).isEqualTo(answer);
     }
 
     // 앞 역질문에서 이미 들은 시드의 수치는 새어 나간 것이 아니다. 같은 값을 다시 말해야 모순이 생기지 않는다.
@@ -625,7 +703,7 @@ class SystemDesignRequirementAnswerComposerTest {
             toolInput.put(SystemDesignToolSchemas.requirementFieldName(requirements.get(index).code()),
                     verdicts[index]);
         }
-        toolInput.put("answer_type", "SEED");
+        toolInput.put("answer_type", "MIXED");
         toolInput.set("requirement_items", objectMapper.createArrayNode());
         toolInput.put("answer", answer);
         return SystemDesignRequirementAnswerComposer.compose(command, toolInput).answer();

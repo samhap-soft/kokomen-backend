@@ -58,14 +58,24 @@ class SystemDesignRequirementItemsConverterTest {
     @ValueSource(strings = {
             "[{\"name\": \"커스텀 별칭\"",
             "{\"name\": \"커스텀 별칭\", \"detail\": \"뺀다.\", \"source\": \"ASSUMED\"}",
-            "[{\"name\": \"커스텀 별칭\", \"detail\": \"뺀다.\", \"source\": \"OTHER\"}]",
-            "[{\"name\": \"\", \"detail\": \"뺀다.\", \"source\": \"ASSUMED\"}]",
-            "[{\"name\": \"커스텀 별칭\", \"source\": \"ASSUMED\"}]",
-            "[null]"
+            "\"커스텀 별칭\""
     })
-    void 읽지_못하거나_규칙을_어긴_행은_IllegalStateException으로_감싼다(String dbData) {
+    void 배열로_읽을_수_없는_행은_IllegalStateException으로_감싼다(String dbData) {
         assertThatThrownBy(() -> converter.convertToEntityAttribute(dbData))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("확정한 요구사항 목록 역직렬화 실패");
+    }
+
+    // 뒤 버전이 출처 값을 더하거나 규칙을 바꾼 행을 앞 버전으로 되돌린 배포가 읽는 경우다. 행 하나 때문에 다음 역질문과 리포트가
+    // 실패하지 않게, 규칙을 어긴 원소만 건너뛰고 나머지를 읽는다. DB의 값은 그대로 남는다.
+    @Test
+    void 규칙을_어긴_원소는_건너뛰고_나머지를_읽는다() {
+        assertThat(converter.convertToEntityAttribute("""
+                [{"name": "커스텀 별칭", "detail": "뺀다.", "source": "OTHER"},
+                 {"name": "", "detail": "뺀다.", "source": "ASSUMED"},
+                 {"name": "커스텀 별칭", "source": "ASSUMED"},
+                 null, "커스텀 별칭",
+                 {"name": "커스텀 별칭", "detail": "커스텀 별칭은 이번 범위에서 뺀다.", "source": "ASSUMED"}]"""))
+                .containsExactly(CUSTOM_ALIAS);
     }
 }

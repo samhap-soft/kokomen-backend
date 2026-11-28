@@ -8,6 +8,7 @@ import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignRequirementS
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignText;
 import com.samhap.kokomen.interview.external.dto.response.SystemDesignRequirementAnswerResult;
 import com.samhap.kokomen.interview.tool.SystemDesignProblemContext.Requirement;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -31,7 +32,8 @@ import tools.jackson.databind.ObjectMapper;
  *     <li>답의 종류는 판정을 기준으로 바로잡는다. YES인 숨은 요구사항이 있으면 시드 사실이 답에 들어간 것이다.</li>
  *     <li>요구사항을 묻는 질문이 아니면(DECLINED) 정해진 문구 {@value #DECLINED_ANSWER}로 답하고 확정 항목을 비운다.</li>
  *     <li>답이 비었거나 {@value #MAX_ANSWER_LENGTH}자를 넘거나, 결정을 면접자에게 넘기는 회피 문구가 있거나, 묻지 않은 숨은
- *     요구사항의 '숫자+단위'가 있으면 쓰지 않는다. 물은 숨은 요구사항이 있으면 그 시드 답으로 바꾸고(폴백), 없으면 실패다.</li>
+ *     요구사항의 '숫자+단위'가 있거나, SEED 답에 정해 둔 사실에 없는 '숫자+단위'가 있으면 쓰지 않는다. 물은 숨은 요구사항이 있으면
+ *     그 시드 답으로 바꾸고(폴백), 없으면 실패다. 다만 모델이 DECLINED로 낸 답이면 시드 답으로 바꾸지 않고 정해진 문구로 답한다.</li>
  *     <li>확정 항목은 규칙을 어긴 것만 버린다. 항목은 다음 역질문의 문맥과 리포트용이라 버려도 답은 나간다.</li>
  * </ul>
  */
@@ -44,11 +46,13 @@ public final class SystemDesignRequirementAnswerComposer {
 
     private static final ObjectMapper ITEMS_MAPPER = Jackson2CompatibleJsonMapper.builder().build();
     private static final Pattern THOUSANDS_SEPARATOR = Pattern.compile("(?<=\\d),(?=\\d{3})");
-    // 숫자(소수 포함) 바로 뒤에 붙은 단위. 단위는 %, 한글이면 첫 글자, 영문이면 이어진 영문 전체다.
-    private static final Pattern NUMBER_WITH_UNIT = Pattern.compile("(\\d+(?:\\.\\d+)?)(%|[가-힣]|[A-Za-z]+)");
+    // 숫자(소수 포함) 바로 뒤의 단위. 한글이면 붙여 쓴 첫 글자, 영문이면 이어진 영문 전체, %다. 영문 단위와 %는 숫자와의 사이에 공백
+    // 하나를 허용한다("100 ms"). 한글은 붙여 쓰는 단위라 공백을 허용하면 "5 개"처럼 숫자만 같은 우연이 늘어 붙여 쓴 것만 본다.
+    private static final Pattern NUMBER_WITH_UNIT = Pattern.compile("(\\d+(?:\\.\\d+)?)(?:([가-힣])|\\s?(%|[A-Za-z]+))");
     // 결정을 면접자에게 넘기는 문구(배포 전의 고정 답 "등록되지 않은 내용이에요. 가정하고 진행하세요." 포함)와, 요구사항 질문이 아닐 때의
-    // 정해진 문구. 답의 종류가 DECLINED가 아닌데 거절했다면 답과 종류가 어긋난다.
-    private static final Pattern EVASION = Pattern.compile("등록되지\\s*않은|정해\\s*두지\\s*않은|정해지지\\s*않은"
+    // 정해진 문구. 답의 종류가 DECLINED가 아닌데 거절했다면 답과 종류가 어긋난다. "등록되지 않은 사용자"처럼 정상 문장에도 나오는 말은
+    // 뒤에 "내용"이 올 때만 본다.
+    private static final Pattern EVASION = Pattern.compile("(?:등록되지|정해\\s*두지|정해지지)\\s*않은\\s*내용"
             + "|가정(?:하고|해서|하여)\\s*진행|(?:자유롭게|직접|알아서|임의로|적절히|편하게)\\s*가정|가정해\\s*주세요"
             + "|요구사항을\\s*묻는\\s*질문에만");
     private static final String SEED_ANSWER_DELIMITER = " ";
@@ -98,20 +102,27 @@ public final class SystemDesignRequirementAnswerComposer {
                                                               JsonNode toolInput) {
         List<Requirement> requirements = command.problem().requirements();
         List<String> askedCodes = resolveAskedCodes(requirements, toolInput);
-        SystemDesignRequirementAnswerType answerType = correctAnswerType(readAnswerType(toolInput), askedCodes,
+        SystemDesignRequirementAnswerType llmAnswerType = readAnswerType(toolInput);
+        SystemDesignRequirementAnswerType answerType = correctAnswerType(llmAnswerType, askedCodes,
                 command.interviewId());
         if (answerType == SystemDesignRequirementAnswerType.DECLINED) {
-            return new SystemDesignRequirementAnswerResult(askedCodes, answerType, DECLINED_ANSWER, List.of());
+            return declined();
         }
-        Set<String> forbiddenNumberUnits = forbiddenNumberUnits(requirements, command.confirmedRequirements(),
-                askedCodes);
-        List<SystemDesignRequirementItem> items = readItems(toolInput, askedCodes, forbiddenNumberUnits,
+        NumberUnits numberUnits = NumberUnits.of(requirements, command.confirmedRequirements(), askedCodes);
+        List<SystemDesignRequirementItem> items = readItems(toolInput, askedCodes, numberUnits.forbidden(),
                 command.interviewId());
+        answerType = adjustForAssumedItems(answerType, items);
         String answer = Objects.requireNonNullElse(readText(toolInput, SystemDesignToolSchemas.ANSWER_FIELD), "");
-        String rejectReason = findRejectReason(answer, forbiddenNumberUnits);
+        String rejectReason = findRejectReason(answer, answerType, numberUnits);
         if (rejectReason == null) {
-            return new SystemDesignRequirementAnswerResult(askedCodes, adjustForAssumedItems(answerType, items),
-                    answer, items);
+            return new SystemDesignRequirementAnswerResult(askedCodes, answerType, answer, items);
+        }
+        // 모델은 요구사항을 묻는 질문이 아니라고 봤는데 판정에 YES를 표시하고 쓸 답을 내지 않았다. "요구사항을 전부 알려 주세요"를 이렇게
+        // 내면 시드 답으로 바꿀 때 정해 둔 사실을 한꺼번에 알려 주게 된다. 실제로 알려 준 것이 없으니 물은 요구사항으로 남기지도 않는다.
+        if (llmAnswerType == SystemDesignRequirementAnswerType.DECLINED) {
+            log.warn("시스템 설계 역질문을 DECLINED로 냈는데 YES가 있고 쓸 답이 없어 정해진 문구로 답합니다. reason: {}, "
+                    + "askedCodes: {}, interviewId: {}", rejectReason, askedCodes, command.interviewId());
+            return declined();
         }
         if (askedCodes.isEmpty()) {
             log.warn("시스템 설계 역질문 답을 쓸 수 없고 바꿀 시드 답도 없어 실패로 봅니다. reason: {}, answerType: {}, "
@@ -126,6 +137,11 @@ public final class SystemDesignRequirementAnswerComposer {
                 .toList();
         return new SystemDesignRequirementAnswerResult(askedCodes, SystemDesignRequirementAnswerType.SEED,
                 seedAnswer(requirements, askedCodes), seedItems);
+    }
+
+    private static SystemDesignRequirementAnswerResult declined() {
+        return new SystemDesignRequirementAnswerResult(List.of(), SystemDesignRequirementAnswerType.DECLINED,
+                DECLINED_ANSWER, List.of());
     }
 
     private static SystemDesignRequirementAnswerType readAnswerType(JsonNode toolInput) {
@@ -185,51 +201,8 @@ public final class SystemDesignRequirementAnswerComposer {
         return answerType;
     }
 
-    /**
-     * 묻지 않은 숨은 요구사항의 '숫자+단위' 가운데, 지금까지 물은 숨은 요구사항(이전 역질문과 이번 판정)과 이전 확정 항목에 없는 것.
-     * 이번 SEED 항목도 같은 검사를 통과해야 남으므로 허용 목록에 더해도 결과가 같다. 숫자만 같은 우연(정한 "5개"와 시드 "5년")은
-     * 단위가 달라 걸리지 않는다. "백만" 같은 한글 수사와 전각 숫자는 잡지 못해 프롬프트 규칙이 함께 막는다.
-     */
-    private static Set<String> forbiddenNumberUnits(List<Requirement> requirements,
-                                                    SystemDesignConfirmedRequirements confirmed,
-                                                    List<String> askedCodes) {
-        Set<String> knownCodes = new HashSet<>(confirmed.askedRequirementCodes());
-        knownCodes.addAll(askedCodes);
-        Set<String> forbidden = new LinkedHashSet<>();
-        Set<String> allowed = new HashSet<>();
-        for (Requirement requirement : requirements) {
-            Set<String> numberUnits = numberUnits(requirement.answer());
-            if (knownCodes.contains(requirement.code())) {
-                allowed.addAll(numberUnits);
-            } else {
-                forbidden.addAll(numberUnits);
-            }
-        }
-        for (SystemDesignRequirementItem item : confirmed.items()) {
-            allowed.addAll(numberUnits(item.name() + SEED_ANSWER_DELIMITER + item.detail()));
-        }
-        forbidden.removeAll(allowed);
-        return forbidden;
-    }
-
-    // 천 단위 쉼표를 지운 뒤 '숫자+단위'를 모은다. "1,000만 명"과 "1000만명"은 같은 1000만이고, "100배쯤"과 "100배예요"는 같은 100배다.
-    // 단위가 붙지 않은 숫자는 모으지 않는다.
-    private static Set<String> numberUnits(String text) {
-        Matcher matcher = NUMBER_WITH_UNIT.matcher(THOUSANDS_SEPARATOR.matcher(text).replaceAll(""));
-        Set<String> numberUnits = new LinkedHashSet<>();
-        while (matcher.find()) {
-            numberUnits.add(matcher.group(1) + matcher.group(2).toLowerCase(Locale.ROOT));
-        }
-        return numberUnits;
-    }
-
-    private static List<String> leakedNumberUnits(String text, Set<String> forbiddenNumberUnits) {
-        return numberUnits(text).stream()
-                .filter(forbiddenNumberUnits::contains)
-                .toList();
-    }
-
-    private static String findRejectReason(String answer, Set<String> forbiddenNumberUnits) {
+    private static String findRejectReason(String answer, SystemDesignRequirementAnswerType answerType,
+                                           NumberUnits numberUnits) {
         if (answer.isEmpty()) {
             return "빈 답";
         }
@@ -239,9 +212,17 @@ public final class SystemDesignRequirementAnswerComposer {
         if (EVASION.matcher(answer).find()) {
             return "회피 문구";
         }
-        List<String> leaked = leakedNumberUnits(answer, forbiddenNumberUnits);
+        List<String> leaked = numberUnits.leakedIn(answer);
         if (!leaked.isEmpty()) {
             return "묻지 않은 요구사항의 수치 " + leaked;
+        }
+        // 정해 둔 사실만으로 답했다면 시드 값을 바꾸거나 면접자가 할 계산을 대신한 수치가 들어갈 까닭이 없다. LLM이 정한 내용이 들어간
+        // 답(ASSUMED·MIXED)은 정한 값의 수치를 담으므로 보지 않는다.
+        if (answerType == SystemDesignRequirementAnswerType.SEED) {
+            List<String> unknown = numberUnits.unknownIn(answer);
+            if (!unknown.isEmpty()) {
+                return "정해 둔 사실에 없는 수치 " + unknown;
+            }
         }
         return null;
     }
@@ -300,6 +281,61 @@ public final class SystemDesignRequirementAnswerComposer {
                 .collect(Collectors.joining(SEED_ANSWER_DELIMITER));
     }
 
+    /**
+     * 답과 확정 항목에서 보는 '숫자+단위'. forbidden은 묻지 않은 숨은 요구사항의 표현 가운데 지금까지 물은 숨은 요구사항(이전 역질문과
+     * 이번 판정)과 이전 확정 항목에 없는 것이고, known은 지금까지 물은 숨은 요구사항과 이전 확정 항목의 표현이다. 이번 SEED 항목도
+     * 같은 검사를 통과해야 남으므로 허용 목록에 더해도 결과가 같다. 숫자만 같은 우연(정한 "5개"와 시드 "5년")은 단위가 달라 걸리지
+     * 않는다. "백만" 같은 한글 수사, 단위를 바꾼 표기("10만"과 "100,000")는 잡지 못해 프롬프트 규칙이 함께 막는다.
+     */
+    private record NumberUnits(Set<String> forbidden, Set<String> known) {
+
+        static NumberUnits of(List<Requirement> requirements, SystemDesignConfirmedRequirements confirmed,
+                              List<String> askedCodes) {
+            Set<String> knownCodes = new HashSet<>(confirmed.askedRequirementCodes());
+            knownCodes.addAll(askedCodes);
+            Set<String> forbidden = new LinkedHashSet<>();
+            Set<String> known = new HashSet<>();
+            for (Requirement requirement : requirements) {
+                Set<String> numberUnits = extract(requirement.answer());
+                if (knownCodes.contains(requirement.code())) {
+                    known.addAll(numberUnits);
+                } else {
+                    forbidden.addAll(numberUnits);
+                }
+            }
+            for (SystemDesignRequirementItem item : confirmed.items()) {
+                known.addAll(extract(item.name() + SEED_ANSWER_DELIMITER + item.detail()));
+            }
+            forbidden.removeAll(known);
+            return new NumberUnits(forbidden, known);
+        }
+
+        // 전각 숫자·영문을 NFKC로 맞추고 천 단위 쉼표를 지운 뒤 모은다. "1,000만 명"과 "1000만명"은 같은 1000만이고, "100배쯤"과
+        // "100배예요"는 같은 100배다. 영문 단위는 소문자로 맞춘다("20MB"와 "20 mb"). 단위가 붙지 않은 숫자는 모으지 않는다.
+        static Set<String> extract(String text) {
+            String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
+            Matcher matcher = NUMBER_WITH_UNIT.matcher(THOUSANDS_SEPARATOR.matcher(normalized).replaceAll(""));
+            Set<String> numberUnits = new LinkedHashSet<>();
+            while (matcher.find()) {
+                String unit = matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
+                numberUnits.add(matcher.group(1) + unit.toLowerCase(Locale.ROOT));
+            }
+            return numberUnits;
+        }
+
+        List<String> leakedIn(String text) {
+            return extract(text).stream()
+                    .filter(forbidden::contains)
+                    .toList();
+        }
+
+        List<String> unknownIn(String text) {
+            return extract(text).stream()
+                    .filter(numberUnit -> !known.contains(numberUnit))
+                    .toList();
+        }
+    }
+
     // 확정 항목 원소 하나를 읽은 값. 객체가 아니거나 필드가 문자열이 아니면 그 값이 null이다.
     private record ItemCandidate(boolean object, String name, String detail, String source) {
 
@@ -331,7 +367,9 @@ public final class SystemDesignRequirementAnswerComposer {
             if (itemSource == SystemDesignRequirementSource.SEED && askedCodes.isEmpty()) {
                 return "물은 숨은 요구사항이 없는데 SEED";
             }
-            List<String> leaked = leakedNumberUnits(name + SEED_ANSWER_DELIMITER + detail, forbiddenNumberUnits);
+            List<String> leaked = NumberUnits.extract(name + SEED_ANSWER_DELIMITER + detail).stream()
+                    .filter(forbiddenNumberUnits::contains)
+                    .toList();
             if (!leaked.isEmpty()) {
                 return "묻지 않은 요구사항의 수치 " + leaked;
             }

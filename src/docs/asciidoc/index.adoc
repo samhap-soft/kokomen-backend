@@ -873,8 +873,7 @@ include::{snippetsDir}/system-design-interview-answer-result-not-found/response-
   들어가고, 모두 확인했으면 빈 배열이다. 문제에 정해 두지 않아 면접관이 정해서 답한 요구사항은 숨은 요구사항이 아니라서 이 목록과
   상관없다.
 * ``requirement_questions[].answer``는 역질문 때 준 면접관 답 그대로다. 정해 둔 사실, 면접관이 정한 내용, 요구사항을 묻는 질문이 아닐
-  때의 정해진 문구 중 하나다. 면접관이 정해 두지 않은 내용을 정해서 답하게 되기 전에 한 역질문에는, 그런 질문에 정해진 안내 문구로
-  답한 기록이 그대로 보인다.
+  때의 정해진 문구 중 하나다. 예전에 한 역질문에는 정해 두지 않은 내용을 물었을 때의 고정 안내 문구가 답으로 남아 있을 수 있다.
 * ``requirement_questions``는 물은 순서, ``feedbacks``는 질문 순번 순서다. ``feedbacks[].question_id``는 질문 순번(1~6)이다.
 * ``final_diagram``은 마지막 답변과 함께 낸 다이어그램이다.
 * ``user_cur_score``는 면접자의 지금 회원 점수(랭킹 점수)이고, ``user_prev_score``는 거기서 이번 면접의 등급 점수 합을 뺀 값이다(기존 면접
