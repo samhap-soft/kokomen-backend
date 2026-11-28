@@ -99,7 +99,8 @@ public class SystemDesignRequirementQuestionService {
     }
 
     /**
-     * LLM 호출 뒤 단계와 개수를 다시 확인하고, 최종 답을 정해 역질문 행을 저장한 뒤 토큰을 차감한다. 실패하면 아무것도 남지 않는다.
+     * LLM 호出 뒤 단계와 개수를 다시 확인하고, 최종 답을 정해 역질문 행을 저장한 뒤 토큰을 차감한다. 차감 전에 실패하면 아무것도 남지
+     * 않는다(차감 뒤 이 트랜잭션의 커밋 자체가 실패하는 경우는 chargeRequirementQuestionToken에 적었다).
      * 재시도로 준비한 역질문은 저장하지 않는다(파사드가 LLM을 부르지 않고 직전 응답을 그대로 준다).
      */
     @Transactional
@@ -128,6 +129,10 @@ public class SystemDesignRequirementQuestionService {
      * useTokens는 REQUIRES_NEW라 호출하는 즉시 따로 커밋되어, 이후 이 트랜잭션이 롤백돼도 돌아오지 않는다. 그래서 역질문 저장을 flush로
      * 먼저 실행해 저장에 실패한 역질문에는 과금하지 않는다. 토큰이 모자라 차감이 실패하면 저장한 역질문도 함께 롤백된다.
      * 이 트랜잭션은 회원 행을 고치지 않으므로 답변 차감(SystemDesignAnswerService)의 회원 행 락 순서 문제가 없다.
+     *
+     * <p>차감이 먼저 커밋되므로, 그 뒤 이 트랜잭션의 커밋이 실패하면(DB 연결 끊김 등) 역질문은 남지 않고 토큰만 빠진다. 답변 차감과
+     * 같은 한계다. 또 7개 보유는 준비할 때 한 번 보고 차감은 1개만 확인하므로, LLM을 기다리는 동안 진행 락 밖의 다른 차감(이력서
+     * 분석, 기존 음성 면접의 음성 비용)이 토큰을 쓰면 차감 뒤 6개보다 적게 남을 수 있다. 시작할 때의 6개 확인도 같다.
      */
     private void chargeRequirementQuestionToken(Long memberId) {
         entityManager.flush();

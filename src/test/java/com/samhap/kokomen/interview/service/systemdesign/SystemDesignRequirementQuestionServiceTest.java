@@ -20,6 +20,7 @@ import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemFixture
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignProblemTestSupport;
 import com.samhap.kokomen.global.fixture.systemdesign.SystemDesignRequirementQuestionFixtureBuilder;
 import com.samhap.kokomen.global.fixture.token.TokenFixtureBuilder;
+import com.samhap.kokomen.global.fixture.token.TokenPurchaseFixtureBuilder;
 import com.samhap.kokomen.interview.domain.Interview;
 import com.samhap.kokomen.interview.domain.RootQuestion;
 import com.samhap.kokomen.interview.domain.systemdesign.SystemDesignInterview;
@@ -39,7 +40,10 @@ import com.samhap.kokomen.interview.service.systemdesign.SystemDesignRequirement
 import com.samhap.kokomen.interview.tool.SystemDesignRequirementTurn;
 import com.samhap.kokomen.member.domain.Member;
 import com.samhap.kokomen.member.repository.MemberRepository;
+import com.samhap.kokomen.token.domain.TokenPurchase;
+import com.samhap.kokomen.token.domain.TokenPurchaseState;
 import com.samhap.kokomen.token.domain.TokenType;
+import com.samhap.kokomen.token.repository.TokenPurchaseRepository;
 import com.samhap.kokomen.token.repository.TokenRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +78,8 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
     private MemberRepository memberRepository;
     @Autowired
     private TokenRepository tokenRepository;
+    @Autowired
+    private TokenPurchaseRepository tokenPurchaseRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -548,6 +554,57 @@ class SystemDesignRequirementQuestionServiceTest extends BaseTest {
                 () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
                 () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6),
                 () -> assertThat(readTokenCount(member, TokenType.PAID)).isZero()
+        );
+    }
+
+    // 무료 토큰이 없으면 유료 토큰에서 차감하고 구매 건의 남은 수도 줄인다.
+    @Test
+    void 무료_토큰이_없으면_유료_토큰에서_차감한다() {
+        // given
+        Member member = memberRepository.save(MemberFixtureBuilder.builder().build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.FREE).tokenCount(0).build());
+        tokenRepository.save(TokenFixtureBuilder.builder()
+                .memberId(member.getId()).type(TokenType.PAID).tokenCount(7).build());
+        TokenPurchase tokenPurchase = tokenPurchaseRepository.save(TokenPurchaseFixtureBuilder.builder()
+                .memberId(member.getId()).purchaseCount(7).state(TokenPurchaseState.USABLE).build());
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+
+        // when
+        requirementQuestionService.save(
+                requirementQuestionService.prepare(systemDesignInterview.getInterview().getId(), member.getId(),
+                        "하루에 몇 개나 만들어지나요?"),
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+
+        // then
+        assertAll(
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isZero(),
+                () -> assertThat(readTokenCount(member, TokenType.PAID)).isEqualTo(6),
+                () -> assertThat(tokenPurchaseRepository.findById(tokenPurchase.getId()).orElseThrow()
+                        .getRemainingCount()).isEqualTo(6)
+        );
+    }
+
+    // 7개로 첫 역질문을 하면 6개가 남아 두 번째 역질문은 막힌다. 남은 6개로 본 면접을 끝낼 수 있다.
+    @Test
+    void 토큰이_딱_7개면_첫_역질문만_할_수_있다() {
+        // given
+        Member member = saveMemberWithRequirementQuestionTokens();
+        SystemDesignInterview systemDesignInterview = saveSystemDesignInterview(member,
+                problemTestSupport.saveProblem(), SystemDesignStage.REQUIREMENTS);
+        Long interviewId = systemDesignInterview.getInterview().getId();
+        requirementQuestionService.save(
+                requirementQuestionService.prepare(interviewId, member.getId(), "하루에 몇 개나 만들어지나요?"),
+                new SystemDesignRequirementAnswerResult(List.of("DAILY_CREATION_VOLUME"), "하루 평균 10만 개 정도예요."));
+
+        // when & then
+        assertThatThrownBy(() -> requirementQuestionService.prepare(interviewId, member.getId(), "조회는 얼마나 되나요?"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("토큰 갯수가 부족합니다.");
+        assertAll(
+                () -> assertThat(readRequirementQuestions(systemDesignInterview)).hasSize(1),
+                () -> assertThat(readTokenCount(member, TokenType.FREE)).isEqualTo(6)
         );
     }
 
